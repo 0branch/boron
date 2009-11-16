@@ -1,0 +1,7 @@
+---- tokenize
+datatype! int!/decimal!/word!
+---- type test
+false
+false
+true
+false

@@ -1,0 +1,31 @@
+---- binary foreach
+0 1
+2 3
+0 1
+2 3
+4 none
+---- string foreach
+f o
+u r
+h e
+l l
+o none
+---- block foreach
+four words
+to iterate
+five words
+to iterate
+extra none
+---- block forall
+[1 2 3]
+[2 3]
+[3]
+[]
+1
+2
+3
+---- forall tweaking
+1
+1
+two
+3

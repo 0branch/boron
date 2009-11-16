@@ -1,0 +1,238 @@
+/* Boron Developer Manual (Doxygen format) */
+
+/**
+\mainpage Boron Developer Manual
+
+\section intro_sec Introduction
+ 
+Boron is an interpreted scripting language built with the
+Urlan datatype system.
+
+This manual is a reference to help programmers develop their own
+domain languages or extend Boron with their own types and functions.
+
+\section start_sec Getting Started
+
+Study the \ref urlan_core and the <a href="examples.html">examples</a>.
+*/
+
+/**
+\file unset.h
+This header provides stubs for custom UDatatype methods.
+If your datatype does not implement certain methods, then use these.
+
+
+\file urlan_atoms.h
+This header provides fixed atoms which are always present.
+
+
+\example calculator.c
+This example shows how to use the Urlan library to implement a simple
+calculator language.
+
+
+\example boron_mini.c
+This is a basic example of how to use the Boron interpreter.
+*/
+
+/**
+\defgroup urlan Urlan Datatype System
+  The Urlan Datatype System.
+
+  This is a C library which provides a garbage collected datatype system
+  and data format which can be used for building domain specific languages.
+*/
+
+/** \file urlan.h
+  \ingroup urlan
+  The Urlan programmer interface
+
+  This is a C library which provides a garbage collected datatype system
+  and data format which can be used for building domain specific languages.
+*/
+
+
+/** \union UCell
+  \ingroup urlan_core
+  A cell holds a single value.
+  It will always be 16 bytes.
+  Normally cells are contained in block UBuffers.
+*/
+/** \var UCell::id
+  Basic type identification.
+*/
+/** \var UCell::datatype
+  For datatype! type.
+*/
+/** \var UCell::word
+  For word!, lit-word!, set-word!, get-word! types.
+*/
+/** \var UCell::number
+  For int!, decimal! types.
+*/
+/** \var UCell::coord
+  For coord! type.
+*/
+/** \var UCell::vec3
+  For vec3! type.
+*/
+/** \var UCell::series
+  For binary!, bitset!, string!, file!, block!, paren!, path! types.
+*/
+/** \var UCell::context
+  For context! type.
+*/
+/** \var UCell::error
+  For error! type.
+*/
+
+
+/** \struct UCellId
+  Basic type identification.
+  This represents the first 32 bits of a UCell and is typically initialized
+  with ur_setId().
+*/
+/** \var UCellId::type
+  UrlanDataType. */
+/** \var UCellId::flags
+  Bit field for type-specific properties.
+  The only flag defined for all datatypes is \c UR_FLAG_SOL.
+*/
+/** \var UCellId::_pad0
+  Padding.
+*/
+
+
+/** \struct UCellWord
+  UCell structure for word types.
+*/
+/** \var UCellWord::type
+  UrlanDataType.
+*/
+/** \var UCellWord::flags
+  Bit field for type-specific properties.
+*/
+/** \var UCellWord::binding
+  Specifies what UCellWord::ctx refers to.
+*/
+/** \var UCellWord::_pad0
+  Padding.
+*/
+/** \var UCellWord::ctx
+  Normally the buffer id of a context.
+*/
+/** \var UCellWord::index
+  Normally the word index into a context.
+*/
+/** \var UCellWord::atom
+  The name of the word.
+*/
+
+
+/** \struct UCellNumber
+  UCell structure for number types.
+*/
+/** \var UCellNumber::id
+  Type and flags.
+*/
+/** \var UCellNumber::i
+  Integer for logic!, char!, and int! types.
+*/
+/** \var UCellNumber::d
+  Double for decimal!, date!, and time! type.
+*/
+
+
+/** \struct UCellCoord
+  UCell structure for coord type.
+*/
+/** \var UCellCoord::type
+  UrlanDataType.
+*/
+/** \var UCellCoord::flags
+  Bit field for type-specific properties.
+*/
+/** \var UCellCoord::len
+  Number of integers used in array \b n.
+  This will aways be between 2 and 6 for the \c coord! type.
+*/
+/** \var UCellCoord::n
+  Holds six, 16-bit integers.
+*/
+
+
+/** \struct UCellSeries
+  UCell structure for series types.
+*/
+/** \var UCellSeries::id
+  Type and flags.
+*/
+/** \var UCellSeries::buf
+  Buffer id.
+*/
+/** \var UCellSeries::it
+  Iterator index.
+*/
+/** \var UCellSeries::end
+  Slice end index.  This will be -1 if no slice end is set.
+*/
+
+
+/** \struct UBuffer urlan.h
+  \ingroup urlan_core
+  The UBuffer struct holds information about a resource, usually a
+  chuck of memory.
+*/
+/** \var UBuffer::type
+  UrlanDataType identifier.
+*/
+/** \var UBuffer::elemSize
+  This typically holds the byte size of each element.
+*/
+/** \var UBuffer::form
+  This can indicate a specific form of the data (such as a string encoding).
+*/
+/** \var UBuffer::flags
+  This member is currently unused.
+*/
+/** \var UBuffer::used
+  This typically holds the number of elements in the buffer.
+*/
+/** \var UBuffer::ptr
+  This typically holds a pointer to a chunk of memory.
+*/
+
+
+/** \struct UThread
+  \ingroup urlan_core
+  The UThread struct stores the data specific to a thread of execution.
+  Note that it does not actually contain anything specific to evaluation;
+  it just holds buffers of data.
+*/
+/** \var UThread::dataStore
+  An array of buffers.
+*/
+/** \var UThread::holds
+  An array of buffer ids which will not be garbage collected.
+*/
+/** \var UThread::gcBits
+  Used by ur_recycle() to denote buffers which are in use.
+*/
+/** \var UThread::freeBufCount
+  Number of unused buffers.
+*/
+/** \var UThread::freeBufList
+  Buffer index of an unused buffer.
+*/
+/** \var UThread::env
+  Pointer to the shared environment.
+*/
+/** \var UThread::types
+  Pointer to the datatypes.
+*/
+/** \var UThread::wordCell
+  Method to get cell referenced by word for user-defined bindings.
+*/
+/** \var UThread::wordCellM
+  Method to get modifiable cell referenced by word for user-defined bindings.
+*/

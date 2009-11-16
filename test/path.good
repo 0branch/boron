@@ -1,0 +1,9 @@
+---- make
+path! a/2
+hij
+"abc"
+none
+---- lit-path
+path! some/path
+---- block
+33 44

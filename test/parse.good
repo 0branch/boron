@@ -1,0 +1,10 @@
+---- string parse
+eval OK
+true
+token
+---- basic tokenizer
+true
+["some" "words" "..."]
+---- block parse
+true
+[token]

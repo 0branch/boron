@@ -1,0 +1,579 @@
+/*
+  Copyright 2009 Karl Robillard
+
+  This file is part of the Urlan datatype system.
+
+  Urlan is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Urlan is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with Urlan.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/*
+  UBuffer members:
+    type        UT_CONTEXT
+    elemSize    Unused
+    form        Unused
+    flags       Sorted flag
+    used        Number of words used
+    ptr.cell    Cell values
+    ptr.i[-1]   Number of words available
+*/
+
+
+#include "env.h"
+
+
+#define SEARCH_LEN      5
+#define SORTED(buf)     buf->flags
+#define ENTRIES(buf)    ((WordEntry*) (buf->ptr.cell + ur_avail(buf)))
+#define FORWARD         8
+
+
+typedef struct
+{
+    UAtom    atom;
+    uint16_t index;     // LIMIT: 65535 words per contex.
+}
+WordEntry;
+
+
+/** \struct UBindTarget
+  \ingroup urlan_core
+  Holds information for binding functions.
+*/
+/** \var const UBuffer* UBindTarget::ctx
+  Context buffer to lookup words in.
+*/
+/** \var UIndex UBindTarget::ctxN
+  Words in the block which are found in the UBindTarget::ctx will have 
+  their UCell.word.ctx set to this identifier.
+  For bindType \c UR_BIND_THREAD and \c UR_BIND_ENV this will reference the
+  UBindTarget::ctx buffer in the appropriate dataStore.
+  Other binding types may use this value differently.
+*/
+/** \var int UBindTarget::bindType
+  Binding type to make.
+  \c UR_BIND_THREAD, \c UR_BIND_ENV, etc.
+*/
+
+
+/** \defgroup dt_context Datatype Context
+  \ingroup urlan
+  Contexts are a table of word/value pairs.
+  @{
+*/
+
+/**
+  Generate and initialize a single context.
+
+  If you need multiple buffers then ur_genBuffers() should be used.
+
+  \param size   Number of words to reserve.
+
+  \return Buffer id of context.
+*/
+UIndex ur_makeContext( UThread* ut, int size )
+{
+    UIndex bufN;
+    ur_genBuffers( ut, 1, &bufN );
+    ur_ctxInit( ur_buffer( bufN ), size );
+    return bufN;
+}
+
+
+/**
+  Generate a single context and set cell to reference it.
+
+  If you need multiple buffers then ur_genBuffers() should be used.
+
+  \param size   Number of words to reserve.
+  \param cell   Cell to initialize.
+
+  \return Pointer to context buffer.
+*/
+UBuffer* ur_makeContextCell( UThread* ut, int size, UCell* cell )
+{
+    UBuffer* buf;
+    UIndex bufN;
+
+    ur_genBuffers( ut, 1, &bufN );
+    buf = ur_buffer( bufN );
+    ur_ctxInit( buf, size );
+
+    ur_setId( cell, UT_CONTEXT );
+    ur_setSeries( cell, bufN, 0 );
+
+    return buf;
+}
+
+
+/**
+  Allocates enough memory to hold size words.
+  buf->used is not changed.
+
+  \param buf    Initialized context buffer.
+  \param size   Number of words to reserve.
+*/
+void ur_ctxReserve( UBuffer* buf, int size )
+{
+    uint8_t* mem;
+    int avail;
+    int na;
+
+    avail = ur_testAvail( buf );
+    if( size <= avail )
+        return;
+
+    /* Double the buffer size (unless that is not big enough). */
+    na = avail * 2;
+    if( na < size )
+        na = (size < 4) ? 4 : size;
+
+    mem = (uint8_t*) memAlloc( FORWARD +
+                               (sizeof(WordEntry) + sizeof(UCell)) * na  );
+    assert( mem );
+
+    if( buf->ptr.b )
+    {
+        if( buf->used )
+        {
+            uint8_t* dest = mem + FORWARD;
+            memCpy( dest, buf->ptr.cell, buf->used * sizeof(UCell) );
+            dest += na * sizeof(UCell);
+            memCpy( dest, ENTRIES(buf), buf->used * sizeof(WordEntry) );
+        }
+        memFree( buf->ptr.b - FORWARD );
+    }
+
+    buf->ptr.b = mem + FORWARD;
+    ur_avail(buf) = na;
+}
+
+
+/*
+  Copy cells and clone any child blocks.
+
+  \param dest    Destination cells.
+  \param src     Soruces cells.
+  \param count   Number of cells to copy.
+
+  The cells from src are copied to dest before any new blocks are generated.
+  This means that if dest is part of a UBuffer in the dataStore, the used
+  member should be set to count before calling ur_deepCopyCells so that all
+  cells are held from garbage collection.
+*/
+void ur_deepCopyCells( UThread* ut, UCell* dest, const UCell* src, int count )
+{
+    UCell* end;
+    UBuffer* copy;
+    const UBuffer* orig;
+    UIndex bufN;
+
+    memCpy( dest, src, count * sizeof(UCell) );
+
+    end = dest + count;
+    for( ; dest != end; ++dest, ++src )
+    {
+        int type = ur_type(dest);
+        if( ur_isBlockType( type ) )
+        {
+            ur_genBuffers( ut, 1, &bufN );
+            orig = ur_bufferSer( dest );
+            copy = ur_buffer( bufN );
+            ur_blkInit( copy, UT_BLOCK, orig->used );
+            copy->used = orig->used;
+            dest->series.buf = bufN;
+            ur_deepCopyCells( ut, copy->ptr.cell, orig->ptr.cell, orig->used );
+        }
+        else if( type >= UT_BINARY )
+        {
+            // Copy method requires different src and dest.
+            ut->types[ type ]->copy( ut, src, dest );
+        }
+    }
+}
+
+
+/**
+  Clone a new context and set cell to reference it.
+
+  \param src    Context to copy.
+  \param cell   Cell to initialize.
+
+  \return Pointer to context buffer.
+*/
+UBuffer* ur_ctxClone( UThread* ut, const UBuffer* src, UCell* cell )
+{
+    UBuffer* nc = ur_makeContextCell( ut, src->used, cell );
+    UIndex hold = ur_hold( cell->context.buf );
+
+    memCpy( ENTRIES(nc), ENTRIES(src), src->used * sizeof(WordEntry) );
+    nc->used = src->used;
+    ur_deepCopyCells( ut, nc->ptr.cell, src->ptr.cell, src->used );
+
+    nc = ur_buffer( cell->series.buf );     // Re-aquire
+    ur_bind( ut, nc, nc, UR_BIND_THREAD );
+    ur_release( hold );
+    return nc;
+}
+
+
+/**
+  Add the set-word! values in a series of cells to the words in a context.
+
+  \param ctx    Destination context.
+  \param it     Start of cells.
+  \param end    End of cells.
+*/
+void ur_ctxSetWords( UBuffer* ctx, const UCell* it, const UCell* end )
+{
+    while( it != end )
+    {
+        if( ur_is(it, UT_SETWORD) )
+            ur_ctxAddWordI( ctx, ur_atom(it) );
+        ++it;
+    }
+}
+
+
+#if 0
+/**
+  Add all the words and values in one context to another.
+  This can be used to clone a context if the destination is empty.
+
+  \param dest   Destination context.
+  \param src    Source context.
+*/
+void ur_ctxAppend( UBuffer* dest, const UBuffer* src )
+{
+    int sused = src->used;
+
+    ur_ctxReserve( ctx, usedB );
+    memCpy( ctx->ptr.cell, src->ptr.cell, usedB * sizeof(UCell) );
+    memCpy( ctx->ptr.b + (availA * sizeof(UCell),
+            ENTRIES(buf),
+            usedB * sizeof(WordEntry) );
+}
+#endif
+
+
+/**
+  Initialize context buffer.
+
+  \param size   Number of words to reserve.
+*/
+void ur_ctxInit( UBuffer* buf, int size )
+{
+    *((uint32_t*) buf) = 0;
+    buf->type  = UT_CONTEXT;
+    buf->used  = 0;
+    buf->ptr.v = 0;
+
+    if( size > 0 )
+        ur_ctxReserve( buf, size );
+}
+
+
+/**
+  Free context data.
+
+  buf->ptr and buf->used are set to zero.
+*/
+void ur_ctxFree( UBuffer* buf )
+{
+    if( buf->ptr.b )
+    {
+        memFree( buf->ptr.b - FORWARD );
+        buf->ptr.b = 0;
+    }
+    buf->used = 0;
+}
+
+
+/*
+  Get word atoms in order.
+
+  \param ctx    Valid context buffer
+  \param atoms  Array large enough to hold ctx->used atoms.
+*/
+void ur_ctxWordAtoms( const UBuffer* ctx, UAtom* atoms )
+{
+    const WordEntry* it = ENTRIES(ctx);
+    const WordEntry* end = it + ctx->used;
+    while( it != end )
+    {
+        atoms[it->index] = it->atom;
+        ++it;
+    }
+}
+
+
+/*
+   Returns index of atom in word block or -1 if not found.
+*/
+static int _binarySearch( WordEntry* words, int count, UAtom atom )
+{
+    UAtom midAtom;
+    int mid;
+    int low = 0;
+    int high = count - 1;
+
+    while( low <= high )
+    {
+        mid = ((unsigned int) (low + high)) >> 1;
+        midAtom = words[ mid ].atom;
+
+        if( midAtom < atom )
+            low = mid + 1;
+        else if( midAtom > atom )
+            high = mid - 1;
+        else
+            return words[ mid ].index;
+    }
+
+    // Atom not found.
+    return -1;
+}
+
+
+/*
+  Find word in context by atom.
+
+  \param cxt  Context which has at least one word.
+
+  \return  Word index or -1 if not found.
+*/
+static int _lookupNoSort( const UBuffer* ctx, UAtom atom )
+{
+    WordEntry* went = ENTRIES(ctx);
+
+    if( (ctx->used < SEARCH_LEN) || (! SORTED(ctx)) )
+    {
+        WordEntry* it  = went;
+        WordEntry* end = went + ctx->used;
+        while( it != end )
+        {
+            if( it->atom == atom )
+                return it->index;
+            ++it;
+        }
+        return -1;
+    }
+    else
+    {
+        return _binarySearch( went, ctx->used, atom );
+    }
+}
+
+
+static int _addWord( UBuffer* ctx, UAtom atom )
+{
+    int wrdN;
+    WordEntry* went;
+
+
+    wrdN = ctx->used;
+    ur_ctxReserve( ctx, wrdN + 1 );
+    ++ctx->used;
+
+    ur_setId( ctx->ptr.cell + wrdN, UT_UNSET );
+
+    went = ENTRIES(ctx) + wrdN;
+    went->atom  = atom;
+    went->index = wrdN;
+
+    SORTED(ctx) = 0;
+
+    return wrdN;
+}
+
+
+/**
+  Add word to context if it does not already exist.
+  If added, the word is initialied as unset.
+
+  Note that the ctx->ptr may be changed by this function.
+
+  \return  Index of word in context.
+*/
+int ur_ctxAddWordI( UBuffer* ctx, UAtom atom )
+{
+    if( ctx->used )
+    {
+        int wrdN = _lookupNoSort( ctx, atom );
+        if( wrdN > -1 )
+            return wrdN;
+    }
+    return _addWord( ctx, atom );
+}
+
+
+/**
+  Similar to ur_ctxAddWordI(), but safely returns the cell pointer.
+
+  \return  Pointer to value cell of word.
+*/
+UCell* ur_ctxAddWord( UBuffer* ctx, UAtom atom )
+{
+    int wordN = ur_ctxAddWordI( ctx, atom );
+    return ctx->ptr.cell + wordN;
+}
+
+
+#define QS_VAL(a)   entries[a].atom
+
+#define QS_SWAP(a,b) \
+    swapTmp = entries[a]; \
+    entries[a] = entries[b]; \
+    entries[b] = swapTmp
+
+static void _quickSort( WordEntry* entries, int low, int high )
+{
+    int i, j;
+    UAtom val;
+    WordEntry swapTmp;
+
+    if( low >= high )
+        return;
+
+    val = QS_VAL(low);
+    i = low;
+    j = high+1;
+    for(;;)
+    {
+        do i++; while( i <= high && QS_VAL(i) < val );
+        do j--; while( QS_VAL(j) > val );
+        if( i > j )
+            break;
+        QS_SWAP( i, j );
+    }
+    QS_SWAP( low, j );
+    _quickSort( entries, low, j-1 );
+    _quickSort( entries, j+1, high );
+}
+
+
+/**
+  Find word in context by atom.
+
+  \return  Word index or -1 if not found.
+*/
+int ur_ctxLookup( const UBuffer* ctx, UAtom atom )
+{
+    WordEntry* went;
+
+    if( ctx->used < SEARCH_LEN )
+    {
+        if( ctx->used )
+        {
+            WordEntry* it;
+            WordEntry* end;
+
+            it = went = ENTRIES(ctx);
+            end = it + ctx->used;
+            while( it != end )
+            {
+                if( it->atom == atom )
+                    return it->index;
+                ++it;
+            }
+        }
+        return -1;
+    }
+    else
+    {
+        went = ENTRIES(ctx);
+        if( ! SORTED(ctx) )
+            _quickSort( went, 0, ctx->used - 1 );
+        return _binarySearch( went, ctx->used, atom );
+    }
+}
+
+
+void ur_bindCells( UThread* ut, UCell* it, UCell* end, const UBindTarget* bt )
+{
+    int wrdN;
+    int type;
+    for( ; it != end; ++it )
+    {
+        type = ur_type(it);
+        switch( type )
+        {
+            case UT_WORD:
+            case UT_LITWORD:
+            case UT_SETWORD:
+            case UT_GETWORD:
+                wrdN = ur_ctxLookup( bt->ctx, ur_atom(it) );
+                if( wrdN > -1 )
+                {
+                    ur_setBinding( it, bt->bindType );
+                    it->word.ctx = bt->ctxN;
+                    it->word.index = wrdN;
+                }
+                break;
+
+            case UT_BLOCK:
+            case UT_PAREN:
+            case UT_PATH:
+            case UT_LITPATH:
+            case UT_SETPATH:
+                if( ! ur_isShared(it->series.buf) )
+                {
+                    UBuffer* blk = ur_buffer(it->series.buf);
+                    ur_bindCells( ut, blk->ptr.cell,
+                                      blk->ptr.cell + blk->used, bt );
+                }
+                break;
+
+            default:
+                if( type >= UT_BI_COUNT )
+                    ut->types[ type ]->bind( ut, it, bt );
+                break;
+        }
+    }
+}
+
+
+/**
+  Bind block to context.
+ 
+  \param blk        Block to bind.
+  \param ctx        Context.  This may be a stand-alone context outside of
+                    any dataStore.
+  \param bindType   UR_BIND_THREAD, etc.
+
+  \return Pointer to block buffer, or zero if blkN is invalid.
+*/
+void ur_bind( UThread* ut, UBuffer* blk, const UBuffer* ctx, int bindType )
+{
+    UBindTarget bt;
+
+    assert( blk->type == UT_BLOCK || blk->type == UT_CONTEXT);
+    assert( ctx->type == UT_CONTEXT );
+
+    bt.ctx = ctx;
+    bt.bindType = bindType;
+
+    if( bindType == UR_BIND_THREAD )
+        bt.ctxN = ctx - ut->dataStore.ptr.buf;
+    else if( bindType == UR_BIND_ENV )
+        bt.ctxN = -(ctx - ut->env->dataStore.ptr.buf);
+    else
+        bt.ctxN = UR_INVALID_BUF;
+
+    ur_bindCells( ut, blk->ptr.cell, blk->ptr.cell + blk->used, &bt );
+}
+
+
+/** @} */
+
+
+//EOF

@@ -1,0 +1,4 @@
+---- split-path
+[%path/to/ %file]
+[none %some-file]
+[%C:/windows/ %file]

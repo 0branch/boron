@@ -1,0 +1,3 @@
+---- bignum hex
+bignum! $7FFFFFFFFFFFFFFF
+9223372036854775807

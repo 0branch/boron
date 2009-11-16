@@ -1,0 +1,13 @@
+---- bind
+2 two
+2 two
+---- proto
+context [
+    first: 1
+    second: 2
+]
+context [
+    first: 1
+    second: 2
+    third: 3
+]

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+INTERPRETER=../boron
+
+#DIFF='diff -w --ignore-blank-lines'
+
+case `uname` in
+	"CYGWIN"*) DIFF='diff -w';;
+	"SunOS") DIFF='diff';;
+	*) DIFF='diff -a';;
+esac
+
+for FILE in $*
+do
+	echo Test: $FILE
+	GOOD=${FILE%.*}.good
+	OUT=${FILE%.*}.out
+	$INTERPRETER $FILE >$OUT
+	${DIFF} $OUT $GOOD
+done

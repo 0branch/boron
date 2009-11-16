@@ -1,0 +1,15 @@
+#!/bin/sh
+
+INTERPRETER=../boron
+OUT=grind.out
+
+rm -f $OUT
+
+for FILE in $*
+do
+	echo Grinding $FILE
+	echo Test: $FILE >$OUT
+	valgrind $INTERPRETER $FILE >>$OUT 2>>$OUT
+	grep ERROR $OUT
+done
+

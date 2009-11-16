@@ -1,0 +1,46 @@
+---- ordinal
+h
+e
+---- query
+false
+string! true false
+string! true true
+binary! true false
+binary! true true
+block! true false
+block! true true
+---- next
+"hello"
+"llo"
+"ello"
+---- ++/--
+2 3 4
+2 3 4
+1 2 3 4
+1 2 3 4
+---- clear
+[]
+---- pick
+none none word2 none
+---- append
+[word1 word2 word3 5]
+"abcd"
+#{010203}
+#{0102BEEF}
+---- join
+"xabc"
+"23abc"
+"Good job"
+"Good"
+---- terminate
+"path/"
+"path/"
+"path/b"
+"path/b\"
+"path/b\"
+---- slice
+"test"
+"te"
+"<test>"
+"<test>"
+"tiny"

@@ -1,0 +1,38 @@
+---- encoding
+latin1
+---- append
+"xabc"
+---- trim
+"trim1"
+"aa bb"
+"aa bb"
+"Line One.^/  Line Two.^/Line Three.^/"
+---- caret escape
+{"}
+"
+{^}"}
+}"
+{^}"}
+}"
+"}"
+}
+---- do
+7
+---- change
+""
+"a12345"
+""
+"a^/^/gg^/"
+"bc"
+"zbc"
+""
+"abcz"
+""
+7
+"a12345de"
+"fg"
+"UUfg"
+---- remove
+"emove stuff"
+"e stuff"
+"ee stuff"

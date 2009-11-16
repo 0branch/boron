@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if [ -n `which cmake` ]
+then
+  echo "Building Makefile with cmake"
+  cmake .
+  exit
+fi
+
+if [ -n `which m2` ]
+then
+  echo "Building Makefile with m2"
+  m2
+  exit
+fi
+
+echo "Could not find cmake or m2."
+echo "You must install one of these to build."
+exit 1

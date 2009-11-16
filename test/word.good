@@ -1,0 +1,8 @@
+---- Multiple set
+true true true
+1 2 none
+---- Mixed Case
+['MixedCase A_very_long_word_of_40_characters-yes_40]
+---- set func
+none
+21 21

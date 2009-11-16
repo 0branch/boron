@@ -1,0 +1,36 @@
+---- does
+hello
+---- func
+10
+---- nested
+hello
+20
+---- locals
+none 8
+3
+2
+["str" 44]
+---- return
+x < 4
+x > 4
+---- recursion
+1409286144
+75025
+---- argument validation
+3
+Datatype Error: function argument 1 is invalid
+Trace:
+ -> af 2.0
+---- literal arguments
+45
+---- options
+no option
+option set
+7
+8
+---- optional arguments
+1 none none
+13
+7
+---- empty body
+---- bugs fixed

@@ -1,0 +1,8 @@
+---- basic
+char! a
+'a'
+---- escape seq
+['^0' '^D' '^-' '^/' '^^' '^'']
+size? b: 6
+first line 
+ 	 second line

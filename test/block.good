@@ -1,0 +1,36 @@
+---- block newline formatting
+[
+    stuff: [
+        1 2 3 some [] ()
+    ]
+]
+[stuff2: [
+        1 2 3 some [] (a
+            b)
+    ]]
+---- paren eval
+mul 3 4
+12
+---- compare
+true
+false
+true
+false
+---- append
+[1 2 3 "end"]
+[1 2 3 x y z]
+[1 2 3 [x y z]]
+---- select
+1
+2
+none
+none
+---- set relation
+[a c]
+["h" 45 new]
+[b d]
+[]
+---- sort
+[1 5 20.0 50.0]
+["NOW" "goodbye" "hello" "then"]
+[alpha beta gamma zulu]

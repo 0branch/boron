@@ -1,0 +1,13 @@
+---- make file
+%"Some File"
+%my-file
+%filename-v12.ext
+filename-v12.ext
+%"file before block"
+file before block
+---- file as series
+%y-file.ext
+%file.ext
+%file.ext
+%my-file-23
+%file-10.ext
