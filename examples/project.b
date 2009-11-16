@@ -7,7 +7,7 @@ default [
 
     objdir %obj
 
-    include_from %..
+    include_from [%.. %../urlan]
 
     macx [
         cflags {-std=c99}
@@ -28,12 +28,12 @@ default [
 ]
 
 exe %calculator [
-    libs_from %.. %urlan
+    libs_from %.. %boron
     sources [%calculator.c]
 ]
 
 
 exe %boron_mini [
-    libs_from %.. [%boron0 %urlan]
+    libs_from %.. %boron
     sources [%boron_mini.c]
 ]

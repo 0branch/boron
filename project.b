@@ -25,7 +25,7 @@ default [
     ]
 ]
 
-lib %boron0 [
+shlib %boron [
     
     ;cflags {-DTRACK_MALLOC} sources [%urlan/memtrack.c]
 
@@ -62,7 +62,7 @@ lib %boron0 [
 ]
 
 exe %boron [
-    libs_from %. %boron0
+    libs_from %. %boron
     macx  [libs {m bz2}]
     unix  [libs {m bz2}]
     win32 [

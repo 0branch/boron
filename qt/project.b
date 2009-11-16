@@ -7,7 +7,7 @@ exe %boron-qt [
 
     qt [gui]
     include_from [%. %.. %../urlan %../support %../util]
-    libs_from %.. [%boron0]
+    libs_from %.. %boron
 
     macx [
         libs %bz2
