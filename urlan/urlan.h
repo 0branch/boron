@@ -495,10 +495,10 @@ void     ur_ctxInit( UBuffer*, int size );
 void     ur_ctxReserve( UBuffer*, int size );
 void     ur_ctxFree( UBuffer* );
 void     ur_ctxSetWords( UBuffer*, const UCell* it, const UCell* end );
-//void     ur_ctxAppend( UBuffer*, const UBuffer* ctxB );
 int      ur_ctxAddWordI( UBuffer*, UAtom atom );
 UCell*   ur_ctxAddWord( UBuffer*, UAtom atom );
 int      ur_ctxLookup( const UBuffer*, UAtom atom );
+#define  ur_ctxCell(c,n)    ((c)->ptr.cell + n)
 
 void     ur_arrInit( UBuffer*, int size, int count );
 void     ur_arrReserve( UBuffer*, int count );

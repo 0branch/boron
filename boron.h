@@ -57,6 +57,7 @@ UCell*   boron_result( UThread* );
 UCell*   boron_exception( UThread* );
 void     boron_reset( UThread* );
 int      boron_throwWord( UThread*, UAtom atom );
+const char* boron_cstr( UThread*, const UCell* strC );
 
 #ifdef __cplusplus
 }

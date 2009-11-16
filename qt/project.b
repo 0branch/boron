@@ -6,8 +6,8 @@ exe %boron-qt [
     objdir %obj
 
     qt [gui]
-    include_from [%. %.. %../support %../util]
-    libs_from %.. [%boron0 %urlan]
+    include_from [%. %.. %../urlan %../support %../util]
+    libs_from %.. [%boron0]
 
     macx [
         libs %bz2

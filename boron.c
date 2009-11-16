@@ -286,36 +286,47 @@ void boron_reset( UThread* ut )
 }
 
 
+extern int copyLatin1ToUtf8( uint8_t* dest, const uint8_t* src, int len );
 extern int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int len );
 
-/*
-  \param src        Valid UT_STRING cell.
+/**
+  Make null terminated UTF-8 string in temporary binary buffer.
 
-  Make null terminated UTF-8 string in temp binary.
+  \param strC       Valid UT_STRING or UT_FILE cell.
+
+  \return Pointer to C string.
 */
-char* boron_cstr( UThread* ut, const UCell* src )
+const char* boron_cstr( UThread* ut, const UCell* strC )
 {
-    const UBuffer* str = ur_bufferSer(src);
+    const UBuffer* str = ur_bufferSer(strC);
     int len = str->used;
 
-    if( (src->series.end > -1) && (src->series.end < len) )
-        len = src->series.end;
-    len -= src->series.it;
+    if( (strC->series.end > -1) && (strC->series.end < len) )
+        len = strC->series.end;
+    len -= strC->series.it;
     if( len > 0 )
     {
         UBuffer* bin = ur_buffer( BT->tempN );
 
-        if( ur_strIsUcs2(str) )
+        ur_binReserve( bin, (len * 2) + 1 );
+
+        switch( str->form )
         {
-            // TODO: Prevent overflow of dest.
-            ur_binReserve( bin, (len * 2) + 1 );
-            len = copyUcs2ToUtf8( bin->ptr.b,
-                                  str->ptr.u16 + src->series.it, len );
-        }
-        else
-        {
-            ur_binReserve( bin, len + 1 );
-            memCpy( bin->ptr.c, str->ptr.c + src->series.it, len );
+            case UR_ENC_LATIN1:
+                // TODO: Prevent overflow of dest.
+                len = copyLatin1ToUtf8( bin->ptr.b,
+                                        str->ptr.b + strC->series.it, len );
+                break;
+
+            case UR_ENC_UTF8:
+                memCpy( bin->ptr.b, str->ptr.b + strC->series.it, len ); 
+                break;
+
+            case UR_ENC_UCS2:
+                // TODO: Prevent overflow of dest.
+                len = copyUcs2ToUtf8( bin->ptr.b,
+                                      str->ptr.u16 + strC->series.it, len );
+                break;
         }
         bin->ptr.c[ len ] = '\0';
         return bin->ptr.c;

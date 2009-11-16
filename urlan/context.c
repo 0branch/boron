@@ -71,6 +71,11 @@ WordEntry;
   @{
 */
 
+/** \def ur_ctxCell
+  Get pointer of UCell in context by index.
+*/
+
+
 /**
   Generate and initialize a single context.
 
@@ -498,6 +503,14 @@ int ur_ctxLookup( const UBuffer* ctx, UAtom atom )
 }
 
 
+/**
+  Bind an array of cells to a target.
+  This recursively binds all blocks in the range of cells.
+
+  \param it     First cell.
+  \param end    End of cell array.
+  \param bt     Bind target.
+*/
 void ur_bindCells( UThread* ut, UCell* it, UCell* end, const UBindTarget* bt )
 {
     int wrdN;
@@ -544,11 +557,12 @@ void ur_bindCells( UThread* ut, UCell* it, UCell* end, const UBindTarget* bt )
 
 /**
   Bind block to context.
+  This recursively binds all sub-blocks.
  
   \param blk        Block to bind.
   \param ctx        Context.  This may be a stand-alone context outside of
                     any dataStore.
-  \param bindType   UR_BIND_THREAD, etc.
+  \param bindType   UR_BIND_THREAD, UR_BIND_ENV, etc.
 
   \return Pointer to block buffer, or zero if blkN is invalid.
 */
