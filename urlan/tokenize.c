@@ -717,9 +717,8 @@ newline:
                         }
                         else if( IS_WHITE(ch) )
                         {
-                            if( ch != '\n' )
-                                goto invalid_bin;
-                            ++lines;
+                            if( ch == '\n' )
+                                ++lines;
                         }
                         else if( ch == '}' )
                         {
