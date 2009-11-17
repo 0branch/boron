@@ -258,7 +258,7 @@ int ur_makeDir( UThread* ut, const char* path )
         err = GetLastError();
         if( (err != ERROR_FILE_EXISTS) || (ur_isDir(path) != 1) )
         {
-            ur_throwErr( UR_ERR_ACCESS, "CreateDirectory error (%d)", err );
+            ur_error( ut, UR_ERR_ACCESS, "CreateDirectory error (%d)", err );
             return UR_THROW;
         }
     }

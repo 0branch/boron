@@ -22,7 +22,7 @@
 #define _BSD_SOURCE     // Needed for timegm (Fedora 11)
 #endif
 
-//#include <time.h>
+#include <time.h>
 #include "urlan.h"
 #include "os.h"
 
