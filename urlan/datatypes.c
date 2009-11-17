@@ -1790,6 +1790,13 @@ void file_copy( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+// "()[]; "
+static uint8_t _fileQuoteChars[12] =
+{
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x00, 0x08,
+    0x00, 0x00, 0x00, 0x28
+};
+
 void file_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     USeriesIter si;
@@ -1797,7 +1804,8 @@ void file_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 
     ur_seriesSlice( ut, &si, cell );
 
-    if( ur_strFindChar( si.buf, si.it, si.end, ' ' ) > -1 )
+    if( ur_strFindChars( si.buf, si.it, si.end, _fileQuoteChars,
+                         sizeof(_fileQuoteChars) ) > -1 )
     {
         ur_strAppendCStr( str, "%\"" );
         ur_strAppend( str, si.buf, si.it, si.end );

@@ -6,6 +6,11 @@ print f
 probe f: %"file before block"[]
 print f
 
+
+print "---- special characters"
+probe %"$(QTDIR)/lib"
+
+
 print "---- file as series"
 f: %my-file.ext
 probe next f

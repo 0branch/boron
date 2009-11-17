@@ -914,26 +914,30 @@ hex_number:
                 goto set_sol;
 
             case FIL:
-                {
-                UIndex newStrN;
-                int quoted = 0;
-
                 ++it;
                 if( it != end && *it == '"' )
                 {
-                    quoted = 1;
-                    ++it;
-                }
-                token = it;
-                SCAN_LOOP
-                    if( IS_DELIM( ch ) )
-                    {
-                        if( ! (ch == ' ' && quoted) )
+                    token = ++it;
+                    SCAN_LOOP
+                        if( ch == '"' )
                             break;
-                    }
-                SCAN_END
-                newStrN = ur_makeStringUtf8( ut, (uint8_t*) token,
-                                                 (uint8_t*) it );
+                        if( ch == '\n' )
+                        {
+                            syntaxError( "File has no closing quote" );
+                        }
+                    SCAN_END
+                }
+                else
+                {
+                    token = it;
+                    SCAN_LOOP
+                        if( IS_DELIM( ch ) )
+                            break;
+                    SCAN_END
+                }
+                {
+                UIndex newStrN = ur_makeStringUtf8( ut, (uint8_t*) token,
+                                                        (uint8_t*) it );
                 cell = ur_blkAppendNew( BLOCK, UT_FILE );
                 ur_setSeries( cell, newStrN, 0 );
                 if( ch == '"' )

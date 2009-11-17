@@ -5,6 +5,8 @@
 filename-v12.ext
 %"file before block"
 file before block
+---- special characters
+%"$(QTDIR)/lib"
 ---- file as series
 %y-file.ext
 %file.ext
