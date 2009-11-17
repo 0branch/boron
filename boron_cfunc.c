@@ -1058,23 +1058,39 @@ CFUNC(cfunc_append)
     change
         series
         replacement
-        /slice      Remove slice and insert replacement.
+        /slice          Remove slice and insert replacement.
+        /part limit     Remove to limit and insert replacement.
     return: Series at end of change.
 */
 CFUNC(cfunc_change)
 {
 #define OPT_CHANGE_SLICE    0x01
+#define OPT_CHANGE_PART     0x02
     USeriesIterM si;
     UIndex part = 0;
     int type = ur_type(a1);
+    uint32_t opt = CFUNC_OPTIONS;
 
     if( ! ur_isSeriesType( type ) )
         return ur_error( ut, UR_ERR_TYPE, "change expected series" );
     if( ! ur_seriesSliceM( ut, &si, a1 ) )
         return UR_THROW;
 
-    if( (CFUNC_OPTIONS & OPT_CHANGE_SLICE) /*&& ur_isSliced(a1)*/ )
+    if( (opt & OPT_CHANGE_SLICE) /*&& ur_isSliced(a1)*/ )
+    {
         part = si.end - si.it;
+    }
+    else if( opt & OPT_CHANGE_PART )
+    {
+        UCell* parg = a3;
+        if( ur_is(parg, UT_INT) )
+            part = ur_int(parg);
+        else if( ur_isSeriesType( ur_type(parg) ) )
+            part = parg->series.it - si.it;
+        else
+            return ur_error( ut, UR_ERR_TYPE,
+                             "change /part expected series or int!" );
+    }
 
     if( ! SERIES_DT( type )->change( ut, &si, a2, part ) )
         return UR_THROW;
@@ -1315,7 +1331,7 @@ CFUNC(cfunc_indexQ)
 /*-cf-
     series?
         value
-    return: True if value is a series.
+    return: True if value is a series type.
 */
 CFUNC(cfunc_seriesQ)
 {
@@ -1326,15 +1342,32 @@ CFUNC(cfunc_seriesQ)
 }
 
 
-/*
-CFUNC(cfunc_blockQ)
+/*-cf-
+    any-block?
+        value
+    return: True if value is a block type.
+*/
+CFUNC(cfunc_any_blockQ)
 {
     (void) ut;
     ur_setId( res, UT_LOGIC );
-    ur_int(res) = ur_is(a1, UT_BLOCK) ? 1 : 0;
+    ur_int(res) = ur_isBlockType( ur_type(a1) ) ? 1 : 0;
     return UR_OK;
 }
+
+
+/*-cf-
+    any-word?
+        value
+    return: True if value is a block type.
 */
+CFUNC(cfunc_any_wordQ)
+{
+    (void) ut;
+    ur_setId( res, UT_LOGIC );
+    ur_int(res) = ur_isWordType( ur_type(a1) ) ? 1 : 0;
+    return UR_OK;
+}
 
 
 /*-cf-

@@ -823,8 +823,7 @@ string_end:
 
             case LIT:
                 token = ++it;
-                ch = *it;
-                if( IS_DELIM(ch) && ((end - it) > 1) && (it[1] == '\'') )
+                if( ((end - it) > 1) && (it[1] == '\'') )
                     goto char_type;
                 SCAN_LOOP
                     if( ! IS_PATH( ch ) )

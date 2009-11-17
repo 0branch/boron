@@ -1050,7 +1050,7 @@ void dumpBuf( UThread* ut, UIndex bufN )
 {
     UBuffer* buf = ur_isShared(bufN) ? (ut->env->dataStore.ptr.buf - bufN)
                                      : ur_buffer(bufN);
-    if( ur_isSeriesType(buf->type) )
+    if( ur_isSeriesType(buf->type) || (buf->type == UT_CONTEXT) )
     {
         UBuffer str;
         UCell cell;

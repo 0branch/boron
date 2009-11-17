@@ -510,6 +510,15 @@ static const char setupScript[] =
     "    [to-text first b]\n"
     "  next b\n"
     "]\n"
+    "replace: func [series pat rep /all | f size] [\n"
+    "  size: either series? pat [size? pat][1]\n"
+    "  either all [\n"
+    "    while [f: find series pat] [change/part f rep size]\n"
+    "  ][\n"
+    "    if f: find series pat [change/part f rep size]\n"
+    "  ]\n"
+    "  series\n"
+    "]\n"
     "split-path: func [path | end] [\n"
     "  either end: find/last path '/'\n"
     "    [reduce [slice path ++ end  end]]\n"
@@ -534,6 +543,13 @@ static const char setupScript[] =
         block
     return: New series.
     Reduce block and concatenate results.
+*/
+/*-hf- replace
+        series
+        pat     Pattern to look for.
+        rep     Replacement value.
+        /all    Replace all occurances of the pattern, not just the first.
+    return: Modified series.
 */
 /*-hf- split-path
         path file!/string!
@@ -661,7 +677,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_pick,    "pick ser n" );
     addCFunc( cfunc_poke,    "poke ser n val" );
     addCFunc( cfunc_append,  "append ser val /block" );
-    addCFunc( cfunc_change,  "change ser val /slice" );
+    addCFunc( cfunc_change,  "change ser val /slice /part limit" );
     addCFunc( cfunc_remove,  "remove ser /part n" );
     addCFunc( cfunc_find,    "find ser val /last" );
     addCFunc( cfunc_clear,   "clear ser" );
@@ -670,6 +686,8 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_sizeQ,   "size? ser" );
     addCFunc( cfunc_indexQ,     "index? ser" );
     addCFunc( cfunc_seriesQ,    "series? ser" );
+    addCFunc( cfunc_any_blockQ, "any-block? val" );
+    addCFunc( cfunc_any_wordQ,  "any-word? val" );
     addCFunc( cfunc_complement, "complement val" );
     addCFunc( cfunc_intersect,  "intersect a b" );
     addCFunc( cfunc_difference, "difference a b" );
@@ -1067,10 +1085,14 @@ static void boron_bindDefaultB( UThread* ut, UIndex blkN )
                 wrdN = ur_ctxLookup( envCtx, ur_atom(bi.it) );
                 if( wrdN > -1 )
                 {
-                    ur_setBinding( bi.it, UR_BIND_ENV );
-                    bi.it->word.ctx = -1; //-BUF_THREAD_CTX;
-                    bi.it->word.index = wrdN;
-                    continue;
+                    // TODO: Have ur_freezeEnv() remove unset words.
+                    if( ! ur_is( ur_ctxCell(envCtx, wrdN), UT_UNSET ) )
+                    {
+                        ur_setBinding( bi.it, UR_BIND_ENV );
+                        bi.it->word.ctx = -1; //-BUF_THREAD_CTX;
+                        bi.it->word.index = wrdN;
+                        continue;
+                    }
                 }
             }
 
