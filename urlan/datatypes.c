@@ -1151,11 +1151,55 @@ int binary_append( UThread* ut, UBuffer* buf, const UCell* val )
 int binary_change( UThread* ut, USeriesIterM* si, const UCell* val,
                    UIndex part )
 {
-    (void) ut;
-    (void) si;
-    (void) val;
-    (void) part;
-    return UR_OK;
+    int type = ur_type(val);
+    if( type == UT_CHAR || type == UT_INT )
+    {
+        UBuffer* buf = si->buf;
+        if( si->it == buf->used )
+            ur_binReserve( buf, ++buf->used );
+        buf->ptr.b[ si->it++ ] = ur_int(val);
+        if( part > 1 )
+            ur_binErase( buf, si->it, part - 1 );
+        return UR_OK;
+    }
+    else if( type == UT_BINARY )
+    {
+        UBinaryIter ri;
+        UBuffer* buf;
+        UIndex newUsed;
+        int slen;
+
+        ur_binSlice( ut, &ri, val );
+        slen = ri.end - ri.it;
+        if( slen > 0 )
+        {
+            buf = si->buf;
+            if( part > 0 )
+            {
+                if( part < slen )
+                    ur_binExpand( buf, si->it, slen - part );
+                else if( part > slen )
+                    ur_binErase( buf, si->it, part - slen );
+                newUsed = buf->used;
+            }
+            else
+            {
+                newUsed = si->it + slen;
+                if( newUsed < buf->used )
+                    newUsed = buf->used;
+            }
+
+            // TODO: Handle overwritting self when buf is val.
+
+            buf->used = si->it;
+            ur_binAppendData( buf, ri.it, slen );
+            si->it = buf->used;
+            buf->used = newUsed;
+        }
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE,
+                     "change binary! expected char!/int!/binary!" );
 }
 
 
@@ -1649,7 +1693,7 @@ int string_change( UThread* ut, USeriesIterM* si, const UCell* val,
             buf->ptr.b[ si->it ] = ur_int(val);
         ++si->it;
 
-        if( part > 1)
+        if( part > 1 )
             ur_arrErase( buf, si->it, part - 1 );
     }
     else if( ur_isStringType(type) )
@@ -2114,10 +2158,50 @@ int block_append( UThread* ut, UBuffer* buf, const UCell* val )
 int block_change( UThread* ut, USeriesIterM* si, const UCell* val,
                   UIndex part )
 {
-    (void) ut;
-    (void) si;
-    (void) val;
-    (void) part;
+    if( ur_isBlockType( ur_type(val) ) )
+    {
+        UBlockIter ri;
+        UBuffer* buf;
+        UIndex newUsed;
+        int slen;
+
+        ur_blkSlice( ut, &ri, val );
+        slen = ri.end - ri.it;
+        if( slen > 0 )
+        {
+            buf = si->buf;
+            if( part > 0 )
+            {
+                if( part < slen )
+                    ur_arrExpand( buf, si->it, slen - part );
+                else if( part > slen )
+                    ur_arrErase( buf, si->it, part - slen );
+                newUsed = buf->used;
+            }
+            else
+            {
+                newUsed = si->it + slen;
+                if( newUsed < buf->used )
+                    newUsed = buf->used;
+            }
+
+            // TODO: Handle overwritting self when buf is val.
+
+            buf->used = si->it;
+            ur_blkAppendCells( buf, ri.it, slen );
+            si->it = buf->used;
+            buf->used = newUsed;
+        }
+    }
+    else
+    {
+        UBuffer* buf = si->buf;
+        if( si->it == buf->used )
+            ur_arrReserve( buf, ++buf->used );
+        buf->ptr.cell[ si->it++ ] = *val;
+        if( part > 1 )
+            ur_arrErase( buf, si->it, part - 1 );
+    }
     return UR_OK;
 }
 

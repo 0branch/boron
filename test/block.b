@@ -52,3 +52,28 @@ print "---- sort"
 probe sort [1 50.0 20.0 5] 
 probe sort ["then" "hello" "goodbye" "NOW"]
 probe sort [zulu alpha gamma beta]
+
+
+print "---- change"
+w: [a b c d e]
+b: [1 2 3 4 5]
+a: copy w
+probe change next a b
+probe a
+
+;probe change/only a [x y]
+;probe a
+
+a: copy w
+probe change/part next a b 2
+probe a
+
+a: copy w
+probe change/part a b -33
+probe a
+
+a: copy w
+probe change next a "new"
+probe a
+probe change tail a "new"
+probe a
