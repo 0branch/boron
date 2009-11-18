@@ -73,3 +73,13 @@ probe slice s 2
 probe t
 probe slice s none
 probe slice "some tiny example" 5,4
+
+
+print "---- skip"
+b: [1 2]
+probe skip b 4
+probe skip b -4
+b: [1 2 3]
+probe skip b 2
+probe skip b false
+probe skip b true

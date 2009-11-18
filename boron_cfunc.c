@@ -1027,6 +1027,46 @@ CFUNC(cfunc_poke)
 
 
 /*-cf-
+    skip
+        series
+        offset  logic!/int!
+    return: Offset series.
+
+    If offset is a logic! type then the series will move to the next element
+    if its value is true.
+*/
+CFUNC(cfunc_skip)
+{
+    UIndex n;
+    if( ! ur_isSeriesType( ur_type(a1) ) )
+        return ur_error( ut, UR_ERR_TYPE, "skip expected series" );
+
+    if( ur_is(a2, UT_INT) )
+        n = ur_int(a2);
+    else if( ur_is(a2, UT_LOGIC) )
+        n = ur_int(a2) ? 1 : 0;
+    else
+        return ur_error( ut, UR_ERR_TYPE, "skip expected logic!/int! offset" );
+
+    *res = *a1;
+    if( n )
+    {
+        n += a1->series.it;
+        if( n < 0 )
+            n = 0;
+        else
+        {
+            UIndex end = boron_seriesEnd( ut, a1 );
+            if( n > end )
+                n = end;
+        }
+        res->series.it = n;
+    }
+    return UR_OK;
+}
+
+
+/*-cf-
     append
         series
         value
