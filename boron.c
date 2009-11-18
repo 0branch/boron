@@ -676,6 +676,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_tail,    "tail ser" );
     addCFunc( cfunc_pick,    "pick ser n" );
     addCFunc( cfunc_poke,    "poke ser n val" );
+    addCFunc( cfunc_skip,    "skip ser n" );
     addCFunc( cfunc_append,  "append ser val /block" );
     addCFunc( cfunc_change,  "change ser val /slice /part limit" );
     addCFunc( cfunc_remove,  "remove ser /part n" );
