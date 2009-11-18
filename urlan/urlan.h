@@ -385,7 +385,8 @@ typedef struct
     int  (*change)    ( UThread*, USeriesIterM* si, const UCell* val,
                         UIndex part );
     void (*remove)    ( UThread*, USeriesIterM* si, UIndex part );
-    int  (*find)      ( UThread*, const UCell* ser, const UCell* val, int opt );
+    int  (*find)      ( UThread*, const USeriesIter* si, const UCell* val,
+                        int opt );
 }
 USeriesType;
 

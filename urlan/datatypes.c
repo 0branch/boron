@@ -1051,6 +1051,61 @@ int binary_make( UThread* ut, const UCell* from, UCell* res )
 }
 
  
+int binary_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    switch( test )
+    {
+        case UR_COMPARE_SAME:
+            return ((a->series.buf == b->series.buf) &&
+                    (a->series.it == b->series.it) &&
+                    (a->series.end == b->series.end));
+
+        case UR_COMPARE_EQUAL:
+            if( ! ur_is(a, UT_BINARY) || ! ur_is(b, UT_BINARY) )
+                break;
+            if( (a->series.buf == b->series.buf) &&
+                (a->series.it == b->series.it) &&
+                (a->series.end == b->series.end) )
+                return 1;
+            {
+            USeriesIter ai;
+            USeriesIter bi;
+
+            ur_seriesSlice( ut, &ai, a );
+            ur_seriesSlice( ut, &bi, b );
+
+            if( (ai.end - ai.it) == (bi.end - bi.it) )
+            {
+                const uint8_t* pos;
+                const uint8_t* end = bi.buf->ptr.b + bi.end;
+                pos = match_pattern_uint8_t( ai.buf->ptr.b + ai.it,
+                            ai.buf->ptr.b + ai.end,
+                            bi.buf->ptr.b + bi.it, end );
+                return pos == end;
+            }
+            }
+            break;
+
+        case UR_COMPARE_ORDER:
+            if( ur_is(a, UT_BINARY) && ur_is(b, UT_BINARY) )
+            {
+                USeriesIter ai;
+                USeriesIter bi;
+
+                ur_seriesSlice( ut, &ai, a );
+                ur_seriesSlice( ut, &bi, b );
+
+                return compare_uint8_t( ai.buf->ptr.b + ai.it,
+                                        ai.buf->ptr.b + ai.end,
+                                        bi.buf->ptr.b + bi.it,
+                                        bi.buf->ptr.b + bi.end );
+            }
+            break;
+    }
+    return 0;
+}
+
+
 static inline int toNibble( int c )
 {
     return (c < 10) ? c + '0' : c + 'A' - 10;
@@ -1121,30 +1176,35 @@ void binary_poke( UBuffer* buf, UIndex n, const UCell* val )
 
 int binary_append( UThread* ut, UBuffer* buf, const UCell* val )
 {
-    if( ur_is(val, UT_BINARY) )
+    int vt = ur_type(val);
+
+    if( (vt == UT_BINARY) || ur_isStringType(vt) )
     {
-        UBinaryIter bi;
+        USeriesIter si;
         int len;
 
-        ur_binSlice( ut, &bi, val );
-        len = bi.end - bi.it;
+        ur_seriesSlice( ut, &si, val );
+        len = si.end - si.it;
         if( len )
         {
-            ur_binReserve( buf, buf->used + len );
-            memCpy( buf->ptr.b + buf->used, bi.it, len );
-            buf->used += len;
+            if( (vt != UT_BINARY) && ur_strIsUcs2(si.buf) )
+            {
+                len *= 2;
+                si.it *= 2;
+            }
+            ur_binAppendData( buf, si.buf->ptr.b + si.it, len );
+
         }
         return UR_OK;
     }
-    else if( ur_is(val, UT_CHAR) || ur_is(val, UT_INT) )
+    else if( (vt == UT_CHAR) || (vt == UT_INT) )
     {
         ur_binReserve( buf, buf->used + 1 );
-        buf->ptr.b[ buf->used ] = ur_int(val);
-        ++buf->used;
+        buf->ptr.b[ buf->used++ ] = ur_int(val);
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE,
-                     "append binary! expected char!/int!/binary!" );
+                     "append binary! expected char!/int!/binary!/string!" );
 }
 
 
@@ -1210,20 +1270,38 @@ void binary_remove( UThread* ut, USeriesIterM* si, UIndex part )
 }
 
 
-int binary_find( UThread* ut, const UCell* ser, const UCell* val, int opt )
+int binary_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
-    UBinaryIter bi;
     const uint8_t* it;
+    const UBuffer* buf = si->buf;
+    int vt = ur_type(val);
 
-    if( ur_is(val, UT_CHAR) || ur_is(val, UT_INT) )
+    if( (vt == UT_CHAR) || (vt == UT_INT) )
     {
-        ur_binSlice( ut, &bi, ser );
+        it = buf->ptr.b;
         if( opt == UR_FIND_LAST )
-            it = find_last_uint8_t( bi.it, bi.end, ur_int(val) );
+            it = find_last_uint8_t( it + si->it, it + si->end, ur_int(val) );
         else
-            it = find_uint8_t( bi.it, bi.end, ur_int(val) );
+            it = find_uint8_t( it + si->it, it + si->end, ur_int(val) );
         if( it )
-            return it - bi.buf->ptr.b;
+            return it - buf->ptr.b;
+    }
+    else if( ur_isStringType( vt ) || (vt == UT_BINARY) )
+    {
+        USeriesIter siV;
+        const uint8_t* itV;
+
+        ur_seriesSlice( ut, &siV, val );
+
+        if( (vt != UT_BINARY) && ur_strIsUcs2(siV.buf) )
+            return -1;      // TODO: Handle ucs2.
+
+        it = buf->ptr.b;
+        itV = siV.buf->ptr.b;
+        it = find_pattern_uint8_t( it + si->it, it + si->end,
+                                   itV + siV.it, itV + siV.end );
+        if( it )
+            return it - buf->ptr.b;
     }
     return -1;
 }
@@ -1246,7 +1324,7 @@ USeriesType dt_binary =
 {
     {
     "binary!",
-    binary_make,            binary_copy,        unset_compare,
+    binary_make,            binary_copy,        binary_compare,
     binary_select,          binary_toString,    binary_toString,
     unset_recycle,          binary_mark,        binary_destroy,
     unset_markBuf,          binary_toShared,    unset_bind
@@ -1412,11 +1490,11 @@ int string_compare( UThread* ut, const UCell* a, const UCell* b, int test )
                 }
                 else
                 {
-                    const char* pos;
-                    const char* end = bi.buf->ptr.c + bi.end;
-                    pos = match_pattern_char( ai.buf->ptr.c + ai.it,
-                                ai.buf->ptr.c + ai.end,
-                                bi.buf->ptr.c + bi.it, end );
+                    const uint8_t* pos;
+                    const uint8_t* end = bi.buf->ptr.b + bi.end;
+                    pos = match_pattern_uint8_t( ai.buf->ptr.b + ai.it,
+                                ai.buf->ptr.b + ai.end,
+                                bi.buf->ptr.b + bi.it, end );
                     return pos == end;
                 }
             }
@@ -1726,61 +1804,60 @@ void string_remove( UThread* ut, USeriesIterM* si, UIndex part )
 }
 
 
-int string_find( UThread* ut, const UCell* ser, const UCell* val, int opt )
+int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
-    USeriesIter si;
+    const UBuffer* buf = si->buf;
 
     if( ur_is(val, UT_CHAR) )
     {
-        ur_seriesSlice( ut, &si, ser );
-        if( ur_strIsUcs2(si.buf) )
+        int ch = ur_int(val);
+        if( ur_strIsUcs2(buf) )
         {
-            const uint16_t* it = si.buf->ptr.u16;
+            const uint16_t* it = buf->ptr.u16;
             if( opt == UR_FIND_LAST )
-                it = find_last_uint16_t( it + si.it, it + si.end, ur_int(val) );
+                it = find_last_uint16_t( it + si->it, it + si->end, ch );
             else
-                it = find_uint16_t( it + si.it, it + si.end, ur_int(val) );
+                it = find_uint16_t( it + si->it, it + si->end, ch );
             if( it )
-                return it - si.buf->ptr.u16;
+                return it - buf->ptr.u16;
         }
         else
         {
-            const uint8_t* it = si.buf->ptr.b;
+            const uint8_t* it = buf->ptr.b;
             if( opt == UR_FIND_LAST )
-                it = find_last_uint8_t( it + si.it, it + si.end, ur_int(val) );
+                it = find_last_uint8_t( it + si->it, it + si->end, ch );
             else
-                it = find_uint8_t( it + si.it, it + si.end, ur_int(val) );
+                it = find_uint8_t( it + si->it, it + si->end, ch );
             if( it )
-                return it - si.buf->ptr.b;
+                return it - buf->ptr.b;
         }
     }
     else if( ur_isStringType( ur_type(val) ) )
     {
         USeriesIter siV;
 
-        ur_seriesSlice( ut, &si, ser );
         ur_seriesSlice( ut, &siV, val );
 
-        if( si.buf->form != siV.buf->form )
+        if( buf->form != siV.buf->form )
             return -1;  // TODO: Handle mixed encodings.
 
-        if( ur_strIsUcs2(si.buf) )
+        if( ur_strIsUcs2(buf) )
         {
-            const uint16_t* it = si.buf->ptr.u16;
+            const uint16_t* it = buf->ptr.u16;
             const uint16_t* itV = siV.buf->ptr.u16;
-            it = find_pattern_uint16_t( it + si.it, it + si.end,
+            it = find_pattern_uint16_t( it + si->it, it + si->end,
                                         itV + siV.it, itV + siV.end );
             if( it )
-                return it - si.buf->ptr.u16;
+                return it - buf->ptr.u16;
         }
         else
         {
-            const char* it = si.buf->ptr.c;
-            const char* itV = siV.buf->ptr.c;
-            it = find_pattern_char( it + si.it, it + si.end,
-                                    itV + siV.it, itV + siV.end );
+            const uint8_t* it = buf->ptr.b;
+            const uint8_t* itV = siV.buf->ptr.b;
+            it = find_pattern_uint8_t( it + si->it, it + si->end,
+                                       itV + siV.it, itV + siV.end );
             if( it )
-                return it - si.buf->ptr.c;
+                return it - buf->ptr.b;
         }
     }
     return -1;
@@ -2213,18 +2290,21 @@ void block_remove( UThread* ut, USeriesIterM* si, UIndex part )
 }
 
 
-int block_find( UThread* ut, const UCell* ser, const UCell* val, int opt )
+int block_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
     UBlockIter bi;
+    const UBuffer* buf = si->buf;
 
-    ur_blkSlice( ut, &bi, ser );
+    bi.it  = buf->ptr.cell + si->it;
+    bi.end = buf->ptr.cell + si->end;
+
     if( opt == UR_FIND_LAST )
     {
         while( bi.it != bi.end )
         {
             --bi.end;
             if( ur_equal( ut, val, bi.end ) )
-                return bi.end - bi.buf->ptr.cell;
+                return bi.end - buf->ptr.cell;
         }
     }
     else
@@ -2232,7 +2312,7 @@ int block_find( UThread* ut, const UCell* ser, const UCell* val, int opt )
         ur_foreach( bi )
         {
             if( ur_equal( ut, val, bi.it ) )
-                return bi.it - bi.buf->ptr.cell;
+                return bi.it - buf->ptr.cell;
         }
     }
     return -1;

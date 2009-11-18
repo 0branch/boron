@@ -60,13 +60,13 @@ static UIndex _findString( const UString* str, UIndex itN, UIndex endN,
                            const uint8_t* pit, const uint8_t* pend,
                            int matchCase )
 {
-    const char* it  = str->ptr.c + itN;
-    const char* end = str->ptr.c + endN;
+    const uint8_t* it  = str->ptr.b + itN;
+    const uint8_t* end = str->ptr.b + endN;
     (void) matchCase;
-    it = find_pattern_char( it, end, (char*) pit, (char*) pend );
+    it = find_pattern_uint8_t( it, end, pit, pend );
     if( ! it )
         return -1;
-    return it - str->ptr.c;
+    return it - str->ptr.b;
 }
 
 
@@ -90,14 +90,14 @@ static UIndex _matchString( const UString* strA, UIndex iA, UIndex endA,
                             const uint8_t* pit, const uint8_t* pend,
                             int matchCase )
 {
-    const char* it  = strA->ptr.c + iA;
-    const char* end = strA->ptr.c + endA;
+    const uint8_t* it  = strA->ptr.b + iA;
+    const uint8_t* end = strA->ptr.b + endA;
 
     if( matchCase )
     {
-        const char* pf;
-        pf = match_pattern_char( it, end, (char*) pit, (char*) pend );
-        if( pf == (char*) pend )
+        const uint8_t* pf;
+        pf = match_pattern_uint8_t( it, end, pit, pend );
+        if( pf == pend )
             return iA + (pend - pit);
         return 0;
     }
@@ -112,7 +112,7 @@ static UIndex _matchString( const UString* strA, UIndex iA, UIndex endA,
             ++it;
             ++pit;
         }
-        return it - strA->ptr.c;
+        return it - strA->ptr.b;
     }
 }
 

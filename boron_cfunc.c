@@ -1187,19 +1187,46 @@ CFUNC(cfunc_remove)
         series
         value
         /last
+        /part
+            limit   series/int!
     return: Position of value in series or none!.
 */
 CFUNC(cfunc_find)
 {
-#define OPT_FIND_LAST   0x01
+#define OPT_FIND_LAST   UR_FIND_LAST
+#define OPT_FIND_PART   0x02
+    USeriesIter si;
     UIndex i;
     uint32_t opt = CFUNC_OPTIONS;
     int type = ur_type(a1);
+
     if( ! ur_isSeriesType( type ) )
-        return ur_error( ut, UR_ERR_TYPE, "find expected series" );
-    i = SERIES_DT( type )->find( ut, a1, a2, opt );
+        return error_type( "find expected series" );
+    ur_seriesSlice( ut, &si, a1 );
+
+    if( opt & OPT_FIND_PART )
+    {
+        UIndex part;
+        UCell* parg = a3;
+
+        if( ur_is(parg, UT_INT) )
+            part = ur_int(parg);
+        else if( ur_isSeriesType( ur_type(parg) ) )
+            part = parg->series.it - si.it;
+        else
+            return error_type( "find /part expected series or int!" );
+
+        if( part < 1 )
+            goto set_none;
+        part += si.it;
+        if( part < si.end )
+            si.end = part;
+    }
+
+    i = SERIES_DT( type )->find( ut, &si, a2, opt );
     if( i < 0 )
     {
+set_none:
         ur_setId(res, UT_NONE);
     }
     else
@@ -1453,6 +1480,7 @@ CFUNC(cfunc_complement)
 static int set_relation( UThread* ut, const UCell* a1, UCell* res,
                          int intersect )
 {
+    USeriesIter si;
     const USeriesType* dt;
     const UCell* argB = a2;
     int type = ur_type(a1);
@@ -1460,6 +1488,7 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
     if( type != ur_type(argB) )
         return ur_error( ut, UR_ERR_TYPE,
                  "intersect/difference expected series of the same type" );
+    ur_seriesSlice( ut, &si, argB );
 
     dt = SERIES_DT( type );
 
@@ -1470,18 +1499,26 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
         ur_blkSlice( ut, &bi, a1 );
         if( intersect )
         {
+            USeriesIter ri;
+
+            ri.buf = ur_buffer(res->series.buf);
+            ri.it = ri.end = 0;
+
             ur_foreach( bi )
             {
-                if( (dt->find( ut, argB, bi.it, 0 ) > -1) &&
-                    (dt->find( ut, res, bi.it, 0 ) == -1) )
+                if( (dt->find( ut, &si, bi.it, 0 ) > -1) &&
+                    (dt->find( ut, &ri, bi.it, 0 ) == -1) )
+                {
                     ur_blkPush( blk, bi.it );
+                    ri.end = blk->used;
+                }
             }
         }
         else
         {
             ur_foreach( bi )
             {
-                if( dt->find( ut, argB, bi.it, 0 ) < 0 )
+                if( dt->find( ut, &si, bi.it, 0 ) < 0 )
                     ur_blkPush( blk, bi.it );
             }
         }

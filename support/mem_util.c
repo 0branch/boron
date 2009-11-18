@@ -107,7 +107,7 @@ const T* find_pattern_ ## T( const T* it, const T* end, \
     return 0; \
 }
 
-FIND_PATTERN(char)
+FIND_PATTERN(uint8_t)
 FIND_PATTERN(uint16_t)
 
 
@@ -128,7 +128,7 @@ const T* match_pattern_ ## T( const T* it, const T* end, \
     return pit; \
 }
 
-MATCH_PATTERN(char)
+MATCH_PATTERN(uint8_t)
 MATCH_PATTERN(uint16_t)
 
 
