@@ -447,6 +447,10 @@ int boron_doVoid( UThread* ut, const UCell* blkC )
 
 #include "boron_cfunc.c"
 
+#ifdef CONFIG_COMPRESS
+#include "boron_compress.c"
+#endif
+
 
 /**
   Add C function to the thread context.
@@ -714,6 +718,10 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_to_hex,     "to-hex n" );
     addCFunc( cfunc_to_dec,     "to-dec n" );
     addCFunc( cfunc_now,        "now /date" );
+#ifdef CONFIG_COMPRESS
+    addCFunc( cfunc_compress,   "compress s" );
+    addCFunc( cfunc_decompress, "decompress b" );
+#endif
 
 
     if( ! boron_doCStr( ut, setupScript, sizeof(setupScript)-1 ) )

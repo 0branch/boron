@@ -27,6 +27,7 @@ default [
 
 shlib %boron [
     
+    cflags {-DCONFIG_COMPRESS}
     ;cflags {-DTRACK_MALLOC} sources [%urlan/memtrack.c]
 
     win32 [lflags "/def:win32\boron.def"]
