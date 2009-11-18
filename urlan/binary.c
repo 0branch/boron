@@ -286,6 +286,28 @@ int ur_binSliceM( UThread* ut, UBinaryIterM* bi, const UCell* cell )
 }
 
 
+/**
+  Convert binary buffer to string buffer.
+  The data that buf->ptr points to is not touched.
+
+  \param buf        Initialized binary buffer.
+  \param encoding   Encoding
+*/
+void ur_binToStr( UBuffer* buf, int encoding )
+{
+    buf->type = UT_STRING;
+    buf->form = encoding;
+    if( encoding == UR_ENC_UCS2 )
+    {
+        buf->elemSize = 2;
+        buf->used /= 2;
+        ur_avail(buf) /= 2;
+    }
+    else
+        buf->elemSize = 1;
+}
+
+
 /** @} */
 
 

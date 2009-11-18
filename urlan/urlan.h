@@ -450,6 +450,7 @@ void     ur_binAppendData( UBuffer*, const uint8_t* data, int len );
 void     ur_binFree( UBuffer* );
 void     ur_binSlice( UThread*, UBinaryIter*, const UCell* cell );
 int      ur_binSliceM( UThread*, UBinaryIterM*, const UCell* cell );
+void     ur_binToStr( UBuffer*, int encoding );
 const char* ur_binAppendHex( UBuffer* buf, const char* it, const char* end );
 
 UIndex   ur_makeString( UThread*, int enc, int size );
