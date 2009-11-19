@@ -445,11 +445,11 @@ int boron_doVoid( UThread* ut, const UCell* blkC )
 }
 
 
-#include "boron_cfunc.c"
-
 #ifdef CONFIG_COMPRESS
 #include "boron_compress.c"
 #endif
+
+#include "boron_cfunc.c"
 
 
 /**
@@ -503,6 +503,7 @@ static const char setupScript[] =
     "q: :quit  yes: true  no: false\n"
     "context: func [b block!] [make context! b]\n"
     "charset: func [s string!] [make bitset! s]\n"
+    "error: func [s string!] [throw make error! s]\n"
     "join: func [a b] [\n"
     "  a: either series? a [copy a][to-text a]\n"
     "  append a reduce b\n"
@@ -538,6 +539,10 @@ static const char setupScript[] =
 /*-hf- charset
         spec string!
     return: New bitset!
+*/
+/*-hf- error 
+        message string!
+    return: Throws error.
 */
 /*-hf- join a b
     return: New series.
@@ -702,7 +707,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_existsQ,    "exists? file" );
     addCFunc( cfunc_make_dir,   "make-dir path" );
     addCFunc( cfunc_getenv,     "getenv val" );
-    addCFunc( cfunc_read,       "read from /binary /into b" );
+    addCFunc( cfunc_read,       "read from /text /into b" );
     addCFunc( cfunc_write,      "write to data" );
     addCFunc( cfunc_load,       "load from" );
     addCFunc( cfunc_parse,      "parse input rules" );

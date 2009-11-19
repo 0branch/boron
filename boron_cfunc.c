@@ -2015,13 +2015,14 @@ CFUNC(cfunc_getenv)
 /*-cf-
     read
         file    file!/string!
-        /binary
+        /text
         /into
-            buffer    binary!/string!
+            buffer  binary!/string!
+    return: binary! or string! if /text is specified.
 */
 CFUNC(cfunc_read)
 {
-#define OPT_READ_BINARY 0x01
+#define OPT_READ_TEXT   0x01
 #define OPT_READ_INTO   0x02
     UBuffer* dest;
     const char* filename;
@@ -2052,10 +2053,10 @@ CFUNC(cfunc_read)
             else
                 ur_binReserve( dest, (int) size );
 
-            if( ur_is(bufArg, UT_BINARY) || (opt & OPT_READ_BINARY) )
-                mode = "rb";
-            else
+            if( ur_is(bufArg, UT_STRING) || (opt & OPT_READ_TEXT) )
                 mode = "r";     // Read as text to filter carriage ret.
+            else
+                mode = "rb";
             *res = *bufArg;
         }
         else
@@ -2063,15 +2064,15 @@ CFUNC(cfunc_read)
             return error_type( "read expected binary!/string! buffer" );
         }
     }
-    else if( opt & OPT_READ_BINARY )
+    else if( opt & OPT_READ_TEXT )
     {
-        mode = "rb";
-        dest = ur_makeBinaryCell( ut, (int) size, res );
+        mode = "r";
+        dest = ur_makeStringCell( ut, UR_ENC_UTF8, (int) size, res );
     }
     else
     {
-        mode = "r";
-        dest = ur_makeStringCell( ut, UR_ENC_LATIN1, (int) size, res );
+        mode = "rb";
+        dest = ur_makeBinaryCell( ut, (int) size, res );
     }
 
     if( size > 0 )
@@ -2098,6 +2099,7 @@ CFUNC(cfunc_read)
     write
         file    file!/string!
         data    binary!/string!
+    return: True or error thrown.
 */
 CFUNC(cfunc_write)
 {
@@ -2117,10 +2119,17 @@ CFUNC(cfunc_write)
 
         if( ur_is(a2, UT_STRING) )
         {
-            if( ur_strIsUcs2(si.buf) )     // Convert to UTF-8?
+            if( ur_strIsUcs2(si.buf) )
             {
-                return ur_error( ut, UR_ERR_ACCESS,
-                                 "write does not support UCS2 strings" );
+                // Convert to UTF-8.
+
+                UIndex nn = ur_makeString( ut, UR_ENC_UTF8, 0 );
+                // si.buf is invalid after make.
+                si.buf = ur_buffer(nn);
+                ur_strAppend( (UBuffer*) si.buf, ur_bufferSer(a2),
+                              si.it, si.end );
+                si.it = 0;
+                size = si.buf->used;
             }
             // Write as text to add carriage ret.
             fp = fopen( filename, "w" );
@@ -2166,32 +2175,49 @@ CFUNC(cfunc_load)
     if( cfunc_read( ut, args + 1, res ) )
     {
         const uint8_t* cp;
-        UBuffer* str;
+        UBuffer* bin;
         UIndex hold;
         UIndex blkN;
 
-        if( ! ur_is(res, UT_STRING) )
-            return ur_error( ut, UR_ERR_INTERNAL,
-                             "load expected string! from read" );
+check_str:
 
-        str = ur_buffer( res->series.buf );
-        if( ! str->used )
+        bin = ur_buffer( res->series.buf );
+        if( ! bin->used )
         {
             ur_setId(res, UT_NONE);
             return UR_OK;
         }
 
         // Skip any Unix shell interpreter line.
-        cp = str->ptr.b;
+        cp = bin->ptr.b;
         if( cp[0] == '#' && cp[1] == '!' ) 
         {
-            cp = find_uint8_t( cp, cp + str->used, '\n' );
+            cp = find_uint8_t( cp, cp + bin->used, '\n' );
             if( ! cp )
-                cp = str->ptr.b;
+                cp = bin->ptr.b;
         }
+#ifdef CONFIG_COMPRESS
+        else if( bin->used > (12 + 8) )
+        {
+            const uint8_t* pat = (const uint8_t*) "BZh";
+            cp = find_pattern_uint8_t( cp, cp + 12, pat, pat + 3 );
+            if( cp && (cp[3] >= '1') && (cp[3] <= '9') )
+            {
+                *args = *res;
+                hold = ur_hold( res->series.buf );
+                blkN = cfunc_decompress( ut, args, res );
+                ur_release( hold );
+                if( ! blkN )
+                    return UR_THROW;
+                goto check_str;
+            }
+            else
+                cp = bin->ptr.b;
+        }
+#endif
 
         hold = ur_hold( res->series.buf );
-        blkN = ur_tokenize( ut, (char*) cp, str->ptr.c + str->used, res );
+        blkN = ur_tokenize( ut, (char*) cp, bin->ptr.c + bin->used, res );
         ur_release( hold );
 
         if( blkN )
