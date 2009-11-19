@@ -1,3 +1,6 @@
+#ifndef URLAN_ATOMS_H
+#define URLAN_ATOMS_H
+
 enum UrlanFixedAtoms
 {
     UR_ATOM_QUIT = 64,
@@ -5,6 +8,7 @@ enum UrlanFixedAtoms
     UR_ATOM_RETURN,
     UR_ATOM_BREAK,
     UR_ATOM_GHOST,
+    UR_ATOM_WORDS,
 
     UR_ATOM_LATIN1,
     UR_ATOM_UTF8,
@@ -42,3 +46,5 @@ enum UrlanFixedAtoms
     UR_ATOM_CRC16,
     UR_ATOM_SHA1
 };
+
+#endif

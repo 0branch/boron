@@ -14,6 +14,7 @@ a: context [first: 1 second: 2]
 b: make a [third: 3]
 probe a
 probe b
+probe b/'words
 
 
 print "---- infuse"

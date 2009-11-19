@@ -703,8 +703,8 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_intersect,  "intersect a b" );
     addCFunc( cfunc_difference, "difference a b" );
     addCFunc( cfunc_sort,       "sort ser" );
-    addCFunc( cfunc_foreach,    "foreach 'w s body" );
-    addCFunc( cfunc_forall,     "forall 'w body" );
+    addCFunc( cfunc_foreach,    "foreach 'w s body /ghost" );
+    addCFunc( cfunc_forall,     "forall 'w body /ghost" );
     addCFunc( cfunc_existsQ,    "exists? file" );
     addCFunc( cfunc_make_dir,   "make-dir path" );
     addCFunc( cfunc_getenv,     "getenv val" );

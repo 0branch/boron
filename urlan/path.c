@@ -67,6 +67,9 @@ int ur_pathCell( UThread* ut, const UCell* pc, UCell* res )
 }
 
 
+/*
+  Returns zero if word not found.
+*/
 static UCell* ur_blkSelectWord( UBuffer* buf, UAtom atom )
 {
     // Should this work on cell and use UBlockIter?
@@ -79,8 +82,9 @@ static UCell* ur_blkSelectWord( UBuffer* buf, UAtom atom )
         // memory so memory checkers will report an error.
         if( ur_isWordType( ur_type(it) ) && (ur_atom(it) == atom) )
         {
-            if( ++it != end )
-                return it;
+            if( ++it == end )
+                return 0;
+            return it;
         }
         ++it;
     }

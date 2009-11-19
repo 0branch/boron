@@ -164,6 +164,9 @@
 */
 
 
+#include "urlan_atoms.h"
+
+
 #define context_markBuf block_markBuf
 
 void block_markBuf( UThread* ut, UBuffer* buf );
@@ -2526,25 +2529,59 @@ void context_copy( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+extern void ur_ctxWordAtoms( const UBuffer* ctx, UAtom* atoms );
+
 int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
 {
-    const UBuffer* buf;
-    int i;
+    const UBuffer* ctx;
 
-    buf = ur_bufferSer(cell);
-    if( ! ur_is(bi->it, UT_WORD) )
-        return ur_error( ut, UR_ERR_SCRIPT, "context select expected word!" );
-    i = ur_ctxLookup( buf, ur_atom(bi->it) );
-    if( i < 0 )
-        return ur_error( ut, UR_ERR_SCRIPT, "context has no word '%s",
-                         ur_atomCStr(ut, ur_atom(bi->it)) );
-    *res = buf->ptr.cell[ i ];
-    ++bi->it;
-    return UR_OK;
+    ctx = ur_bufferSer(cell);
+    if( ur_is(bi->it, UT_WORD) )
+    {
+        int i = ur_ctxLookup( ctx, ur_atom(bi->it) );
+        if( i < 0 )
+            return ur_error( ut, UR_ERR_SCRIPT, "context has no word '%s",
+                             ur_atomCStr(ut, ur_atom(bi->it)) );
+        *res = *ur_ctxCell(ctx, i);
+        ++bi->it;
+        return UR_OK;
+    }
+    else if( ur_is(bi->it, UT_LITWORD) )
+    {
+        if( ur_atom(bi->it) == UR_ATOM_WORDS )
+        {
+            UBlockIterM di;
+            UAtom* atoms;
+            int bindType;
+            UIndex ctxN = cell->series.buf;
+            UIndex used = ctx->used;
+
+            di.buf = ur_makeBlockCell( ut, UT_BLOCK, used, res );
+            di.it  = di.buf->ptr.cell;
+            di.end = di.it + used;
+
+            ctx = ur_bufferSer(cell);   // Re-aquire.
+            atoms = ((UAtom*) di.end) - used;
+            ur_ctxWordAtoms( ctx, atoms );
+
+            bindType = ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD;
+            ur_foreach( di )
+            {
+                ur_setId(di.it, UT_WORD);
+                ur_setBinding( di.it, bindType );
+                di.it->word.atom = *atoms++;
+                di.it->word.ctx  = ctxN;
+            }
+
+            di.buf->used = used;
+            ++bi->it;
+            return UR_OK;
+        }
+    }
+    return ur_error( ut, UR_ERR_SCRIPT,
+                     "context select expected word!/lit-word!" );
 }
 
-
-extern void ur_ctxWordAtoms( const UBuffer* ctx, UAtom* atoms );
 
 void context_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
