@@ -261,10 +261,10 @@ static uint8_t charset_hex[32] = {
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
-/* Word: !&*+-./ 0-9 a-z A-Z ?|=^_~ and all ascii >= 127 */
+/* Word: !&'*+-./ 0-9 a-z A-Z ?|=^_~ and all ascii >= 127 */
 static uint8_t charset_path[32] = {
-    //0x00,0x00,0x00,0x00,0x42,0x6C,0xFF,0xF3,
-    0x00,0x00,0x00,0x00,0x42,0xEC,0xFF,0xF3,    // With '/'
+  //0x00,0x00,0x00,0x00,0xC2,0x6C,0xFF,0xF3,
+    0x00,0x00,0x00,0x00,0xC2,0xEC,0xFF,0xF3,    // With '/'
     0xFE,0xFF,0xFF,0xD7,0xFF,0xFF,0xFF,0x57,
     0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
     0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
@@ -322,12 +322,14 @@ int ur_caretChar( const uint8_t* it, const uint8_t* end, const uint8_t** pos )
   Get a single UCS2 character from a UTF8 string and convert any Urlan
   escape sequence.
 
-  \param pos    Return pointer to end of sequence (the single quote).
+  \param it     Start of character string (past the single quote).
+  \param end    End of character string buffer.
+  \param pos    Return pointer to end of sequence (past the single quote).
 
-  \return UCS2 character and set pos.
+  \return UCS2 character and set pos, or -1 if invaild.
 */
-int ur_charUtf8ToUcs2( const uint8_t* it, const uint8_t* end,
-                       const uint8_t** pos )
+static int ur_charUtf8ToUcs2( const uint8_t* it, const uint8_t* end,
+                              const uint8_t** pos )
 {
     int c = *it++;
     if( c < 127 )
@@ -347,7 +349,9 @@ int ur_charUtf8ToUcs2( const uint8_t* it, const uint8_t* end,
             return ((c & 0x0f) << 12) | ((it[0] & 0x3f) << 6) | (it[1] & 0x3f); 
     }
 #endif
-    *pos = it;
+    if( *it != '\'' )
+        return -1;
+    *pos = it + 1;
     return c;
 }
 
@@ -465,7 +469,14 @@ static UCell* ur_tokenizePath( UThread* ut, UBuffer* blk,
         }
         else if( IS_PATH(ch) )
         {
-            pc = ur_blkAppendNew( path, UT_WORD );
+            if( ch == '\'' )
+            {
+                atom = UT_LITWORD;
+                ++it;
+            }
+            else
+                atom = UT_WORD;
+            pc = ur_blkAppendNew( path, atom );
             ur_setWordUnbound( pc, ur_internAtom( ut, it, ew ) );
         }
         else
@@ -822,31 +833,29 @@ string_end:
 
             case LIT:
                 token = ++it;
-                if( ((end - it) > 1) && (it[1] == '\'') )
-                    goto char_type;
+                {
+                int c = ur_charUtf8ToUcs2( (const uint8_t*) token,
+                                           (const uint8_t*) end,
+                                           (const uint8_t**) &it );
+                if( c >= 0 )
+                {
+                    cell = ur_blkAppendNew( BLOCK, UT_CHAR );
+                    ur_int(cell) = c;
+                    goto set_sol;
+                }
+                }
+
                 SCAN_LOOP
                     if( ! IS_PATH( ch ) )
                         break;
                 SCAN_END
-                if( ch == '\'' )
+                if( ch == ':' )
                 {
-char_type:
-                    cell = ur_blkAppendNew( BLOCK, UT_CHAR );
-                    ur_int(cell) = ur_charUtf8ToUcs2( (const uint8_t*) token,
-                                                      (const uint8_t*) end,
-                                                      (const uint8_t**) &it );
-                    ++it;
+                    syntaxError( "Extra colon in word/path" );
                 }
-                else
-                {
-                    if( ch == ':' )
-                    {
-                        syntaxError( "Extra colon in word/path" );
-                    }
-                    cell = ur_tokenizePath( ut, BLOCK, token, it );
-                    ur_type(cell) = ur_is(cell, UT_PATH) ?
-                                        UT_LITPATH : UT_LITWORD;
-                }
+                cell = ur_tokenizePath( ut, BLOCK, token, it );
+                ur_type(cell) = ur_is(cell, UT_PATH) ?
+                                    UT_LITPATH : UT_LITWORD;
                 goto set_sol;
 
             case SIGN:

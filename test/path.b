@@ -12,6 +12,8 @@ probe a/4
 print "---- lit-path"
 p: 'some/path
 print [type? p p]
+lp: 'a/'b
+print [type? lp lp type? first lp type? second lp]
 
 
 print "---- block"
