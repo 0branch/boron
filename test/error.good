@@ -4,3 +4,8 @@ Trace:
  -> add b a "ok"
  -> f 3
  -> top
+---- error func
+Script Error: Test error
+Script Error: number (22) is bigger than 5
+Trace:
+ -> fe 22

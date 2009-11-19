@@ -36,6 +36,25 @@
 */
 
 
+typedef struct
+{
+    UCellId  id;
+    UIndex   argBufN;
+    union {
+        int (*func)( UThread*, UCell*, UCell* );
+        struct
+        {
+            UIndex bodyN;
+            UIndex sigN;
+        } f;
+    } m;
+}
+UCellFunc;
+
+#define FUNC_FLAG_GHOST     1
+#define FCELL  ((UCellFunc*) cell)
+
+
 enum FuncArgumentOpcodes
 {
     // Instruction       Data    Description
@@ -74,7 +93,8 @@ FuncOption;
   \return Function program buffer id.
 */
 static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
-                                    UBuffer* argCtx, UBuffer* optCtx )
+                                    UBuffer* argCtx, UBuffer* optCtx,
+                                    UCellFunc* fcell )
 {
     UBlockIter bi;
     FuncOption options[ MAX_OPT ];
@@ -200,6 +220,11 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
 
         case UT_OPTION:
             optAtom = ur_atom(bi.it);
+            if( optAtom == UR_ATOM_GHOST )
+            {
+                ur_setFlags(fcell, FUNC_FLAG_GHOST);
+                break;
+            }
             options[ optionCount ].atom = optAtom;
             options[ optionCount ].n    = 0;
             ++optionCount;
@@ -256,24 +281,6 @@ close_option:
     }
     return UR_INVALID_BUF;
 }
-
-
-typedef struct
-{
-    UCellId  id;
-    UIndex   argBufN;
-    union {
-        int (*func)( UThread*, UCell*, UCell* );
-        struct
-        {
-            UIndex bodyN;
-            UIndex sigN;
-        } f;
-    } m;
-}
-UCellFunc;
-
-#define FCELL  ((UCellFunc*) cell)
 
 
 static void _rebindFunc( UThread* ut, UIndex blkN, UIndex new, UIndex old )

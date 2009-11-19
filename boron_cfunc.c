@@ -569,7 +569,7 @@ CFUNC(cfunc_func)
     fc->m.f.sigN  = a1->series.buf;
 
     // Assign after fc fully initialized to handle recycle.
-    fc->argBufN = boron_makeArgProgram( ut, a1, &ctx, &optCtx );
+    fc->argBufN = boron_makeArgProgram( ut, a1, &ctx, &optCtx, fc );
 
     {
     UBindTarget bt;

@@ -4,6 +4,7 @@ enum UrlanFixedAtoms
     UR_ATOM_HALT,
     UR_ATOM_RETURN,
     UR_ATOM_BREAK,
+    UR_ATOM_GHOST,
 
     UR_ATOM_LATIN1,
     UR_ATOM_UTF8,

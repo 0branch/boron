@@ -333,9 +333,9 @@ UThread* ur_makeEnv( UDatatype* dt, int dtCount,
 
     // Intern commonly used atoms.
     {
-    UAtom atoms[ 35 ];
+    UAtom atoms[ 36 ];
     ur_internAtoms( ut,
-                    "quit halt return break\n"
+                    "quit halt return break ghost\n"
                     "latin1 utf8 ucs2\n"
                     "+ - / * = < > <= >=\n"
                     "x y z r g b a\n"

@@ -492,7 +492,7 @@ void boron_addCFunc( UThread* ut, int (*func)(UThread*,UCell*,UCell*),
         if( ur_tokenize( ut, cp, cp + strLen(cp), &tmp ) )
         {
             hold = ur_hold( tmp.series.buf );
-            cell->argBufN = boron_makeArgProgram( ut, &tmp, 0, 0 );
+            cell->argBufN = boron_makeArgProgram( ut, &tmp, 0, 0, cell );
             ur_release( hold );
         }
     }
@@ -503,7 +503,7 @@ static const char setupScript[] =
     "q: :quit  yes: true  no: false\n"
     "context: func [b block!] [make context! b]\n"
     "charset: func [s string!] [make bitset! s]\n"
-    "error: func [s string!] [throw make error! s]\n"
+    "error: func [s string! /ghost] [throw make error! s]\n"
     "join: func [a b] [\n"
     "  a: either series? a [copy a][to-text a]\n"
     "  append a reduce b\n"
@@ -645,7 +645,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_halt,    "halt" );
     addCFunc( cfunc_return,  "return val" );
     addCFunc( cfunc_break,   "break" );
-    addCFunc( cfunc_throw,   "throw val" );
+    addCFunc( cfunc_throw,   "throw val /ghost" );
     addCFunc( cfunc_catch,   "catch val" );
     addCFunc( cfunc_try,     "try val" );
     addCFunc( cfunc_recycle, "recycle" );
@@ -668,11 +668,11 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_any,     "any val" );
     addCFunc( cfunc_reduce,  "reduce val" );
     addCFunc( cfunc_not,     "not val" );
-    addCFunc( cfunc_if,      "if exp body" );
-    addCFunc( cfunc_ifn,     "ifn exp body" );
-    addCFunc( cfunc_either,  "either exp a b" );
-    addCFunc( cfunc_while,   "while exp body" );
-    addCFunc( cfunc_loop,    "loop n body" );
+    addCFunc( cfunc_if,      "if exp body /ghost" );
+    addCFunc( cfunc_ifn,     "ifn exp body /ghost" );
+    addCFunc( cfunc_either,  "either exp a b /ghost" );
+    addCFunc( cfunc_while,   "while exp body /ghost" );
+    addCFunc( cfunc_loop,    "loop n body /ghost" );
     addCFunc( cfunc_select,  "select data val" );
     addCFunc( cfunc_switch,  "switch val body" );
     addCFunc( cfunc_first,   "first ser" );
@@ -805,7 +805,7 @@ static int boron_call( UThread* ut, const UCellFunc* fcell, UCell* blkC,
                         if( blkC->series.it >= blkC->series.end ) 
                             goto func_short;
                         if( ! (ok = boron_eval1( ut, blkC, it++ )) )
-                            goto func_cleanup;
+                            goto cleanup_trace;
                         break;
 
                     case FO_litArg:
@@ -870,6 +870,8 @@ bad_arg:
         if( fcell->id.type == UT_CFUNC )
         {
             ok = fcell->m.func( ut, args, res );
+            if( ! ok && ! (fcell->id.flags & FUNC_FLAG_GHOST) )
+                goto cleanup_trace;
         }
         else
         {
@@ -881,17 +883,15 @@ bad_arg:
             {
                 ok = boron_doBlock( ut, &tmp, res );
                 boron_framePop( ut );
-                if( ! ok )
+                if( ! ok && ! (fcell->id.flags & FUNC_FLAG_GHOST) )
                 {
                     if( _catchThrownWord( ut, UR_ATOM_RETURN ) )
                         ok = UR_OK;
-                  //else
-                  //    ur_appendTrace(ut, blkC->series.buf, blkC->series.it-1);
+                    else
+                        goto cleanup_trace;
                 }
             }
         }
-
-func_cleanup:
 
         boron_stackPopN( ut, nc );
         return ok;
@@ -910,7 +910,8 @@ cleanup_trace:
         if( fcell->id.type == UT_CFUNC )
         {
             // Pass blkC so 'eval-control' cfuncs can do custom evaluation.
-            return fcell->m.func( ut, blkC, res );
+            if( ! fcell->m.func( ut, blkC, res ) )
+                goto traceError;
         }
         else
         {
@@ -923,14 +924,14 @@ cleanup_trace:
                 if( ! _catchThrownWord( ut, UR_ATOM_RETURN ) )
                     goto traceError;
             }
-            return UR_OK;
         }
+        return UR_OK;
     }
 
 traceError:
 
     // NOTE: This slows down throw of non-error values.
-    //ur_appendTrace( ut, blkC->series.buf, blkC->series.it-1 );
+    ur_appendTrace( ut, blkC->series.buf, blkC->series.it-1 );
     return UR_THROW;
 }
 
@@ -1053,7 +1054,7 @@ call_func:
     if( boron_call( ut, (UCellFunc*) cell, blkC, res ) )
         return UR_OK;
     // NOTE: This slows down throw of non-error values.
-    ur_appendTrace( ut, blkC->series.buf, --blkC->series.it );
+    //ur_appendTrace( ut, blkC->series.buf, --blkC->series.it );
     return UR_THROW;
 
 end_of_block:
