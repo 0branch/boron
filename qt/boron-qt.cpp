@@ -114,7 +114,7 @@ void LayoutInfo::addWidget( QWidget* wid )
 //----------------------------------------------------------------------------
 
 
-/**
+/*
   Returns REC id.
 */
 int WIDPool::add( QObject* ptr, int type, int flags )
@@ -269,9 +269,9 @@ BoronApp::BoronApp( int& argc, char** argv ) : QApplication( argc, argv )
 
 
 /*
-   Handle exception.
+   Handle exception and reset thread.
 */
-void boronQtException( UThread* ut )
+void boron_qtException( UThread* ut )
 {
     UCell* ex = boron_exception( ut );
     if( ur_is(ex, UT_ERROR) )
@@ -916,7 +916,7 @@ static int layoutWidget( QWidget* wid, UCell* a1 )
     else
     {
         delete wid;
-        boronQtException( UT );
+        boron_qtException( UT );
         return 0;
     }
 }
@@ -1443,7 +1443,7 @@ void ExeBlock::switchWord( UAtom atom )
                 if( ur_is(bi.it, UT_BLOCK) )
                 {
                     if( ! boron_doVoid( ut, bi.it ) )
-                        boronQtException( ut );
+                        boron_qtException( ut );
                     break;
                 }
             }
@@ -1516,7 +1516,7 @@ void SButton::slotDo()
         ur_setSeries(&tmp, _blk.n, _blk.index);
 
         if( ! boron_doVoid( ut, &tmp) )
-            boronQtException( ut );
+            boron_qtException( ut );
     }
 }
 
@@ -1565,7 +1565,7 @@ void SCombo::slotDo( int index )
         ur_setSeries(&tmp, _blk.n, 0 );
 
         if( ! boron_doVoid( ut, &tmp ) )
-            boronQtException( ut );
+            boron_qtException( ut );
     }
 }
 
