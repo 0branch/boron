@@ -428,6 +428,7 @@ void     ur_seriesSlice( UThread*, USeriesIter* si, const UCell* cell );
 int      ur_seriesSliceM( UThread*, USeriesIterM* si, const UCell* cell );
 void     ur_bind( UThread*, UBuffer* blk, const UBuffer* ctx, int bindType );
 void     ur_bindCells( UThread*, UCell* it, UCell* end, const UBindTarget* bt );
+void     ur_infuse( UThread*, UCell* it, UCell* end, const UBuffer* ctx );
 int      ur_isTrue( const UCell* cell );
 int      ur_same( UThread*, const UCell* a, const UCell* b );
 int      ur_equal( UThread*, const UCell* a, const UCell* b );

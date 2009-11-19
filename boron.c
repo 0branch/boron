@@ -44,11 +44,11 @@ int boron_eval1( UThread* ut, UCell* blkC, UCell* res );
 #define MAX_OPT     8       // LIMIT: 8 options per func/cfunc.
 #define OPT_BITS(c) (c)->series.end
 
-#define DT(dt)            (ut->types[ dt ])
-#define SERIES_DT(dt)     ((const USeriesType*) (ut->types[ dt ]))
+#define DT(dt)          (ut->types[ dt ])
+#define SERIES_DT(dt)   ((const USeriesType*) (ut->types[ dt ]))
 
-#define error_type(msg)     ur_error(ut, UR_ERR_TYPE, msg)
-#define error_script(msg)   ur_error(ut, UR_ERR_SCRIPT, msg)
+#define errorType(msg)      ur_error(ut, UR_ERR_TYPE, msg)
+#define errorScript(msg)    ur_error(ut, UR_ERR_SCRIPT, msg)
 
 
 typedef struct
@@ -652,6 +652,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_do,      "do" );            // val (eval-control)
     addCFunc( cfunc_set,     "set w val" );
     addCFunc( cfunc_bind,    "bind b w" );
+    addCFunc( cfunc_infuse,  "infuse b w" );
     addCFunc( cfunc_add,     "add a b" );
     addCFunc( cfunc_sub,     "sub a b" );
     addCFunc( cfunc_mul,     "mul a b" );

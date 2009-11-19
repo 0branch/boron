@@ -563,8 +563,6 @@ void ur_bindCells( UThread* ut, UCell* it, UCell* end, const UBindTarget* bt )
   \param ctx        Context.  This may be a stand-alone context outside of
                     any dataStore.
   \param bindType   UR_BIND_THREAD, UR_BIND_ENV, etc.
-
-  \return Pointer to block buffer, or zero if blkN is invalid.
 */
 void ur_bind( UThread* ut, UBuffer* blk, const UBuffer* ctx, int bindType )
 {
@@ -584,6 +582,47 @@ void ur_bind( UThread* ut, UBuffer* blk, const UBuffer* ctx, int bindType )
         bt.ctxN = UR_INVALID_BUF;
 
     ur_bindCells( ut, blk->ptr.cell, blk->ptr.cell + blk->used, &bt );
+}
+
+
+/**
+  Replace words in cells with their values from a context.
+  This recursively infuses all sub-blocks.
+ 
+  Unlike bind, this only modifies UT_WORD cells in UT_BLOCK or UT_PAREN
+  slices.
+
+  \param bi     Cells to infuse.
+  \param ctx    Context.
+*/
+void ur_infuse( UThread* ut, UCell* it, UCell* end, const UBuffer* ctx )
+{
+    int wrdN;
+    assert( ctx->type == UT_CONTEXT );
+
+    for( ; it != end; ++it )
+    {
+        switch( ur_type(it) )
+        {
+            case UT_WORD:
+                wrdN = ur_ctxLookup( ctx, ur_atom(it) );
+                if( wrdN > -1 )
+                {
+                    *it = *ur_ctxCell( ctx, wrdN );
+                }
+                break;
+
+            case UT_BLOCK:
+            case UT_PAREN:
+                if( ! ur_isShared(it->series.buf) )
+                {
+                    UBlockIterM bi;
+                    ur_blkSliceM( ut, &bi, it );
+                    ur_infuse( ut, bi.it, bi.end, ctx );
+                }
+                break;
+        }
+    }
 }
 
 

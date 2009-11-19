@@ -357,6 +357,7 @@ CFUNC(cfunc_get)
     bind
         words   word!/block!
         context word!/context!
+    return: Bound words
 */
 CFUNC(cfunc_bind)
 {
@@ -372,14 +373,9 @@ CFUNC(cfunc_bind)
                              ur_atomCStr(ut, ur_atom(ctxArg)) );
     }
     else if( ur_is(ctxArg, UT_CONTEXT) )
-    {
         ctxN = ctxArg->series.buf;
-    }
     else
-    {
-        return ur_error( ut, UR_ERR_TYPE,
-                    "bind needs a second argument of word!/context! type" );
-    }
+        return errorType( "bind expected word!/context! for context" );
 
     if( ur_is(a1, UT_BLOCK) )
     {
@@ -391,12 +387,56 @@ CFUNC(cfunc_bind)
         *res = *a1;
         return UR_OK;
     }
-    /*
     else if( ur_is(a1, UT_WORD) )
     {
+        UBindTarget bt;
+
+        bt.ctx = ur_bufferSer(ctxArg);
+        bt.ctxN = ctxN;
+        bt.bindType = ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD;
+
+        *res = *a1;
+        ur_bindCells( ut, res, res + 1, &bt );
+        return UR_OK;
     }
-    */
-    return ur_error( ut, UR_ERR_TYPE, "bind expected word block!" );
+    return errorType( "bind expected words argument of word!/block!" );
+}
+
+
+/*-cf-
+    infuse
+        block   block!
+        context word!/context!
+    return: Modified block.
+
+    Replace words with their value in context.
+*/
+CFUNC(cfunc_infuse)
+{
+    UIndex ctxN;
+    UBlockIterM bi;
+    UCell* ctxArg = a2;
+
+    if( ur_is(ctxArg, UT_WORD) )
+    {
+        ctxN = ctxArg->word.ctx;
+        if( ctxN == UR_INVALID_BUF )
+            return ur_error( ut, UR_ERR_SCRIPT, "infuse word '%s is unbound",
+                             ur_atomCStr(ut, ur_atom(ctxArg)) );
+    }
+    else if( ur_is(ctxArg, UT_CONTEXT) )
+        ctxN = ctxArg->series.buf;
+    else
+        return errorType( "infuse expected word!/context! for context" );
+
+    if( ! ur_is(a1, UT_BLOCK) )
+        return errorType( "infuse expected block!" );
+    if( ! ur_blkSliceM( ut, &bi, a1 ) )
+        return UR_THROW;
+
+    ur_infuse( ut, bi.it, bi.end, ur_bufferSer(ctxArg) );
+    *res = *a1;
+    return UR_OK;
 }
 
 
@@ -1201,7 +1241,7 @@ CFUNC(cfunc_find)
     int type = ur_type(a1);
 
     if( ! ur_isSeriesType( type ) )
-        return error_type( "find expected series" );
+        return errorType( "find expected series" );
     ur_seriesSlice( ut, &si, a1 );
 
     if( opt & OPT_FIND_PART )
@@ -1214,7 +1254,7 @@ CFUNC(cfunc_find)
         else if( ur_isSeriesType( ur_type(parg) ) )
             part = parg->series.it - si.it;
         else
-            return error_type( "find /part expected series or int!" );
+            return errorType( "find /part expected series or int!" );
 
         if( part < 1 )
             goto set_none;
@@ -1621,9 +1661,9 @@ CFUNC(cfunc_foreach)
 
     // TODO: Handle custom series type.
     if( ! ur_isSeriesType( ur_type(a2) ) )
-        return error_type( "foreach expected series" );
+        return errorType( "foreach expected series" );
     if( ! ur_is(body, UT_BLOCK) )
-        return error_type( "foreach expected block! body" );
+        return errorType( "foreach expected block! body" );
 
     ur_seriesSlice( ut, &si, sarg );
     dt = SERIES_DT( ur_type(sarg) );
@@ -1657,14 +1697,14 @@ CFUNC(cfunc_foreach)
         ur_foreach( wi )
         {
             if( ! ur_is(wi.it, UT_WORD) )
-                return error_type( "foreach has non-words in word block" );
+                return errorType( "foreach has non-words in word block" );
             if( ur_isShared(wi.it->word.ctx) )
                 wordsShared = 1;
         }
         if( wordsShared )
         {
             if( ur_isShared(body->series.buf) )
-                return error_script( "foreach cannot bind shared body" );
+                return errorScript( "foreach cannot bind shared body" );
 
             localCtx = ur_buffer(ur_makeContext( ut, wi.end - words ));
             wi.it = words;
@@ -1696,7 +1736,7 @@ CFUNC(cfunc_foreach)
         }
         return UR_OK;
     }
-    return error_type( "foreach expected word!/block! for words" );
+    return errorType( "foreach expected word!/block! for words" );
 }
 
 
@@ -1713,7 +1753,7 @@ CFUNC(cfunc_forall)
     int type;
 
     if( ! ur_is(body, UT_BLOCK) )
-        return error_type( "forall expected block! body" );
+        return errorType( "forall expected block! body" );
 
     if( ur_is(a1, UT_WORD) )
     {
@@ -1742,7 +1782,7 @@ CFUNC(cfunc_forall)
         return UR_OK;
     }
 err:
-    return error_type( "forall expected series word!" );
+    return errorType( "forall expected series word!" );
 }
 
 
@@ -2031,7 +2071,7 @@ CFUNC(cfunc_read)
     uint32_t opt = CFUNC_OPTIONS;
 
     if( ! ur_isStringType( ur_type(a1) ) )
-        return error_type( "read expected file!/string!" );
+        return errorType( "read expected file!/string!" );
     filename = boron_cstr( ut, a1 );
 
     size = ur_fileSize( filename );
@@ -2061,7 +2101,7 @@ CFUNC(cfunc_read)
         }
         else
         {
-            return error_type( "read expected binary!/string! buffer" );
+            return errorType( "read expected binary!/string! buffer" );
         }
     }
     else if( opt & OPT_READ_TEXT )
