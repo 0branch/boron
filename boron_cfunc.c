@@ -2188,10 +2188,12 @@ CFUNC(cfunc_read)
     write
         file    file!/string!
         data    binary!/string!
+        /append
     return: True or error thrown.
 */
 CFUNC(cfunc_write)
 {
+#define OPT_WRITE_APPEND    0x01
     if( ur_isStringType( ur_type(a1) ) &&
         (ur_is(a2, UT_BINARY) || ur_is(a2, UT_STRING)) )
     {
@@ -2200,6 +2202,7 @@ CFUNC(cfunc_write)
         USeriesIter si;
         UIndex size;
         size_t n;
+        int append = CFUNC_OPTIONS & OPT_WRITE_APPEND;
 
         filename = boron_cstr( ut, a1, 0 );
 
@@ -2221,11 +2224,11 @@ CFUNC(cfunc_write)
                 size = si.buf->used;
             }
             // Write as text to add carriage ret.
-            fp = fopen( filename, "w" );
+            fp = fopen( filename, append ? "a" : "w" );
         }
         else
         {
-            fp = fopen( filename, "wb" );
+            fp = fopen( filename, append ? "ab" : "wb" );
         }
 
         if( ! fp )
