@@ -71,58 +71,76 @@ int cbp_matchRule( CBParser* cbp )
     cbp->values = sit;
 
     rules = cbp->_rules;
-    if( ! rules )
+    if( ! rules || (rules->used < 1) )
         return -1;
 
     rit  = rules->ptr.cell;
     rend = rit + rules->used;
 
-next_rule:
+next:
 
-    while( (rit != rend) && (sit != send) )
+    if( ur_is(rit, UT_LITWORD) )
     {
-        if( ur_is(rit, UT_LITWORD) )
+        if( ur_is(sit, UT_WORD) && (ur_atom(rit) == ur_atom(sit)) )
+            goto value_matched;
+    }
+    else if( ur_is(rit, UT_WORD) )
+    {
+        UAtom atom = ur_atom(rit);
+        if( atom < UT_BI_COUNT )
         {
-            if( ur_is(sit, UT_WORD) && (ur_atom(rit) == ur_atom(sit)) )
-            {
-value_matched:
-                ++rit;
-                ++sit;
-                continue;
-            }
-        }
-        else if( ur_is(rit, UT_WORD) )
-        {
-            UAtom atom = ur_atom(rit);
-            if( atom < UT_BI_COUNT )
-            {
-                if( atom == ur_type(sit) )
-                    goto value_matched;
-            }
-            else if( atom == UR_ATOM_BAR )
-                break;
-        }
-        else if( ur_is(rit, UT_DATATYPE) )
-        {
-            if( ur_isDatatype( sit, rit ) )
+            if( atom == ur_type(sit) )
                 goto value_matched;
         }
-
-        sit = cbp->_inputPos;
-        while( rit != rend )
-        {
-            if( ur_is(rit, UT_WORD) && (ur_atom(rit) == UR_ATOM_BAR) )
-            {
-                ++ruleN;
-                ++rit;
-                goto next_rule;
-            }
-            ++rit;
-        }
-
-        cbp->_inputPos = send;
-        return -1;
+        else if( atom == UR_ATOM_BAR )
+            goto rule_matched;
     }
+    else if( ur_is(rit, UT_DATATYPE) )
+    {
+        if( ur_isDatatype( sit, rit ) )
+            goto value_matched;
+    }
+
+next_rule:
+
+    sit = cbp->_inputPos;
+    do
+    {
+        if( ur_is(rit, UT_WORD) && (ur_atom(rit) == UR_ATOM_BAR) )
+        {
+            ++ruleN;
+            if( ++rit == rend )
+                goto fail;
+            goto next;
+        }
+        ++rit;
+    }
+    while( rit != rend );
+
+fail:
+
+    cbp->_inputPos = send;
+    return -1;
+
+value_matched:
+
+    ++rit;
+    ++sit;
+    if( rit == rend )
+    {
+        if( sit == send )
+            goto rule_matched;
+        goto fail;
+    }
+    else if( sit == send )
+    {
+        if( ur_is(rit, UT_WORD) && (ur_atom(rit) == UR_ATOM_BAR) )
+            goto rule_matched;
+        goto next_rule;
+    }
+    goto next;
+
+rule_matched:
 
     cbp->_inputPos = sit;
     return ruleN;
