@@ -290,13 +290,15 @@ extern int copyLatin1ToUtf8( uint8_t* dest, const uint8_t* src, int len );
 extern int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int len );
 
 /**
-  Make null terminated UTF-8 string in temporary binary buffer.
+  Make null terminated UTF-8 string in binary buffer.
 
   \param strC       Valid UT_STRING or UT_FILE cell.
+  \param bin        Binary buffer to use.  If zero, then the temporary
+                    thread binary will be used.
 
-  \return Pointer to C string.
+  \return Pointer to C string in bin.
 */
-const char* boron_cstr( UThread* ut, const UCell* strC )
+const char* boron_cstr( UThread* ut, const UCell* strC, UBuffer* bin )
 {
     const UBuffer* str = ur_bufferSer(strC);
     int len = str->used;
@@ -306,7 +308,8 @@ const char* boron_cstr( UThread* ut, const UCell* strC )
     len -= strC->series.it;
     if( len > 0 )
     {
-        UBuffer* bin = ur_buffer( BT->tempN );
+        if( ! bin )
+            bin = ur_buffer( BT->tempN );
 
         ur_binReserve( bin, (len * 2) + 1 );
 
@@ -328,6 +331,7 @@ const char* boron_cstr( UThread* ut, const UCell* strC )
                                       str->ptr.u16 + strC->series.it, len );
                 break;
         }
+        bin->used = len;
         bin->ptr.c[ len ] = '\0';
         return bin->ptr.c;
     }
@@ -712,6 +716,8 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_getenv,     "getenv val" );
     addCFunc( cfunc_read,       "read from /text /into b" );
     addCFunc( cfunc_write,      "write to data" );
+    addCFunc( cfunc_delete,     "delete file" );
+    addCFunc( cfunc_rename,     "rename a b" );
     addCFunc( cfunc_load,       "load from" );
     addCFunc( cfunc_parse,      "parse input rules" );
     addCFunc( cfunc_sameQ,      "same? a b" );

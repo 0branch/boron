@@ -2042,7 +2042,7 @@ CFUNC(cfunc_existsQ)
     if( ur_isStringType( ur_type(a1) ) )
     {
         ur_setId(res, UT_LOGIC);
-        ur_int(res) = (ur_isDir( boron_cstr(ut, a1) ) > -1) ? 1 : 0;
+        ur_int(res) = (ur_isDir( boron_cstr(ut, a1, 0) ) > -1) ? 1 : 0;
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "exists? expected file!/string!" );
@@ -2060,7 +2060,7 @@ CFUNC(cfunc_make_dir)
 {
     if( ur_isStringType( ur_type(a1) ) )
     {
-        if( ! ur_makeDir( ut, boron_cstr(ut, a1) ) )
+        if( ! ur_makeDir( ut, boron_cstr(ut, a1, 0) ) )
             return UR_THROW;
         ur_setId(res, UT_UNSET);
         return UR_OK;
@@ -2083,7 +2083,7 @@ CFUNC(cfunc_getenv)
 {
     if( ur_is(a1, UT_STRING) )
     {
-        const char* cp = getenv( boron_cstr(ut, a1) );
+        const char* cp = getenv( boron_cstr(ut, a1, 0) );
         if( cp )
         {
             UBuffer* str;
@@ -2121,7 +2121,7 @@ CFUNC(cfunc_read)
 
     if( ! ur_isStringType( ur_type(a1) ) )
         return errorType( "read expected file!/string!" );
-    filename = boron_cstr( ut, a1 );
+    filename = boron_cstr( ut, a1, 0 );
 
     size = ur_fileSize( filename );
     if( size < 0 )
@@ -2201,7 +2201,7 @@ CFUNC(cfunc_write)
         UIndex size;
         size_t n;
 
-        filename = boron_cstr( ut, a1 );
+        filename = boron_cstr( ut, a1, 0 );
 
         ur_seriesSlice( ut, &si, a2 );
         size = si.end - si.it;
@@ -2242,6 +2242,68 @@ CFUNC(cfunc_write)
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "write expected file!/string! filename" );
+}
+
+
+#include <errno.h>
+
+/*-cf-
+    delete
+        file    file!/string!
+    return: unset! or error thrown.
+*/
+CFUNC(cfunc_delete)
+{
+    if( ur_isStringType( ur_type(a1) ) )
+    {
+        // if( ur_userAllows( ut, "Delete file \"%s\"", cp ) )
+        int ok = remove( boron_cstr(ut, a1, 0) );
+        if( ok != 0 )
+            return ur_error( ut, UR_ERR_ACCESS, strerror(errno) );
+        ur_setId(res, UT_UNSET);
+        return UR_OK;
+    }
+    return errorType( "delete expected file!/string!" );
+}
+
+
+/*-cf-
+    rename
+        file        file!/string!
+        new-name    file!/string!
+    return: unset! or error thrown.
+*/
+CFUNC(cfunc_rename)
+{
+    if( ur_isStringType( ur_type(a1) ) &&
+        ur_isStringType( ur_type(a2) ) )
+    {
+        // if( ur_userAllows( ut, "Rename file \"%s\"", cp ) )
+        const char* cp1;
+        const char* cp2;
+        UBuffer* tmp;
+        int ok;
+
+        tmp = ur_buffer( ur_makeBinary( ut, 0 ) );
+
+        cp1 = boron_cstr(ut, a1, 0);
+        cp2 = boron_cstr(ut, a2, tmp);
+
+#ifdef _WIN32
+        // We want Unix rename overwrite behavior.
+        if( ur_isDir( cp2 ) == 0 )
+        {
+            if( remove( cp2 ) == -1 )
+                return ur_error( ut, UR_ERR_ACCESS, strerror(errno) );
+        }
+#endif
+        ok = rename( cp1, cp2 );
+        if( ok != 0 )
+            return ur_error( ut, UR_ERR_ACCESS, strerror(errno) );
+        ur_setId(res, UT_UNSET);
+        return UR_OK;
+    }
+    return errorType( "rename expected file!/string!" );
 }
 
 
