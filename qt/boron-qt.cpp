@@ -36,8 +36,8 @@
 #define UT  qEnv.ut
 
 
-extern "C" int boron_doBlock( UThread*, const UCell* blkC, UCell* res );
-extern "C" int boron_doVoid( UThread*, const UCell* blkC );
+//extern "C" int boron_doBlock( UThread* ut, const UCell* blkC, UCell* res );
+extern "C" int boron_doVoid( UThread* ut, const UCell* blkC );
 
 
 inline bool qEnvExists() { return qEnv.atom_close > 0; }
@@ -269,40 +269,43 @@ BoronApp::BoronApp( int& argc, char** argv ) : QApplication( argc, argv )
 
 
 /*
-   Handle exception and reset thread.
+  Do block, ignore result, and show any error in QMessageBox.
 */
-void boron_qtException( UThread* ut )
+void boron_doBlockQt( UThread* ut, const UCell* blkC )
 {
-    UCell* ex = boron_exception( ut );
-    if( ur_is(ex, UT_ERROR) )
+    if( ! boron_doVoid( ut, blkC ) )
     {
-//#ifdef _WIN32
-        QString msg;
-        cellToQString( ex, msg );
-        QMessageBox::warning( 0, "Script Error", msg,
-                              QMessageBox::Ok, QMessageBox::NoButton );
-//#else
-//        orPrintNative( orErrorThrown );
-//#endif
+        UCell* ex = boron_exception( ut );
+        if( ur_is(ex, UT_ERROR) )
+        {
+            QString msg;
+            cellToQString( ex, msg );
+            QMessageBox::warning( 0, "Script Error", msg,
+                                  QMessageBox::Ok, QMessageBox::NoButton );
+        }
+        else if( ur_is(ex, UT_WORD) )
+        {
+            if( ur_atom(ex) == UR_ATOM_QUIT )
+                qApp->quit();
+        }
+
+        UBuffer* blk = ur_errorBlock( ut );
+        --blk->used;
+        //boron_reset( ut );
     }
-    else if( ur_is(ex, UT_WORD) )
-    {
-        if( ur_atom(ex) == UR_ATOM_QUIT )
-            qApp->quit();
-    }
-    boron_reset( ut );
 }
 
 
-QLayout* ur_qtLayout( LayoutInfo& parent, const UCell* blkC );
+QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC );
 
-static void tabBlock( QTabWidget* tab, const UCell* it, const UCell* label )
+static void tabBlock( UThread* ut, QTabWidget* tab,
+                      const UCell* it, const UCell* label )
 {
     LayoutInfo layout;
     QLayout* lo;
     QWidget* wid = new QWidget;
 
-    lo = ur_qtLayout( layout, it );
+    lo = ur_qtLayout( ut, layout, it );
     wid->setLayout( lo );
 
     tab->addTab( wid, qstring(label) );
@@ -326,7 +329,7 @@ static void tabWidgetBlock( UThread* ut, QTabWidget* tab, const UCell* blkC )
             const UCell* val = ur_wordCell( ut, bi.it );
             if( label && ur_is(val, UT_BLOCK) )
             {
-                tabBlock( tab, val, label );
+                tabBlock( ut, tab, val, label );
                 label = 0;
             }
         }
@@ -334,7 +337,7 @@ static void tabWidgetBlock( UThread* ut, QTabWidget* tab, const UCell* blkC )
         {
             if( label )
             {
-                tabBlock( tab, bi.it, label );
+                tabBlock( ut, tab, bi.it, label );
                 label = 0;
             }
         }
@@ -423,7 +426,7 @@ enum LayoutRules
 
    \return Layout pointer or zero if error generated.
 */
-QLayout* ur_qtLayout( LayoutInfo& parent, const UCell* blkC )
+QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
 {
     CBParser cbp;
     UBlockIter bi;
@@ -431,7 +434,6 @@ QLayout* ur_qtLayout( LayoutInfo& parent, const UCell* blkC )
     const UCell* val;
     const UCell* setWord = 0;
     QWidget* wid = 0;
-    UThread* ut = UT;
     int match;
 
 
@@ -455,7 +457,7 @@ QLayout* ur_qtLayout( LayoutInfo& parent, const UCell* blkC )
                     parent.addLayout( lo.box );
 
                 val = cbp.values + 1;
-                ur_qtLayout( lo, val );
+                ur_qtLayout( ut, lo, val );
             }
                 break;
 
@@ -636,7 +638,7 @@ QLayout* ur_qtLayout( LayoutInfo& parent, const UCell* blkC )
                 ++val;
 
                 LayoutInfo lo2;
-                pw->setLayout( ur_qtLayout(lo2, val) );
+                pw->setLayout( ur_qtLayout(ut, lo2, val) );
             }
                 break;
 
@@ -709,7 +711,7 @@ QLayout* ur_qtLayout( LayoutInfo& parent, const UCell* blkC )
                     parent.addLayout( lo.grid );
 
                 ++val;
-                ur_qtLayout( lo, val );
+                ur_qtLayout( ut, lo, val );
                 break;
 
             case LD_PROGRESS:
@@ -896,7 +898,7 @@ CFUNC( cfunc_show )
 }
 
 
-static int layoutWidget( QWidget* wid, UCell* a1 )
+static int layoutWidget( UThread* ut, QWidget* wid, UCell* a1 )
 {
     LayoutInfo li;
     QLayout* lo;
@@ -904,41 +906,33 @@ static int layoutWidget( QWidget* wid, UCell* a1 )
     QWidget* saveWidget = qEnv.curWidget;
     qEnv.curWidget = wid;
 
-    lo = ur_qtLayout( li, a1 );
+    lo = ur_qtLayout( ut, li, a1 );
 
     qEnv.curWidget = saveWidget;
 
     if( lo )
     {
         wid->setLayout( lo );
-        return 1;
+        return UR_OK;
     }
-    else
-    {
-        delete wid;
-        boron_qtException( UT );
-        return 0;
-    }
+    delete wid;
+    return UR_THROW;
 }
 
 
 /*-cf-
     dialog
         layout block!
-    return: int!/none!
+    return: int!
 */
 CFUNC( cfunc_dialog )
 {
-    (void) ut;
     SDialog* dlg = new SDialog;
     dlg->setModal( true );
-    if( layoutWidget( dlg, a1 ) )
-    {
-        ur_setId(res, UT_INT);
-        ur_int(res) = dlg->_wid;
-        return UR_OK;
-    }
-    ur_setId(res, UT_NONE);
+    if( ! layoutWidget( ut, dlg, a1 ) )
+        return UR_THROW;
+    ur_setId(res, UT_INT);
+    ur_int(res) = dlg->_wid;
     return UR_OK;
 }
 
@@ -946,19 +940,15 @@ CFUNC( cfunc_dialog )
 /*-cf-
     widget
         layout block!
-    return: int!/none!
+    return: int!
 */
 CFUNC( cfunc_widget )
 {
-    (void) ut;
     SWidget* wid = new SWidget;
-    if( layoutWidget( wid, a1 ) )
-    {
-        ur_setId(res, UT_INT);
-        ur_int(res) = wid->_wid;
-        return UR_OK;
-    }
-    ur_setId(res, UT_NONE);
+    if( ! layoutWidget( ut, wid, a1 ) )
+        return UR_THROW;
+    ur_setId(res, UT_INT);
+    ur_int(res) = wid->_wid;
     return UR_OK;
 }
 
@@ -1442,8 +1432,7 @@ void ExeBlock::switchWord( UAtom atom )
                     break;
                 if( ur_is(bi.it, UT_BLOCK) )
                 {
-                    if( ! boron_doVoid( ut, bi.it ) )
-                        boron_qtException( ut );
+                    boron_doBlockQt( ut, bi.it );
                     break;
                 }
             }
@@ -1515,8 +1504,7 @@ void SButton::slotDo()
         ur_setId(&tmp, UT_BLOCK);
         ur_setSeries(&tmp, _blk.n, _blk.index);
 
-        if( ! boron_doVoid( ut, &tmp) )
-            boron_qtException( ut );
+        boron_doBlockQt( ut, &tmp );
     }
 }
 
@@ -1564,8 +1552,7 @@ void SCombo::slotDo( int index )
         ur_setId(&tmp, UT_BLOCK);
         ur_setSeries(&tmp, _blk.n, 0 );
 
-        if( ! boron_doVoid( ut, &tmp ) )
-            boron_qtException( ut );
+        boron_doBlockQt( ut, &tmp );
     }
 }
 

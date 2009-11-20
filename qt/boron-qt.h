@@ -228,7 +228,7 @@ extern QtEnv qEnv;
 
 extern void boron_initQt( UThread* );
 extern void boron_freeQt();
-extern void boron_qtException( UThread* );
+extern void boron_doBlockQt( UThread*, const UCell* blkC );
 
 
 #endif /*QBORON_H*/
