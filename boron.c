@@ -651,6 +651,8 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_recycle, "recycle" );
     addCFunc( cfunc_do,      "do" );            // val (eval-control)
     addCFunc( cfunc_set,     "set w val" );
+    addCFunc( cfunc_get,     "get w" );
+    addCFunc( cfunc_in,      "in c w" );
     addCFunc( cfunc_bind,    "bind b w" );
     addCFunc( cfunc_infuse,  "infuse b w" );
     addCFunc( cfunc_add,     "add a b" );

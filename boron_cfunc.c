@@ -346,11 +346,61 @@ CFUNC(cfunc_set)
 }
 
 
-/*
+/*-cf-
+    get
+        word    word!/context!
+    return: Value of word or block of values in context.
+*/
 CFUNC(cfunc_get)
 {
+    if( ur_is(a1, UT_WORD) )
+    {
+        const UCell* cell;
+        if( ! (cell = ur_wordCell( ut, a1 )) )
+            return UR_THROW;
+        *res = *cell;
+        return UR_OK;
+    }
+    else if( ur_is(a1, UT_CONTEXT) )
+    {
+        UBuffer* blk = ur_makeBlockCell( ut, UT_BLOCK, 0, res );
+        const UBuffer* ctx = ur_bufferSer( a1 );
+        ur_blkAppendCells( blk, ctx->ptr.cell, ctx->used );
+        return UR_OK;
+    }
+    return errorType( "get expected word!/context!" );
 }
+
+
+/*-cf-
+    in
+        context     context!
+        word        word!
+    return: Word bound to context or none!.
 */
+CFUNC(cfunc_in)
+{
+    if( ur_is(a1, UT_CONTEXT) && ur_is(a2, UT_WORD) )
+    {
+        const UBuffer* ctx = ur_bufferSer( a1 );
+        int wrdN = ur_ctxLookup( ctx, ur_atom(a2) );
+        if( wrdN < 0 )
+        {
+            ur_setId(res, UT_NONE);
+        }
+        else
+        {
+            int ctxN = a1->series.buf;
+            *res = *a2;
+            ur_setBinding( res,
+                           ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD );
+            res->word.ctx   = ctxN;
+            res->word.index = wrdN;
+        }
+        return UR_OK;
+    }
+    return errorType( "in expected context! and word!" );
+}
 
 
 /*-cf-

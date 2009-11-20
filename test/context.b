@@ -9,6 +9,12 @@ print bind [a b] c
 print c/bind-me [a b]
 
 
+print "---- get"
+probe get 'a
+probe get in c 'b
+probe get c
+
+
 print "---- proto"
 a: context [first: 1 second: 2]
 b: make a [third: 3]

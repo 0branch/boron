@@ -1,6 +1,10 @@
 ---- bind
 2 two
 2 two
+---- get
+1
+"two"
+[2 "two" func [a][bind a 'b]]
 ---- proto
 context [
     first: 1
