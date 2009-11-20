@@ -545,7 +545,6 @@ CFUNC(cfunc_make)
 CFUNC(cfunc_copy)
 {
 #define OPT_COPY_DEEP   0x01
-    //uint32_t opt = CFUNC_OPTIONS;
     int type = ur_type(a1);
 
     if( ur_isBlockType( type ) && (CFUNC_OPTIONS & OPT_COPY_DEEP) )

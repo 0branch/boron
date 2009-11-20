@@ -19,3 +19,8 @@ probe b/'words
 
 print "---- infuse"
 probe infuse [nest (a b c d)] c
+
+ia: copy a
+blk: ia/'words
+set blk infuse copy blk context [x: none first: "one" second: "two"]
+probe ia

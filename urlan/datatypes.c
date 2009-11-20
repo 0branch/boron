@@ -2551,6 +2551,7 @@ int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
         if( ur_atom(bi->it) == UR_ATOM_WORDS )
         {
             UBlockIterM di;
+            UAtom* ait;
             UAtom* atoms;
             int bindType;
             UIndex ctxN = cell->series.buf;
@@ -2561,7 +2562,7 @@ int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
             di.end = di.it + used;
 
             ctx = ur_bufferSer(cell);   // Re-aquire.
-            atoms = ((UAtom*) di.end) - used;
+            atoms = ait = ((UAtom*) di.end) - used;
             ur_ctxWordAtoms( ctx, atoms );
 
             bindType = ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD;
@@ -2569,8 +2570,9 @@ int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
             {
                 ur_setId(di.it, UT_WORD);
                 ur_setBinding( di.it, bindType );
-                di.it->word.atom = *atoms++;
-                di.it->word.ctx  = ctxN;
+                di.it->word.ctx   = ctxN;
+                di.it->word.index = ait - atoms;
+                di.it->word.atom  = *ait++;
             }
 
             di.buf->used = used;

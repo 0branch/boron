@@ -14,3 +14,7 @@ context [
 [first second third]
 ---- infuse
 [nest (2 "two" c d)]
+context [
+    first: "one"
+    second: "two"
+]
