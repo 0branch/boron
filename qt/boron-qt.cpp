@@ -249,7 +249,7 @@ static void toUString( const QString& text, UCell* res )
 {
     int len = text.size();
     UBuffer* buf = ur_makeStringCell( UT, UR_ENC_UCS2, len, res );
-    memcpy( buf->ptr.u16, text.constData(), len );
+    memcpy( buf->ptr.u16, text.constData(), len * sizeof(uint16_t) );
     buf->used = len;
 }
 
@@ -298,21 +298,22 @@ void boron_doBlockQt( UThread* ut, const UCell* blkC )
 
 QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC );
 
-static void tabBlock( UThread* ut, QTabWidget* tab,
+static int tabBlock( UThread* ut, QTabWidget* tab,
                       const UCell* it, const UCell* label )
 {
     LayoutInfo layout;
     QLayout* lo;
     QWidget* wid = new QWidget;
 
-    lo = ur_qtLayout( ut, layout, it );
+    if( ! (lo = ur_qtLayout( ut, layout, it )) )
+        return UR_THROW;
     wid->setLayout( lo );
-
     tab->addTab( wid, qstring(label) );
+    return UR_OK;
 }
 
 
-static void tabWidgetBlock( UThread* ut, QTabWidget* tab, const UCell* blkC )
+static int tabWidgetBlock( UThread* ut, QTabWidget* tab, const UCell* blkC )
 {
     UBlockIter bi;
     const UCell* label = 0;
@@ -327,9 +328,12 @@ static void tabWidgetBlock( UThread* ut, QTabWidget* tab, const UCell* blkC )
         else if( ur_is(bi.it, UT_WORD) )
         {
             const UCell* val = ur_wordCell( ut, bi.it );
+            if( ! val )
+                return UR_THROW;
             if( label && ur_is(val, UT_BLOCK) )
             {
-                tabBlock( ut, tab, val, label );
+                if( ! tabBlock( ut, tab, val, label ) )
+                    return UR_THROW;
                 label = 0;
             }
         }
@@ -337,11 +341,13 @@ static void tabWidgetBlock( UThread* ut, QTabWidget* tab, const UCell* blkC )
         {
             if( label )
             {
-                tabBlock( ut, tab, bi.it, label );
+                if( ! tabBlock( ut, tab, bi.it, label ) )
+                    return UR_THROW;
                 label = 0;
             }
         }
     }
+    return UR_OK;
 }
 
 
@@ -375,7 +381,7 @@ static char layoutRules[] =
   "| 'resize coord!\n"
   "| 'line-edit string!\n"
   "| 'line-edit\n"
-  "| 'text-edit string!\n"
+  "| 'text-edit get-word!/string!\n"
   "| 'text-edit\n"
   "| 'group string! block!\n"
   "| 'read-only\n"
@@ -457,6 +463,7 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                     parent.addLayout( lo.box );
 
                 val = cbp.values + 1;
+                //TODO: Handle error.
                 ur_qtLayout( ut, lo, val );
             }
                 break;
@@ -481,7 +488,8 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                 val = cbp.values + 1;
                 if( ur_is(val, UT_WORD) )
                 {
-                    val = ur_wordCell( ut, val );
+                    if( ! (val = ur_wordCell( ut, val )) )
+                        return 0;
                 }
                 QString txt;
                 cellToQString( val, txt );
@@ -557,7 +565,8 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                 setWID( setWord, pw->_wid );
                 wid = pw;
 
-                tabWidgetBlock( ut, pw, cbp.values + 1 );
+                if( ! tabWidgetBlock( ut, pw, cbp.values + 1 ) )
+                    return 0;
             }
                 break;
 
@@ -612,8 +621,15 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
 
                 if( match == LD_TEXT_EDIT_STR )
                 {
+                    const UCell* strC = cbp.values + 1;
+                    if( ur_is(strC, UT_GETWORD) )
+                    {
+                        strC = ur_wordCell( ut, strC  );
+                        if( ! strC )
+                            return 0;
+                    }
                     QString str;
-                    cellToQString( cbp.values + 1, str );
+                    cellToQString( strC, str );
                     if( str[0] == '<' )
                         pw->setHtml( str );
                     else
@@ -638,7 +654,10 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                 ++val;
 
                 LayoutInfo lo2;
-                pw->setLayout( ur_qtLayout(ut, lo2, val) );
+                QLayout* lr2 = ur_qtLayout(ut, lo2, val);
+                if( ! lr2 )
+                    return 0;
+                pw->setLayout( lr2 );
             }
                 break;
 
@@ -711,6 +730,7 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                     parent.addLayout( lo.grid );
 
                 ++val;
+                //TODO: Handle error.
                 ur_qtLayout( ut, lo, val );
                 break;
 

@@ -2,6 +2,17 @@
    Show all widgets.
 */
 
+text:
+{<h2>Text-Edit Widget</h2>
+<p>Text-edit can show basic <i>HTML</i>.</p>
+<hr>
+<h3>A List</h3>
+<ul>
+<li>Item one</li>
+<li>Item two</li>
+</ul>
+}
+
 exec widget [
     vbox [
         tab [
@@ -20,16 +31,7 @@ exec widget [
             "Text" [
                 vbox [
                     hbox [label "Line-edit" line-edit]
-                    text-edit
-{<h2>Text-Edit Widget</h2>
-<p>Text-edit can show basic <i>HTML</i>.</p>
-<hr>
-<h3>A List</h3>
-<ul>
-<li>Item one</li>
-<li>Item two</li>
-</ul>
-}
+                    text-edit :text
                 ]
             ]
             "Dialogs" [
@@ -48,7 +50,7 @@ exec widget [
 
                     button "Request-file" [
                         file: request-file "Select a file"
-                        message "File Selected" to-string file
+                        message "File Selected" file
                     ]
 
                     spacer
