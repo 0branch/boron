@@ -51,9 +51,10 @@ CFUNC(cfunc_nop)
 
 
 /*-cf-
-   quit
+    quit
+    return: NA
 
-   Exit interpreter.
+    Exit interpreter.
 */
 CFUNC(cfunc_quit)
 {
@@ -64,9 +65,10 @@ CFUNC(cfunc_quit)
 
 
 /*-cf-
-   halt
+    halt
+    return: NA
 
-   Halt interpreter.
+    Halt interpreter.
 */
 CFUNC(cfunc_halt)
 {
@@ -77,9 +79,10 @@ CFUNC(cfunc_halt)
 
 
 /*-cf-
-   return
+    return
+    return: NA
 
-   Exit from function.
+    Exit from function.
 */
 CFUNC(cfunc_return)
 {
@@ -89,9 +92,10 @@ CFUNC(cfunc_return)
 
 
 /*-cf-
-   break
+    break
+    return: NA
 
-   Exit from loop, while, foreach, or forall.
+    Exit from loop, while, foreach, or forall.
 */
 CFUNC(cfunc_break)
 {
@@ -101,7 +105,9 @@ CFUNC(cfunc_break)
 
 
 /*-cf-
-    throw value
+    throw
+        value
+    return: NA
 */
 CFUNC(cfunc_throw)
 {
@@ -166,7 +172,7 @@ CFUNC(cfunc_try)
 
 /*-cf-
     recycle
-
+    return: NA
     Run the garbage collector.
 */
 CFUNC(cfunc_recycle)
@@ -185,7 +191,8 @@ static int boron_call( UThread*, const UCellFunc* fcell, UCell* blkC,
   NOTE: This is an eval-control function.
 
   -cf-
-    do  value
+    do
+        value
     return: Result of value.
 */
 CFUNC(cfunc_do)
@@ -491,7 +498,7 @@ CFUNC(cfunc_infuse)
 
 
 #define MATH_FUNC(name,OP) \
- CFUNC(cfunc_ ## name) { \
+ CFUNC(name) { \
     const UCell* ra = a2; \
     if( ur_is(a1, UT_INT) ) { \
         if( ur_is(ra, UT_INT) ) { \
@@ -520,25 +527,33 @@ CFUNC(cfunc_infuse)
 
 
 /*-cf-
-    add a b
+    add
+        a   int!/decimal!
+        b   int!/decimal!
     return: Sum of two numbers.
 */
 /*-cf-
-    sub a b
+    sub
+        a   int!/decimal!
+        b   int!/decimal!
     return: Difference of two numbers.
 */
 /*-cf-
-    mul a b
+    mul
+        a   int!/decimal!
+        b   int!/decimal!
     return: Product of two numbers.
 */
 /*-cf-
-    div a b
+    div
+        a   int!/decimal!
+        b   int!/decimal!
     return: Quotient of a divided by b.
 */
-MATH_FUNC( add, + )
-MATH_FUNC( sub, - )
-MATH_FUNC( mul, * )
-MATH_FUNC( div, / )
+MATH_FUNC( cfunc_add, + )
+MATH_FUNC( cfunc_sub, - )
+MATH_FUNC( cfunc_mul, * )
+MATH_FUNC( cfunc_div, / )
 
 
 extern int context_make( UThread* ut, const UCell* from, UCell* res );
@@ -589,7 +604,7 @@ CFUNC(cfunc_make)
 /*-cf-
     copy
         value
-        /deep
+        /deep   If value is a block, copy all sub-blocks.
     return: New value.
 */
 CFUNC(cfunc_copy)
@@ -612,6 +627,7 @@ CFUNC(cfunc_copy)
     does
         body  block!
     return: func!
+    Create function which takes no arguments.
 */
 CFUNC(cfunc_does)
 {
@@ -631,6 +647,7 @@ CFUNC(cfunc_does)
         spec  block!
         body  block!
     return:  func!
+    Create function.
 */
 CFUNC(cfunc_func)
 {
@@ -689,7 +706,8 @@ CFUNC(cfunc_func)
 
 
 /*-cf-
-    not value
+    not
+        value
     return: Inverse logic! of value.
 */
 CFUNC(cfunc_not)
@@ -765,6 +783,7 @@ CFUNC(cfunc_either)
     while
         exp     block!
         body    block!
+    return: false
 
     Repeat body as long as exp is true.
 */
@@ -798,6 +817,7 @@ CFUNC(cfunc_while)
     loop
         n       int!
         body    block!
+    return: Result of body.
 */
 CFUNC(cfunc_loop)
 {
@@ -857,6 +877,7 @@ CFUNC(cfunc_select)
     switch
         value
         options block!
+    return: Result of selected switch case.
 
     If the size of the options block is odd, then the last value will be
     the default result.
@@ -1704,6 +1725,7 @@ CFUNC(cfunc_sort)
         'words   word!/block!
         series
         body    block!
+    return: Result of body.
 */
 CFUNC(cfunc_foreach)
 {
@@ -1801,6 +1823,7 @@ CFUNC(cfunc_foreach)
     forall
         'word   word!
         body    block!
+    return: Result of body.
 */
 CFUNC(cfunc_forall)
 {
@@ -2513,7 +2536,9 @@ CFUNC(cfunc_parse)
 
 
 /*-cf-
-    same? a b
+    same?
+        a
+        b
     return: True if two values are identical.
 */
 CFUNC(cfunc_sameQ)
@@ -2525,7 +2550,9 @@ CFUNC(cfunc_sameQ)
 
 
 /*-cf-
-    equal? a b
+    equal?
+        a
+        b
     return: True if two values are equivalent.
 */
 CFUNC(cfunc_equalQ)
@@ -2537,7 +2564,9 @@ CFUNC(cfunc_equalQ)
 
 
 /*-cf-
-    gt? a b
+    gt?
+        a
+        b
     return: True if first value is greater than the second.
 */
 CFUNC(cfunc_gtQ)
@@ -2549,7 +2578,9 @@ CFUNC(cfunc_gtQ)
 
 
 /*-cf-
-    lt? a b
+    lt?
+        a
+        b
     return: True if first value is less than the second.
 */
 CFUNC(cfunc_ltQ)
@@ -2782,7 +2813,8 @@ done:
 
 
 /*-cf-
-    to-hex int!/bignum!
+    to-hex
+        number  char!/int!/bignum!
     return: Number shown as hexidecimal.
 */
 CFUNC(cfunc_to_hex)
@@ -2793,12 +2825,20 @@ CFUNC(cfunc_to_hex)
         *res = *a1;
         return UR_OK;
     }
-    return ur_error( ut, UR_ERR_TYPE, "to-hex expected int!/bignum!" );
+    else if( ur_is(a1, UT_CHAR) )
+    {
+        *res = *a1;
+        ur_type(res) = UT_INT;
+        ur_setFlags(res, UR_FLAG_INT_HEX);
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE, "to-hex expected char!/int!/bignum!" );
 }
 
 
 /*-cf-
-    to-dec int!/bignum!
+    to-dec
+        number  int!/bignum!
     return: Number shown as decimal.
 */
 CFUNC(cfunc_to_dec)
@@ -2816,6 +2856,7 @@ CFUNC(cfunc_to_dec)
 /*-cf-
     now
         /date   Return date! rather than time!
+    return: time! or date!
 */
 CFUNC(cfunc_now)
 {
