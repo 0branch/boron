@@ -80,9 +80,10 @@ CFUNC(cfunc_halt)
 
 /*-cf-
     return
+        result
     return: NA
 
-    Exit from function.
+    Exit from function with result.
 */
 CFUNC(cfunc_return)
 {
@@ -1980,7 +1981,8 @@ CFUNC(cfunc_any)
 
 
 /*-cf-
-    reduce value
+    reduce
+        value
     return: Reduced value.
 
     If value is a block then a new block is created with values set to the
@@ -2028,7 +2030,8 @@ CFUNC(cfunc_reduce)
 
 
 /*-cf-
-    probe value
+    probe
+        value
     return: unset!
 
     Print value in its serialized form.
@@ -2050,7 +2053,8 @@ CFUNC(cfunc_probe)
 
 
 /*-cf-
-    prin value
+    prin
+        value
     return: unset!
 
     Print reduced value without a trailing linefeed.
@@ -2075,7 +2079,8 @@ CFUNC(cfunc_prin)
 
 
 /*-cf-
-    print value
+    print
+        value
     return: unset!
 
     Print reduced value and a trailing linefeed.
@@ -2092,7 +2097,8 @@ CFUNC(cfunc_print)
 
 
 /*-cf-
-    to-text val
+    to-text
+        val
     return: string!
 */
 CFUNC(cfunc_to_text)
