@@ -1099,6 +1099,13 @@ static void boron_bindDefaultB( UThread* ut, UIndex blkN )
         if( type == UT_SETWORD )
         {
             wrdN = ur_ctxAddWordI( threadCtx, ur_atom(bi.it) );
+            if( envCtx )
+            {
+                // Lift default value of word from environment.
+                int ewN = ur_ctxLookup( envCtx, ur_atom(bi.it) );
+                if( ewN > -1 )
+                    *ur_ctxCell(threadCtx, wrdN) = *ur_ctxCell(envCtx, ewN);
+            }
             goto assign;
         }
         else if( ur_isWordType(type) )
