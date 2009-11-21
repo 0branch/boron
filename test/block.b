@@ -53,6 +53,10 @@ probe sort [1 50.0 20.0 5]
 probe sort ["then" "hello" "goodbye" "NOW"]
 probe sort [zulu alpha gamma beta]
 
+; Caught bug in qsortIndex.
+probe sort [6 2 1 9 3 7 5 8 15 4 0 16 14 10 12 11 13 17]
+
+
 
 print "---- change"
 w: [a b c d e]

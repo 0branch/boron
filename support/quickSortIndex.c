@@ -1,8 +1,11 @@
 /* Quick Sort of Index */
 
 
+//#include <stdio.h>
 #include "quickSortIndex.h"
 
+
+//#define DEBUG_SORT  1
 
 #define INSERT_SIZE 10
 #define isGT(a,b)   (qs->compare(qs->user, a, b) > 0)
@@ -24,9 +27,18 @@ static void qsortIndex( const QuickSortIndex* qs, uint32_t l, uint32_t r )
     uint32_t p;
     uint32_t tmp;
 
+#ifdef DEBUG_SORT
+    printf( "qsortIndex [" );
+    for( i = l; i <= r; ++i )
+        printf( " %d", index[i] );
+    printf( "]\n" );
+#endif
 
     if( (l + INSERT_SIZE) > r )
     {
+#ifdef DEBUG_SORT
+        printf( "insertion\n" );
+#endif
         // Insertion sorting on small series.
         for( p = l + 1; p <= r; p++ )
         {
@@ -45,6 +57,9 @@ static void qsortIndex( const QuickSortIndex* qs, uint32_t l, uint32_t r )
     {
         // Select pivot using median-of-three.
         p = (l + r) / 2;
+#ifdef DEBUG_SORT
+        printf( "median %d %d %d\n", l, p, r );
+#endif
         if( isGT( VALUE(l), VALUE(p) ) )
         {
             swap( l, p );
@@ -74,7 +89,6 @@ static void qsortIndex( const QuickSortIndex* qs, uint32_t l, uint32_t r )
                 break;
             swap( i, j );
             ++i;
-            --j;
         }
 
         // Restore pivot.
