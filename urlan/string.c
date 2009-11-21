@@ -230,27 +230,24 @@ void ur_strInit( UBuffer* buf, int enc, int size )
 /*
    Returns number of characters copied.
 */
-static int copyAsciiToUtf16( uint16_t* dest, const char* src, int len )
+static int copyAsciiToUtf16( uint16_t* dest, const char* src, int srcLen )
 {
-    const char* end = src + len;
+    const char* end = src + srcLen;
     while( src != end )
         *dest++ = *src++;
-    return len;
+    return srcLen;
 }
 
 
 /*
    Returns number of characters copied.
 */
-int copyLatin1ToUtf8( uint8_t* dest, const uint8_t* src, int len )
+int copyLatin1ToUtf8( uint8_t* dest, const uint8_t* src, int srcLen )
 {
     // TODO: Prevent overflow of dest.
-    const uint8_t* dStart;
-    const uint8_t* end;
+    const uint8_t* dStart = dest;
+    const uint8_t* end = src + srcLen;
     uint8_t c;
-
-    dStart = dest;
-    end = src + len;
 
     while( src != end )
     {
@@ -269,7 +266,59 @@ int copyLatin1ToUtf8( uint8_t* dest, const uint8_t* src, int len )
 /*
    Returns number of characters copied.
 */
-int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int len )
+int copyUtf8ToLatin1( uint8_t* dest, const uint8_t* src, int srcLen )
+{
+    const uint8_t* dStart = dest;
+    const uint8_t* end = src + srcLen;
+    uint16_t c;
+
+    while( src != end )
+    {
+        c = *src++;
+        if( c > 0x7f )
+        {
+            if( c <= 0xdf )
+            {
+                c = ((c & 0x1f) << 6) | (*src & 0x3f);
+                if( c < 256 )
+                {
+                    // The UTF-8 value is in the Latin-1 range.
+                    ++src;
+                    goto output_char;
+                }
+            }
+            c = 0xBF;   // Not a Latin1 character; emit inverted question mark.
+        }
+output_char:
+        *dest++ = c;
+    }
+    return dest - dStart;
+}
+
+
+/*
+   Returns number of characters copied.
+*/
+int copyUcs2ToLatin1( uint8_t* dest, const uint16_t* src, int srcLen )
+{
+    const uint16_t* end = src + srcLen;
+    uint16_t c;
+
+    while( src != end )
+    {
+        c = *src++;
+        if( c > 255 )
+            c = 0xBF;   // Not a Latin1 character; emit inverted question mark.
+        *dest++ = c;
+    }
+    return srcLen;
+}
+
+
+/*
+   Returns number of characters copied.
+*/
+int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int srcLen )
 {
     // TODO: Prevent overflow of dest.
     const uint8_t* dStart;
@@ -277,7 +326,7 @@ int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int len )
     uint16_t c;
 
     dStart = dest;
-    end = src + len;
+    end = src + srcLen;
 
     while( src != end )
     {
@@ -559,8 +608,10 @@ void ur_strAppend( UBuffer* str, const UBuffer* strB, UIndex itB, UIndex endB )
                 memCpy( dest, strB->ptr.c + itB, usedB );
                 str->used += usedB;
             }
+            else if( strB->form == UR_ENC_UTF8 )
+                str->used += copyUtf8ToLatin1( dest, strB->ptr.b + itB, usedB );
             else
-                assert( 0 && "ur_strAppend Latin1 case not implemented" );
+                str->used += copyUcs2ToLatin1( dest, strB->ptr.u16+itB, usedB );
         }
             break;
 
