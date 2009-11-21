@@ -548,7 +548,9 @@ static const char setupScript[] =
         message string!
     return: Throws error.
 */
-/*-hf- join a b
+/*-hf- join
+        a
+        b
     return: New series.
     Concatenate a and b.
 */
@@ -711,6 +713,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_sort,       "sort ser" );
     addCFunc( cfunc_foreach,    "foreach 'w s body /ghost" );
     addCFunc( cfunc_forall,     "forall 'w body /ghost" );
+    addCFunc( cfunc_map,        "map 'w ser body /ghost" );
     addCFunc( cfunc_existsQ,    "exists? file" );
     addCFunc( cfunc_make_dir,   "make-dir path" );
     addCFunc( cfunc_getenv,     "getenv val" );

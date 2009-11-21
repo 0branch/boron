@@ -897,7 +897,8 @@ CFUNC(cfunc_switch)
 
 
 /*-cf-
-    first  series
+    first
+        series
     return: First item in series.
 */
 CFUNC(cfunc_first)
@@ -911,7 +912,8 @@ CFUNC(cfunc_first)
 
 
 /*-cf-
-    second series
+    second
+        series
     return: Second item in series.
 */
 CFUNC(cfunc_second)
@@ -934,7 +936,8 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 
 
 /*-cf-
-    ++ 'word word!
+    ++
+        'word word!
     return: Incremented value
 
     Increments series or number bound to word.
@@ -966,7 +969,8 @@ CFUNC(cfunc_2plus)
 
 
 /*-cf-
-    -- 'word word!
+    --
+        'word word!
     return: Decremented value
 
     Decrements series or number bound to word.
@@ -998,7 +1002,8 @@ CFUNC(cfunc_2minus)
 
 
 /*-cf-
-    prev series
+    prev
+        series
     return: Previous element of series or the head.
 */
 CFUNC(cfunc_prev)
@@ -1014,7 +1019,8 @@ CFUNC(cfunc_prev)
 
 
 /*-cf-
-    next series
+    next
+        series
     return: Next element of series or the tail.
 */
 CFUNC(cfunc_next)
@@ -1030,7 +1036,8 @@ CFUNC(cfunc_next)
 
 
 /*-cf-
-    head series
+    head
+        series
     return: Start of series.
 */
 CFUNC(cfunc_head)
@@ -1045,7 +1052,8 @@ CFUNC(cfunc_head)
 
 
 /*-cf-
-    tail series
+    tail
+        series
     return: End of series.
 */
 CFUNC(cfunc_tail)
@@ -1836,6 +1844,55 @@ err:
 
 
 /*-cf-
+    map
+        'word   word!
+        series
+        body    block!
+    return: Modified series
+
+    Replace each element of series with result of body.
+    Use 'break in body to terminate mapping.
+*/
+CFUNC(cfunc_map)
+{
+    const USeriesType* dt;
+    UCell* sarg = a2;
+    UCell* body = a3;
+    UCell* cell;
+    USeriesIter si;
+
+
+    if( ! ur_is(a1, UT_WORD) )
+        return errorType( "map expected word!" );
+    if( ! ur_isSeriesType( ur_type(sarg) ) )
+        return errorType( "map expected series" );
+    if( ur_isShared( sarg->series.buf ) )
+        return errorType( "map cannot modify shared series" );
+    if( ! ur_is(body, UT_BLOCK) )
+        return errorType( "map expected block! body" );
+
+    ur_seriesSlice( ut, &si, sarg );
+    dt = SERIES_DT( ur_type(sarg) );
+
+    ur_foreach( si )
+    {
+        if( ! (cell = ur_wordCellM(ut, a1)) )
+            return UR_THROW;
+        dt->pick( ur_bufferSer(sarg), si.it, cell ); 
+        if( ! boron_doBlock( ut, body, res ) )
+        {
+            if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+                break;
+            return UR_THROW;
+        }
+        dt->poke( ur_bufferSerM(sarg), si.it, res ); 
+    }
+    *res = *sarg;
+    return UR_OK;
+}
+
+
+/*-cf-
     all
         tests block!
     return: logic!
@@ -2108,6 +2165,11 @@ CFUNC(cfunc_getenv)
         /into
             buffer  binary!/string!
     return: binary! or string! if /text is specified.
+
+    Read binary! or UTF-8 string!.
+
+    If /text or /into string! options are used then the file is read as
+    UTF-8 data and carriage returns are filtered on Windows.
 */
 CFUNC(cfunc_read)
 {
@@ -2177,7 +2239,11 @@ CFUNC(cfunc_read)
         }
         n = fread( dest->ptr.b, 1, (size_t) size, fp );
         if( n > 0 )
+        {
             dest->used = n;
+            //if( dest->type == UT_STRING )
+            //    ur_strFlatten( dest );
+        }
         fclose( fp );
     }
     return UR_OK;

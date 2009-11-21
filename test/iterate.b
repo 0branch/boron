@@ -42,3 +42,14 @@ forall a [
     ]
     print first a
 ]
+
+
+print "---- map"
+probe map x [1 2 3] [add x 2]
+probe map x {a-b-c;d-e} [
+    switch x [
+        '-' ' '
+        ';' [break]
+        x
+    ]
+]
