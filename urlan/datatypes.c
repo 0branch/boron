@@ -1863,6 +1863,26 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
                 return it - buf->ptr.b;
         }
     }
+    else if( ur_is(val, UT_BITSET) )
+    {
+        const UBuffer* bbuf = ur_bufferSer(val);
+        if( ur_strIsUcs2(buf) )
+        {
+            const uint16_t* it = buf->ptr.u16;
+            it = find_charset_uint16_t( it + si->it, it + si->end,
+                                        bbuf->ptr.b, bbuf->used );
+            if( it )
+                return it - buf->ptr.u16;
+        }
+        else
+        {
+            const uint8_t* it = buf->ptr.b;
+            it = find_charset_uint8_t( it + si->it, it + si->end,
+                                       bbuf->ptr.b, bbuf->used );
+            if( it )
+                return it - buf->ptr.b;
+        }
+    }
     return -1;
 }
 
