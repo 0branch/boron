@@ -498,6 +498,9 @@ CFUNC(cfunc_infuse)
 }
 
 
+#define DEC_MASK    ((1<<UT_DECIMAL) | (1<<UT_TIME) | (1<<UT_DATE))
+#define ur_isDecType(type)  ((1<<type) & DEC_MASK)
+
 #define MATH_FUNC(name,OP) \
  CFUNC(name) { \
     const UCell* ra = a2; \
@@ -506,18 +509,18 @@ CFUNC(cfunc_infuse)
             ur_setId(res, UT_INT); \
             ur_int(res) = ur_int(a1) OP ur_int(ra); \
             return UR_OK; \
-        } else if( ur_is(ra, UT_DECIMAL) ) { \
+        } else if( ur_isDecType(ur_type(ra)) ) { \
             ur_setId(res, UT_DECIMAL); \
             ur_decimal(res) = ur_int(a1) OP ur_decimal(ra); \
             return UR_OK; \
         } \
     } \
-    else if( ur_is(a1, UT_DECIMAL) ) { \
+    else if( ur_isDecType(ur_type(a1)) ) { \
         if( ur_is(ra, UT_INT) ) { \
             ur_setId(res, UT_DECIMAL); \
             ur_decimal(res) = ur_decimal(a1) OP ur_int(ra); \
             return UR_OK; \
-        } else if( ur_is(ra, UT_DECIMAL) ) { \
+        } else if( ur_isDecType(ur_type(ra)) ) { \
             ur_setId(res, UT_DECIMAL); \
             ur_decimal(res) = ur_decimal(a1) OP ur_decimal(ra); \
             return UR_OK; \
