@@ -4,3 +4,14 @@ five
 five
 five
 five
+---- range
+1
+2
+3
+loopB 5
+loopB 6
+loopB 7
+-18
+-13
+-8
+-3

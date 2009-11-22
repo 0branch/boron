@@ -819,30 +819,88 @@ CFUNC(cfunc_while)
 
 /*-cf-
     loop
-        n       int!
+        range   int!/block!
         body    block!
     return: Result of body.
+
+    Use 'break to terminate loop.
 */
 CFUNC(cfunc_loop)
 {
     UCell* body = a2;
-    int n;
 
-    if( ! ur_is(a1, UT_INT) )
-        return ur_error( ut, UR_ERR_TYPE, "loop expected int! count" );
     if( ! ur_is(body, UT_BLOCK) )
-        return ur_error( ut, UR_ERR_TYPE, "loop expected block! body" );
+        return errorType( "loop expected block! body" );
 
-    for( n = ur_int(a1); n > 0; --n )
+    if( ur_is(a1, UT_INT) )
     {
-        if( ! boron_doBlock( ut, body, res ) )
+        int n;
+        for( n = ur_int(a1); n > 0; --n )
         {
-            if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
-                break;
-            return UR_THROW;
+            if( ! boron_doBlock( ut, body, res ) )
+            {
+                if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+                    break;
+                return UR_THROW;
+            }
         }
+        return UR_OK;
     }
-    return UR_OK;
+    else if( ur_is(a1, UT_BLOCK) )
+    {
+        const UCell* cword = 0;
+        int32_t n[3];   // First, last, & increment.
+
+        n[0] = 1;
+        n[1] = 0;
+        n[2] = 1;
+
+        {
+        UBlockIter bi;
+        int state = 0;
+
+        ur_blkSlice( ut, &bi, a1 );
+        ur_foreach( bi )
+        {
+            if( ur_is(bi.it, UT_WORD ) )
+            {
+                cword = bi.it;
+            }
+            else if( ur_is(bi.it, UT_INT ) )
+            {
+                if( state < 3 )
+                    n[ state++ ] = ur_int(bi.it);
+            }
+            else
+                errorType( "loop range values must be word!/int!" );
+        }
+        if( state == 1 )
+        {
+            n[1] = n[0];
+            n[0] = 1;
+        }
+        }
+
+        for( ; n[0] <= n[1]; n[0] += n[2] )
+        {
+            if( cword )
+            {
+                UCell* counter = ur_wordCellM( ut, cword );
+                if( ! counter )
+                    return UR_THROW;
+                ur_setId(counter, UT_INT);
+                ur_int(counter) = n[0];
+            }
+            if( ! boron_doBlock( ut, body, res ) )
+            {
+                if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+                    break;
+                return UR_THROW;
+            }
+        }
+        return UR_OK;
+    }
+    return errorType( "loop expected int!/block! range" );
 }
 
 
