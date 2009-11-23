@@ -62,7 +62,7 @@
 #include "mem_util.h"
 
 
-#define GC_HOLD_TEST  1
+//#define GC_HOLD_TEST  1
 
 #define LOCK_GLOBAL     mutexLock( env->mutex );
 #define UNLOCK_GLOBAL   mutexUnlock( env->mutex );
@@ -553,10 +553,34 @@ void ur_genBuffers( UThread* ut, int count, UIndex* index )
         ur_recycle( ut );
         if( ut->freeBufCount < count )
         {
-            ur_arrReserve( store, store->used + count );
-            for( i = 0; i < count; ++i )
-                index[i] = store->used + i;
-            store->used += count;
+#define GEN_FREE    64
+#ifdef GEN_FREE
+            int newCount = count + GEN_FREE;
+#else
+#define newCount    count
+#endif
+            int id;
+            int end;
+
+            ur_arrReserve( store, store->used + newCount );
+            id = store->used;
+            end = id + count;
+            while( id < end )
+                *index++ = id++;
+#ifdef GEN_FREE
+            next = store->ptr.buf + id;
+            ut->freeBufCount += GEN_FREE;
+            end += GEN_FREE;
+            while( id < end )
+            {
+                next->type  = UT_UNSET;
+                next->used  = ut->freeBufList;
+                next->ptr.v = 0;
+                ++next;
+                ut->freeBufList = id++;
+            }
+#endif
+            store->used += newCount;
             return;
         }
     }

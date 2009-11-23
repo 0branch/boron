@@ -47,7 +47,7 @@ __inline__ uint64_t rdtsc()
 #ifdef GC_REPORT
 void ur_gcReport( UBuffer* store, UThread* ut )
 {
-    static const char datatypeChar[] = "-!nlcidDty.,w'::b0sv[(/|<CeFf~~~~~~~";
+    static const char datatypeChar[] = ".!nlcidDty+3w'::ob0s%v[(/|<CeFf~~~~~~";
     int used = 0;
     int unused = 0;
     UBuffer* it  = store->ptr.buf;
