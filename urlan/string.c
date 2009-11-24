@@ -290,7 +290,7 @@ int copyUtf8ToLatin1( uint8_t* dest, const uint8_t* src, int srcLen )
             c = 0xBF;   // Not a Latin1 character; emit inverted question mark.
         }
 output_char:
-        *dest++ = c;
+        *dest++ = (uint8_t) c;
     }
     return dest - dStart;
 }
@@ -309,7 +309,7 @@ int copyUcs2ToLatin1( uint8_t* dest, const uint16_t* src, int srcLen )
         c = *src++;
         if( c > 255 )
             c = 0xBF;   // Not a Latin1 character; emit inverted question mark.
-        *dest++ = c;
+        *dest++ = (uint8_t) c;
     }
     return srcLen;
 }
