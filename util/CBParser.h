@@ -7,7 +7,8 @@ typedef struct
     const UCell* values;
 
     // Private
-    const UBuffer* _rules;
+    const UCell* _rules;
+    const UCell* _rulesEnd;
     const UCell* _inputPos;
     const UCell* _inputEnd;
 }
@@ -18,9 +19,9 @@ CBParser;
 extern "C" {
 #endif
 
-extern void   cbp_beginParse( CBParser*, const UCell*, const UCell*,
-                              const UBuffer* ruleSet );
-extern UIndex cbp_beginParseStr( CBParser*, UThread*, UBuffer* input,
+extern void   cbp_beginParse( UThread*, CBParser*, const UCell*, const UCell*,
+                              UIndex ruleBlkN );
+extern UIndex cbp_beginParseStr( UThread*, CBParser*, UBuffer* input,
                                  const char* rules, int rulesLen );
 extern int    cbp_matchRule( CBParser* );
 

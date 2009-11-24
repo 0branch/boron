@@ -23,12 +23,21 @@
   Note that the order of rules is important.  Earlier rules will match before
   later ones.
 */
-void cbp_beginParse( CBParser* cbp, const UCell* it, const UCell* end,
-                     const UBuffer* ruleSet )
+void cbp_beginParse( UThread* ut, CBParser* cbp,
+                     const UCell* it, const UCell* end, UIndex ruleBlkN )
 {
+    const UBuffer* buf = ur_bufferE( ruleBlkN );
+
+    if( buf->used )
+    {
+        cbp->_rules    = buf->ptr.cell;
+        cbp->_rulesEnd = buf->ptr.cell + buf->used;
+    }
+    else
+        cbp->_rules = cbp->_rulesEnd = 0;
+
     cbp->_inputPos = it;
     cbp->_inputEnd = end;
-    cbp->_rules    = ruleSet;
 }
 
 
@@ -36,14 +45,14 @@ void cbp_beginParse( CBParser* cbp, const UCell* it, const UCell* end,
   Initialize CBParser given an input block and a set of rules in a C string.
   Returns index of rule block.
 */
-UIndex cbp_beginParseStr( CBParser* cbp, UThread* ut, UBuffer* input,
+UIndex cbp_beginParseStr( UThread* ut, CBParser* cbp, UBuffer* input,
                           const char* rules, int rulesLen )
 {
     UCell tmp;
     UIndex ruleN = ur_tokenize( ut, rules, rules + rulesLen, &tmp );
     assert( ruleN );
-    cbp_beginParse( cbp, input->ptr.cell, input->ptr.cell + input->used,
-                    ur_buffer( ruleN ) );
+    cbp_beginParse( ut, cbp, input->ptr.cell, input->ptr.cell + input->used,
+                    ruleN );
     return ruleN;
 }
 
@@ -55,7 +64,6 @@ UIndex cbp_beginParseStr( CBParser* cbp, UThread* ut, UBuffer* input,
 */
 int cbp_matchRule( CBParser* cbp )
 {
-    const UBuffer* rules;
     const UCell* rit;
     const UCell* rend;
     const UCell* sit  = cbp->_inputPos;
@@ -70,12 +78,11 @@ int cbp_matchRule( CBParser* cbp )
 
     cbp->values = sit;
 
-    rules = cbp->_rules;
-    if( ! rules || (rules->used < 1) )
+    if( ! cbp->_rules )
         return -1;
 
-    rit  = rules->ptr.cell;
-    rend = rit + rules->used;
+    rit  = cbp->_rules;
+    rend = cbp->_rulesEnd;
 
 next:
 
@@ -127,12 +134,8 @@ value_matched:
     ++rit;
     ++sit;
     if( rit == rend )
-    {
-        if( sit == send )
-            goto rule_matched;
-        goto fail;
-    }
-    else if( sit == send )
+        goto rule_matched;
+    if( sit == send )
     {
         if( ur_is(rit, UT_WORD) && (ur_atom(rit) == UR_ATOM_BAR) )
             goto rule_matched;

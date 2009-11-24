@@ -445,7 +445,7 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
 
     ur_blkSlice( ut, &bi, blkC );
 
-    cbp_beginParse( &cbp, bi.it, bi.end, ur_bufferE( qEnv.layoutRules ) );
+    cbp_beginParse( ut, &cbp, bi.it, bi.end, qEnv.layoutRules );
     while( (match = cbp_matchRule( &cbp )) > -1 )
     {
         switch( match )
