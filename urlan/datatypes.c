@@ -2033,16 +2033,17 @@ int block_make( UThread* ut, const UCell* from, UCell* res )
     }
     else if( ur_is(from, UT_STRING) )
     {
-        const UBuffer* str = ur_bufferSer(from);
-        if( ! str->used )
+        USeriesIter si;
+        ur_seriesSlice( ut, &si, from );
+        if( si.it == si.end )
         {
             ur_makeBlockCell( ut, UT_BLOCK, 0, res );
             return UR_OK;
         }
-
-        if( (str->elemSize == 1) )
+        else if( (si.buf->elemSize == 1) )
         {
-            if( ur_tokenize( ut, str->ptr.c, str->ptr.c + str->used, res ) )
+            if( ur_tokenize( ut, si.buf->ptr.c + si.it,
+                                 si.buf->ptr.c + si.end, res ) )
                 return UR_OK;
         }
         else
