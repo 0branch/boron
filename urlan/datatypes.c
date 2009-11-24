@@ -2606,7 +2606,7 @@ int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
 }
 
 
-void context_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
+void context_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     UAtom* atoms;
     UAtom* ait;
@@ -2618,8 +2618,6 @@ void context_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     atoms = ait = (UAtom*) memAlloc( sizeof(UAtom) * buf->used );
     ur_ctxWordAtoms( buf, atoms );
 
-    ur_strAppendCStr( str, "context [\n" );
-    ++depth;
     while( it != end )
     {
         ur_strAppendIndent( str, depth );
@@ -2629,11 +2627,17 @@ void context_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
         ur_strAppendChar( str, '\n' );
         ++it;
     }
-    --depth;
-    ur_strAppendIndent( str, depth );
-    ur_strAppendCStr( str, "]" );
 
     memFree( atoms );
+}
+
+
+void context_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
+{
+    ur_strAppendCStr( str, "context [\n" );
+    context_toText( ut, cell, str, depth + 1 );
+    ur_strAppendIndent( str, depth );
+    ur_strAppendCStr( str, "]" );
 }
 
 
@@ -2647,7 +2651,7 @@ UDatatype dt_context =
 {
     "context!",
     context_make,           context_copy,       unset_compare,
-    context_select,         context_toString,   context_toString,
+    context_select,         context_toString,   context_toText,
     unset_recycle,          block_mark,         context_destroy,
     context_markBuf,        block_toShared,     unset_bind
 };

@@ -2343,15 +2343,26 @@ CFUNC(cfunc_read)
 /*-cf-
     write
         file    file!/string!
-        data    binary!/string!
+        data    binary!/string!/context!
         /append
-    return: True or error thrown.
+    return: unset!
 */
 CFUNC(cfunc_write)
 {
 #define OPT_WRITE_APPEND    0x01
-    if( ur_isStringType( ur_type(a1) ) &&
-        (ur_is(a2, UT_BINARY) || ur_is(a2, UT_STRING)) )
+    const UCell* data = a2;
+
+    if( ! ur_isStringType( ur_type(a1) ) )
+        return errorType( "write expected file!/string! filename" );
+
+    if( ur_is(data, UT_CONTEXT) )
+    {
+        UBuffer* str = ur_makeStringCell( ut, UR_ENC_UTF8, 0, res );
+        ut->types[ UT_CONTEXT ]->toText( ut, data, str, 0 );
+        data = res;
+    }
+
+    if( ur_is(data, UT_BINARY) || ur_is(data, UT_STRING) )
     {
         FILE* fp;
         const char* filename;
@@ -2362,10 +2373,10 @@ CFUNC(cfunc_write)
 
         filename = boron_cstr( ut, a1, 0 );
 
-        ur_seriesSlice( ut, &si, a2 );
+        ur_seriesSlice( ut, &si, data );
         size = si.end - si.it;
 
-        if( ur_is(a2, UT_STRING) )
+        if( ur_is(data, UT_STRING) )
         {
             if( ur_strIsUcs2(si.buf) )
             {
@@ -2374,7 +2385,7 @@ CFUNC(cfunc_write)
                 UIndex nn = ur_makeString( ut, UR_ENC_UTF8, 0 );
                 // si.buf is invalid after make.
                 si.buf = ur_buffer(nn);
-                ur_strAppend( (UBuffer*) si.buf, ur_bufferSer(a2),
+                ur_strAppend( (UBuffer*) si.buf, ur_bufferSer(data),
                               si.it, si.end );
                 si.it = 0;
                 size = si.buf->used;
@@ -2396,11 +2407,11 @@ CFUNC(cfunc_write)
         n = fwrite( si.buf->ptr.b + si.it, 1, size, fp );
         fclose( fp );
 
-        ur_setId(res, UT_LOGIC);
-        ur_int(res) = 1;
+        ur_setId(res, UT_UNSET);
         return UR_OK;
     }
-    return ur_error( ut, UR_ERR_TYPE, "write expected file!/string! filename" );
+    else
+        return errorType( "write expected binary!/string!/context! data" );
 }
 
 
