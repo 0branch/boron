@@ -245,6 +245,18 @@ static QString qstring( const UCell* cell )
 }
 
 
+static int getString( UThread* ut, const UCell* cell, QString& str )
+{
+    if( ur_is(cell, UT_GETWORD) )
+    {
+        if( ! (cell = ur_wordCell( ut, cell )) )
+            return UR_THROW;
+    }
+    cellToQString( cell, str );
+    return UR_OK;
+}
+
+
 static void toUString( const QString& text, UCell* res )
 {
     int len = text.size();
@@ -374,10 +386,9 @@ static char layoutRules[] =
   "| 'label word!\n"
   "| 'button string! block!\n"
   "| 'checkbox string!\n"
-  "| 'combo string!\n"
-  "| 'combo block!\n"
+  "| 'combo get-word!/string!/block!\n"
   "| 'tip string!\n"
-  "| 'title string!\n"
+  "| 'title get-word!/string!\n"
   "| 'resize coord!\n"
   "| 'line-edit string!\n"
   "| 'line-edit\n"
@@ -405,8 +416,7 @@ enum LayoutRules
     LD_LABEL_WORD,
     LD_BUTTON,
     LD_CHECKBOX,
-    LD_COMBO_STR,
-    LD_COMBO_BLK,
+    LD_COMBO,
     LD_TIP,
     LD_TITLE,
     LD_RESIZE,
@@ -526,8 +536,7 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
             }
                 break;
 
-            case LD_COMBO_STR:
-            case LD_COMBO_BLK:
+            case LD_COMBO:
             {
                 if( ! parent.layout() )
                     goto no_layout;
@@ -538,6 +547,13 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                 wid = pw;
 
                 val = cbp.values + 1;
+
+                if( ur_is(val, UT_GETWORD) )
+                {
+                    if( ! (val = ur_wordCell( ut, val )) )
+                        return 0;
+                }
+
                 if( ur_is(val, UT_BLOCK) )
                 {
                     UBlockIter bi2;
@@ -576,20 +592,21 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                 break;
 
             case LD_TITLE:
-            {
                 if( qEnv.curWidget )
-                    qEnv.curWidget->setWindowTitle( qstring(cbp.values + 1) );
-            }
+                {
+                    QString str;
+                    if( ! getString( ut, cbp.values + 1, str ) )
+                        return 0;
+                    qEnv.curWidget->setWindowTitle( str );
+                }
                 break;
 
             case LD_RESIZE:
-            {
                 if( qEnv.curWidget )
                 {
                     val = cbp.values + 1;
                     qEnv.curWidget->resize( val->coord.n[0], val->coord.n[1] );
                 }
-            }
                 break;
 
             case LD_LINE_EDIT_STR:
@@ -621,15 +638,9 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
 
                 if( match == LD_TEXT_EDIT_STR )
                 {
-                    const UCell* strC = cbp.values + 1;
-                    if( ur_is(strC, UT_GETWORD) )
-                    {
-                        strC = ur_wordCell( ut, strC  );
-                        if( ! strC )
-                            return 0;
-                    }
                     QString str;
-                    cellToQString( strC, str );
+                    if( ! getString( ut, cbp.values + 1, str ) )
+                        return 0;
                     if( str[0] == '<' )
                         pw->setHtml( str );
                     else
