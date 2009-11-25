@@ -85,10 +85,9 @@ UR_CALL_PUB( uc_whatDir )
         ur_throwErr( UR_ERR_ACCESS, strerror(errno) );
     }
 }
-#endif
 
 
-/**
+/*
   Returns -1 if not present.
 */
 int64_t ur_fileSize( const char* path )
@@ -126,22 +125,9 @@ int64_t ur_fileSize( const char* path )
     //return lsize.LowPart;
     return lsize.QuadPart;
 }
+#endif
 
 
-/**
-  Returns 1 if directory, 0 if file or -1 if error.
-*/
-int ur_isDir( const char* path )
-{
-    DWORD attr;
-    attr = GetFileAttributes( path );
-    if( attr == INVALID_FILE_ATTRIBUTES )
-        return -1;
-    return (attr & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
-}
-
-
-#if 0
 /*
     SYSTEMTIME stUTC, stLocal;
     FileTimeToSystemTime(&time, &stUTC);
@@ -168,6 +154,7 @@ static double ft_to_seconds( const FILETIME* ft )
 }
 
 
+#if 0
 /**
   Returns 0 if result set to file modification time or -1 if error.
 */
@@ -192,59 +179,58 @@ int ur_fileModified( const char* path, UCell* res )
     ur_seconds(res) = ft_to_seconds( &time );
     return 0;
 }
+#endif
 
 
 /*
-  (filename -- status)
-
-  Result is block of [type-word byte-size modified-time]
+  Returns zero if error.
 */
-UR_CALL_PUB( uc_file_info )
+int ur_fileInfo( const char* path, OSFileInfo* info, int mask )
 {
-    UCell* cell;
-    UBlock* blk;
-    UString* str;
-    UIndex blkN;
-    UAtom atom;
+    WIN32_FIND_DATA data;
+    HANDLE fh;
 
-    if( ur_is(tos, UT_STRING) )
+    fh = FindFirstFile( path, &data );
+    if( fh == INVALID_HANDLE_VALUE )
+        return 0;
+    FindClose( fh );
+
+    if( mask & FI_Size )
     {
-        WIN32_FIND_DATA info;
-        HANDLE fh;
-
-        str = ur_bin( tos );
-        ur_termCStr( str );
-
-        fh = FindFirstFile( str->ptr.c + tos->series.it, &info );
-        if( fh == INVALID_HANDLE_VALUE )
-        {
-            ur_throwErr( UR_ERR_ACCESS, "FindFirstFile" );
-            return;
-        }
-        FindClose( fh );
-
-        blkN = ur_makeBlock( 3 );
-        blk = ur_blockPtr( blkN );
-
-        cell = ur_appendCell(blk, UT_WORD);
-        if( info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-            atom = ur_intern( "dir", 3 );
-        else
-            atom = ur_intern( "file", 4 );
-        ur_setUnbound(cell, atom);
-
-        cell = ur_appendCell(blk, UT_INT);
-        ur_int(cell) = info.nFileSizeLow;
-        // info.nFileSizeHigh;
-
-        cell = ur_appendCell(blk, UT_TIME);
-        ur_seconds(cell) = ft_to_seconds( &info.ftLastWriteTime );
-
-        ur_initType(tos, UT_BLOCK);
-        ur_setSeries(tos, blkN, 0 );
+        info->size = data.nFileSizeLow;
+        if( data.nFileSizeHigh )
+            info->size += data.nFileSizeHigh * (((int64_t) MAXDWORD)+1);
     }
+
+    if( mask & FI_Time )
+    {
+        info->accessed = ft_to_seconds( &data.ftLastAccessTime );
+        info->modified = ft_to_seconds( &data.ftLastWriteTime );
+    }
+
+    if( mask & FI_Type )
+    {
+        if( data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+            info->type = FI_Dir;
+        else
+            info->type = FI_File;
+    }
+
+    return 1;
 }
-#endif
+
+
+/*
+  Returns 1 if directory, 0 if file or -1 if error.
+*/
+static int _isDir( const char* path )
+{
+    DWORD attr;
+    attr = GetFileAttributes( path );
+    if( attr == INVALID_FILE_ATTRIBUTES )
+        return -1;
+    return (attr & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
+}
 
 
 /*
@@ -256,7 +242,7 @@ int ur_makeDir( UThread* ut, const char* path )
     {
         DWORD err;
         err = GetLastError();
-        if( (err != ERROR_FILE_EXISTS) || (ur_isDir(path) != 1) )
+        if( (err != ERROR_FILE_EXISTS) || (_isDir(path) != 1) )
         {
             ur_error( ut, UR_ERR_ACCESS, "CreateDirectory error (%d)", err );
             return UR_THROW;
@@ -274,8 +260,7 @@ double ur_now()
 }
 
 
-#if 0
-void ur_readDir( UThread* ut, const char* filename, UCell* res )
+int ur_readDir( UThread* ut, const char* filename, UCell* res )
 {
     char filespec[ _MAX_PATH ];
     struct _finddata_t fileinfo;
@@ -294,9 +279,10 @@ void ur_readDir( UThread* ut, const char* filename, UCell* res )
         UCell* cell;
         UIndex blkN;
         UIndex hold;
+        UIndex strN;
            
-        blkN = ur_makeBlock( 0 );
-        hold = ur_holdBlock( blkN );
+        blkN = ur_makeBlock( ut, 0 );
+        hold = ur_hold( blkN );
 
         do
         {
@@ -304,9 +290,9 @@ void ur_readDir( UThread* ut, const char* filename, UCell* res )
             if( cp[0] == '.' && (cp[1] == '.' || cp[1] == '\0') )
                 continue;
 
-            // Mark cell as unset in case GC is called by ur_makeString.
-            cell = ur_appendCell( ur_blockPtr( blkN ), UT_UNSET );
-            ur_makeString( cell, fileinfo.name, -1 );
+            strN = ur_makeStringUtf8( ut, cp, cp + strlen(cp) );
+            cell = ur_blkAppendNew( ur_buffer(blkN), UT_FILE );
+            ur_setSeries( cell, strN, 0 );
         }
         while( _findnext( handle, &fileinfo ) != -1 );
 
@@ -314,16 +300,19 @@ void ur_readDir( UThread* ut, const char* filename, UCell* res )
 
         ur_release( hold );
 
-        ur_initType(res, UT_BLOCK);
+        ur_setId(res, UT_BLOCK);
         ur_setSeries(res, blkN, 0);
     }
     else
     {
-        ur_setFalse(res);
+        ur_setId(res, UT_LOGIC);
+        ur_int(res) = 0;
     }
+    return UR_OK;
 }
 
 
+#if 0
 #ifdef UR_CONFIG_OS_RUN
 #if 0
 static void _callOutput( UThread* ut, UCell* tos )

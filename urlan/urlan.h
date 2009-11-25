@@ -433,7 +433,6 @@ int      ur_isTrue( const UCell* cell );
 int      ur_same( UThread*, const UCell* a, const UCell* b );
 int      ur_equal( UThread*, const UCell* a, const UCell* b );
 int      ur_compare( UThread*, const UCell* a, const UCell* b );
-double   ur_now();
 
 void     ur_makeDatatype( UCell* cell, int type );
 int      ur_isDatatype( const UCell* cell, const UCell* datatype );

@@ -344,6 +344,31 @@ const char* boron_cstr( UThread* ut, const UCell* strC, UBuffer* bin )
 }
 
 
+/**
+  Make null terminated UTF-8 string in binary buffer.
+  Any trailing slash or backslash is removed.
+
+  \param strC       Valid UT_STRING or UT_FILE cell.
+  \param bin        Binary buffer to use.  If zero, then the temporary
+                    thread binary will be used.
+
+  \return Pointer to C string in bin.
+*/
+const char* boron_cpath( UThread* ut, const UCell* strC, UBuffer* bin )
+{
+    if( ! bin )
+        bin = ur_buffer( BT->tempN );
+    boron_cstr( ut, strC, bin );
+    if( bin->used )
+    {
+        int ch = bin->ptr.b[ bin->used - 1 ];
+        if( ch == '/' || ch == '\\' )
+            bin->ptr.c[ --bin->used ] = '\0';
+    }
+    return bin->ptr.c;
+}
+
+
 #if 0
 /*
   \param src        Valid UT_STRING cell.

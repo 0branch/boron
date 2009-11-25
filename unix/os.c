@@ -94,109 +94,54 @@ UR_CALL_PUB( uc_whatDir )
 #endif
 
 
-/**
-  Returns -1 if not present.
+/*
+  Returns zero if error.
 */
-long long ur_fileSize( const char* path )
+int ur_fileInfo( const char* path, OSFileInfo* info, int mask )
 {
     struct stat buf;
     if( stat( path, &buf ) == -1 )
-        return -1;
-    return buf.st_size;
+        return 0;
+
+    if( mask & FI_Size )
+        info->size = buf.st_size;
+
+    if( mask & FI_Time )
+    {
+        info->accessed = (double) buf.st_atime;
+        info->modified = (double) buf.st_mtime;
+    }
+
+    if( mask & FI_Type )
+    {
+        if( S_ISREG(buf.st_mode) )
+            info->type = FI_File;
+        else if( S_ISDIR(buf.st_mode) )
+            info->type = FI_Dir;
+        else if( S_ISLNK(buf.st_mode) )
+            info->type = FI_Link;
+#ifdef S_ISSOCK
+        else if( S_ISSOCK(buf.st_mode) )
+            info->type = FI_Socket;
+#endif
+        else
+            info->type = FI_Other;
+    }
+
+    return 1;
 }
 
 
-/**
+/*
   Returns 1 if directory, 0 if file or -1 if error.
 */
-int ur_isDir( const char* path )
+static int _isDir( const char* path )
 {
     struct stat buf;
     if( stat( path, &buf ) == -1 )
         return -1;
     return S_ISDIR(buf.st_mode) ? 1 : 0;
 }
-
-
-#if 0
-/**
-  Returns 0 if result set to file modification time or -1 if error.
-*/
-int ur_fileModified( const char* path, UCell* res )
-{
-    struct stat buf;
-    if( stat( path, &buf ) == -1 )
-        return -1;
-
-    ur_initType( res, UT_TIME );
-    ur_seconds(res) = (double) buf.st_mtime;
-    return 0;
-}
-
-
-/*
-  (filename -- status)
-
-  Result is block of [type-word byte-size modified-time]
-*/
-UR_CALL_PUB( uc_file_info )
-{
-    struct stat buf;
-    UCell* cell;
-    UBlock* blk;
-    UString* str;
-    UIndex blkN;
-    UAtom atom;
-
-    if( ur_is(tos, UT_STRING) )
-    {
-        str = ur_bin( tos );
-        ur_termCStr( str );
-
-        if( stat( str->ptr.c + tos->series.it, &buf ) == -1 )
-        {
-            ur_throwErr( UR_ERR_ACCESS, strerror(errno) );
-            return;
-        }
-
-        blkN = ur_makeBlock( 3 );
-        blk = ur_blockPtr( blkN );
-
-        // Should put filename as first cell?
-
-        cell = ur_appendCell(blk, UT_WORD);
-        if( S_ISREG(buf.st_mode) )
-            atom = ur_intern( "file", 4 );
-        else if( S_ISDIR(buf.st_mode) )
-            atom = ur_intern( "dir", 3 );
-        else if( S_ISLNK(buf.st_mode) )
-            atom = ur_intern( "link", 4 );
-#ifdef S_ISSOCK
-        else if( S_ISSOCK(buf.st_mode) )
-            atom = ur_intern( "socket", 6 );
-#endif
-        else
-            atom = ur_intern( "other", 5 );
-        ur_setUnbound(cell, atom);
-
-        cell = ur_appendCell(blk, UT_INT);
-        ur_int(cell) = buf.st_size;
-
-        cell = ur_appendCell(blk, UT_TIME);
-        ur_seconds(cell) = (double) buf.st_mtime;
-
-
-        ur_initType(tos, UT_BLOCK);
-        ur_setSeries(tos, blkN, 0 );
-    }
-    /*
-    else if( ur_is(tos, UT_PORT) )
-    {
-        if( fstat( path, &buf ) == -1 )
-    }
-    */
-}
-#endif
 
 
 /*
@@ -207,7 +152,7 @@ int ur_makeDir( UThread* ut, const char* path )
     int err = mkdir( path, 0755 );
     if( err )
     {
-        if( (errno != EEXIST) || (ur_isDir(path) != 1) )
+        if( (errno != EEXIST) || (_isDir(path) != 1) )
         {
             ur_error( ut, UR_ERR_ACCESS, strerror/*_r*/(errno) );
             return UR_THROW;
@@ -225,11 +170,11 @@ double ur_now()
 }
 
 
-#if 0
-/**
-  Sets result.
+/*
+  Sets result to block of files or false.
+  Returns UR_OK.
 */
-void ur_readDir( UThread* ut, const char* filename, UCell* res )
+int ur_readDir( UThread* ut, const char* filename, UCell* res )
 {
     DIR* dir;
     struct dirent* entry;
@@ -240,9 +185,10 @@ void ur_readDir( UThread* ut, const char* filename, UCell* res )
         UCell* cell;
         UIndex blkN;
         UIndex hold;
+        UIndex strN;
 
-        blkN = ur_makeBlock( 0 );
-        hold = ur_holdBlock( blkN );
+        blkN = ur_makeBlock( ut, 0 );
+        hold = ur_hold( blkN );
 
         while( (entry = readdir( dir )) )
         {
@@ -250,25 +196,29 @@ void ur_readDir( UThread* ut, const char* filename, UCell* res )
             if( cp[0] == '.' && (cp[1] == '.' || cp[1] == '\0') )
                 continue;
 
-            // Mark cell as unset in case GC is called by ur_makeString.
-            cell = ur_appendCell( ur_blockPtr( blkN ), UT_UNSET );
-            ur_makeString( cell, cp, -1 );
+            strN = ur_makeStringUtf8( ut, (const uint8_t*) cp,
+                                          (const uint8_t*) cp + strlen(cp) );
+            cell = ur_blkAppendNew( ur_buffer(blkN), UT_FILE );
+            ur_setSeries( cell, strN, 0 );
         }
 
         closedir( dir );
 
         ur_release( hold );
 
-        ur_initType(res, UT_BLOCK);
+        ur_setId(res, UT_BLOCK);
         ur_setSeries(res, blkN, 0);
     }
     else
     {
-        ur_setFalse(res);
+        ur_setId(res, UT_LOGIC);
+        ur_int(res) = 0;
     }
+    return UR_OK;
 }
 
 
+#if 0
 #ifdef UR_CONFIG_OS_RUN
 static void argumentList( UString* str, int si, char** argv, int maxArg )
 {

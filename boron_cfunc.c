@@ -2177,8 +2177,6 @@ CFUNC(cfunc_to_text)
 }
 
 
-extern int ur_isDir( const char* );
-
 /*-cf-
     exists?
         file file!/string!
@@ -2188,8 +2186,11 @@ CFUNC(cfunc_existsQ)
 {
     if( ur_isStringType( ur_type(a1) ) )
     {
+        OSFileInfo info;
+        int ok = ur_fileInfo( boron_cpath(ut, a1, 0), &info, FI_Type );
+
         ur_setId(res, UT_LOGIC);
-        ur_int(res) = (ur_isDir( boron_cstr(ut, a1, 0) ) > -1) ? 1 : 0;
+        ur_int(res) = ok ? 1 : 0;
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "exists? expected file!/string!" );
@@ -2207,7 +2208,7 @@ CFUNC(cfunc_make_dir)
 {
     if( ur_isStringType( ur_type(a1) ) )
     {
-        if( ! ur_makeDir( ut, boron_cstr(ut, a1, 0) ) )
+        if( ! ur_makeDir( ut, boron_cpath(ut, a1, 0) ) )
             return UR_THROW;
         ur_setId(res, UT_UNSET);
         return UR_OK;
@@ -2248,18 +2249,22 @@ CFUNC(cfunc_getenv)
 }
 
 
+extern int ur_readDir( UThread*, const char* filename, UCell* res );
+
 /*-cf-
     read
         file    file!/string!
         /text
         /into
             buffer  binary!/string!
-    return: binary! or string! if /text is specified.
+    return: binary!/string!/block!
 
     Read binary! or UTF-8 string!.
 
     If /text or /into string! options are used then the file is read as
     UTF-8 data and carriage returns are filtered on Windows.
+
+    If file is a directory, then a block containing filenames is returned.
 */
 CFUNC(cfunc_read)
 {
@@ -2268,17 +2273,19 @@ CFUNC(cfunc_read)
     UBuffer* dest;
     const char* filename;
     const char* mode;
-    int64_t size;
+    OSFileInfo info;
     uint32_t opt = CFUNC_OPTIONS;
 
     if( ! ur_isStringType( ur_type(a1) ) )
         return errorType( "read expected file!/string!" );
-    filename = boron_cstr( ut, a1, 0 );
+    filename = boron_cpath( ut, a1, 0 );
 
-    size = ur_fileSize( filename );
-    if( size < 0 )
+    if( ! ur_fileInfo( filename, &info, FI_Size | FI_Type ) )
         return ur_error( ut, UR_ERR_ACCESS,
                          "could not access file %s", filename );
+
+    if( info.type == FI_Dir )
+        return ur_readDir( ut, filename, res );
 
     if( opt & OPT_READ_INTO )
     {
@@ -2290,9 +2297,9 @@ CFUNC(cfunc_read)
                 return UR_THROW;
 
             if( dest->type == UT_STRING )
-                ur_arrReserve( dest, (int) size );
+                ur_arrReserve( dest, (int) info.size );
             else
-                ur_binReserve( dest, (int) size );
+                ur_binReserve( dest, (int) info.size );
 
             if( ur_is(bufArg, UT_STRING) || (opt & OPT_READ_TEXT) )
                 mode = "r";     // Read as text to filter carriage ret.
@@ -2308,15 +2315,15 @@ CFUNC(cfunc_read)
     else if( opt & OPT_READ_TEXT )
     {
         mode = "r";
-        dest = ur_makeStringCell( ut, UR_ENC_UTF8, (int) size, res );
+        dest = ur_makeStringCell( ut, UR_ENC_UTF8, (int) info.size, res );
     }
     else
     {
         mode = "rb";
-        dest = ur_makeBinaryCell( ut, (int) size, res );
+        dest = ur_makeBinaryCell( ut, (int) info.size, res );
     }
 
-    if( size > 0 )
+    if( info.size > 0 )
     {
         FILE* fp;
         size_t n;
@@ -2327,7 +2334,7 @@ CFUNC(cfunc_read)
             return ur_error( ut, UR_ERR_ACCESS,
                              "could not open file %s", filename );
         }
-        n = fread( dest->ptr.b, 1, (size_t) size, fp );
+        n = fread( dest->ptr.b, 1, (size_t) info.size, fp );
         if( n > 0 )
         {
             dest->used = n;
@@ -2461,10 +2468,14 @@ CFUNC(cfunc_rename)
 
 #ifdef _WIN32
         // We want Unix rename overwrite behavior.
-        if( ur_isDir( cp2 ) == 0 )
+        {
+        OSFileInfo info;
+        ok = ur_fileInfo( cp2, &info, FI_Type );
+        if( ok && (info.type == FI_File) )
         {
             if( remove( cp2 ) == -1 )
                 return ur_error( ut, UR_ERR_ACCESS, strerror(errno) );
+        }
         }
 #endif
         ok = rename( cp1, cp2 );

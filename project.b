@@ -1,5 +1,7 @@
 project "boron"
 
+compress: true
+
 default [
     warn
     debug
@@ -11,14 +13,12 @@ default [
     macx [
         cflags {-std=c99}
         cflags {-pedantic}
-        include_from %unix
         universal
     ]
     unix [
         cflags {-std=c99}
         ;cflags {-std=gnu99}    ; Try this if c99 fails.
         cflags {-pedantic}
-        include_from %unix
     ]
     win32 [
         include_from %win32
@@ -27,7 +27,10 @@ default [
 
 shlib %boron [
     
-    cflags {-DCONFIG_COMPRESS}
+    if compress [
+        cflags {-DCONFIG_COMPRESS}
+        win32 [libs %libbz2]
+    ]
     ;cflags {-DTRACK_MALLOC} sources [%urlan/memtrack.c]
 
     win32 [lflags "/def:win32\boron.def"]

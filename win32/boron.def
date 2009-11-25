@@ -10,8 +10,10 @@ EXPORTS
     boron_reset             @8
     boron_throwWord         @9
     boron_cstr              @10
+    boron_cpath             @11
 
-    str_copy                @11
+    str_copy                @12
+    ur_now                  @13
 
     ur_makeEnv              @14
     ur_freeEnv              @15
@@ -49,7 +51,7 @@ EXPORTS
     ur_same                 @47
     ur_equal                @48
     ur_compare              @49
-    ur_now                  @50
+
     ur_makeDatatype         @51
     ur_isDatatype           @52
     ur_datatypeAddType      @53
