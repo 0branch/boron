@@ -535,6 +535,7 @@ void boron_addCFunc( UThread* ut, int (*func)(UThread*,UCell*,UCell*),
 
 static const char setupScript[] =
     "q: :quit  yes: true  no: false\n"
+    "tail?: :empty?\n"
     "context: func [b block!] [make context! b]\n"
     "charset: func [s string!] [make bitset! s]\n"
     "error: func [s string! /ghost] [throw make error! s]\n"
@@ -566,6 +567,11 @@ static const char setupScript[] =
     "term-dir: func [path] [terminate/dir path '/']\n"
     "\n";
 
+/*-hf- tail?
+        series
+    return: logic!
+    Same as empty?
+*/
 /*-hf- context
         spec block!
     return: New context!
@@ -732,6 +738,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_clear,   "clear ser" );
     addCFunc( cfunc_slice,   "slice ser n" );
     addCFunc( cfunc_emptyQ,  "empty? ser" );
+    addCFunc( cfunc_headQ,   "head? ser" );
     addCFunc( cfunc_sizeQ,   "size? ser" );
     addCFunc( cfunc_indexQ,     "index? ser" );
     addCFunc( cfunc_seriesQ,    "series? ser" );

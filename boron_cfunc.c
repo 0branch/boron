@@ -1535,6 +1535,22 @@ CFUNC(cfunc_emptyQ)
 
 
 /*-cf-
+    head?
+        series
+    return: logic!
+*/
+CFUNC(cfunc_headQ)
+{
+    if( ! ur_isSeriesType( ur_type(a1) ) )
+        return ur_error( ut, UR_ERR_TYPE, "head? expected series" );
+
+    ur_setId( res, UT_LOGIC );
+    ur_int(res) = (a1->series.it < 1) ? 1 : 0;
+    return UR_OK;
+}
+
+
+/*-cf-
     size?
         series
     return: int!
