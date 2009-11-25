@@ -708,6 +708,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_probe,   "probe val" );
     addCFunc( cfunc_prin,    "prin val" );
     addCFunc( cfunc_print,   "print val" );
+    addCFunc( cfunc_to_string, "to-string val" );
     addCFunc( cfunc_to_text, "to-text val" );
     addCFunc( cfunc_all,     "all val" );
     addCFunc( cfunc_any,     "any val" );

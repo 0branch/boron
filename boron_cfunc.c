@@ -2174,6 +2174,27 @@ CFUNC(cfunc_print)
 
 
 /*-cf-
+    to-string
+        val
+    return: string!
+*/
+CFUNC(cfunc_to_string)
+{
+    int enc = UR_ENC_LATIN1;
+
+    if( ur_is(a1, UT_STRING) )
+    {
+        const UBuffer* str = ur_bufferSer(a1);
+        enc = str->form;
+    }
+    ut->types[ ur_type(a1) ]->toString( ut, a1,
+                                        ur_makeStringCell(ut, enc, 0, res), 0 );
+
+    return UR_OK;
+}
+
+
+/*-cf-
     to-text
         val
     return: string!
