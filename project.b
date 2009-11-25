@@ -26,10 +26,11 @@ default [
 ]
 
 shlib %boron [
-    
     if compress [
         cflags {-DCONFIG_COMPRESS}
         win32 [libs %libbz2]
+        macx  [libs %bz2]
+        unix  [libs {bz2 m}]
     ]
     ;cflags {-DTRACK_MALLOC} sources [%urlan/memtrack.c]
 
@@ -69,8 +70,6 @@ shlib %boron [
 
 exe %boron [
     libs_from %. %boron
-    macx  [libs {m bz2}]
-    unix  [libs {m bz2}]
     win32 [
         console
         libs %ws2_32
