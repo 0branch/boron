@@ -294,16 +294,14 @@ void boron_doBlockQt( UThread* ut, const UCell* blkC )
             cellToQString( ex, msg );
             QMessageBox::warning( 0, "Script Error", msg,
                                   QMessageBox::Ok, QMessageBox::NoButton );
+            ur_blkPop( ur_errorBlock(ut) );
+            //boron_reset( ut );
         }
         else if( ur_is(ex, UT_WORD) )
         {
             if( ur_atom(ex) == UR_ATOM_QUIT )
                 qApp->quit();
         }
-
-        UBuffer* blk = ur_errorBlock( ut );
-        --blk->used;
-        //boron_reset( ut );
     }
 }
 
@@ -784,30 +782,41 @@ no_layout:
 }
 
 
-static int catchExit( UThread* ut, UCell* res )
+/*
+  Return UR_OK/UR_THROW.
+*/
+static int catchExit( UThread* ut, UCell* res, QWidget* wid = 0 )
 {
     UBuffer* blk = ur_errorBlock(ut);
-    if( blk->used > 1 )
+    if( blk->used )
     {
         UCell* cell = blk->ptr.cell + blk->used - 1;
         if( ur_is(cell, UT_WORD) )
         {
-            if( ur_atom(cell) == qEnv.atom_exec_exit )
+            if( ur_atom(cell) == UR_ATOM_QUIT )
+                return UR_THROW;
+
+            if( blk->used > 1 )
             {
-                *res = cell[-1];
-                blk->used -= 2;
-                return qEnv.atom_exec_exit;
-            }
-            else if( ur_atom(cell) == qEnv.atom_close )
-            {
-                *res = cell[-1];
-                blk->used -= 2;
-                return qEnv.atom_close;
+                if( ur_atom(cell) == qEnv.atom_exec_exit )
+                {
+                    *res = cell[-1];
+                    blk->used -= 2;
+                    return UR_OK;
+                }
+                else if( ur_atom(cell) == qEnv.atom_close )
+                {
+                    *res = cell[-1];
+                    blk->used -= 2;
+                    if( wid )
+                        wid->close();
+                    return UR_OK;
+                }
             }
         }
     }
     ur_setId(res, UT_UNSET);
-    return 0;
+    return UR_OK;
 }
 
 
@@ -818,7 +827,6 @@ static int catchExit( UThread* ut, UCell* res )
 */
 CFUNC( cfunc_exec )
 {
-    (void) ut;
     if( ur_is(a1, UT_INT) )
     {
         WIDPool::REC* rec = qEnv.pool.record( ur_int(a1) );
@@ -832,7 +840,7 @@ CFUNC( cfunc_exec )
                 qEnv.dialog->exec();
                 qEnv.dialog = saveDialog;
 
-                catchExit( ut, res );
+                return catchExit( ut, res );
             }
             else if( rec->type == WT_Widget )
             {
@@ -840,27 +848,18 @@ CFUNC( cfunc_exec )
 
                 widget->show();
                 qEnv.loop->exec();
-                if( catchExit( ut, res ) == qEnv.atom_close )
-                    widget->hide();
-            }
-            else
-            {
-                rec = 0;
+
+                return catchExit( ut, res, widget );
             }
         }
-        if( ! rec )
-        {
-            return ur_error( ut, UR_ERR_TYPE,
-                             "Invalid widget ID %d", ur_int(a1) );
-        }
+        return ur_error( ut, UR_ERR_TYPE, "Invalid widget ID %d", ur_int(a1) );
     }
     else
     {
         // Update.
         qEnv.loop->processEvents();
-        catchExit( ut, res );
+        return catchExit( ut, res );
     }
-    return UR_OK;
 }
 
 
@@ -878,7 +877,7 @@ CFUNC( cfunc_execExit )
     else
         qEnv.loop->quit();
 
-    ur_blkAppendCells( ur_errorBlock(ut), a1, 1 );
+    ur_blkPush( ur_errorBlock(ut), a1 );
     return boron_throwWord( ut, qEnv.atom_exec_exit );
 }
 
@@ -921,7 +920,7 @@ CFUNC( cfunc_show )
 
             // Update.
             qEnv.loop->processEvents();
-            catchExit( ut, a1 );
+            return catchExit( ut, a1 );
         }
     }
     ur_setId(res, UT_UNSET);
