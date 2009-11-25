@@ -303,14 +303,14 @@ const char* boron_cstr( UThread* ut, const UCell* strC, UBuffer* bin )
     const UBuffer* str = ur_bufferSer(strC);
     int len = str->used;
 
+    if( ! bin )
+        bin = ur_buffer( BT->tempN );
+
     if( (strC->series.end > -1) && (strC->series.end < len) )
         len = strC->series.end;
     len -= strC->series.it;
     if( len > 0 )
     {
-        if( ! bin )
-            bin = ur_buffer( BT->tempN );
-
         ur_binReserve( bin, (len * 2) + 1 );
 
         switch( str->form )
@@ -331,11 +331,16 @@ const char* boron_cstr( UThread* ut, const UCell* strC, UBuffer* bin )
                                       str->ptr.u16 + strC->series.it, len );
                 break;
         }
-        bin->used = len;
-        bin->ptr.c[ len ] = '\0';
-        return bin->ptr.c;
     }
-    return "";
+    else
+    {
+        ur_binReserve( bin, 1 );
+        len = 0;
+    }
+
+    bin->used = len;
+    bin->ptr.c[ len ] = '\0';
+    return bin->ptr.c;
 }
 
 
