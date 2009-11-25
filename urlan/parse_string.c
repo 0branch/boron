@@ -331,10 +331,9 @@ match:
                         }
                             break;
 
-                        case UT_BLOCK:
-                            // TODO
-                            ur_error( PARSE_ERR,
-                                      "to/thru block! not implemented" );
+                        default:
+                            ur_error( PARSE_ERR, "to/thru does not handle %s",
+                                      ur_atomCStr( ut, ur_type(tval) ) );
                             goto parse_err;
                     }
                     ++rit;
