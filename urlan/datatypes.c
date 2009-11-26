@@ -1040,9 +1040,7 @@ int binary_make( UThread* ut, const UCell* from, UCell* res )
 {
     if( ur_is(from, UT_INT) )
     {
-        UIndex n = ur_makeBinary( ut, ur_int(from) );
-        ur_setId( res, UT_BINARY );
-        ur_setSeries( res, n, 0 );
+        ur_makeBinaryCell( ut, ur_int(from), res );
         return UR_OK;
     }
     else if( ur_is(from, UT_BINARY) )
@@ -1050,7 +1048,29 @@ int binary_make( UThread* ut, const UCell* from, UCell* res )
         binary_copy( ut, from, res );
         return UR_OK;
     }
-    return ur_error(ut, UR_ERR_TYPE, "make binary! expected int!/binary!");
+    else if( ur_is(from, UT_STRING) )
+    {
+        USeriesIter si;
+        UBuffer* bin;
+        const uint8_t* data;
+        int len;
+
+        bin = ur_makeBinaryCell( ut, 0, res );
+
+        ur_seriesSlice( ut, &si, from );
+        len = si.end - si.it;
+        if( ur_strIsUcs2( si.buf ) )
+        {
+            data = (const uint8_t*) (si.buf->ptr.u16 + si.it);
+            len += 2;
+        }
+        else
+            data = si.buf->ptr.b + si.it;
+        ur_binAppendData( bin, data, len );
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE,
+                     "make binary! expected int!/binary!/string!" );
 }
 
  
@@ -1838,7 +1858,6 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
     else if( ur_isStringType( ur_type(val) ) )
     {
         USeriesIter siV;
-
         ur_seriesSlice( ut, &siV, val );
 
         if( buf->form != siV.buf->form )
@@ -1859,6 +1878,19 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
             const uint8_t* itV = siV.buf->ptr.b;
             it = find_pattern_uint8_t( it + si->it, it + si->end,
                                        itV + siV.it, itV + siV.end );
+            if( it )
+                return it - buf->ptr.b;
+        }
+    }
+    else if( ur_is(val, UT_BINARY) )
+    {
+        UBinaryIter bi;
+        ur_binSlice( ut, &bi, val );
+        if( ! ur_strIsUcs2(buf) )
+        {
+            const uint8_t* it = buf->ptr.b;
+            it = find_pattern_uint8_t( it + si->it, it + si->end,
+                                       bi.it, bi.end );
             if( it )
                 return it - buf->ptr.b;
         }
