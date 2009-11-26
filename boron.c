@@ -753,6 +753,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_forall,     "forall 'w body /ghost" );
     addCFunc( cfunc_map,        "map 'w ser body /ghost" );
     addCFunc( cfunc_existsQ,    "exists? file" );
+    addCFunc( cfunc_dirQ,       "dir? file" );
     addCFunc( cfunc_make_dir,   "make-dir path" );
     addCFunc( cfunc_getenv,     "getenv val" );
     addCFunc( cfunc_read,       "read from /text /into b" );

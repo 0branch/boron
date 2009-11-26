@@ -2234,6 +2234,33 @@ CFUNC(cfunc_existsQ)
 }
 
 
+/*-cf-
+    dir?
+        path    file!/string!
+    return: logic! or none! if path does not exist.
+
+    Test if path is a directory.
+*/
+CFUNC(cfunc_dirQ)
+{
+    if( ur_isStringType( ur_type(a1) ) )
+    {
+        OSFileInfo info;
+        if( ur_fileInfo( boron_cpath(ut, a1, 0), &info, FI_Type ) )
+        {
+            ur_setId(res, UT_LOGIC);
+            ur_int(res) = (info.type == FI_Dir);
+        }
+        else
+        {
+            ur_setId(res, UT_NONE);
+        }
+        return UR_OK;
+    }
+    return errorType( "make-dir expected file!/string!" );
+}
+
+
 extern int ur_makeDir( UThread* ut, const char* path );
 
 /*-cf-
