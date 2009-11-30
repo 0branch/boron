@@ -560,6 +560,69 @@ MATH_FUNC( cfunc_mul, * )
 MATH_FUNC( cfunc_div, / )
 
 
+#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
+
+#define BITWISE_FUNC(name,OP,msg) \
+CFUNC(name) { \
+    if( ANY3(a1, UT_LOGIC, UT_CHAR, UT_INT) && \
+        ANY3(a2, UT_LOGIC, UT_CHAR, UT_INT) ) { \
+        ur_setId(res, ur_type(a1)); \
+        ur_int(res) = ur_int(a1) OP ur_int(a2); \
+        return UR_OK; \
+    } else \
+        return ur_error(ut, UR_ERR_TYPE, "%s expected logic!/char!/int!", msg);\
+}
+
+
+/*-cf-
+    and
+        a   logic!/char!/int!
+        b   logic!/char!/int!
+    return: Bitwise AND.
+*/
+/*-cf-
+    or
+        a   logic!/char!/int!
+        b   logic!/char!/int!
+    return: Bitwise OR.
+*/
+/*-cf-
+    xor
+        a   logic!/char!/int!
+        b   logic!/char!/int!
+    return: Bitwise exclusive OR.
+*/
+BITWISE_FUNC( cfunc_and, &, "and" )
+BITWISE_FUNC( cfunc_or,  |, "or")
+BITWISE_FUNC( cfunc_xor, ^, "xor" )
+
+
+/*-cf-
+    minimum
+        a
+        b
+    return: Lesser of two values.
+*/
+CFUNC(cfunc_minimum)
+{
+    *res = (ur_compare( ut, a1, a2 ) < 0) ? *a1 : *a2;
+    return UR_OK;
+}
+
+
+/*-cf-
+    maximum
+        a
+        b
+    return: Greater of two values.
+*/
+CFUNC(cfunc_maximum)
+{
+    *res = (ur_compare( ut, a1, a2 ) > 0) ? *a1 : *a2;
+    return UR_OK;
+}
+
+
 extern int context_make( UThread* ut, const UCell* from, UCell* res );
 extern UDatatype dt_context;
 
