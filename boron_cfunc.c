@@ -187,6 +187,7 @@ CFUNC(cfunc_recycle)
 
 static int boron_call( UThread*, const UCellFunc* fcell, UCell* blkC,
                        UCell* res );
+static int cfunc_load( UThread*, UCell*, UCell* );
 
 /*
   NOTE: This is an eval-control function.
@@ -251,6 +252,14 @@ CFUNC(cfunc_do)
             }
         }
             break;
+
+        case UT_FILE:
+            *a1 = *res;
+            if( ! cfunc_load( ut, a1, res ) )
+                return UR_THROW;
+            if( ! ur_is(res, UT_BLOCK) )
+                return UR_OK;
+            // Fall through to block...
 
         case UT_BLOCK:
         case UT_PAREN:
