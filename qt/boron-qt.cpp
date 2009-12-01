@@ -885,19 +885,30 @@ CFUNC( cfunc_execExit )
 /*-cf-
     close
         code int!/none!/logic!/word!
-    return: throws word
+    return: unset! or throws 'close.
 */
 CFUNC( cfunc_close )
 {
     (void) res;
 
-    if( qEnv.dialog )
-        qEnv.dialog->accept();
+    if( ur_is(a1, UT_INT) )
+    {
+        WIDPool::REC* rec = qEnv.pool.record( ur_int(a1) );
+        if( rec && (rec->type == WT_Dialog || rec->type == WT_Widget) )
+            rec->widget->close();
+        ur_setId(res, UT_UNSET);
+        return UR_OK;
+    }
     else
-        qEnv.loop->quit();
+    {
+        if( qEnv.dialog )
+            qEnv.dialog->accept();
+        else
+            qEnv.loop->quit();
 
-    ur_blkAppendCells( ur_errorBlock(ut), a1, 1 );
-    return boron_throwWord( ut, qEnv.atom_close );
+        ur_blkAppendCells( ur_errorBlock(ut), a1, 1 );
+        return boron_throwWord( ut, qEnv.atom_close );
+    }
 }
 
 
@@ -914,7 +925,11 @@ CFUNC( cfunc_show )
     WIDPool::REC* rec = qEnv.pool.record( ur_int(a1) );
     if( rec )
     {
-        if( rec->type == WT_Widget )
+        if( rec->type == WT_Dialog )
+        {
+            rec->widget->show();
+        }
+        else if( rec->type == WT_Widget )
         {
             rec->widget->show();
 
@@ -953,12 +968,15 @@ static int layoutWidget( UThread* ut, QWidget* wid, UCell* a1 )
 /*-cf-
     dialog
         layout block!
+        /modal
     return: int!
 */
 CFUNC( cfunc_dialog )
 {
+#define OPT_DIALOG_MODAL    0x01
     SDialog* dlg = new SDialog;
-    dlg->setModal( true );
+    if( CFUNC_OPTIONS & OPT_DIALOG_MODAL )
+        dlg->setModal( true );
     if( ! layoutWidget( ut, dlg, a1 ) )
         return UR_THROW;
     ur_setId(res, UT_INT);
@@ -991,9 +1009,12 @@ CFUNC( cfunc_widget )
 CFUNC( cfunc_destroy )
 {
     (void) ut;
-    WIDPool::REC* rec = qEnv.pool.record( ur_int(a1) );
-    if( rec )
-        delete rec->object;
+    if( ur_is(a1, UT_INT) )
+    {
+        WIDPool::REC* rec = qEnv.pool.record( ur_int(a1) );
+        if( rec )
+            delete rec->object;
+    }
     ur_setId(res, UT_NONE);
     return UR_OK;
 }
@@ -1369,7 +1390,7 @@ void boron_initQt( UThread* ut )
     boron_addCFunc( ut, cfunc_execExit,       "exec-exit code" );
     boron_addCFunc( ut, cfunc_close,          "close code" );
     boron_addCFunc( ut, cfunc_show,           "show wid" );
-    boron_addCFunc( ut, cfunc_dialog,         "dialog layout" );
+    boron_addCFunc( ut, cfunc_dialog,         "dialog layout /modal" );
     boron_addCFunc( ut, cfunc_widget,         "widget layout" );
     boron_addCFunc( ut, cfunc_destroy,        "destroy wid" );
     boron_addCFunc( ut, cfunc_requestFile,
