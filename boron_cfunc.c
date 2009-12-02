@@ -1054,7 +1054,7 @@ CFUNC(cfunc_switch)
 /*-cf-
     first
         series
-    return: First item in series.
+    return: First item in series or none!.
 */
 CFUNC(cfunc_first)
 {
@@ -1069,7 +1069,7 @@ CFUNC(cfunc_first)
 /*-cf-
     second
         series
-    return: Second item in series.
+    return: Second item in series or none!.
 */
 CFUNC(cfunc_second)
 {
@@ -1077,6 +1077,26 @@ CFUNC(cfunc_second)
     if( ! ur_isSeriesType( type ) )
         return ur_error( ut, UR_ERR_TYPE, "second expected series" );
     SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it + 1, res );
+    return UR_OK;
+}
+
+
+/*-cf-
+    last
+        series
+    return: Last item in series or none!.
+*/
+CFUNC(cfunc_last)
+{
+    USeriesIter si;
+    int type = ur_type(a1);
+    if( ! ur_isSeriesType( type ) )
+        return errorType( "last expected series" );
+    ur_seriesSlice( ut, &si, a1 );
+    if( si.it == si.end )
+        ur_setId(res, UT_NONE);
+    else
+        SERIES_DT( type )->pick( ur_bufferSer(a1), si.end - 1, res );
     return UR_OK;
 }
 
