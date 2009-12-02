@@ -467,6 +467,7 @@ void     ur_strAppendDouble( UBuffer*, double );
 void     ur_strAppendIndent( UBuffer*, int depth );
 void     ur_strAppend( UBuffer*, const UBuffer* strB, UIndex itB, UIndex endB );
 void     ur_strTermNull( UBuffer* );
+void     ur_strFlatten( UBuffer* );
 int      ur_strLowercase( UThread*, const UCell* cell );
 int      ur_strUppercase( UThread*, const UCell* cell );
 UIndex   ur_strFindChar( const UBuffer*, UIndex start, UIndex end, int ch );

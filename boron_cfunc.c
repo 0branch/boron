@@ -2838,7 +2838,7 @@ CFUNC(cfunc_encodingQ)
     static UAtom encAtoms[4] = {
         UR_ATOM_LATIN1, UR_ATOM_UTF8, UR_ATOM_UCS2, UT_UNSET
     };
-    if( ur_is(a1, UT_STRING) )
+    if( ur_isStringType( ur_type(a1) ) )
     {
         const UBuffer* buf = ur_bufferSer(a1);
         ur_setId(res, UT_WORD);

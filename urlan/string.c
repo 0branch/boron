@@ -37,7 +37,7 @@
 /** \defgroup dt_string Datatype String
   \ingroup urlan
 
-  Strings are stored using the single word per character Latin 1 and UCS-2
+  Strings are stored using the single word per character Latin-1 and UCS-2
   encodings (UR_ENC_LATIN1/UR_ENC_UCS2).
 
   UTF-8 (UR_ENC_UTF8) is only handled by ur_strAppend() and
@@ -667,6 +667,73 @@ void ur_strTermNull( UBuffer* str )
         str->ptr.u16[ str->used ] = '\0';
     else
         str->ptr.c[ str->used ] = '\0';
+}
+
+
+/**
+  Convert a UTF-8 or UCS-2 string buffer to Latin-1 if possible.
+
+  \param str    Valid string buffer.
+*/
+void ur_strFlatten( UBuffer* str )
+{
+    switch( str->form )
+    {
+        case UR_ENC_UTF8:
+        {
+            int ch;
+            int convert = 0;
+            const uint8_t* it  = str->ptr.b;
+            const uint8_t* end = it + str->used;
+            while( it != end )
+            {
+                ch = *it++;
+                if( ch > 0x7f )
+                {
+                    if( ch <= 0xdf && (it != end) )
+                    {
+                        ch = ((ch & 0x1f) << 6) | (*it & 0x3f);
+                        if( ch < 256 )
+                        {
+                            ++it;
+                            convert = 1;
+                            continue;
+                        }
+                    }
+                    return;
+                }
+            }
+
+            if( convert )
+                str->used = copyUtf8ToLatin1(str->ptr.b, str->ptr.b, str->used);
+
+            str->form = UR_ENC_LATIN1;
+        }
+            break;
+
+        case UR_ENC_UCS2:
+        {
+            uint8_t* bp;
+            const uint16_t* it  = str->ptr.u16;
+            const uint16_t* end = it + str->used;
+
+            while( it != end )
+            {
+                if( *it++ > 255 )
+                    return;
+            }
+
+            bp = str->ptr.b;
+            it = str->ptr.u16;
+            while( it != end )
+                *bp++ = *it++;
+
+            str->elemSize = 1;
+            str->form = UR_ENC_LATIN1;
+            ur_avail(str) *= 2;
+        }
+            break;
+    }
 }
 
 

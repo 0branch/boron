@@ -263,6 +263,7 @@ static void toUString( const QString& text, UCell* res )
     UBuffer* buf = ur_makeStringCell( UT, UR_ENC_UCS2, len, res );
     memcpy( buf->ptr.u16, text.constData(), len * sizeof(uint16_t) );
     buf->used = len;
+    ur_strFlatten( buf );
 }
 
 
