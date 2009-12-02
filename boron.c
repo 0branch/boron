@@ -533,7 +533,37 @@ void boron_addCFunc( UThread* ut, int (*func)(UThread*,UCell*,UCell*),
 }
 
 
+#if defined(__APPLE__)
+#define OS_WORD "Darwin"
+#elif defined(__FreeBSD__)
+#define OS_WORD "FreeBSD"
+#elif defined(__linux)
+#define OS_WORD "Linux"
+#elif defined(__sun__)
+#define OS_WORD "Solaris"
+#elif defined(_WIN32)
+#define OS_WORD "Windows"
+#else
+#define OS_WORD "unknown"
+#endif
+
+#if defined(__arm__)
+#define ARCH_WORD "arm"
+#elif defined(__x86_64__) || defined(_M_X64)
+#define ARCH_WORD "x86_64"
+#elif defined(__i386__) || defined(_M_IX86)
+#define ARCH_WORD "x86"
+#elif defined(__PPC__)
+#define ARCH_WORD "ppc"
+#elif defined(__sparc)
+#define ARCH_WORD "sparc"
+#else
+#define ARCH_WORD "unknown"
+#endif
+
 static const char setupScript[] =
+    "environs: make context! [\n"
+    "  version: 0,1,0 os: '" OS_WORD " arch: '" ARCH_WORD "]\n"
     "q: :quit  yes: true  no: false\n"
     "tail?: :empty?\n"
     "context: func [b block!] [make context! b]\n"
