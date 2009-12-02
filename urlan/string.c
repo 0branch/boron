@@ -730,7 +730,8 @@ void ur_strFlatten( UBuffer* str )
 
             str->elemSize = 1;
             str->form = UR_ENC_LATIN1;
-            ur_avail(str) *= 2;
+            if( str->used )
+                ur_avail(str) *= 2;
         }
             break;
     }
