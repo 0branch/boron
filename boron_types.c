@@ -179,7 +179,7 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
             {
                 if( localCount )
                 {
-                    FO_EMIT2_R( FO_checkArg, ur_atom(bi.it) );
+                    FO_EMIT2_R( FO_checkArg, (uint8_t) ur_atom(bi.it) );
                 }
             }
             else if( ur_atom(bi.it) == ATOM_LOCAL )

@@ -726,7 +726,7 @@ void ur_strFlatten( UBuffer* str )
             bp = str->ptr.b;
             it = str->ptr.u16;
             while( it != end )
-                *bp++ = *it++;
+                *bp++ = (uint8_t) *it++;
 
             str->elemSize = 1;
             str->form = UR_ENC_LATIN1;
