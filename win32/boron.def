@@ -5,53 +5,51 @@ EXPORTS
     boron_addCFunc          @3
     boron_bindDefault       @4
     boron_doCStr            @5
-    boron_result            @6
-    boron_exception         @7
-    boron_reset             @8
-    boron_throwWord         @9
-    boron_cstr              @10
-    boron_cpath             @11
-
-    str_copy                @12
-    ur_now                  @13
-
-    ur_makeEnv              @14
-    ur_freeEnv              @15
-    ur_freezeEnv            @16
-    ur_datatypeCount        @17
-    ur_internAtom           @18
-    ur_internAtoms          @19
-    ur_atomCStr             @20
-    ur_genBuffers           @21
-    ur_destroyBuffer        @22
-    ur_holdBuffer           @23
-    ur_releaseBuffer        @24
-    ur_recycle              @25
-    ur_markBuffer           @26
-    ur_error                @27
-    ur_errorBlock           @28
-    ur_threadContext        @29
-    ur_envContext           @30
-    ur_appendTrace          @31
-    ur_tokenize             @32
-    ur_toStr                @33
-    ur_toText               @34
-    ur_wordCell             @35
-    ur_wordCellM            @36
-    ur_setWord              @37
-    ur_bufferEnv            @38
-    ur_bufferSeries         @39
-    ur_bufferSeriesM        @40
-    ur_seriesSlice          @41
-    ur_seriesSliceM         @42
-    ur_bind                 @43
-    ur_bindCells            @44
-    ur_infuse               @45
-    ur_isTrue               @46
-    ur_same                 @47
-    ur_equal                @48
-    ur_compare              @49
-
+    boron_doVoid            @6
+    boron_result            @7
+    boron_exception         @8
+    boron_reset             @9
+    boron_throwWord         @10
+    boron_cstr              @11
+    boron_cpath             @12
+    str_copy                @13
+    ur_now                  @14
+    ur_makeEnv              @15
+    ur_freeEnv              @16
+    ur_freezeEnv            @17
+    ur_datatypeCount        @18
+    ur_internAtom           @19
+    ur_internAtoms          @20
+    ur_atomCStr             @21
+    ur_genBuffers           @22
+    ur_destroyBuffer        @23
+    ur_holdBuffer           @24
+    ur_releaseBuffer        @25
+    ur_recycle              @26
+    ur_markBuffer           @27
+    ur_error                @28
+    ur_errorBlock           @29
+    ur_threadContext        @30
+    ur_envContext           @31
+    ur_appendTrace          @32
+    ur_tokenize             @33
+    ur_toStr                @34
+    ur_toText               @35
+    ur_wordCell             @36
+    ur_wordCellM            @37
+    ur_setWord              @38
+    ur_bufferEnv            @39
+    ur_bufferSeries         @40
+    ur_bufferSeriesM        @41
+    ur_seriesSlice          @42
+    ur_seriesSliceM         @43
+    ur_bind                 @44
+    ur_bindCells            @45
+    ur_infuse               @46
+    ur_isTrue               @47
+    ur_same                 @48
+    ur_equal                @49
+    ur_compare              @50
     ur_makeDatatype         @51
     ur_isDatatype           @52
     ur_datatypeAddType      @53
@@ -115,3 +113,15 @@ EXPORTS
     ur_arrErase             @111
     ur_arrFree              @112
     ur_arrAppendInt32       @113
+    bignum_zero             @114
+    bignum_seti             @115
+    bignum_setl             @116
+    bignum_setd             @117
+    bignum_l                @118
+    bignum_d                @119
+    bignum_equal            @120
+    bignum_cmp              @121
+    bignum_negate           @122
+    bignum_add              @123
+    bignum_sub              @124
+    bignum_mul              @125
