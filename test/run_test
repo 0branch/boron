@@ -5,7 +5,10 @@ INTERPRETER=../boron
 #DIFF='diff -w --ignore-blank-lines'
 
 case `uname` in
-	"CYGWIN"*) DIFF='diff -w';;
+	"CYGWIN"*)
+		INTERPRETER=../boron.exe
+		DIFF='diff -w'
+		;;
 	"SunOS") DIFF='diff';;
 	*) DIFF='diff -a';;
 esac
