@@ -12,6 +12,7 @@ set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/")
 
+set(CMAKE_SKIP_RPATH true)
 
 # Config defines
 #add_definitions(
@@ -60,7 +61,10 @@ add_library(boron-lib SHARED
     ${OS_FILE}
 )
 
-set_target_properties(boron-lib PROPERTIES OUTPUT_NAME "boron")
+set_target_properties(boron-lib PROPERTIES
+   VERSION 0.1.0
+   SOVERSION 0
+   OUTPUT_NAME "boron")
 
 if (APPLE)
     target_link_libraries(boron-lib m bz2)
