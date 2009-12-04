@@ -7,7 +7,7 @@ License: LGPL
 URL: http://urlan.sf.net/
 Packager: <wickedsmoke@users.sf.net>
 Group: Development/Languages
-Source: boron-%{version}.tgz
+Source: boron-%{version}.tar.bz2
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 %if 0%{?mandriva_version} 
 BuildRequires: cmake libbzip2_1-devel
@@ -52,5 +52,5 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/boron/bignum.h
 
 %changelog
-* Sat Nov 14 2009 Karl Robillard <wickedsmoke@users.sf.net>
+* Fri Dec  4 2009 Karl Robillard <wickedsmoke@users.sf.net>
   - Initial package release.
