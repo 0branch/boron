@@ -827,7 +827,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_to_dec,     "to-dec n" );
     addCFunc( cfunc_now,        "now /date" );
 #ifdef CONFIG_CHECKSUM
-    addCFunc( cfunc_checksum,   "checksum val /crc16 /sha1" );
+    addCFunc( cfunc_checksum,   "checksum val /sha1 /crc16 /crc32" );
 #endif
 #ifdef CONFIG_COMPRESS
     addCFunc( cfunc_compress,   "compress s" );
