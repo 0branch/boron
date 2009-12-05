@@ -580,6 +580,7 @@ static const char setupScript[] =
     "environs: make context! [\n"
     "  version: 0,1,0 os: '" OS_WORD " arch: '" ARCH_WORD "]\n"
     "q: :quit  yes: true  no: false\n"
+    "eq?: :equal?\n"
     "tail?: :empty?\n"
     "context: func [b block!] [make context! b]\n"
     "charset: func [s string!] [make bitset! s]\n"
@@ -612,6 +613,12 @@ static const char setupScript[] =
     "term-dir: func [path] [terminate/dir path '/']\n"
     "\n";
 
+/*-hf- eq?
+        a
+        b
+    return: logic!
+    Same as equal?
+*/
 /*-hf- tail?
         series
     return: logic!
