@@ -244,7 +244,7 @@ QTINC    = /usr/include
 
 gnu_other_rules:
 {<m2/makefile>: <project_file>
-^-m3 <project_file>
+^-m2 <project_file>
 
 .PHONY: dist
 dist:
