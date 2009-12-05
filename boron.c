@@ -479,8 +479,20 @@ int boron_doVoid( UThread* ut, const UCell* blkC )
 }
 
 
+UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
+{
+    const UBuffer* buf = ur_bufferSer( cell );
+    if( cell->series.end > -1 && cell->series.end < buf->used )
+        return cell->series.end;
+    return buf->used;
+}
+
+
 #ifdef CONFIG_COMPRESS
 #include "boron_compress.c"
+#endif
+#ifdef CONFIG_RANDOM
+#include "boron_random.c"
 #endif
 
 #include "boron_cfunc.c"
@@ -814,6 +826,9 @@ UThread* boron_makeEnv()
 #ifdef CONFIG_COMPRESS
     addCFunc( cfunc_compress,   "compress s" );
     addCFunc( cfunc_decompress, "decompress b" );
+#endif
+#ifdef CONFIG_RANDOM
+    addCFunc( cfunc_random,     "random a /seed" );
 #endif
 
 

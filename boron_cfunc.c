@@ -1101,15 +1101,6 @@ CFUNC(cfunc_last)
 }
 
 
-UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
-{
-    const UBuffer* buf = ur_bufferSer( cell );
-    if( cell->series.end > -1 && cell->series.end < buf->used )
-        return cell->series.end;
-    return buf->used;
-}
-
-
 /*-cf-
     ++
         'word word!

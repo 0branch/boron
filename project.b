@@ -1,6 +1,9 @@
 project "boron"
 
 compress: true
+random:   true
+
+if exists? config: %project.config [do config]
 
 default [
     warn
@@ -32,6 +35,10 @@ shlib %boron [
         macx  [libs %bz2]
         unix  [libs {bz2 m}]
     ]
+    if random [
+        cflags {-DCONFIG_RANDOM}
+        sources [%support/well512.c]
+    ]
     ;cflags {-DTRACK_MALLOC} sources [%urlan/memtrack.c]
 
     win32 [lflags "/def:win32\boron.def"]
@@ -58,7 +65,6 @@ shlib %boron [
         %support/str.c
         %support/mem_util.c
         %support/quickSortIndex.c
-        ;%support/well512.c
 
         %boron.c
     ]
