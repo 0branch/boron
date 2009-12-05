@@ -89,7 +89,7 @@ argument-table: func [args | str a p opt] [
                 append str {</td><td>}
             ]
 
-            append str {</td></tr>}
+            append str {</td></tr>^/}
         ]
         rejoin [
 {<p class="func-sec">Arguments</p>
@@ -107,13 +107,42 @@ argument-table: func [args | str a p opt] [
 ]
 
 
-emit-toc: func [funcs | f] [
-    foreach f funcs [
+emit-toc: func [funcs | f it it2 cskip item] [
+    item: does [
+        f: f/name
         emit rejoin [
-            {<li><a class="index link" href="#} f/name
-            {" id="id_} f/name {">} f/name {</a></li>}
+            {<td><a class="index link" href="#} f
+            {" id="id_} f {">} f {</a></td>}
         ]
     ]
+
+    emit {<ul class="auto-toc">^/<table width=90%">^/}
+    emit trim/indent {
+    <colgroup>
+    <col width="30%" />
+    <col width="30%" />
+    <col width="30%" />
+    </colgroup>
+    }
+
+    cskip: div add 2 size? funcs 3
+    it: slice funcs cskip
+    it2: skip funcs cskip
+    forall it [
+        emit {<tr>}
+        f: first it
+        item
+        if f: first it2 [
+            item
+            if f: first skip it2 cskip [
+                item
+            ]
+        ]
+        ++ it2
+        emit {</tr>^/}
+    ]
+
+    emit {</table>^/</ul>^/}
 ]
 
 ;white: charset " ^-^/"
@@ -151,15 +180,13 @@ emit {<div class="contents topic" id="contents">
 <p class="topic-title first">Contents</p>
 <ul class="auto-toc simple">
 <li><a class="index link" href="#cfunc" id="id_ch1">1&nbsp;&nbsp;&nbsp;C Functions</a>
-<ul class="auto-toc">
 }
 emit-toc cfuncs
-emit {</ul>
-</li>
+emit {</li>
 <li><a class="index link" href="#helpers" id="id_ch2">2&nbsp;&nbsp;&nbsp;Helper Functions</a>
-<ul class="auto-toc">}
+}
 emit-toc hfuncs
-emit {</ul>^/</li>^/</ul>^/</div>}
+emit {</li>^/</ul>^/</div>}
 
 emit {<div class="section" id="cfunc">
 <h1><a class="toc-backref" href="#id_ch1">1&nbsp;&nbsp;&nbsp;C Functions</a></h1>
@@ -168,7 +195,7 @@ emit-funcs cfuncs
 emit {</div>
 <div class="section" id="helpers">
 <h1><a class="toc-backref" href="#id_ch2">2&nbsp;&nbsp;&nbsp;Helper Functions</a></h1>
-<p>These are the built-in func! functions.</p>
+<p>These are the built-in func! functions and aliases.</p>
 }
 emit-funcs hfuncs
 emit {</div>

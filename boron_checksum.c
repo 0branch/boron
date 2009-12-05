@@ -108,13 +108,13 @@ CFUNC(cfunc_checksum)
     uint8_t* end;
     int type = ur_type(a1);
 
-    if( (type == UT_BINARY) || ur_isStringType( type ) )
+    if( (type == UT_BINARY) || (type == UT_STRING) )
     {
         ur_seriesSlice( ut, &si, a1 );
 
         if( (type == UT_STRING) && ur_strIsUcs2(si.buf) )
             return ur_error( ut, UR_ERR_TYPE,
-                             "checksum only handles latin1 or utf8 strings" );
+                             "checksum does not handle ucs2 strings" );
 
         it  = si.buf->ptr.b + si.it;
         end = si.buf->ptr.b + si.end;
