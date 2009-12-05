@@ -15,11 +15,12 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/")
 set(CMAKE_SKIP_RPATH true)
 
 # Config defines
-#add_definitions(
-#    -DUR_CONFIG_BZIP2
-#    -DUR_CONFIG_MATH3D
-#    -DUR_CONFIG_NET
-#)
+add_definitions(
+    -DCONFIG_CHECKSUM
+    -DCONFIG_COMPRESS
+    -DCONFIG_RANDOM
+#    -DCONFIG_NET
+)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDEBUG)
@@ -56,7 +57,7 @@ add_library(boron-lib SHARED
     support/mem_util.c
     support/str.c
     support/quickSortIndex.c
-#   support/well512.c
+    support/well512.c
     boron.c
     ${OS_FILE}
 )

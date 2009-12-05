@@ -488,6 +488,9 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 }
 
 
+#ifdef CONFIG_CHECKSUM
+#include "boron_checksum.c"
+#endif
 #ifdef CONFIG_COMPRESS
 #include "boron_compress.c"
 #endif
@@ -823,6 +826,9 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_to_hex,     "to-hex n" );
     addCFunc( cfunc_to_dec,     "to-dec n" );
     addCFunc( cfunc_now,        "now /date" );
+#ifdef CONFIG_CHECKSUM
+    addCFunc( cfunc_checksum,   "checksum val /crc16 /sha1" );
+#endif
 #ifdef CONFIG_COMPRESS
     addCFunc( cfunc_compress,   "compress s" );
     addCFunc( cfunc_decompress, "decompress b" );

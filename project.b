@@ -1,5 +1,6 @@
 project "boron"
 
+checksum: true
 compress: true
 random:   true
 
@@ -29,6 +30,9 @@ default [
 ]
 
 shlib %boron [
+    if checksum [
+        cflags {-DCONFIG_CHECKSUM}
+    ]
     if compress [
         cflags {-DCONFIG_COMPRESS}
         win32 [libs %libbz2]
