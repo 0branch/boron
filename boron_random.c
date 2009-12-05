@@ -88,7 +88,7 @@ CFUNC(cfunc_random)
 
         case UT_DECIMAL:
             ur_setId(res, UT_DECIMAL);
-            ur_decimal(res) *= genrand_real2();
+            ur_decimal(res) = ur_decimal(a1) * genrand_real2();
             break;
 
         case UT_COORD:
