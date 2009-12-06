@@ -738,125 +738,79 @@ void ur_strFlatten( UBuffer* str )
 }
 
 
-static void _lowercaseUcs2( uint16_t* it, uint16_t* end )
+/**
+  Convert characters of string slice to lowercase.
+
+  \param buf    Pointer to valid string buffer.
+  \param start  Start position.
+  \param send   Slice end position.
+*/
+void ur_strLowercase( UBuffer* buf, UIndex start, UIndex send )
 {
-    int c;
-    while( it != end )
+    switch( buf->form )
     {
-        c = *it;
-        if( (c >= 'A') && (c <= 'Z') )
-            *it = c + 32;
-        else if( (c >= 0x00C0) && (c <= 0x00DE) && (c != 0x00D7) )
-            *it = c + 32;
-        else if( (c >= 0x0391) && (c <= 0x03AB) && (c != 0x03A2) )
-            *it = c + 32;
-        else if( (c >= 0x0410) && (c <= 0x042F) )
-            *it = c + 32;
-        else if( (c >= 0x0531) && (c <= 0x0556) )
-            *it = c + 48;
-        // TODO: Implement full lookup table.
-        ++it;
-    }
-}
+        case UR_ENC_LATIN1:
+        {
+            uint8_t* it  = buf->ptr.b + start;
+            uint8_t* end = buf->ptr.b + send;
+            while( it != end )
+            {
+                *it = ur_charLowercase( *it );
+                ++it;
+            }
+        }
+            break;
 
-
-static void _lowercaseLatin1( uint8_t* it, uint8_t* end )
-{
-    int c;
-    while( it != end )
-    {
-        c = *it;
-        if( (c >= 'A') && (c <= 'Z') )
-            *it = c + ('a' - 'A');
-        else if( (c >= 192) && (c <= 222) && (c != 215) )
-            *it += 32;
-        ++it;
-    }
-}
-
-
-static void _uppercaseUcs2( uint16_t* it, uint16_t* end )
-{
-    int c;
-    while( it != end )
-    {
-        c = *it;
-        if( (c >= 'a') && (c <= 'z') )
-            *it = c - 32;
-        else if( (c >= 0x00E0) && (c <= 0x00FE) && (c != 0x00F7) )
-            *it = c - 32;
-        else if( (c >= 0x03B1) && (c <= 0x03CB) && (c != 0x03C2) )
-            *it = c - 32;
-        else if( (c >= 0x0430) && (c <= 0x044F) )
-            *it = c - 32;
-        else if( (c >= 0x0561) && (c <= 0x0586) )
-            *it = c - 48;
-        // TODO: Implement full lookup table.
-        ++it;
-    }
-}
-
-
-static void _uppercaseLatin1( uint8_t* it, uint8_t* end )
-{
-    int c;
-    while( it != end )
-    {
-        c = *it;
-        if( (c >= 'a') && (c <= 'z') )
-            *it = c - ('a' - 'A');
-        else if( (c >= 224) && (c <= 254) && (c != 247) )
-            *it -= 32;
-        ++it;
+        case UR_ENC_UCS2:
+        {
+            uint16_t* it  = buf->ptr.u16 + start;
+            uint16_t* end = buf->ptr.u16 + send;
+            while( it != end )
+            {
+                *it = ur_charLowercase( *it );
+                ++it;
+            }
+        }
+            break;
     }
 }
 
 
 /**
-  Convert all characters of string slice to lowercase.
+  Convert characters of string slice to uppercase.
 
-  \param cell   Pointer to valid string slice.
-
-  \return UR_OK/UR_THROW
+  \param buf    Pointer to valid string buffer.
+  \param start  Start position.
+  \param send   Slice end position.
 */
-int ur_strLowercase( UThread* ut, const UCell* cell )
+void ur_strUppercase( UBuffer* buf, UIndex start, UIndex send )
 {
-    USeriesIterM si;
+    switch( buf->form )
+    {
+        case UR_ENC_LATIN1:
+        {
+            uint8_t* it  = buf->ptr.b + start;
+            uint8_t* end = buf->ptr.b + send;
+            while( it != end )
+            {
+                *it = ur_charUppercase( *it );
+                ++it;
+            }
+        }
+            break;
 
-    if( ! ur_seriesSliceM( ut, &si, cell ) )
-        return UR_THROW;
-
-    if( ur_strIsUcs2(si.buf) )
-        _lowercaseUcs2( si.buf->ptr.u16 + si.it,
-                        si.buf->ptr.u16 + si.end );
-    else
-        _lowercaseLatin1( si.buf->ptr.b + si.it,
-                          si.buf->ptr.b + si.end );
-    return UR_OK;
-}
-
-
-/**
-  Convert all characters of string slice to uppercase.
-
-  \param cell   Pointer to valid string slice.
-
-  \return UR_OK/UR_THROW
-*/
-int ur_strUppercase( UThread* ut, const UCell* cell )
-{
-    USeriesIterM si;
-
-    if( ! ur_seriesSliceM( ut, &si, cell ) )
-        return UR_THROW;
-
-    if( ur_strIsUcs2(si.buf) )
-        _uppercaseUcs2( si.buf->ptr.u16 + si.it,
-                        si.buf->ptr.u16 + si.end );
-    else
-        _uppercaseLatin1( si.buf->ptr.b + si.it,
-                          si.buf->ptr.b + si.end );
-    return UR_OK;
+        case UR_ENC_UCS2:
+        {
+            uint16_t* it  = buf->ptr.u16 + start;
+            uint16_t* end = buf->ptr.u16 + send;
+            while( it != end )
+            {
+                *it = ur_charUppercase( *it );
+                ++it;
+            }
+        }
+            break;
+    }
 }
 
 
@@ -865,9 +819,27 @@ int ur_strUppercase( UThread* ut, const UCell* cell )
 */
 int ur_charLowercase( int c )
 {
-    uint16_t u16 = c;
-    _lowercaseUcs2( &u16, (&u16) + 1 );
-    return u16;
+    if( c >= 'A' )
+    {
+        if( c <= 'Z' )
+            return c + 32;
+        if( c >= 0x00C0 )
+        {
+            if( (c <= 0x00DE) && (c != 0x00D7) )
+                return c + 32;
+            if( c >= 0x0391 )
+            {
+                if( (c <= 0x03AB) && (c != 0x03A2) )
+                    return c + 32;
+                if( (c >= 0x0410) && (c <= 0x042F) )
+                    return c + 32;
+                if( (c >= 0x0531) && (c <= 0x0556) )
+                    return c + 48;
+                // TODO: Implement full lookup table.
+            }
+        }
+    }
+    return c;
 }
 
 
@@ -876,9 +848,27 @@ int ur_charLowercase( int c )
 */
 int ur_charUppercase( int c )
 {
-    uint16_t u16 = c;
-    _uppercaseUcs2( &u16, (&u16) + 1 );
-    return u16;
+    if( c >= 'a' )
+    {
+        if( c <= 'z' )
+            return c - 32;
+        if( c >= 0x00E0 )
+        {
+            if( (c <= 0x00FE) && (c != 0x00F7) )
+                return c - 32;
+            if( c >= 0x03B1 )
+            {
+                if( (c <= 0x03CB) && (c != 0x03C2) )
+                    return c - 32;
+                if( (c >= 0x0430) && (c <= 0x044F) )
+                    return c - 32;
+                if( (c >= 0x0561) && (c <= 0x0586) )
+                    return c - 48;
+                // TODO: Implement full lookup table.
+            }
+        }
+    }
+    return c;
 }
 
 

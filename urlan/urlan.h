@@ -373,7 +373,8 @@ struct UDatatype
  
 enum UrlanFindOption
 {
-    UR_FIND_LAST = 1
+    UR_FIND_LAST = 1,
+    UR_FIND_CASE
 };
 
 typedef struct
@@ -468,8 +469,8 @@ void     ur_strAppendIndent( UBuffer*, int depth );
 void     ur_strAppend( UBuffer*, const UBuffer* strB, UIndex itB, UIndex endB );
 void     ur_strTermNull( UBuffer* );
 void     ur_strFlatten( UBuffer* );
-int      ur_strLowercase( UThread*, const UCell* cell );
-int      ur_strUppercase( UThread*, const UCell* cell );
+void     ur_strLowercase( UBuffer* str, UIndex start, UIndex send );
+void     ur_strUppercase( UBuffer* str, UIndex start, UIndex send );
 UIndex   ur_strFindChar( const UBuffer*, UIndex start, UIndex end, int ch );
 UIndex   ur_strFindChars( const UBuffer*, UIndex start, UIndex end,
                           uint8_t* charSet, int len );

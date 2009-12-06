@@ -1325,7 +1325,7 @@ int binary_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
     if( (vt == UT_CHAR) || (vt == UT_INT) )
     {
         it = buf->ptr.b;
-        if( opt == UR_FIND_LAST )
+        if( opt & UR_FIND_LAST )
             it = find_last_uint8_t( it + si->it, it + si->end, ur_int(val) );
         else
             it = find_uint8_t( it + si->it, it + si->end, ur_int(val) );
@@ -1850,6 +1850,69 @@ void string_remove( UThread* ut, USeriesIterM* si, UIndex part )
 }
 
 
+/*
+  Returns pointer to val or zero if val not found.
+*/
+#define FIND_LC(T) \
+const T* find_lc_ ## T( const T* it, const T* end, T val ) { \
+    while( it != end ) { \
+        if( ur_charLowercase(*it) == val ) \
+            return it; \
+        ++it; \
+    } \
+    return 0; \
+}
+
+FIND_LC(uint8_t)
+FIND_LC(uint16_t)
+
+
+/*
+  Returns pointer to val or zero if val not found.
+*/
+#define FIND_LC_LAST(T) \
+const T* find_lc_last_ ## T( const T* it, const T* end, T val ) { \
+    while( it != end ) { \
+        --end; \
+        if( ur_charLowercase(*end) == val ) \
+            return end; \
+    } \
+    return 0; \
+}
+
+FIND_LC_LAST(uint8_t)
+FIND_LC_LAST(uint16_t)
+
+
+/*
+  Returns first occurance of pattern or 0 if it is not found.
+*/
+#define FIND_LC_PATTERN(T) \
+const T* find_lc_pattern_ ## T( const T* it, const T* end, \
+        const T* pit, const T* pend ) { \
+    T pfirst = *pit++; \
+    while( it != end ) { \
+        if( ur_charLowercase(*it) == pfirst ) { \
+            const T* in = it + 1; \
+            const T* p  = pit; \
+            while( p != pend && in != end ) { \
+                if( ur_charLowercase(*in) != *p ) \
+                    break; \
+                ++in; \
+                ++p; \
+            } \
+            if( p == pend ) \
+                return it; \
+        } \
+        ++it; \
+    } \
+    return 0; \
+}
+
+FIND_LC_PATTERN(uint8_t)
+FIND_LC_PATTERN(uint16_t)
+
+
 int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
     const UBuffer* buf = si->buf;
@@ -1860,50 +1923,104 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
         if( ur_strIsUcs2(buf) )
         {
             const uint16_t* it = buf->ptr.u16;
-            if( opt == UR_FIND_LAST )
-                it = find_last_uint16_t( it + si->it, it + si->end, ch );
+            if( opt & UR_FIND_CASE )
+            {
+                if( opt & UR_FIND_LAST )
+                    it = find_last_uint16_t( it + si->it, it + si->end, ch );
+                else
+                    it = find_uint16_t( it + si->it, it + si->end, ch );
+            }
             else
-                it = find_uint16_t( it + si->it, it + si->end, ch );
+            {
+                ch = ur_charLowercase( ch );
+                if( opt & UR_FIND_LAST )
+                    it = find_lc_last_uint16_t( it + si->it, it + si->end, ch );
+                else
+                    it = find_lc_uint16_t( it + si->it, it + si->end, ch );
+            }
             if( it )
                 return it - buf->ptr.u16;
         }
         else
         {
             const uint8_t* it = buf->ptr.b;
-            if( opt == UR_FIND_LAST )
-                it = find_last_uint8_t( it + si->it, it + si->end, ch );
+            if( opt & UR_FIND_CASE )
+            {
+                if( opt & UR_FIND_LAST )
+                    it = find_last_uint8_t( it + si->it, it + si->end, ch );
+                else
+                    it = find_uint8_t( it + si->it, it + si->end, ch );
+            }
             else
-                it = find_uint8_t( it + si->it, it + si->end, ch );
+            {
+                ch = ur_charLowercase( ch );
+                if( opt & UR_FIND_LAST )
+                    it = find_lc_last_uint8_t( it + si->it, it + si->end, ch );
+                else
+                    it = find_lc_uint8_t( it + si->it, it + si->end, ch );
+            }
             if( it )
                 return it - buf->ptr.b;
         }
     }
     else if( ur_isStringType( ur_type(val) ) )
     {
+        UBuffer pat;
         USeriesIter siV;
+        int pos = -1;
+
         ur_seriesSlice( ut, &siV, val );
 
-        if( buf->form != siV.buf->form )
-            return -1;  // TODO: Handle mixed encodings.
+        if( (buf->form != siV.buf->form) || ! (opt & UR_FIND_CASE) )
+        {
+            ur_strInit( &pat, buf->form, 0 );
+            ur_strAppend( &pat, siV.buf, siV.it, siV.end );
+            siV.buf = &pat;
+        }
+        else
+            pat.ptr.b = 0;
 
+        // TODO: Implement UR_FIND_LAST.
         if( ur_strIsUcs2(buf) )
         {
             const uint16_t* it = buf->ptr.u16;
             const uint16_t* itV = siV.buf->ptr.u16;
-            it = find_pattern_uint16_t( it + si->it, it + si->end,
-                                        itV + siV.it, itV + siV.end );
+            if( opt & UR_FIND_CASE )
+            {
+                it = find_pattern_uint16_t( it + si->it, it + si->end,
+                                            itV + siV.it, itV + siV.end );
+            }
+            else
+            {
+                ur_strLowercase( &pat, 0, pat.used );
+                it = find_lc_pattern_uint16_t( it + si->it, it + si->end,
+                                               itV, itV + pat.used );
+            }
             if( it )
-                return it - buf->ptr.u16;
+                pos = it - buf->ptr.u16;
         }
         else
         {
             const uint8_t* it = buf->ptr.b;
             const uint8_t* itV = siV.buf->ptr.b;
-            it = find_pattern_uint8_t( it + si->it, it + si->end,
-                                       itV + siV.it, itV + siV.end );
+            if( opt & UR_FIND_CASE )
+            {
+                it = find_pattern_uint8_t( it + si->it, it + si->end,
+                                           itV + siV.it, itV + siV.end );
+            }
+            else
+            {
+                ur_strLowercase( &pat, 0, pat.used );
+                it = find_lc_pattern_uint8_t( it + si->it, it + si->end,
+                                              itV, itV + pat.used );
+            }
             if( it )
-                return it - buf->ptr.b;
+                pos = it - buf->ptr.b;
         }
+
+        if( pat.ptr.b )
+            ur_strFree( &pat );
+        return pos;
     }
     else if( ur_is(val, UT_BINARY) )
     {
@@ -2377,7 +2494,7 @@ int block_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
     bi.it  = buf->ptr.cell + si->it;
     bi.end = buf->ptr.cell + si->end;
 
-    if( opt == UR_FIND_LAST )
+    if( opt & UR_FIND_LAST )
     {
         while( bi.it != bi.end )
         {

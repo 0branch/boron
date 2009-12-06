@@ -72,3 +72,12 @@ probe remove a
 probe remove/part next a 3
 probe a
 
+
+print "---- find"
+sq: "A squirrel in winter rests"
+u2: "Rests ЃԐ"
+probe find sq "WINTER"
+probe find/case sq "WINTER"
+probe find/case sq lowercase "WINTER"
+probe encoding? u2
+probe find sq slice u2 5

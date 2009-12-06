@@ -507,15 +507,17 @@ CFUNC(cfunc_infuse)
 }
 
 
+#define INT_MASK    ((1<<UT_CHAR) | (1<<UT_INT))
 #define DEC_MASK    ((1<<UT_DECIMAL) | (1<<UT_TIME) | (1<<UT_DATE))
+#define ur_isIntType(type)  ((1<<type) & INT_MASK)
 #define ur_isDecType(type)  ((1<<type) & DEC_MASK)
 
 #define MATH_FUNC(name,OP) \
  CFUNC(name) { \
     const UCell* ra = a2; \
-    if( ur_is(a1, UT_INT) ) { \
-        if( ur_is(ra, UT_INT) ) { \
-            ur_setId(res, UT_INT); \
+    if( ur_isIntType(ur_type(a1)) ) { \
+        if( ur_isIntType(ur_type(ra)) ) { \
+            ur_setId(res, ur_type(a1)); \
             ur_int(res) = ur_int(a1) OP ur_int(ra); \
             return UR_OK; \
         } else if( ur_isDecType(ur_type(ra)) ) { \
@@ -525,7 +527,7 @@ CFUNC(cfunc_infuse)
         } \
     } \
     else if( ur_isDecType(ur_type(a1)) ) { \
-        if( ur_is(ra, UT_INT) ) { \
+        if( ur_isIntType(ur_type(ra)) ) { \
             ur_setId(res, UT_DECIMAL); \
             ur_decimal(res) = ur_decimal(a1) OP ur_int(ra); \
             return UR_OK; \
@@ -1450,6 +1452,7 @@ CFUNC(cfunc_remove)
         series
         value
         /last
+        /case   Case of characters in strings must match
         /part
             limit   series/int!
     return: Position of value in series or none!.
@@ -1457,7 +1460,8 @@ CFUNC(cfunc_remove)
 CFUNC(cfunc_find)
 {
 #define OPT_FIND_LAST   UR_FIND_LAST
-#define OPT_FIND_PART   0x02
+#define OPT_FIND_CASE   UR_FIND_CASE
+#define OPT_FIND_PART   0x04
     USeriesIter si;
     UIndex i;
     uint32_t opt = CFUNC_OPTIONS;
@@ -2870,8 +2874,12 @@ CFUNC(cfunc_lowercase)
 {
     if( ur_isStringType( ur_type(a1) ) )
     {
+        USeriesIterM si;
+        if( ! ur_seriesSliceM( ut, &si, a1 ) )
+            return UR_THROW;
         *res = *a1;
-        return ur_strLowercase( ut, a1 );
+        ur_strLowercase( si.buf, si.it, si.end );
+        return UR_OK;
     }
     else if( ur_is(a1, UT_CHAR) )
     {
@@ -2892,8 +2900,12 @@ CFUNC(cfunc_uppercase)
 {
     if( ur_isStringType( ur_type(a1) ) )
     {
+        USeriesIterM si;
+        if( ! ur_seriesSliceM( ut, &si, a1 ) )
+            return UR_THROW;
         *res = *a1;
-        return ur_strUppercase( ut, a1 );
+        ur_strUppercase( si.buf, si.it, si.end );
+        return UR_OK;
     }
     else if( ur_is(a1, UT_CHAR) )
     {
