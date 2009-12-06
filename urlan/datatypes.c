@@ -572,6 +572,29 @@ UDatatype dt_char =
 // UT_INT
 
 
+#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
+
+int int_make( UThread* ut, const UCell* from, UCell* res )
+{
+    if( ANY3(from, UT_LOGIC, UT_CHAR, UT_INT) )
+    {
+        ur_setId(res, UT_INT);
+        ur_int(res) = ur_int(from);
+    }
+    else if( ur_is(from, UT_DECIMAL) )
+    {
+        ur_setId(res, UT_INT);
+        ur_int(res) = ur_decimal(from);
+    }
+    else
+    {
+        return ur_error( ut, UR_ERR_TYPE,
+                         "make int! expected logic!/char!/int!/decimal!" );
+    }
+    return UR_OK;
+}
+
+
 #define MASK_CHAR_INT   ((1 << UT_CHAR) | (1 << UT_INT))
 #define ur_isIntType(T) ((1 << T) & MASK_CHAR_INT)
 
@@ -615,7 +638,7 @@ void int_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_int =
 {
     "int!",
-    unset_make,             unset_copy,         int_compare,
+    int_make,               unset_copy,         int_compare,
     unset_select,           int_toString,       int_toString,
     unset_recycle,          unset_mark,         unset_destroy,
     unset_markBuf,          unset_toShared,     unset_bind
