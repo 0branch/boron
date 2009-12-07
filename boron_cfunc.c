@@ -2350,16 +2350,59 @@ CFUNC(cfunc_dirQ)
 
 extern int ur_makeDir( UThread* ut, const char* path );
 
+static int _makeDirParents( UThread* ut, char* path, char* end )
+{
+#define MAX_PATH_PARTS  16
+    OSFileInfo info;
+    uint16_t index[ MAX_PATH_PARTS ];
+    char* it = path + 1;
+    int parts = 0;
+    int i = 0;
+
+    while( it != end )
+    {
+        if( (*it == '/' || *it == '\\') && (it[-1] != ':') )
+        {
+            *it = '\0';
+            if( parts >= MAX_PATH_PARTS )
+                break;
+            index[ parts++ ] = it - path;
+        }
+        ++it;
+    }
+
+    while( (i < parts) && ur_fileInfo( path, &info, FI_Type ) )
+        path[ index[ i++ ] ] = '/';
+
+    while( i < parts )
+    {
+        if( ! ur_makeDir( ut, path ) )
+            return UR_THROW;
+        path[ index[ i++ ] ] = '/';
+    }
+    return UR_OK;
+}
+
+
 /*-cf-
     make-dir
         dir file!/string!
+        /all    Make any missing parent directories.
     return: unset!
 */
 CFUNC(cfunc_make_dir)
 {
+#define OPT_MAKE_DIR_ALL    0x01
     if( ur_isStringType( ur_type(a1) ) )
     {
-        if( ! ur_makeDir( ut, boron_cpath(ut, a1, 0) ) )
+        UBuffer* bin = ur_buffer( BT->tempN );
+        char* path = boron_cpath( ut, a1, bin );
+        if( CFUNC_OPTIONS & OPT_MAKE_DIR_ALL )
+        {
+            if( ! _makeDirParents( ut, path, path + bin->used ) )
+                return UR_THROW;
+        }
+        if( ! ur_makeDir( ut, path ) )
             return UR_THROW;
         ur_setId(res, UT_UNSET);
         return UR_OK;

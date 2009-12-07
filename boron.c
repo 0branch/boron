@@ -298,7 +298,7 @@ extern int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int len );
 
   \return Pointer to C string in bin.
 */
-const char* boron_cstr( UThread* ut, const UCell* strC, UBuffer* bin )
+char* boron_cstr( UThread* ut, const UCell* strC, UBuffer* bin )
 {
     const UBuffer* str = ur_bufferSer(strC);
     int len = str->used;
@@ -354,7 +354,7 @@ const char* boron_cstr( UThread* ut, const UCell* strC, UBuffer* bin )
 
   \return Pointer to C string in bin.
 */
-const char* boron_cpath( UThread* ut, const UCell* strC, UBuffer* bin )
+char* boron_cpath( UThread* ut, const UCell* strC, UBuffer* bin )
 {
     if( ! bin )
         bin = ur_buffer( BT->tempN );
@@ -812,7 +812,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_map,        "map 'w ser body /ghost" );
     addCFunc( cfunc_existsQ,    "exists? file" );
     addCFunc( cfunc_dirQ,       "dir? file" );
-    addCFunc( cfunc_make_dir,   "make-dir path" );
+    addCFunc( cfunc_make_dir,   "make-dir path /all" );
     addCFunc( cfunc_getenv,     "getenv val" );
     addCFunc( cfunc_read,       "read from /text /into b" );
     addCFunc( cfunc_write,      "write to data /append" );
