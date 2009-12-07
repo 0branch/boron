@@ -123,22 +123,18 @@ exe_target: make target_env
         ]
 
         if cfg/qt [
-            either cfg/qt = 3 [
+            either cfg/qt-static [
                 include_from {$(QTDIR)/include}
+                include_from {$(QTDIR)/include/QtCore}
+                lflags {-L$(QTDIR)/lib -lQtCore}
+                lflags {-framework Carbon -lz -liconv}
+                do bind cfg/qt qt-static-libs
             ][
-                either cfg/qt-static [
-                    include_from {$(QTDIR)/include}
-                    include_from {$(QTDIR)/include/QtCore}
-                    lflags {-L$(QTDIR)/lib -lQtCore}
-                    lflags {-framework Carbon -lz -liconv}
-                    do bind cfg/qt qt-static-libs
-                ][
-                    include_from {/Library/Frameworks/QtCore.framework/Headers}
-                    cflags {-F/Library/Frameworks}
-                    lflags {-F/Library/Frameworks -framework QtCore}
-                    lflags {-framework Carbon}
-                    do bind cfg/qt qt-libs
-                ]
+                include_from {/Library/Frameworks/QtCore.framework/Headers}
+                cflags {-F/Library/Frameworks}
+                lflags {-F/Library/Frameworks -framework QtCore}
+                lflags {-framework Carbon}
+                do bind cfg/qt qt-libs
             ]
             if cfg/release [
                 cxxflags {-DQT_NO_DEBUG}
@@ -202,7 +198,7 @@ exe_target: make target_env
         if cfg_bundle [
             bdir: to-file join name %.app/Contents/
             ifn exists? bdir [
-                make-dir/deep join bdir %MacOs
+                make-dir/all join bdir %MacOs
                 write join bdir %PkgInfo #{4150504c 3f3f3f3f 0a}
                 write join bdir %Info.plist rejoin bind info.plist 'name
 
