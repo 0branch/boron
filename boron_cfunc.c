@@ -1084,6 +1084,21 @@ CFUNC(cfunc_second)
 
 
 /*-cf-
+    third
+        series
+    return: Third item in series or none!.
+*/
+CFUNC(cfunc_third)
+{
+    int type = ur_type(a1);
+    if( ! ur_isSeriesType( type ) )
+        return ur_error( ut, UR_ERR_TYPE, "third expected series" );
+    SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it + 2, res );
+    return UR_OK;
+}
+
+
+/*-cf-
     last
         series
     return: Last item in series or none!.

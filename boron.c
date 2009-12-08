@@ -780,6 +780,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_switch,  "switch val body" );
     addCFunc( cfunc_first,   "first ser" );
     addCFunc( cfunc_second,  "second ser" );
+    addCFunc( cfunc_third,   "third ser" );
     addCFunc( cfunc_last,    "last ser" );
     addCFunc( cfunc_2plus,   "++ 'w" );
     addCFunc( cfunc_2minus,  "-- 'w" );
