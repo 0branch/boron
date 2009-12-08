@@ -32,10 +32,11 @@
 void usage( const char* arg0 )
 {
     printf( APPNAME " %s (%s)\n\n", UR_VERSION_STR, __DATE__ );
-    printf( "Usage: %s [options] [script [script args]]\n\n", arg0 );
+    printf( "Usage: %s [options] [script] [arguments]\n\n", arg0 );
     printf( "Options:\n"
-          //"  -s     Disable security\n"
-            "  -h     Show this help and exit\n"
+          //"  -s      Disable security\n"
+            "  -e exp  Evaluate expression\n"
+            "  -h      Show this help and exit\n"
           );
 }
 
@@ -64,7 +65,7 @@ int main( int argc, char** argv )
     if( ! ut )
     {
         printf( "boron_makeEnv failed\n" );
-        return -1;
+        return 70;      // EX_SOFTWARE
     }
 
     ur_freezeEnv( ut );
@@ -82,13 +83,25 @@ int main( int argc, char** argv )
             {
                 switch( arg[1] )
                 {
-                    case 's':
-                        //ur_disable( env, UR_ENV_SECURE );
+                    case 'e':
+                        if( ++i >= argc )
+                            goto usage_err;
+                        fileN = -i;
+                        i = argc;
                         break;
-
+#if 0
+                    case 's':
+                        ur_disable( ut, UR_ENV_SECURE );
+                        break;
+#endif
                     case 'h':
                         usage( argv[0] );
                         return 0;
+
+                    default:
+usage_err:
+                        usage( argv[0] );
+                        return 64;      // EX_USAGE
                 }
             }
             else
@@ -104,6 +117,15 @@ int main( int argc, char** argv )
     if( fileN )
     {
         char* pos;
+        int exp;
+
+        if( fileN < 0 )
+        {
+            fileN = -fileN;
+            exp = 1;
+        }
+        else
+            exp = 0;
 
         pos = cmd;
         cmd[ sizeof(cmd) - 1 ] = -1;
@@ -127,9 +149,16 @@ int main( int argc, char** argv )
             pos = str_copy( pos, "args: none " );
         }
 
-        pos = str_copy( pos, "do load {" );
-        pos = str_copy( pos, argv[fileN] );
-        *pos++ = '}';
+        if( exp )
+        {
+            pos = str_copy( pos, argv[fileN] );
+        }
+        else
+        {
+            pos = str_copy( pos, "do load {" );
+            pos = str_copy( pos, argv[fileN] );
+            *pos++ = '}';
+        }
 
         assert( cmd[ sizeof(cmd) - 1 ] == -1 && "cmd buffer overflow" );
 
