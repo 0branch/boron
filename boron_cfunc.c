@@ -1755,16 +1755,21 @@ CFUNC(cfunc_sizeQ)
 
 /*-cf-
     index?
-        series
+        series  Series or word.
     return: int!
 */
 CFUNC(cfunc_indexQ)
 {
-    if( ! ur_isSeriesType( ur_type(a1) ) )
-        return ur_error( ut, UR_ERR_TYPE, "index? expected series" );
+    int type = ur_type(a1);
+
+    if( ur_isSeriesType( type ) )
+        ur_int(res) = a1->series.it + 1;
+    else if( ur_isWordType( type ) )
+        ur_int(res) = ur_atom(a1);
+    else
+        return errorType( "index? expected series or word" );
 
     ur_setId( res, UT_INT );
-    ur_int(res) = a1->series.it + 1;
     return UR_OK;
 }
 
