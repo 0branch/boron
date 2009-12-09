@@ -311,12 +311,15 @@ void ur_ctxFree( UBuffer* buf )
 */
 void ur_ctxWordAtoms( const UBuffer* ctx, UAtom* atoms )
 {
-    const WordEntry* it = ENTRIES(ctx);
-    const WordEntry* end = it + ctx->used;
-    while( it != end )
+    if( ctx->used > 0 )
     {
-        atoms[it->index] = it->atom;
-        ++it;
+        const WordEntry* it = ENTRIES(ctx);
+        const WordEntry* end = it + ctx->used;
+        while( it != end )
+        {
+            atoms[it->index] = it->atom;
+            ++it;
+        }
     }
 }
 
