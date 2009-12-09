@@ -32,8 +32,8 @@ syn region		boronCommentB	start="/\*" end="\*/" contains=boronTodo,boronCommentB
 
 
 " Words
-syn match       boronSetWord    ":\a\k*"
-syn match       boronGetWord    "\a\k*:"
+syn match       boronSetWord    "\a\k*:"
+syn match       boronGetWord    ":\a\k*"
 syn match       boronLitWord    "'\a\k*"
 syn match       boronWord       "\a\k*"
 "syn match       boronWordPath   "[^[:space:]]/[^[:space]]"ms=s+1,me=e-1
@@ -44,11 +44,12 @@ syn keyword     boronBoolean    true false on off yes no
 " Values
 " Integers
 syn match       boronInteger    "\<[+-]\=\d\+\('\d*\)*\>"
-" Hex number
-syn match       boronInteger    "\$\x\+"
 " Decimals
 syn match       boronDecimal    "[+-]\=\(\d\+\('\d*\)*\)\=[,.]\d*\(e[+-]\=\d\+\)\="
 syn match       boronDecimal    "[+-]\=\d\+\('\d*\)*\(e[+-]\=\d\+\)\="
+" Hex number
+syn match       boronInteger    "\$\x\+"
+syn match       boronInteger    "0x\x\+"
 " Time
 syn match       boronTime       "[+-]\=\(\d\+\('\d*\)*\:\)\{1,2}\d\+\('\d*\)*\([.,]\d\+\)\=\([AP]M\)\=\>"
 syn match       boronTime       "[+-]\=:\d\+\([.,]\d*\)\=\([AP]M\)\=\>"
