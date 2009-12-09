@@ -1327,7 +1327,7 @@ CFUNC(cfunc_poke)
 /*-cf-
     pop
         series
-    return: Tail of series or none! if empty.
+    return: Last item of series or none! if empty.
 
     Removes last item from series and returns it.
 */
