@@ -30,3 +30,9 @@ ia: copy a
 blk: ia/'words
 set blk infuse copy blk context [x: none first: "one" second: "two"]
 probe ia
+
+
+print "---- append"
+c: context [a: 1 b: 2]
+set append c 'extra 3.0
+probe c

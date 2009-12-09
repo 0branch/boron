@@ -1101,7 +1101,7 @@ CFUNC(cfunc_third)
 /*-cf-
     last
         series
-    return: Last item in series or none!.
+    return: Last item in series or none! if empty.
 */
 CFUNC(cfunc_last)
 {
@@ -1264,7 +1264,16 @@ CFUNC(cfunc_pick)
         return ur_error( ut, UR_ERR_TYPE, "pick expected series" );
 
     if( ur_is(a2, UT_INT) )
-        n = ur_int(a2) - 1;
+    {
+        n = ur_int(a2);
+        if( n > 0 )
+            --n;
+        else if( ! n )
+        {
+            ur_setId(res, UT_NONE);
+            return UR_OK;
+        }
+    }
     else if( ur_is(a2, UT_LOGIC) )
         n = ur_int(a2) ? 0 : 1;
     else
@@ -1291,7 +1300,16 @@ CFUNC(cfunc_poke)
         return ur_error( ut, UR_ERR_TYPE, "poke expected series" );
 
     if( ur_is(a2, UT_INT) )
-        n = ur_int(a2) - 1;
+    {
+        n = ur_int(a2);
+        if( n > 0 )
+            --n;
+        else if( ! n )
+        {
+            ur_setId(res, UT_NONE);
+            return UR_OK;
+        }
+    }
     else if( ur_is(a2, UT_LOGIC) )
         n = ur_int(a2) ? 0 : 1;
     else
@@ -1302,6 +1320,36 @@ CFUNC(cfunc_poke)
 
     SERIES_DT( type )->poke( buf, a1->series.it + n, a3 );
     *res = *a1;
+    return UR_OK;
+}
+
+
+/*-cf-
+    pop
+        series
+    return: Tail of series or none! if empty.
+
+    Removes last item from series and returns it.
+*/
+CFUNC(cfunc_pop)
+{
+    USeriesIterM si;
+    int type = ur_type(a1);
+    if( ! ur_isSeriesType( type ) )
+        return errorType( "pop expected series" );
+    if( ! ur_seriesSliceM( ut, &si, a1 ) )
+        return UR_THROW;
+    if( si.it == si.end )
+    {
+        ur_setId(res, UT_NONE);
+    }
+    else
+    {
+        const USeriesType* dt = SERIES_DT( type );
+        si.it = si.end - 1;
+        dt->pick( si.buf, si.it, res );
+        dt->remove( ut, &si, 0 );
+    }
     return UR_OK;
 }
 
@@ -1348,10 +1396,10 @@ CFUNC(cfunc_skip)
 
 /*-cf-
     append
-        series
+        series  Series or context!
         value
-        /block
-    return: series
+        /block  If series and value are blocks, push value as a single item.
+    return: Modified series or bound word!.
 */
 CFUNC(cfunc_append)
 {
@@ -1359,18 +1407,46 @@ CFUNC(cfunc_append)
     UBuffer* buf;
     int type = ur_type(a1);
 
-    if( ! ur_isSeriesType( type ) )
-        return ur_error( ut, UR_ERR_TYPE, "append expected series" );
-    if( ! (buf = ur_bufferSerM(a1)) )
-        return UR_THROW;
+    if( ur_isSeriesType( type ) )
+    {
+        if( ! (buf = ur_bufferSerM(a1)) )
+            return UR_THROW;
 
-    if( (type == UT_BLOCK) && (CFUNC_OPTIONS & OPT_APPEND_BLOCK) )
-        ur_blkPush( buf, a2 );
-    else if( ! SERIES_DT( type )->append( ut, buf, a2 ) )
-        return UR_THROW;
+        if( (type == UT_BLOCK) && (CFUNC_OPTIONS & OPT_APPEND_BLOCK) )
+            ur_blkPush( buf, a2 );
+        else if( ! SERIES_DT( type )->append( ut, buf, a2 ) )
+            return UR_THROW;
+        *res = *a1;
+        return UR_OK;
+    }
+    else if( type == UT_CONTEXT )
+    {
+        if( ! (buf = ur_bufferSerM(a1)) )
+            return UR_THROW;
 
-    *res = *a1;
-    return UR_OK;
+        type = ur_type(a2);
+        if( ur_isWordType( type ) )
+        {
+            UIndex n = a1->series.buf;
+            ur_setId(res, UT_WORD);
+            ur_setBinding( res, ur_isShared(n) ? UR_BIND_ENV : UR_BIND_THREAD );
+            res->word.ctx   = n;
+            res->word.index = ur_ctxAddWordI( buf, ur_atom(a2) );
+            return UR_OK;
+        }
+#if 0
+        else if( type == UT_BLOCK )
+        {
+            UBlockIter bi;
+            ur_blkSlice( ut, &bi, a2 );
+            ur_ctxSetWords( buf, bi.it, bi.end );
+            *res = *a2;
+            return UR_OK;
+        }
+#endif
+        return errorType( "append context! expected word!" );
+    }
+    return errorType( "append expected series or context!" );
 }
 
 

@@ -22,3 +22,9 @@ context [
     first: "one"
     second: "two"
 ]
+---- append
+context [
+    a: 1
+    b: 2
+    extra: 3.0
+]

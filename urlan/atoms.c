@@ -36,6 +36,8 @@ AtomRec;
 
 
 /**
+  \ingroup urlan_core
+
   Get name of atom.
 
   \param atom  Valid atom.

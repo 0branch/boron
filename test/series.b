@@ -40,6 +40,7 @@ probe it
 print "---- pick"
 b: [word1 word2 word3]
 print [pick b -1  pick b 0  pick b 2  pick b 4]
+print [pick tail b -2  pick tail b 0]
 
 
 print "---- append"
@@ -55,6 +56,14 @@ probe join 23 "abc"
 v: "Good"
 probe join v " job"
 probe v             ; v unchanged.
+
+
+print "---- pop"
+b: [1 2 3 4]
+print [pop b pop b b]
+s: {smog}
+print [pop s pop s s]
+probe pop []
 
 
 print "---- terminate"

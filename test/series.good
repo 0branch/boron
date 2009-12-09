@@ -22,6 +22,7 @@ block! true true
 []
 ---- pick
 none none word2 none
+word2 none
 ---- append
 [word1 word2 word3 5]
 "abcd"
@@ -32,6 +33,10 @@ none none word2 none
 "23abc"
 "Good job"
 "Good"
+---- pop
+4 3 1 2
+g o sm
+none
 ---- terminate
 "path/"
 "path/"
