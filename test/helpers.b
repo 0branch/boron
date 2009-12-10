@@ -10,3 +10,5 @@ s: "comma,separated,words,"
 probe replace     copy s ',' ' '
 probe replace/all copy s ',' ' '
 probe replace/all copy s ',' "-->"
+s2: {include: ""}
+probe replace/all copy s2 '"' {\"}

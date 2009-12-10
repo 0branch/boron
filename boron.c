@@ -548,6 +548,7 @@ void boron_addCFunc( UThread* ut, int (*func)(UThread*,UCell*,UCell*),
 }
 
 
+// OS_WORD should be the same as the uname operating system name.
 #if defined(__APPLE__)
 #define OS_WORD "Darwin"
 #elif defined(__FreeBSD__)
@@ -555,7 +556,7 @@ void boron_addCFunc( UThread* ut, int (*func)(UThread*,UCell*,UCell*),
 #elif defined(__linux)
 #define OS_WORD "Linux"
 #elif defined(__sun__)
-#define OS_WORD "Solaris"
+#define OS_WORD "SunOS"
 #elif defined(_WIN32)
 #define OS_WORD "Windows"
 #else
@@ -599,7 +600,8 @@ static const char setupScript[] =
     "replace: func [series pat rep /all | f size] [\n"
     "  size: either series? pat [size? pat][1]\n"
     "  either all [\n"
-    "    while [f: find series pat] [change/part f rep size]\n"
+    "    f: series\n"
+    "    while [f: find f pat] [f: change/part f rep size]\n"
     "  ][\n"
     "    if f: find series pat [change/part f rep size]\n"
     "  ]\n"
@@ -652,7 +654,7 @@ static const char setupScript[] =
         pat     Pattern to look for.
         rep     Replacement value.
         /all    Replace all occurances of the pattern, not just the first.
-    return: Modified series.
+    return: Modified series at original position.
 */
 /*-hf- split-path
         path file!/string!
