@@ -24,6 +24,9 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #endif
+#ifdef BORON_GL
+#include "boron-gl.h"
+#endif
 
 
 #define APPNAME     "Boron"
@@ -69,6 +72,10 @@ int main( int argc, char** argv )
         puts( "boron_makeEnv failed" );
         return 70;      // EX_SOFTWARE
     }
+
+#ifdef BORON_GL
+    boron_initGL( ut );
+#endif
 
     ur_freezeEnv( ut );
 
@@ -282,6 +289,9 @@ prompt:
 
 quit:
 
+#ifdef BORON_GL
+    boron_freeGL( ut );
+#endif
     ur_strFree( &rstr );
     boron_freeEnv( ut );
 
