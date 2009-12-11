@@ -50,6 +50,7 @@ enum UrlanFixedAtoms
     UR_ATOM_TO,
     UR_ATOM_THRU,
     UR_ATOM_PLACE,
+    UR_ATOM_MARK,
 
     UR_ATOM_I8,
     UR_ATOM_U8,
@@ -58,7 +59,10 @@ enum UrlanFixedAtoms
     UR_ATOM_I32,
     UR_ATOM_U32,
     UR_ATOM_F32,
-    UR_ATOM_F64
+    UR_ATOM_F64,
+
+    UR_ATOM_BIG_ENDIAN,
+    UR_ATOM_LITTLE_ENDIAN
 };
 
 #endif

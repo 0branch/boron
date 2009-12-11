@@ -70,8 +70,9 @@ shlib %boron [
         %bignum.c
         %vector.c
 
-        %parse_string.c
+        %parse_binary.c
         %parse_block.c
+        %parse_string.c
     ]
 
     sources [

@@ -3019,6 +3019,10 @@ CFUNC(cfunc_save)
 }
 
 
+extern int ur_parseBinary( UThread* ut, UBuffer*, UIndex start, UIndex end,
+                           UIndex* parsePos, const UBuffer* ruleBlk,
+                           int (*eval)( UThread*, const UCell* ) );
+
 extern int ur_parseBlock( UThread* ut, UBuffer*, UIndex start, UIndex end,
                           UIndex* parsePos, const UBuffer* ruleBlk,
                           int (*eval)( UThread*, const UCell* ) );
@@ -3037,7 +3041,7 @@ extern int ur_parseString( UThread* ut, UBuffer*, UIndex start, UIndex end,
 CFUNC(cfunc_parse)
 {
 #define OPT_PARSE_CASE  0x01
-    if( (ur_is(a1, UT_BLOCK) || ur_is(a1, UT_STRING)) &&
+    if( ANY3(a1, UT_BINARY, UT_STRING, UT_BLOCK) &&
         ur_is(a2, UT_BLOCK) )
     {
         USeriesIterM si;
@@ -3051,12 +3055,22 @@ CFUNC(cfunc_parse)
         if( ! (rules = ur_bufferSer(a2)) )
             return UR_THROW;
 
-        if( ur_is(a1, UT_STRING) )
-            ok = ur_parseString( ut, si.buf, si.it, si.end, &pos, rules,
-                                 boron_doVoid, CFUNC_OPTIONS & OPT_PARSE_CASE );
-        else
-            ok = ur_parseBlock( ut, si.buf, si.it, si.end, &pos, rules,
-                                boron_doVoid );
+        switch( ur_type(a1) )
+        {
+            case UT_BINARY:
+                ok = ur_parseBinary( ut, si.buf, si.it, si.end, &pos, rules,
+                                     boron_doVoid );
+                break;
+            case UT_STRING:
+                ok = ur_parseString( ut, si.buf, si.it, si.end, &pos, rules,
+                                     boron_doVoid,
+                                     CFUNC_OPTIONS & OPT_PARSE_CASE );
+                break;
+            case UT_BLOCK:
+                ok = ur_parseBlock( ut, si.buf, si.it, si.end, &pos, rules,
+                                    boron_doVoid );
+                break;
+        }
         if( ! ok )
             return UR_THROW;
 
