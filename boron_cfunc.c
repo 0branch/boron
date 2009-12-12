@@ -2357,27 +2357,6 @@ CFUNC(cfunc_print)
 
 
 /*-cf-
-    to-string
-        val
-    return: string!
-*/
-CFUNC(cfunc_to_string)
-{
-    int enc = UR_ENC_LATIN1;
-
-    if( ur_is(a1, UT_STRING) )
-    {
-        const UBuffer* str = ur_bufferSer(a1);
-        enc = str->form;
-    }
-    ut->types[ ur_type(a1) ]->toString( ut, a1,
-                                        ur_makeStringCell(ut, enc, 0, res), 0 );
-
-    return UR_OK;
-}
-
-
-/*-cf-
     to-text
         val
     return: string!
@@ -3276,6 +3255,24 @@ CFUNC(cfunc_datatypeQ)
     ur_int(res) = (ur_type(a1) == ur_int(a2)) ? 1 : 0;
     ur_setId(res, UT_LOGIC);
     return UR_OK;
+}
+
+
+/*-cf-
+    to-datatype
+        value
+    return: New datatype!.
+
+    Convert value to datatype.
+
+    Each datatype has its own convert function which is named the same as the
+    type but starting with "to-".
+    For example, to convert a value to a string! use "to-string val".
+*/
+CFUNC(cfunc_to_type)
+{
+    // Type variation is in a2.
+    return DT( ur_int(a2) )->convert( ut, a1, res );
 }
 
 

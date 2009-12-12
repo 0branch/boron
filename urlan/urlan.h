@@ -355,6 +355,7 @@ struct UDatatype
     const char* name;
 
     int  (*make)      ( UThread*, const UCell* from, UCell* res );
+    int  (*convert)   ( UThread*, const UCell* from, UCell* res );
     void (*copy)      ( UThread*, const UCell* from, UCell* res );
     int  (*compare)   ( UThread*, const UCell* a, const UCell* b, int test );
     int  (*select)    ( UThread*, const UCell* cell, UBlockIter* bi,UCell* res);

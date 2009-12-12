@@ -32,7 +32,22 @@
   Make a new instance of the type.
   From and res are guaranteed to point to different cells.
 
+  Make should perform a shallow copy on any complex types which can be
+  nested.
+
   \param from   Value which describes the new instance.
+  \param res    Cell for new instance.
+
+  \return UR_OK/UR_THROW
+*/
+/** \fn void (*UDatatype::convert)(UThread*, const UCell* from, UCell* res)
+  Convert data to a new instance of the type.
+  From and res are guaranteed to point to different cells.
+
+  Convert should perform a shallow copy on any complex types which can be
+  nested.
+
+  \param from   Value to convert.
   \param res    Cell for new instance.
 
   \return UR_OK/UR_THROW
@@ -167,6 +182,11 @@
 #include "urlan_atoms.h"
 
 
+#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
+
+#define DT(dt)          (ut->types[ dt ])
+#define SERIES_DT(dt)   ((const USeriesType*) (ut->types[ dt ]))
+
 #define context_markBuf block_markBuf
 
 void block_markBuf( UThread* ut, UBuffer* buf );
@@ -247,10 +267,11 @@ void unset_bind( UThread* ut, UCell* cell, const UBindTarget* bt )
 UDatatype dt_unset =
 {
     "unset!",
-    unset_make,             unset_copy,         unset_compare,
-    unset_select,           unset_toString,     unset_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    unset_make,             unset_make,             unset_copy,
+    unset_compare,          unset_select,
+    unset_toString,         unset_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
@@ -421,10 +442,11 @@ void datatype_toString(UThread* ut, const UCell* cell, UBuffer* str, int depth)
 UDatatype dt_datatype =
 {
     "datatype!",
-    datatype_make,          unset_copy,         datatype_compare,
-    unset_select,           datatype_toString,  datatype_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    datatype_make,          datatype_make,          unset_copy,
+    datatype_compare,       unset_select,
+    datatype_toString,      datatype_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
@@ -440,6 +462,7 @@ int none_make( UThread* ut, const UCell* from, UCell* res )
     return UR_OK;
 }
 
+
 void none_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) ut;
@@ -452,10 +475,11 @@ void none_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_none =
 {
     "none!",
-    none_make,              unset_copy,         unset_compare,
-    unset_select,           none_toString,      none_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    none_make,              none_make,              unset_copy,
+    unset_compare,          unset_select,
+    none_toString,          none_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
@@ -467,14 +491,10 @@ int logic_make( UThread* ut, const UCell* from, UCell* res )
 {
     (void) ut;
     ur_setId(res, UT_LOGIC);
-    if( ur_is(from, UT_INT) || ur_is(from, UT_LOGIC) )
-    {
+    if( ANY3(from, UT_LOGIC, UT_CHAR, UT_INT) )
         ur_int(res) = ur_int(from) ? 1 : 0;
-    }
     else
-    {
         ur_int(res) = 0;
-    }
     return UR_OK;
 }
 
@@ -490,15 +510,36 @@ void logic_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_logic =
 {
     "logic!",
-    logic_make,             unset_copy,         unset_compare,
-    unset_select,           logic_toString,     logic_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    logic_make,             logic_make,             unset_copy,
+    unset_compare,          unset_select,
+    logic_toString,         logic_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind,
 };
 
 
 //----------------------------------------------------------------------------
 // UT_CHAR
+
+
+int char_make( UThread* ut, const UCell* from, UCell* res )
+{
+    if( ur_is(from, UT_INT) || ur_is(from, UT_CHAR) )
+    {
+        ur_setId(res, UT_CHAR);
+        ur_int(res) = ur_int(from);
+        return UR_OK;
+    }
+    else if( ur_is(from, UT_STRING) )
+    {
+        USeriesIter si;
+        ur_seriesSlice( ut, &si, from );
+        SERIES_DT( UT_STRING )->pick( si.buf, si.it, res );
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE,
+                     "make char! expected char!/int!/string!" );
+}
 
 
 void char_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
@@ -561,18 +602,17 @@ int int_compare( UThread* ut, const UCell* a, const UCell* b, int test );
 UDatatype dt_char =
 {
     "char!",
-    unset_make,             unset_copy,         int_compare,
-    unset_select,           char_toString,      char_toText,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    char_make,              char_make,              unset_copy,
+    int_compare,            unset_select,
+    char_toString,          char_toText,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
 //----------------------------------------------------------------------------
 // UT_INT
 
-
-#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
 
 int int_make( UThread* ut, const UCell* from, UCell* res )
 {
@@ -638,10 +678,11 @@ void int_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_int =
 {
     "int!",
-    int_make,               unset_copy,         int_compare,
-    unset_select,           int_toString,       int_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    int_make,               int_make,               unset_copy,
+    int_compare,            unset_select,
+    int_toString,           int_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
@@ -655,17 +696,15 @@ int decimal_make( UThread* ut, const UCell* from, UCell* res )
     {
         ur_setId(res, UT_DECIMAL);
         ur_decimal(res) = (double) ur_int(from);
+        return UR_OK;
     }
     else if( ur_is(from, UT_DECIMAL) )
     {
         *res = *from;
+        return UR_OK;
     }
-    else
-    {
-        return ur_error( ut, UR_ERR_TYPE,
-                         "make decimal! expected int!/decimal!" );
-    }
-    return UR_OK;
+    return ur_error( ut, UR_ERR_TYPE,
+                     "make decimal! expected int!/decimal!" );
 }
 
 
@@ -742,10 +781,11 @@ void decimal_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_decimal =
 {
     "decimal!",
-    decimal_make,           unset_copy,         decimal_compare,
-    unset_select,           decimal_toString,   decimal_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    decimal_make,           decimal_make,           unset_copy,
+    decimal_compare,        unset_select,
+    decimal_toString,       decimal_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
@@ -754,6 +794,35 @@ UDatatype dt_decimal =
 
 
 #include "bignum.h"
+
+
+int bignum_make( UThread* ut, const UCell* from, UCell* res )
+{
+    switch( ur_type(from) )
+    {
+        case UT_NONE:
+            ur_setId(res, UT_BIGNUM);
+            bignum_zero( res );
+            return UR_OK;
+
+        case UT_CHAR:
+        case UT_INT:
+            ur_setId(res, UT_BIGNUM);
+            bignum_seti( res, ur_int(from) );
+            return UR_OK;
+
+        case UT_DECIMAL:
+            ur_setId(res, UT_BIGNUM);
+            bignum_setd( res, ur_decimal(from) );
+            return UR_OK;
+
+        case UT_BIGNUM:
+            *res = *from;
+            return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE,
+                 "make bignum! expected none!/char!/int!/decimal!/bignum!" );
+}
 
 
 void bignum_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
@@ -771,10 +840,11 @@ void bignum_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_bignum =
 {
     "bignum!",
-    unset_make,             unset_copy,         unset_compare,
-    unset_select,           bignum_toString,    bignum_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    bignum_make,            bignum_make,            unset_copy,
+    unset_compare,          unset_select,
+    bignum_toString,        bignum_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
@@ -822,10 +892,11 @@ void time_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_time =
 {
     "time!",
-    unset_make,             unset_copy,         decimal_compare,
-    unset_select,           time_toString,      time_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    unset_make,             unset_make,             unset_copy,
+    decimal_compare,        unset_select,
+    time_toString,          time_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
@@ -839,10 +910,11 @@ extern void date_toString( UThread*, const UCell*, UBuffer*, int );
 UDatatype dt_date =
 {
     "date!",
-    unset_make,             unset_copy,         decimal_compare,
-    unset_select,           date_toString,      date_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    unset_make,             unset_make,             unset_copy,
+    decimal_compare,        unset_select,
+    date_toString,          date_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
@@ -865,10 +937,11 @@ void vec3_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_vec3 =
 {
     "vec3!",
-    unset_make,             unset_copy,         unset_compare,
-    unset_select,           vec3_toString,      vec3_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    unset_make,             unset_make,             unset_copy,
+    unset_compare,          unset_select,
+    vec3_toString,          vec3_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
@@ -943,10 +1016,11 @@ void word_toShared( UCell* cell )
 UDatatype dt_word =
 {
     "word!",
-    unset_make,             unset_copy,         word_compare,
-    unset_select,           word_toString,      word_toString,
-    unset_recycle,          word_mark,          unset_destroy,
-    unset_markBuf,          word_toShared,      unset_bind
+    unset_make,             unset_make,             unset_copy,
+    word_compare,           unset_select,
+    word_toString,          word_toString,
+    unset_recycle,          word_mark,              unset_destroy,
+    unset_markBuf,          word_toShared,          unset_bind
 };
 
 
@@ -965,10 +1039,11 @@ void litword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_litword =
 {
     "lit-word!",
-    unset_make,             unset_copy,         word_compare,
-    unset_select,           litword_toString,   litword_toString,
-    unset_recycle,          word_mark,          unset_destroy,
-    unset_markBuf,          word_toShared,      unset_bind
+    unset_make,             unset_make,             unset_copy,
+    word_compare,           unset_select,
+    litword_toString,       litword_toString,
+    unset_recycle,          word_mark,              unset_destroy,
+    unset_markBuf,          word_toShared,          unset_bind
 };
 
 
@@ -987,10 +1062,11 @@ void setword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_setword =
 {
     "set-word!",
-    unset_make,             unset_copy,         word_compare,
-    unset_select,           setword_toString,   setword_toString,
-    unset_recycle,          word_mark,          unset_destroy,
-    unset_markBuf,          word_toShared,      unset_bind
+    unset_make,             unset_make,             unset_copy,
+    word_compare,           unset_select,
+    setword_toString,       setword_toString,
+    unset_recycle,          word_mark,              unset_destroy,
+    unset_markBuf,          word_toShared,          unset_bind
 };
 
 
@@ -1009,10 +1085,11 @@ void getword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_getword =
 {
     "get-word!",
-    unset_make,             unset_copy,         word_compare,
-    unset_select,           getword_toString,   getword_toString,
-    unset_recycle,          word_mark,          unset_destroy,
-    unset_markBuf,          word_toShared,      unset_bind
+    unset_make,             unset_make,             unset_copy,
+    word_compare,           unset_select,
+    getword_toString,       getword_toString,
+    unset_recycle,          word_mark,              unset_destroy,
+    unset_markBuf,          word_toShared,          unset_bind
 };
 
 
@@ -1031,10 +1108,11 @@ void option_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_option =
 {
     "option!",
-    unset_make,             unset_copy,         word_compare,
-    unset_select,           option_toString,    option_toString,
-    unset_recycle,          word_mark,          unset_destroy,
-    unset_markBuf,          word_toShared,      unset_bind
+    unset_make,             unset_make,             unset_copy,
+    word_compare,           unset_select,
+    option_toString,        option_toString,
+    unset_recycle,          word_mark,              unset_destroy,
+    unset_markBuf,          word_toShared,          unset_bind
 };
 
 
@@ -1370,13 +1448,14 @@ USeriesType dt_binary =
 {
     {
     "binary!",
-    binary_make,            binary_copy,        binary_compare,
-    binary_select,          binary_toString,    binary_toString,
-    unset_recycle,          binary_mark,        binary_destroy,
-    unset_markBuf,          binary_toShared,    unset_bind
+    binary_make,            binary_make,            binary_copy,
+    binary_compare,         binary_select,
+    binary_toString,        binary_toString,
+    unset_recycle,          binary_mark,            binary_destroy,
+    unset_markBuf,          binary_toShared,        unset_bind
     },
-    binary_pick,            binary_poke,        binary_append,
-    binary_change,          binary_remove,      binary_find
+    binary_pick,            binary_poke,            binary_append,
+    binary_change,          binary_remove,          binary_find
 };
 
 
@@ -1442,13 +1521,14 @@ USeriesType dt_bitset =
 {
     {
     "bitset!",
-    bitset_make,            binary_copy,        unset_compare,
-    unset_select,           bitset_toString,    bitset_toString,
-    unset_recycle,          binary_mark,        binary_destroy,
-    unset_markBuf,          binary_toShared,    unset_bind
+    bitset_make,            bitset_make,            binary_copy,
+    unset_compare,          unset_select,
+    bitset_toString,        bitset_toString,
+    unset_recycle,          binary_mark,            binary_destroy,
+    unset_markBuf,          binary_toShared,        unset_bind
     },
-    binary_pick,            binary_poke,        binary_append,
-    binary_change,          binary_remove,      binary_find
+    binary_pick,            binary_poke,            binary_append,
+    binary_change,          binary_remove,          binary_find
 };
 
 
@@ -1488,7 +1568,7 @@ int string_make( UThread* ut, const UCell* from, UCell* res )
     else
     {
         n = ur_makeString( ut, UR_ENC_LATIN1, 0 );
-        ut->types[ type ]->toString( ut, from, ur_buffer(n), 0 );
+        DT( type )->toString( ut, from, ur_buffer(n), 0 );
     }
 
     ur_setId( res, UT_STRING );
@@ -1497,6 +1577,21 @@ int string_make( UThread* ut, const UCell* from, UCell* res )
 }
 
  
+int string_convert( UThread* ut, const UCell* from, UCell* res )
+{
+    int type = ur_type(from);
+    int enc = UR_ENC_LATIN1;
+
+    if( ur_isStringType(type) )
+    {
+        const UBuffer* str = ur_bufferSer(from);
+        enc = str->form;
+    }
+    DT( type )->toString( ut, from, ur_makeStringCell(ut, enc, 0, res), 0 );
+    return UR_OK;
+}
+
+
 int string_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 {
     switch( test )
@@ -1751,7 +1846,7 @@ int string_append( UThread* ut, UBuffer* buf, const UCell* val )
     }
     else
     {
-        ut->types[ type ]->toText( ut, val, buf, 0 );
+        DT( type )->toText( ut, val, buf, 0 );
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "append string! expected char!/string!" );
@@ -1830,7 +1925,7 @@ int string_change( UThread* ut, USeriesIterM* si, const UCell* val,
         UBuffer tmp;
 
         ur_strInit( &tmp, UR_ENC_LATIN1, 0 );
-        ut->types[ type ]->toString( ut, val, &tmp, 0 );
+        DT( type )->toString( ut, val, &tmp, 0 );
 
         siV.buf = &tmp;
         siV.it  = 0;
@@ -2076,13 +2171,14 @@ USeriesType dt_string =
 {
     {
     "string!",
-    string_make,            string_copy,        string_compare,
-    string_select,          string_toString,    string_toText,
-    unset_recycle,          binary_mark,        array_destroy,
-    unset_markBuf,          binary_toShared,    unset_bind
+    string_make,            string_convert,         string_copy,
+    string_compare,         string_select,
+    string_toString,        string_toText,
+    unset_recycle,          binary_mark,            array_destroy,
+    unset_markBuf,          binary_toShared,        unset_bind
     },
-    string_pick,            string_poke,        string_append,
-    string_change,          string_remove,      string_find
+    string_pick,            string_poke,            string_append,
+    string_change,          string_remove,          string_find
 };
 
 
@@ -2093,6 +2189,15 @@ USeriesType dt_string =
 int file_make( UThread* ut, const UCell* from, UCell* res )
 {
     int ok = string_make( ut, from, res );
+    if( ok )
+        ur_type(res) = UT_FILE;
+    return ok;
+}
+
+
+int file_convert( UThread* ut, const UCell* from, UCell* res )
+{
+    int ok = string_convert( ut, from, res );
     if( ok )
         ur_type(res) = UT_FILE;
     return ok;
@@ -2139,13 +2244,14 @@ USeriesType dt_file =
 {
     {
     "file!",
-    file_make,              file_copy,          string_compare,
-    string_select,          file_toString,      string_toText,
-    unset_recycle,          binary_mark,        array_destroy,
-    unset_markBuf,          binary_toShared,    unset_bind
+    file_make,              file_convert,           file_copy,
+    string_compare,         string_select,
+    file_toString,          string_toText,
+    unset_recycle,          binary_mark,            array_destroy,
+    unset_markBuf,          binary_toShared,        unset_bind
     },
-    string_pick,            string_poke,        string_append,
-    string_change,          string_remove,      string_find
+    string_pick,            string_poke,            string_append,
+    string_change,          string_remove,          string_find
 };
 
 
@@ -2167,13 +2273,14 @@ USeriesType dt_vector =
 {
     {
     "vector!",
-    unset_make,             unset_copy,         unset_compare,
-    unset_select,           vector_toString,    vector_toString,
-    unset_recycle,          binary_mark,        array_destroy,
-    unset_markBuf,          binary_toShared,    unset_bind
+    unset_make,             unset_make,             unset_copy,
+    unset_compare,          unset_select,
+    vector_toString,        vector_toString,
+    unset_recycle,          binary_mark,            array_destroy,
+    unset_markBuf,          binary_toShared,        unset_bind
     },
-    binary_pick,            binary_poke,        binary_append,
-    binary_change,          binary_remove,      binary_find
+    binary_pick,            binary_poke,            binary_append,
+    binary_change,          binary_remove,          binary_find
 };
 
 
@@ -2232,6 +2339,27 @@ int block_make( UThread* ut, const UCell* from, UCell* res )
     }
     return ur_error( ut, UR_ERR_TYPE,
                      "make block! expected int!/string!/block!" );
+}
+
+
+int block_convert( UThread* ut, const UCell* from, UCell* res )
+{
+    int type = ur_type(from);
+
+    if( type == UT_STRING )
+    {
+        return block_make( ut, from, res );
+    }
+    else if( ur_isBlockType( type )  )
+    {
+        block_copy( ut, from, res );
+    }
+    else
+    {
+        UBuffer* blk = ur_makeBlockCell( ut, UT_BLOCK, 1, res );
+        ur_blkPush( blk, from );
+    }
+    return UR_OK;
 }
 
 
@@ -2370,7 +2498,7 @@ void block_markBuf( UThread* ut, UBuffer* buf )
         t = ur_type(it);
         if( t >= UT_REFERENCE_BUF )
         {
-            ut->types[ t ]->mark( ut, it );
+            DT( t )->mark( ut, it );
         }
         ++it;
     }
@@ -2552,13 +2680,14 @@ USeriesType dt_block =
 {
     {
     "block!",
-    block_make,             block_copy,         block_compare,
-    block_select,           block_toString,     block_toText,
-    unset_recycle,          block_mark,         array_destroy,
-    block_markBuf,          block_toShared,     unset_bind
+    block_make,             block_convert,          block_copy,
+    block_compare,          block_select,
+    block_toString,         block_toText,
+    unset_recycle,          block_mark,             array_destroy,
+    block_markBuf,          block_toShared,         unset_bind
     },
-    block_pick,             block_poke,         block_append,
-    block_change,           block_remove,       block_find
+    block_pick,             block_poke,             block_append,
+    block_change,           block_remove,           block_find
 };
 
 
@@ -2575,17 +2704,27 @@ int paren_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+int paren_convert( UThread* ut, const UCell* from, UCell* res )
+{
+    int ok = block_convert( ut, from, res );
+    if( ok )
+        ur_type(res) = UT_PAREN;
+    return ok;
+}
+
+
 USeriesType dt_paren =
 {
     {
     "paren!",
-    paren_make,             block_copy,         block_compare,
-    unset_select,           block_toString,     block_toString,
-    unset_recycle,          block_mark,         array_destroy,
-    block_markBuf,          block_toShared,     unset_bind
+    paren_make,             paren_convert,          block_copy,
+    block_compare,          block_select,
+    block_toString,         block_toString,
+    unset_recycle,          block_mark,             array_destroy,
+    block_markBuf,          block_toShared,         unset_bind
     },
-    block_pick,             block_poke,         block_append,
-    block_change,           block_remove,       block_find
+    block_pick,             block_poke,             block_append,
+    block_change,           block_remove,           block_find
 };
 
 
@@ -2642,13 +2781,14 @@ USeriesType dt_path =
 {
     {
     "path!",
-    path_make,              block_copy,         block_compare,
-    unset_select,           path_toString,      path_toString,
-    unset_recycle,          block_mark,         array_destroy,
-    block_markBuf,          block_toShared,     unset_bind
+    path_make,              path_make,              block_copy,
+    block_compare,          block_select,
+    path_toString,          path_toString,
+    unset_recycle,          block_mark,             array_destroy,
+    block_markBuf,          block_toShared,         unset_bind
     },
-    block_pick,             block_poke,         block_append,
-    block_change,           block_remove,       block_find
+    block_pick,             block_poke,             block_append,
+    block_change,           block_remove,           block_find
 };
 
 
@@ -2660,13 +2800,14 @@ USeriesType dt_litpath =
 {
     {
     "lit-path!",
-    path_make,              block_copy,         block_compare,
-    unset_select,           path_toString,      path_toString,
-    unset_recycle,          block_mark,         array_destroy,
-    block_markBuf,          block_toShared,     unset_bind
+    path_make,              path_make,              block_copy,
+    block_compare,          block_select,
+    path_toString,          path_toString,
+    unset_recycle,          block_mark,             array_destroy,
+    block_markBuf,          block_toShared,         unset_bind
     },
-    block_pick,             block_poke,         block_append,
-    block_change,           block_remove,       block_find
+    block_pick,             block_poke,             block_append,
+    block_change,           block_remove,           block_find
 };
 
 
@@ -2678,13 +2819,14 @@ USeriesType dt_setpath =
 {
     {
     "set-path!",
-    path_make,              block_copy,         block_compare,
-    unset_select,           path_toString,      path_toString,
-    unset_recycle,          block_mark,         array_destroy,
-    block_markBuf,          block_toShared,     unset_bind
+    path_make,              path_make,              block_copy,
+    block_compare,          block_select,
+    path_toString,          path_toString,
+    unset_recycle,          block_mark,             array_destroy,
+    block_markBuf,          block_toShared,         unset_bind
     },
-    block_pick,             block_poke,         block_append,
-    block_change,           block_remove,       block_find
+    block_pick,             block_poke,             block_append,
+    block_change,           block_remove,           block_find
 };
 
 
@@ -2795,7 +2937,7 @@ void context_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
         ur_strAppendIndent( str, depth );
         ur_strAppendCStr( str, ur_atomCStr( ut, *ait++ ) );
         ur_strAppendCStr( str, ": " );
-        ut->types[ ur_type(it) ]->toString( ut, it, str, depth );
+        DT( ur_type(it) )->toString( ut, it, str, depth );
         ur_strAppendChar( str, '\n' );
         ++it;
     }
@@ -2822,10 +2964,11 @@ void context_destroy( UBuffer* buf )
 UDatatype dt_context =
 {
     "context!",
-    context_make,           context_copy,       unset_compare,
-    context_select,         context_toString,   context_toText,
-    unset_recycle,          block_mark,         context_destroy,
-    context_markBuf,        block_toShared,     unset_bind
+    context_make,           context_make,           context_copy,
+    unset_compare,          context_select,
+    context_toString,       context_toText,
+    unset_recycle,          block_mark,             context_destroy,
+    context_markBuf,        block_toShared,         unset_bind
 };
 
 
@@ -2994,10 +3137,11 @@ void error_toShared( UCell* cell )
 UDatatype dt_error =
 {
     "error!",
-    error_make,             unset_copy,         unset_compare,
-    unset_select,           error_toString,     error_toString,
-    unset_recycle,          error_mark,         unset_destroy,
-    unset_markBuf,          error_toShared,     unset_bind
+    error_make,             error_make,             unset_copy,
+    unset_compare,          unset_select,
+    error_toString,         error_toString,
+    unset_recycle,          error_mark,             unset_destroy,
+    unset_markBuf,          error_toShared,         unset_bind
 };
 
 

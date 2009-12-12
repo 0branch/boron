@@ -688,7 +688,10 @@ UThread* boron_makeEnv()
     // Add some useful words.
     {
     UAtom atoms[ 3 ];
+    const char* typeName;
+    char* cp;
     char name[32];
+    char args[6];
     UBuffer* ctx;
     UCell* cell;
     int i;
@@ -713,19 +716,34 @@ UThread* boron_makeEnv()
     for( i = 0; i < typeCount; ++i )
         ur_makeDatatype( ur_ctxAddWord(ctx, i), i );
 
-    // Datatype query cfuncs.
+    args[0] = ' ';
+    args[1] = 'v';
+    args[2] = ' ';
+
+    // Datatype cfuncs.
     for( i = 0; i < typeCount; ++i )
     {
-        char* cp = str_copy( name, ur_atomCStr( ut, i ) );
-        cp[-1] = '?';
-        *cp++ = ' ';
-        *cp++ = 'v';
-        *cp++ = ' ';
+        typeName = ur_atomCStr( ut, i );
+
+        // Add variant number to argument string.
+        cp = args + 3;
         if( i > 9 )
             *cp++ = '0' + (i / 10);
         *cp++ = '0' + (i % 10);
-        *cp   = '\0';
+        *cp = '\0';
+
+        cp = str_copy( name, typeName );
+        cp[-1] = '?';
+        cp = str_copy( cp, args );
+        *cp = '\0';
         boron_addCFunc( ut, cfunc_datatypeQ, name );
+
+        cp = str_copy( name, "to-" );
+        cp = str_copy( cp, typeName );
+        cp = str_copy( cp - 1, args );
+        *cp = '\0';
+        //printf( "KR cfunc %s\n", name );
+        boron_addCFunc( ut, cfunc_to_type, name );
     }
     }
 
@@ -767,7 +785,6 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_probe,   "probe val" );
     addCFunc( cfunc_prin,    "prin val" );
     addCFunc( cfunc_print,   "print val" );
-    addCFunc( cfunc_to_string, "to-string val" );
     addCFunc( cfunc_to_text, "to-text val" );
     addCFunc( cfunc_all,     "all val" );
     addCFunc( cfunc_any,     "any val" );

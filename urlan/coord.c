@@ -109,10 +109,11 @@ void coord_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_coord =
 {
     "coord!",
-    coord_make,             unset_copy,         unset_compare,
-    coord_select,           coord_toString,     coord_toString,
-    unset_recycle,          unset_mark,         unset_destroy,
-    unset_markBuf,          unset_toShared,     unset_bind
+    coord_make,             coord_make,             unset_copy,
+    unset_compare,          coord_select,
+    coord_toString,         coord_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
 };
 
 
