@@ -19,7 +19,7 @@
 
 
 #define KEEP_CASE   1
-#define MAX_WORD_LEN    40
+#define MAX_WORD_LEN    42
 #define LOWERCASE(c)    if(c >= 'A' && c <= 'Z') c -= 'A' - 'a'
 
 
