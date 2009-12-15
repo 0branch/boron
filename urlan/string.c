@@ -937,6 +937,31 @@ UIndex ur_strFindChars( const UBuffer* str, UIndex start, UIndex end,
 }
 
 
+/**
+  Return the character at a given position.
+
+  If the str->form is UR_ENC_UTF8, then the return value will be the byte at
+  pos, not the UCS2 character.
+
+  \param str    Valid string buffer.
+  \param pos    Character index.  Pass negative numbers to index from the end
+                (e.g. -1 will return the last character).
+
+  \return UCS2 value or -1 if pos is out of range.
+*/
+int ur_strChar( const UBuffer* str, UIndex pos )
+{
+    if( pos < 0 )
+        pos += str->used;
+    if( pos >= 0 && pos < str->used )
+    {
+        return ur_strIsUcs2(str) ? str->ptr.u16[ pos ]
+                                 : str->ptr.b[ pos ];
+    }
+    return -1;
+}
+
+
 /** @} */
 
 

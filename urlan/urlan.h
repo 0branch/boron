@@ -475,6 +475,7 @@ void     ur_strUppercase( UBuffer* str, UIndex start, UIndex send );
 UIndex   ur_strFindChar( const UBuffer*, UIndex start, UIndex end, int ch );
 UIndex   ur_strFindChars( const UBuffer*, UIndex start, UIndex end,
                           uint8_t* charSet, int len );
+int      ur_strChar( const UBuffer*, UIndex pos );
 #define  ur_strFree ur_arrFree
 #define  ur_strIsUcs2(buf)  ((buf)->form == UR_ENC_UCS2)
 
