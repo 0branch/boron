@@ -124,15 +124,15 @@ syn keyword     boronType	date! time! context! func! cfunc!
 " Control statements
 syn keyword     boronStatement		catch try throw halt quit return break
 syn keyword     boronConditional	if ifn either case
-syn keyword     boronRepeat			foreach forall while loop
-"for forall foreach forskip loop repeat while until do
+syn keyword     boronRepeat			forall foreach loop while
+"for forskip repeat until do
 
 " Series statements
-syn keyword     boronStatement  make does func ++ --
+syn keyword     boronStatement  make does func ++ -- reduce parse
 syn keyword     boronStatement  append change clear copy find first head join
-syn keyword     boronStatement  next prev pick remove second select skip sort
-syn keyword     boronStatement  tail trim length?
-"free insert last match parse
+syn keyword     boronStatement  last next prev pick poke remove second select
+syn keyword     boronStatement  skip sort tail third trim length?
+"free insert match
 
 " Context
 syn keyword     boronStatement  bind infuse set get in
