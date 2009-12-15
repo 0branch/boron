@@ -29,6 +29,8 @@ static int coord_make( UThread* ut, const UCell* from, UCell* res )
     if( ur_is(from, UT_BLOCK) )
     {
         UBlockIter bi;
+        const UCell* cell;
+        int16_t num;
         int len = 0;
 
         ur_setId(res, UT_COORD);
@@ -38,12 +40,34 @@ static int coord_make( UThread* ut, const UCell* from, UCell* res )
         ur_blkSlice( ut, &bi, from );
         ur_foreach( bi )
         {
-            if( ur_is(bi.it, UT_INT) )
+            if( ur_is(bi.it, UT_WORD) )
             {
-                res->coord.n[ len ] = ur_int(bi.it);
-                if( ++len == UR_COORD_MAX )
-                    break;
+                cell = ur_wordCell( ut, bi.it );
+                if( ! cell )
+                    return UR_THROW;
             }
+#if 0
+            else if( ur_is(bi.it, UT_PATH) )
+            {
+                if( ! ur_pathCell( ut, bi.it, res ) )
+                    return UR_THROW;
+            }
+#endif
+            else
+            {
+                cell = bi.it;
+            }
+
+            if( ur_is(cell, UT_INT) )
+                num = ur_int(cell);
+            else if( ur_is(cell, UT_DECIMAL) )
+                num = (int16_t) ur_decimal(cell);
+            else
+                break;
+
+            res->coord.n[ len ] = num;
+            if( ++len == UR_COORD_MAX )
+                break;
         }
 
         res->coord.len = (len < 2) ? 2 : len;
