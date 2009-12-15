@@ -216,6 +216,7 @@ static void _addDT( UEnv* env, int id, UDatatype* dt )
 
 
 extern UDatatype dt_coord;
+extern USeriesType dt_vector;
 
 
 /**
@@ -333,14 +334,14 @@ UThread* ur_makeEnv( UDatatype* dt, int dtCount,
 
     // Intern commonly used atoms.
     {
-    UAtom atoms[ 37 ];
+    UAtom atoms[ 43 ];
     ur_internAtoms( ut,
                     "quit halt return break ghost words\n"
                     "latin1 utf8 ucs2\n"
                     "+ - / * = < > <= >=\n"
                     "x y z r g b a\n"
                     "| opt some any skip set copy to thru place\n"
-                    "crc16 sha1",
+                    "i8 u8 i16 u16 i32 u32 f32 f64",
                     atoms );
     assert( atoms[0] == UT_MAX );
     }

@@ -60,6 +60,7 @@ shlib %boron [
         %gc.c
         %tokenize.c
         %bignum.c
+        %vector.c
 
         %parse_string.c
         %parse_block.c

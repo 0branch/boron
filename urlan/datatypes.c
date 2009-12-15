@@ -1149,7 +1149,7 @@ int binary_make( UThread* ut, const UCell* from, UCell* res )
         binary_copy( ut, from, res );
         return UR_OK;
     }
-    else if( ur_is(from, UT_STRING) )
+    else if( ur_is(from, UT_STRING) || ur_is(from, UT_VECTOR) )
     {
         USeriesIter si;
         UBuffer* bin;
@@ -1160,13 +1160,29 @@ int binary_make( UThread* ut, const UCell* from, UCell* res )
 
         ur_seriesSlice( ut, &si, from );
         len = si.end - si.it;
-        if( ur_strIsUcs2( si.buf ) )
+
+        switch( si.buf->elemSize )
         {
-            data = (const uint8_t*) (si.buf->ptr.u16 + si.it);
-            len += 2;
+            case 2:
+                data = (const uint8_t*) (si.buf->ptr.u16 + si.it);
+                len *= 2;
+                break;
+
+            case 4:
+                data = (const uint8_t*) (si.buf->ptr.u32 + si.it);
+                len *= 4;
+                break;
+
+            case 8:
+                data = (const uint8_t*) (si.buf->ptr.d + si.it);
+                len *= 8;
+                break;
+
+            default:
+                data = si.buf->ptr.b + si.it;
+                break;
         }
-        else
-            data = si.buf->ptr.b + si.it;
+
         ur_binAppendData( bin, data, len );
         return UR_OK;
     }
@@ -2252,35 +2268,6 @@ USeriesType dt_file =
     },
     string_pick,            string_poke,            string_append,
     string_change,          string_remove,          string_find
-};
-
-
-
-//----------------------------------------------------------------------------
-// UT_VECTOR
-
-
-void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
-{
-    (void) ut;
-    (void) cell;
-    (void) depth;
-    ur_strAppendCStr( str, "<vector>" );
-}
-
-
-USeriesType dt_vector =
-{
-    {
-    "vector!",
-    unset_make,             unset_make,             unset_copy,
-    unset_compare,          unset_select,
-    vector_toString,        vector_toString,
-    unset_recycle,          binary_mark,            array_destroy,
-    unset_markBuf,          binary_toShared,        unset_bind
-    },
-    binary_pick,            binary_poke,            binary_append,
-    binary_change,          binary_remove,          binary_find
 };
 
 

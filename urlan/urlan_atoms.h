@@ -43,8 +43,14 @@ enum UrlanFixedAtoms
     UR_ATOM_THRU,
     UR_ATOM_PLACE,
 
-    UR_ATOM_CRC16,
-    UR_ATOM_SHA1
+    UR_ATOM_I8,
+    UR_ATOM_U8,
+    UR_ATOM_I16,
+    UR_ATOM_U16,
+    UR_ATOM_I32,
+    UR_ATOM_U32,
+    UR_ATOM_F32,
+    UR_ATOM_F64
 };
 
 #endif
