@@ -903,15 +903,20 @@ static int boron_call( UThread* ut, const UCellFunc* fcell, UCell* blkC,
 {
     if( fcell->argBufN )
     {
+        UCellFunc fcopy;
         UCell* args;
         int ok;
         int nc = 0;
+
+        // Copy fcell since it can become invalid in boron_eval1 (it may
+        // be in a context which grows).  Only needed if FO_fetchArg used.
+        fcopy = *fcell;
 
         // Run function argument program.
         {
             UCell* it;
             UCell* end;
-            const UBuffer* abuf = ur_bufferE( fcell->argBufN );
+            const UBuffer* abuf = ur_bufferE( fcopy.argBufN );
             const uint8_t* pc = abuf->ptr.b;
             while( (ok = *pc++) < FO_end ) 
             {
@@ -1003,23 +1008,23 @@ bad_arg:
         }
         assert( nc );
 
-        if( fcell->id.type == UT_CFUNC )
+        if( fcopy.id.type == UT_CFUNC )
         {
-            ok = fcell->m.func( ut, args, res );
-            if( ! ok && ! (fcell->id.flags & FUNC_FLAG_GHOST) )
+            ok = fcopy.m.func( ut, args, res );
+            if( ! ok && ! (fcopy.id.flags & FUNC_FLAG_GHOST) )
                 goto cleanup_trace;
         }
         else
         {
             UCell tmp;
             ur_setId(&tmp, UT_BLOCK);
-            ur_setSeries(&tmp, fcell->m.f.bodyN, 0);
+            ur_setSeries(&tmp, fcopy.m.f.bodyN, 0);
 
-            if( (ok = boron_framePush( ut, args, fcell->m.f.bodyN )) )
+            if( (ok = boron_framePush( ut, args, fcopy.m.f.bodyN )) )
             {
                 ok = boron_doBlock( ut, &tmp, res );
                 boron_framePop( ut );
-                if( ! ok && ! (fcell->id.flags & FUNC_FLAG_GHOST) )
+                if( ! ok && ! (fcopy.id.flags & FUNC_FLAG_GHOST) )
                 {
                     if( _catchThrownWord( ut, UR_ATOM_RETURN ) )
                         ok = UR_OK;
