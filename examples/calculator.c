@@ -187,6 +187,7 @@ void defineWords( UThread* ut )
         ur_setId( cell, UT_DECIMAL );
         ur_decimal(cell) = constants[i];
     }
+    ur_ctxSort( ctx );
 }
 
 
