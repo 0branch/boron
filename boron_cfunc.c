@@ -399,8 +399,12 @@ CFUNC(cfunc_in)
 {
     if( ur_is(a1, UT_CONTEXT) && ur_is(a2, UT_WORD) )
     {
-        const UBuffer* ctx = ur_bufferSer( a1 );
-        int wrdN = ur_ctxLookup( ctx, ur_atom(a2) );
+        const UBuffer* ctx;
+        int wrdN;
+
+        if( ! (ctx = ur_sortedContext( ut, a1 )) )
+            return UR_THROW;
+        wrdN = ur_ctxLookup( ctx, ur_atom(a2) );
         if( wrdN < 0 )
         {
             ur_setId(res, UT_NONE);
@@ -446,10 +450,13 @@ CFUNC(cfunc_bind)
 
     if( ur_is(a1, UT_BLOCK) )
     {
+        const UBuffer* ctx;
+
         if( ! (blk = ur_bufferSerM(a1)) )
             return UR_THROW;
-
-        ur_bind( ut, blk, ur_bufferSer(ctxArg),
+        if( ! (ctx = ur_sortedContext(ut, ctxArg)) )
+            return UR_THROW;
+        ur_bind( ut, blk, ctx,
                  ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD );
         *res = *a1;
         return UR_OK;
@@ -458,7 +465,8 @@ CFUNC(cfunc_bind)
     {
         UBindTarget bt;
 
-        bt.ctx = ur_bufferSer(ctxArg);
+        if( ! (bt.ctx = ur_sortedContext(ut, ctxArg)) )
+            return UR_THROW;
         bt.ctxN = ctxN;
         bt.bindType = ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD;
 
@@ -670,7 +678,7 @@ CFUNC(cfunc_make)
             if( ! ur_blkSliceM( ut, &bi, a2 ) )
                 return UR_THROW;
             ur_ctxSetWords( ctx, bi.it, bi.end );
-            ur_bind( ut, bi.buf, ctx, UR_BIND_THREAD );
+            ur_bind( ut, bi.buf, ur_ctxSort(ctx), UR_BIND_THREAD );
             return boron_doVoid( ut, a2 );
         }
     }
@@ -763,14 +771,14 @@ CFUNC(cfunc_func)
 
     if( ctx.used )
     {
-        bt.ctx      = &ctx;
+        bt.ctx      = ur_ctxSort(&ctx);
         bt.bindType = UR_BIND_FUNC;
         ur_bindCells( ut, body->ptr.cell, body->ptr.cell + body->used, &bt );
     }
 
     if( optCtx.used )
     {
-        bt.ctx      = &optCtx;
+        bt.ctx      = ur_ctxSort(&optCtx);
         bt.bindType = UR_BIND_OPTION;
         ur_bindCells( ut, body->ptr.cell, body->ptr.cell + body->used, &bt );
     }
@@ -2050,7 +2058,7 @@ CFUNC(cfunc_foreach)
             wi.it = words;
             ur_foreach( wi )
                 ur_ctxAddWordI( localCtx, ur_atom(wi.it) );
-            ur_bind( ut, wi.buf, localCtx, UR_BIND_THREAD );
+            ur_bind( ut, wi.buf, ur_ctxSort(localCtx), UR_BIND_THREAD );
             ur_bind( ut, ur_buffer(body->series.buf), localCtx, UR_BIND_THREAD );
         }
         }

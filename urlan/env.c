@@ -453,6 +453,9 @@ void ur_freezeEnv( UThread* ut )
                     dt[ ur_type(ci) ]->toShared( ci );
                 ++ci;
             }
+
+            if( it->type == UT_CONTEXT )
+                ur_ctxSort( it );
         }
         ++it;
     }
@@ -731,6 +734,8 @@ UBuffer* ur_envContext( UThread* ut )
   \param fmt        Error message with printf() style formatting.
 
   \return UR_THROW
+
+  \sa ur_errorBlock
 */
 int ur_error( UThread* ut, int errorType, const char* fmt, ... )
 {

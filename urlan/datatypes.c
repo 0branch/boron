@@ -2833,6 +2833,7 @@ int context_make( UThread* ut, const UCell* from, UCell* res )
 
         ctx = ur_makeContextCell( ut, 0, res );
         ur_ctxSetWords( ctx, bi.it, bi.end );
+        ur_ctxSort( ctx );
         ur_bind( ut, bi.buf, ctx, UR_BIND_THREAD );
         return UR_OK;
     }
@@ -2857,7 +2858,9 @@ int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
 {
     const UBuffer* ctx;
 
-    ctx = ur_bufferSer(cell);
+    if( ! (ctx = ur_sortedContext( ut, cell )) )
+        return UR_THROW;
+
     if( ur_is(bi->it, UT_WORD) )
     {
         int i = ur_ctxLookup( ctx, ur_atom(bi->it) );

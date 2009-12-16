@@ -1234,9 +1234,12 @@ static void boron_bindDefaultB( UThread* ut, UIndex blkN )
         }
         else if( ur_isWordType(type) )
         {
-            wrdN = ur_ctxLookup( threadCtx, ur_atom(bi.it) );
-            if( wrdN > -1 )
-                goto assign;
+            if( threadCtx->used )
+            {
+                wrdN = ur_ctxLookupNoSort( threadCtx, ur_atom(bi.it) );
+                if( wrdN > -1 )
+                    goto assign;
+            }
 
             if( envCtx )
             {
@@ -1254,7 +1257,7 @@ static void boron_bindDefaultB( UThread* ut, UIndex blkN )
                 }
             }
 
-            wrdN = ur_ctxAddWordI( threadCtx, ur_atom(bi.it) );
+            wrdN = ur_ctxAppendWord( threadCtx, ur_atom(bi.it) );
 assign:
             ur_setBinding( bi.it, UR_BIND_THREAD );
             bi.it->word.ctx = 1; //BUF_THREAD_CTX;
@@ -1286,7 +1289,11 @@ void boron_bindDefault( UThread* ut, UIndex blkN )
     bi.it  = bi.buf->ptr.cell;
     bi.end = bi.it + bi.buf->used;
 
-    ur_ctxSetWords( ur_threadContext(ut), bi.it, bi.end );
+    {
+    UBuffer* ctx = ur_threadContext(ut);
+    ur_ctxSetWords( ctx, bi.it, bi.end );
+    ur_ctxSort( ctx );
+    }
 
     boron_bindDefaultB( ut, blkN );
 }

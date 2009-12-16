@@ -500,10 +500,14 @@ UBuffer* ur_ctxClone( UThread*, const UBuffer* src, UCell* cell );
 void     ur_ctxInit( UBuffer*, int size );
 void     ur_ctxReserve( UBuffer*, int size );
 void     ur_ctxFree( UBuffer* );
+UBuffer* ur_ctxSort( UBuffer* );
 void     ur_ctxSetWords( UBuffer*, const UCell* it, const UCell* end );
+int      ur_ctxAppendWord( UBuffer*, UAtom atom );
 int      ur_ctxAddWordI( UBuffer*, UAtom atom );
 UCell*   ur_ctxAddWord( UBuffer*, UAtom atom );
+int      ur_ctxLookupNoSort( const UBuffer*, UAtom atom );
 int      ur_ctxLookup( const UBuffer*, UAtom atom );
+const UBuffer* ur_sortedContext( UThread*, const UCell* );
 #define  ur_ctxCell(c,n)    ((c)->ptr.cell + n)
 
 void     ur_arrInit( UBuffer*, int size, int count );

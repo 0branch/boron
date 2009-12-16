@@ -225,6 +225,7 @@ UBuffer* ur_ctxClone( UThread* ut, const UBuffer* src, UCell* cell )
     ur_deepCopyCells( ut, nc->ptr.cell, src->ptr.cell, src->used );
 
     nc = ur_buffer( cell->series.buf );     // Re-aquire
+    ur_ctxSort( nc );
     ur_bind( ut, nc, nc, UR_BIND_THREAD );
     ur_release( hold );
     return nc;
@@ -327,7 +328,7 @@ void ur_ctxWordAtoms( const UBuffer* ctx, UAtom* atoms )
 /*
    Returns index of atom in word block or -1 if not found.
 */
-static int _binarySearch( WordEntry* words, int count, UAtom atom )
+static int _binarySearch( const WordEntry* words, int count, UAtom atom )
 {
     UAtom midAtom;
     int mid;
@@ -352,21 +353,23 @@ static int _binarySearch( WordEntry* words, int count, UAtom atom )
 }
 
 
-/*
+/**
   Find word in context by atom.
+  If the context is not sorted then a linear search will be done.
 
-  \param cxt  Context which has at least one word.
+  \param cxt    Initialized context which has at least one word.
+  \param atom   Atom of word to find.
 
   \return  Word index or -1 if not found.
 */
-static int _lookupNoSort( const UBuffer* ctx, UAtom atom )
+int ur_ctxLookupNoSort( const UBuffer* ctx, UAtom atom )
 {
-    WordEntry* went = ENTRIES(ctx);
+    const WordEntry* went = ENTRIES(ctx);
 
     if( (ctx->used < SEARCH_LEN) || (! SORTED(ctx)) )
     {
-        WordEntry* it  = went;
-        WordEntry* end = went + ctx->used;
+        const WordEntry* it  = went;
+        const WordEntry* end = went + ctx->used;
         while( it != end )
         {
             if( it->atom == atom )
@@ -375,14 +378,21 @@ static int _lookupNoSort( const UBuffer* ctx, UAtom atom )
         }
         return -1;
     }
-    else
-    {
-        return _binarySearch( went, ctx->used, atom );
-    }
+    return _binarySearch( went, ctx->used, atom );
 }
 
 
-static int _addWord( UBuffer* ctx, UAtom atom )
+/**
+  Append word to context.  This should only be called if the word is known
+  to not already exist in the context.
+
+  The new word is initialized as unset.
+
+  \return  Index of word in context.
+
+  \sa ur_ctxAddWordI, ur_ctxAddWord
+*/
+int ur_ctxAppendWord( UBuffer* ctx, UAtom atom )
 {
     int wrdN;
     WordEntry* went;
@@ -406,21 +416,23 @@ static int _addWord( UBuffer* ctx, UAtom atom )
 
 /**
   Add word to context if it does not already exist.
-  If added, the word is initialied as unset.
+  If added, the word is initialized as unset.
 
   Note that the ctx->ptr may be changed by this function.
 
   \return  Index of word in context.
+
+  \sa ur_ctxAppendWord
 */
 int ur_ctxAddWordI( UBuffer* ctx, UAtom atom )
 {
     if( ctx->used )
     {
-        int wrdN = _lookupNoSort( ctx, atom );
+        int wrdN = ur_ctxLookupNoSort( ctx, atom );
         if( wrdN > -1 )
             return wrdN;
     }
-    return _addWord( ctx, atom );
+    return ur_ctxAppendWord( ctx, atom );
 }
 
 
@@ -470,20 +482,80 @@ static void _quickSort( WordEntry* entries, int low, int high )
 
 
 /**
+  Sort the internal context search table so ur_ctxLookup() can be used.
+  If the context is already sorted then nothing is done.
+  Each time new words are appended to the context it will become un-sorted.
+
+  \param ctx    Initialized context buffer.
+
+  \return The ctx argument.
+*/
+UBuffer* ur_ctxSort( UBuffer* ctx )
+{
+    if( ! SORTED(ctx) )
+    {
+        if( ctx->used )
+            _quickSort( ENTRIES(ctx), 0, ctx->used - 1 );
+        SORTED(ctx) = 1;
+    }
+    return ctx;
+}
+
+
+/**
+  Get context and make sure it is ready for ur_ctxLookup().
+
+  If the context is shared and has not been sorted, then an error is generated
+  with ur_error() and zero is returned.
+
+  \param cell   Valid context cell.
+
+  \return Pointer to context buffer or zero.
+*/
+const UBuffer* ur_sortedContext( UThread* ut, const UCell* cell )
+{
+    UBuffer* ctx;
+    UIndex n = cell->series.buf;
+
+    // Same as ur_bufferSeries().
+    ctx = ur_isShared(n) ? ut->env->dataStore.ptr.buf - n
+                         : ut->dataStore.ptr.buf + n;
+    if( (ctx->used < SEARCH_LEN) || SORTED(ctx) )
+        return ctx;
+
+    if( ur_isShared(n) )
+    {
+        ur_error( ut, UR_ERR_INTERNAL, "Shared context %d is not sorted", n );
+        return 0;
+    }
+
+    _quickSort( ENTRIES(ctx), 0, ctx->used - 1 );
+    SORTED(ctx) = 1;
+    return ctx;
+}
+
+
+/**
   Find word in context by atom.
+
+  The internal context search table must sorted with ur_ctxSort() or
+  ur_sortedContext() before ur_ctxLookup is called.
+
+  \param ctx    Initialized and sorted context buffer.
+  \param atom   Atom of word to find.
 
   \return  Word index or -1 if not found.
 */
 int ur_ctxLookup( const UBuffer* ctx, UAtom atom )
 {
-    WordEntry* went;
+    const WordEntry* went;
 
     if( ctx->used < SEARCH_LEN )
     {
         if( ctx->used )
         {
-            WordEntry* it;
-            WordEntry* end;
+            const WordEntry* it;
+            const WordEntry* end;
 
             it = went = ENTRIES(ctx);
             end = it + ctx->used;
@@ -500,7 +572,15 @@ int ur_ctxLookup( const UBuffer* ctx, UAtom atom )
     {
         went = ENTRIES(ctx);
         if( ! SORTED(ctx) )
+        {
+#if 0
             _quickSort( went, 0, ctx->used - 1 );
+            SORTED(ctx) = 1;
+#else
+            assert( 0 && "Context is not sorted" );
+            return -1;
+#endif
+        }
         return _binarySearch( went, ctx->used, atom );
     }
 }
