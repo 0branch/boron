@@ -1225,19 +1225,7 @@ static void boron_bindDefaultB( UThread* ut, UIndex blkN )
     ur_foreach( bi )
     {
         type = ur_type(bi.it);
-        if( type == UT_SETWORD )
-        {
-            wrdN = ur_ctxAddWordI( threadCtx, ur_atom(bi.it) );
-            if( envCtx )
-            {
-                // Lift default value of word from environment.
-                int ewN = ur_ctxLookup( envCtx, ur_atom(bi.it) );
-                if( ewN > -1 )
-                    *ur_ctxCell(threadCtx, wrdN) = *ur_ctxCell(envCtx, ewN);
-            }
-            goto assign;
-        }
-        else if( ur_isWordType(type) )
+        if( ur_isWordType(type) )
         {
             if( threadCtx->used )
             {
@@ -1246,23 +1234,36 @@ static void boron_bindDefaultB( UThread* ut, UIndex blkN )
                     goto assign;
             }
 
-            if( envCtx )
+            if( type == UT_SETWORD )
             {
-                wrdN = ur_ctxLookup( envCtx, ur_atom(bi.it) );
-                if( wrdN > -1 )
+                wrdN = ur_ctxAppendWord( threadCtx, ur_atom(bi.it) );
+                if( envCtx )
                 {
-                    // TODO: Have ur_freezeEnv() remove unset words.
-                    if( ! ur_is( ur_ctxCell(envCtx, wrdN), UT_UNSET ) )
-                    {
-                        ur_setBinding( bi.it, UR_BIND_ENV );
-                        bi.it->word.ctx = -1; //-BUF_THREAD_CTX;
-                        bi.it->word.index = wrdN;
-                        continue;
-                    }
+                    // Lift default value of word from environment.
+                    int ewN = ur_ctxLookup( envCtx, ur_atom(bi.it) );
+                    if( ewN > -1 )
+                        *ur_ctxCell(threadCtx, wrdN) = *ur_ctxCell(envCtx, ewN);
                 }
             }
-
-            wrdN = ur_ctxAppendWord( threadCtx, ur_atom(bi.it) );
+            else
+            {
+                if( envCtx )
+                {
+                    wrdN = ur_ctxLookup( envCtx, ur_atom(bi.it) );
+                    if( wrdN > -1 )
+                    {
+                        // TODO: Have ur_freezeEnv() remove unset words.
+                        if( ! ur_is( ur_ctxCell(envCtx, wrdN), UT_UNSET ) )
+                        {
+                            ur_setBinding( bi.it, UR_BIND_ENV );
+                            bi.it->word.ctx = -1; //-BUF_THREAD_CTX;
+                            bi.it->word.index = wrdN;
+                            continue;
+                        }
+                    }
+                }
+                wrdN = ur_ctxAppendWord( threadCtx, ur_atom(bi.it) );
+            }
 assign:
             ur_setBinding( bi.it, UR_BIND_THREAD );
             bi.it->word.ctx = 1; //BUF_THREAD_CTX;
@@ -1294,11 +1295,13 @@ void boron_bindDefault( UThread* ut, UIndex blkN )
     bi.it  = bi.buf->ptr.cell;
     bi.end = bi.it + bi.buf->used;
 
+#if 0
     {
     UBuffer* ctx = ur_threadContext(ut);
     ur_ctxSetWords( ctx, bi.it, bi.end );
     ur_ctxSort( ctx );
     }
+#endif
 
     boron_bindDefaultB( ut, blkN );
 }
