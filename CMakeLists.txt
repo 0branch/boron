@@ -54,6 +54,7 @@ add_library(boron-lib SHARED
     urlan/path.c
     urlan/string.c
     urlan/tokenize.c
+    urlan/vector.c
     support/mem_util.c
     support/str.c
     support/quickSortIndex.c

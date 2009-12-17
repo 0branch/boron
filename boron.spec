@@ -7,7 +7,7 @@ License: LGPLv3+
 URL: http://urlan.sf.net/
 Packager: <wickedsmoke@users.sf.net>
 Group: Development/Languages
-Source: boron-%{version}.tar.bz2
+Source: boron-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 %if 0%{?mandriva_version} 
 BuildRequires: cmake libbzip2_1-devel
