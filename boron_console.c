@@ -47,8 +47,7 @@ void reportError( UThread* ut, UCell* err, UBuffer* str )
     ur_toText( ut, err, str );
     ur_strTermNull( str );
 
-    printf( str->ptr.c );
-    putchar( '\n' );
+    puts( str->ptr.c );
 }
 
 
@@ -64,7 +63,7 @@ int main( int argc, char** argv )
     ut = boron_makeEnv();
     if( ! ut )
     {
-        printf( "boron_makeEnv failed\n" );
+        puts( "boron_makeEnv failed" );
         return 70;      // EX_SOFTWARE
     }
 
