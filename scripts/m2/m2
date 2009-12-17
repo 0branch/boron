@@ -526,8 +526,8 @@ included_files: func [
 	parse read-buf file [
 		any [
 			thru "^/#include" some space [
-				'<' to '^/' |
 				'"' tmp: to '"' :tmp (append blk copy tmp)
+				| to '^/'
 			]
 		]
 	]
