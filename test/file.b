@@ -7,6 +7,12 @@ probe f: %"file before block"[]
 print f
 
 
+print "---- to-file"
+probe to-file "Some File"
+probe to-file 'my-file
+probe join to-file "../" %src
+
+
 print "---- special characters"
 probe %"$(QTDIR)/lib"
 

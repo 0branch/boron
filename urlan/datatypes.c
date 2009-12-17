@@ -1148,17 +1148,18 @@ void binary_copy( UThread* ut, const UCell* from, UCell* res )
 
 int binary_make( UThread* ut, const UCell* from, UCell* res )
 {
-    if( ur_is(from, UT_INT) )
+    int type = ur_type(from);
+    if( type == UT_INT )
     {
         ur_makeBinaryCell( ut, ur_int(from), res );
         return UR_OK;
     }
-    else if( ur_is(from, UT_BINARY) )
+    else if( type == UT_BINARY )
     {
         binary_copy( ut, from, res );
         return UR_OK;
     }
-    else if( ur_is(from, UT_STRING) || ur_is(from, UT_VECTOR) )
+    else if( ur_isStringType(type) || (type == UT_VECTOR) )
     {
         USeriesIter si;
         UBuffer* bin;
@@ -1196,7 +1197,7 @@ int binary_make( UThread* ut, const UCell* from, UCell* res )
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE,
-                     "make binary! expected int!/binary!/string!" );
+                     "make binary! expected int!/binary!/string!/file!" );
 }
 
  
@@ -1580,26 +1581,26 @@ void string_copy( UThread* ut, const UCell* from, UCell* res )
 
 int string_make( UThread* ut, const UCell* from, UCell* res )
 {
-    UIndex n;
     int type = ur_type(from);
-
-    if( type == UT_INT )
-    {
-        n = ur_makeString( ut, UR_ENC_LATIN1, ur_int(from) );
-    }
-    else if( ur_isStringType(type) )
+    if( ur_isStringType(type) )
     {
         string_copy( ut, from, res );
-        return UR_OK;
     }
     else
     {
-        n = ur_makeString( ut, UR_ENC_LATIN1, 0 );
-        DT( type )->toString( ut, from, ur_buffer(n), 0 );
+        UIndex n;
+        if( type == UT_INT )
+        {
+            n = ur_makeString( ut, UR_ENC_LATIN1, ur_int(from) );
+        }
+        else
+        {
+            n = ur_makeString( ut, UR_ENC_LATIN1, 0 );
+            DT( type )->toString( ut, from, ur_buffer(n), 0 );
+        }
+        ur_setId( res, UT_STRING );
+        ur_setSeries( res, n, 0 );
     }
-
-    ur_setId( res, UT_STRING );
-    ur_setSeries( res, n, 0 );
     return UR_OK;
 }
 
@@ -1607,14 +1608,11 @@ int string_make( UThread* ut, const UCell* from, UCell* res )
 int string_convert( UThread* ut, const UCell* from, UCell* res )
 {
     int type = ur_type(from);
-    int enc = UR_ENC_LATIN1;
-
     if( ur_isStringType(type) )
-    {
-        const UBuffer* str = ur_bufferSer(from);
-        enc = str->form;
-    }
-    DT( type )->toString( ut, from, ur_makeStringCell(ut, enc, 0, res), 0 );
+        string_copy( ut, from, res );
+    else
+        DT( type )->toString( ut, from,
+                              ur_makeStringCell(ut, UR_ENC_LATIN1, 0, res), 0 );
     return UR_OK;
 }
 
