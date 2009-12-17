@@ -29,6 +29,12 @@ extra none
 1
 two
 3
+---- forall series change
+1
+2
+3
+4
+5
 ---- map
 [3 4 5]
 "a b c;d-e"

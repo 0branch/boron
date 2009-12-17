@@ -1997,6 +1997,14 @@ CFUNC(cfunc_sort)
 }
 
 
+static inline UIndex _sliceEnd( const UBuffer* buf, const UCell* cell )
+{
+    if( cell->series.end > -1 && cell->series.end < buf->used )
+        return cell->series.end;
+    return buf->used;
+}
+
+
 /*-cf-
     foreach
         'words   word!/block!
@@ -2021,24 +2029,11 @@ CFUNC(cfunc_foreach)
     if( ! ur_is(body, UT_BLOCK) )
         return errorType( "foreach expected block! body" );
 
-    ur_seriesSlice( ut, &si, sarg );
-    dt = SERIES_DT( ur_type(sarg) );
-
     if( ur_is(a1, UT_WORD) )
     {
-        while( si.it < si.end )
-        {
-            if( ! (cell = ur_wordCellM(ut, a1)) )
-                return UR_THROW;
-            dt->pick( ur_bufferSer(sarg), si.it++, cell ); 
-            if( ! boron_doBlock( ut, body, res ) )
-            {
-                if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
-                    break;
-                return UR_THROW;
-            }
-        }
-        return UR_OK;
+        words  = a1;
+        wi.end = a1 + 1;
+        goto loop;
     }
     else if( ur_is(a1, UT_BLOCK) )
     {
@@ -2072,27 +2067,34 @@ CFUNC(cfunc_foreach)
         }
 
         // Now that all validation is done the loop can finally begin.
-
-        while( si.it < si.end )
-        {
-            si.buf = ur_bufferSer(sarg);    // Re-aquire
-            wi.it = words;
-            ur_foreach( wi )
-            {
-                if( ! (cell = ur_wordCellM(ut, wi.it)) )
-                    return UR_THROW;
-                dt->pick( si.buf, si.it++, cell ); 
-            }
-            if( ! boron_doBlock( ut, body, res ) )
-            {
-                if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
-                    break;
-                return UR_THROW;
-            }
-        }
-        return UR_OK;
+        goto loop;
     }
     return errorType( "foreach expected word!/block! for words" );
+
+loop:
+
+    dt = SERIES_DT( ur_type(sarg) );
+    ur_seriesSlice( ut, &si, sarg );
+    while( si.it < si.end )
+    {
+        wi.it = words;
+        ur_foreach( wi )
+        {
+            if( ! (cell = ur_wordCellM(ut, wi.it)) )
+                return UR_THROW;
+            dt->pick( si.buf, si.it++, cell ); 
+        }
+        if( ! boron_doBlock( ut, body, res ) )
+        {
+            if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+                break;
+            return UR_THROW;
+        }
+        // Re-aquire buf & end.
+        si.buf = ur_bufferSer( sarg );
+        si.end = _sliceEnd( si.buf, sarg );
+    }
+    return UR_OK;
 }
 
 

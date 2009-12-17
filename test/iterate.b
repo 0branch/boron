@@ -44,6 +44,11 @@ forall a [
 ]
 
 
+print "---- forall series change"
+d: [1 2 3]
+foreach x d [if eq? 2 x [append d [4 5]] print x]
+
+
 print "---- map"
 probe map x [1 2 3] [add x 2]
 probe map x {a-b-c;d-e} [
