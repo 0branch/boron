@@ -254,9 +254,17 @@ CFUNC(cfunc_do)
             break;
 
         case UT_FILE:
-            *a1 = *res;
-            if( ! cfunc_load( ut, a1, res ) )
+        {
+            int ok;
+            UCell* tmp;
+            if( ! (tmp = boron_stackPush(ut)) )     // Hold file arg.
                 return UR_THROW;
+            *tmp = *res;
+            ok = cfunc_load( ut, tmp, res );
+            boron_stackPop(ut);
+            if( ! ok )
+                return UR_THROW;
+        }
             if( ! ur_is(res, UT_BLOCK) )
                 return UR_OK;
             // Fall through to block...
