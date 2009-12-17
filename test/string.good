@@ -16,6 +16,8 @@ latin1
 }"
 "}"
 }
+---- compare
+true
 ---- do
 7
 ---- change

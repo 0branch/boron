@@ -341,7 +341,9 @@ enum UrlanCompareTest
 {
     UR_COMPARE_SAME,
     UR_COMPARE_EQUAL,
-    UR_COMPARE_ORDER
+    UR_COMPARE_EQUAL_CASE,
+    UR_COMPARE_ORDER,
+    UR_COMPARE_ORDER_CASE
 };
 
 enum UrlanRecyclePhase
@@ -434,7 +436,9 @@ void     ur_infuse( UThread*, UCell* it, UCell* end, const UBuffer* ctx );
 int      ur_isTrue( const UCell* cell );
 int      ur_same( UThread*, const UCell* a, const UCell* b );
 int      ur_equal( UThread*, const UCell* a, const UCell* b );
+int      ur_equalCase( UThread*, const UCell* a, const UCell* b );
 int      ur_compare( UThread*, const UCell* a, const UCell* b );
+int      ur_compareCase( UThread*, const UCell* a, const UCell* b );
 
 void     ur_makeDatatype( UCell* cell, int type );
 int      ur_isDatatype( const UCell* cell, const UCell* datatype );

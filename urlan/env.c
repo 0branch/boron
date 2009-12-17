@@ -835,6 +835,19 @@ int ur_equal( UThread* ut, const UCell* a, const UCell* b )
 
 
 /**
+  Case-sensitive equality test.
+  \return Non-zero if values are equivalent.
+*/
+int ur_equalCase( UThread* ut, const UCell* a, const UCell* b )
+{
+    int t = ur_type(a);
+    if( t < ur_type(b) )
+        t = ur_type(b);
+    return ut->types[ t ]->compare( ut, a, b, UR_COMPARE_EQUAL_CASE );
+}
+
+
+/**
   \return 1, 0, or -1, if cell a is greater than, equal to, or less than
           cell b.
 */
@@ -844,6 +857,20 @@ int ur_compare( UThread* ut, const UCell* a, const UCell* b )
     if( t < ur_type(b) )
         t = ur_type(b);
     return ut->types[ t ]->compare( ut, a, b, UR_COMPARE_ORDER );
+}
+
+
+/**
+  Case-sensitive ordering comparison.
+  \return 1, 0, or -1, if cell a is greater than, equal to, or less than
+          cell b.
+*/
+int ur_compareCase( UThread* ut, const UCell* a, const UCell* b )
+{
+    int t = ur_type(a);
+    if( t < ur_type(b) )
+        t = ur_type(b);
+    return ut->types[ t ]->compare( ut, a, b, UR_COMPARE_ORDER_CASE );
 }
 
 

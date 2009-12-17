@@ -827,7 +827,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_complement, "complement val" );
     addCFunc( cfunc_intersect,  "intersect a b" );
     addCFunc( cfunc_difference, "difference a b" );
-    addCFunc( cfunc_sort,       "sort ser" );
+    addCFunc( cfunc_sort,       "sort ser /case" );
     addCFunc( cfunc_foreach,    "foreach 'w s body /ghost" );
     addCFunc( cfunc_forall,     "forall 'w body /ghost" );
     addCFunc( cfunc_map,        "map 'w ser body /ghost" );

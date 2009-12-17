@@ -66,8 +66,9 @@
   guaranteed to be the same by the caller.  Otherwise, one of the cells
   might not be of the datatype for this compare method.
 
-  When the test is UR_COMPARE_ORDER, then the method should return 1, 0, or -1,
-  if cell a is greater than, equal to, or lesser than cell b.
+  When the test is UR_COMPARE_ORDER or UR_COMPARE_ORDER_CASE, then the method
+  should return 1, 0, or -1, if cell a is greater than, equal to, or lesser
+  than cell b.
 
   The method should only check for datatypes with a lesser or equal
   ur_type(), as the caller will use the compare method for the higher
@@ -382,6 +383,7 @@ int datatype_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             break;
 
         case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
             if( ur_type(a) == ur_type(b) )
             {
                 return ((a->datatype.mask0 & b->datatype.mask0) ||
@@ -389,6 +391,7 @@ int datatype_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             }
 
         case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
             if( ur_type(a) == ur_type(b) )
             {
                 if( ur_datatype(a) > ur_datatype(b) )
@@ -650,9 +653,11 @@ int int_compare( UThread* ut, const UCell* a, const UCell* b, int test )
         switch( test )
         {
             case UR_COMPARE_EQUAL:
+            case UR_COMPARE_EQUAL_CASE:
                 return ur_int(a) == ur_int(b);
 
             case UR_COMPARE_ORDER:
+            case UR_COMPARE_ORDER_CASE:
                 if( ur_int(a) > ur_int(b) )
                     return 1;
                 if( ur_int(a) < ur_int(b) )
@@ -722,6 +727,7 @@ int decimal_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             return ur_decimal(a) == ur_decimal(b);
 
         case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
             if( ur_isDecimalType( ur_type(a) ) )
             {
                 if( ur_isDecimalType( ur_type(b) ) )
@@ -737,6 +743,7 @@ int decimal_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             break;
 
         case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
             if( ur_isDecimalType( ur_type(a) ) )
             {
                 if( ur_isDecimalType( ur_type(b) ) )
@@ -960,11 +967,13 @@ int word_compare( UThread* ut, const UCell* a, const UCell* b, int test )
                     (a->word.ctx == b->word.ctx));
 
         case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
             if( ur_isWordType( ur_type(a) ) && ur_isWordType( ur_type(b) ) )
                 return ur_atom(a) == ur_atom(b);
             break;
 
         case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
             if( ur_type(a) == ur_type(b) )
             {
 #define ATOM_STR(cell)  (const uint8_t*) ur_atomCStr(ut, ur_atom(cell))
@@ -1201,6 +1210,7 @@ int binary_compare( UThread* ut, const UCell* a, const UCell* b, int test )
                     (a->series.end == b->series.end));
 
         case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
             if( ! ur_is(a, UT_BINARY) || ! ur_is(b, UT_BINARY) )
                 break;
             if( (a->series.buf == b->series.buf) &&
@@ -1227,6 +1237,7 @@ int binary_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             break;
 
         case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
             if( ur_is(a, UT_BINARY) && ur_is(b, UT_BINARY) )
             {
                 USeriesIter ai;
@@ -1608,6 +1619,52 @@ int string_convert( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+/*
+  Returns pointer in pattern at the end of the matching elements.
+*/
+#define MATCH_PATTERN_IC(T) \
+const T* match_pattern_ic_ ## T( const T* it, const T* end, \
+        const T* pit, const T* pend ) { \
+    while( pit != pend ) { \
+        if( it == end ) \
+            return pit; \
+        if( ur_charLowercase(*it) != ur_charLowercase(*pit) ) \
+            return pit; \
+        ++it; \
+        ++pit; \
+    } \
+    return pit; \
+}
+
+MATCH_PATTERN_IC(uint8_t)
+MATCH_PATTERN_IC(uint16_t)
+
+
+#define COMPARE_IC(T) \
+int compare_ic_ ## T( const T* it, const T* end, \
+        const T* itB, const T* endB ) { \
+    int ca, cb; \
+    int lenA = end - it; \
+    int lenB = endB - itB; \
+    while( it < end && itB < endB ) { \
+        ca = ur_charLowercase( *it++ ); \
+        cb = ur_charLowercase( *itB++ ); \
+        if( ca > cb ) \
+            return 1; \
+        if( ca < cb ) \
+            return -1; \
+    } \
+    if( lenA > lenB ) \
+        return 1; \
+    if( lenA < lenB ) \
+        return -1; \
+    return 0; \
+}
+
+COMPARE_IC(uint8_t)
+COMPARE_IC(uint16_t)
+
+
 int string_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 {
     switch( test )
@@ -1618,6 +1675,7 @@ int string_compare( UThread* ut, const UCell* a, const UCell* b, int test )
                     (a->series.end == b->series.end));
 
         case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
             if( ! ur_isStringType(ur_type(a)) || ! ur_isStringType(ur_type(b)) )
                 break;
             if( (a->series.buf == b->series.buf) &&
@@ -1638,18 +1696,28 @@ int string_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             {
                 if( ur_strIsUcs2(ai.buf) )
                 {
+                    const uint16_t* (*func)( const uint16_t*, const uint16_t*,
+                                             const uint16_t*, const uint16_t* );
                     const uint16_t* pos;
                     const uint16_t* end = bi.buf->ptr.u16 + bi.end;
-                    pos = match_pattern_uint16_t( ai.buf->ptr.u16 + ai.it,
+
+                    func = (test == UR_COMPARE_EQUAL) ?
+                        match_pattern_ic_uint16_t : match_pattern_uint16_t;
+                    pos = func( ai.buf->ptr.u16 + ai.it,
                                 ai.buf->ptr.u16 + ai.end,
                                 bi.buf->ptr.u16 + bi.it, end );
                     return pos == end;
                 }
                 else
                 {
+                    const uint8_t* (*func)( const uint8_t*, const uint8_t*,
+                                            const uint8_t*, const uint8_t* );
                     const uint8_t* pos;
                     const uint8_t* end = bi.buf->ptr.b + bi.end;
-                    pos = match_pattern_uint8_t( ai.buf->ptr.b + ai.it,
+
+                    func = (test == UR_COMPARE_EQUAL) ?
+                        match_pattern_ic_uint8_t : match_pattern_uint8_t;
+                    pos = func( ai.buf->ptr.b + ai.it,
                                 ai.buf->ptr.b + ai.end,
                                 bi.buf->ptr.b + bi.it, end );
                     return pos == end;
@@ -1659,6 +1727,7 @@ int string_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             break;
 
         case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
             if( ! ur_isStringType(ur_type(a)) || ! ur_isStringType(ur_type(b)) )
                 break;
             {
@@ -1673,17 +1742,25 @@ int string_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 
             if( ur_strIsUcs2(ai.buf) )
             {
-                return compare_uint16_t( ai.buf->ptr.u16 + ai.it,
-                                         ai.buf->ptr.u16 + ai.end,
-                                         bi.buf->ptr.u16 + bi.it,
-                                         bi.buf->ptr.u16 + bi.end );
+                int (*func)(const uint16_t*, const uint16_t*,
+                            const uint16_t*, const uint16_t* );
+                func = (test == UR_COMPARE_ORDER) ? compare_ic_uint16_t
+                                                  : compare_uint16_t;
+                return func( ai.buf->ptr.u16 + ai.it,
+                             ai.buf->ptr.u16 + ai.end,
+                             bi.buf->ptr.u16 + bi.it,
+                             bi.buf->ptr.u16 + bi.end );
             }
             else
             {
-                return compare_uint8_t( ai.buf->ptr.b + ai.it,
-                                        ai.buf->ptr.b + ai.end,
-                                        bi.buf->ptr.b + bi.it,
-                                        bi.buf->ptr.b + bi.end );
+                int (*func)(const uint8_t*, const uint8_t*,
+                             const uint8_t*, const uint8_t* );
+                func = (test == UR_COMPARE_ORDER) ? compare_ic_uint8_t
+                                                  : compare_uint8_t;
+                return func( ai.buf->ptr.b + ai.it,
+                             ai.buf->ptr.b + ai.end,
+                             bi.buf->ptr.b + bi.it,
+                             bi.buf->ptr.b + bi.end );
             }
             }
     }
@@ -2360,6 +2437,7 @@ int block_compare( UThread* ut, const UCell* a, const UCell* b, int test )
                     (a->series.end == b->series.end));
 
         case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
             if( ur_type(a) != ur_type(b) )
                 break;
             if( (a->series.buf == b->series.buf) &&
@@ -2393,6 +2471,7 @@ int block_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             break;
 
         case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
             break;
     }
     return 0;

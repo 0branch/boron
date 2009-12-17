@@ -1955,10 +1955,12 @@ CFUNC(cfunc_difference)
 /*-cf-
     sort
         set     series
+        /case   Use case-sensitive comparison with string types.
     return: New series with sorted elements.
 */
 CFUNC(cfunc_sort)
 {
+#define OPT_SORT_CASE   0x01
     int type = ur_type(a1);
 
     if( ur_isBlockType(type) )
@@ -1980,7 +1982,8 @@ CFUNC(cfunc_sort)
         qs.user     = (void*) ut;
         qs.data     = (uint8_t*) bi.it;
         qs.elemSize = sizeof(UCell);
-        qs.compare  = (QuickSortFunc) ur_compare;
+        qs.compare  = (QuickSortFunc)
+                ((CFUNC_OPTIONS & OPT_SORT_CASE) ? ur_compareCase : ur_compare);
 
         quickSortIndex( &qs, 0, len, 1 );
 

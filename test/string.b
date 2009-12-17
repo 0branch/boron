@@ -28,6 +28,10 @@ probe "}"
 print "}"
 
 
+print "---- compare"
+probe equal? "str" "STR"
+
+
 print "---- do"
 print do "add 3 4"
 

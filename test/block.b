@@ -50,7 +50,8 @@ probe difference b: ["h" 45 new 45] b
 
 print "---- sort"
 probe sort [1 50.0 20.0 5] 
-probe sort ["then" "hello" "goodbye" "NOW"]
+probe sort b: ["then" "hello" "goodbye" "NOW" "now"]
+probe sort/case b
 probe sort [zulu alpha gamma beta]
 
 ; Caught bug in qsortIndex.
