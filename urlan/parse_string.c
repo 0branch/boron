@@ -342,8 +342,8 @@ match:
 
                 case UR_ATOM_SKIP:
                     // TODO - int! skip
-                    //if( pos >= istr->used )
-                    //    return 0;
+                    if( pos >= pe->inputEnd )
+                        goto failed;
                     ++rit;
                     ++pos;
                     break;
@@ -599,7 +599,7 @@ repeat:
 
                 while( count < repMax )
                 {
-                    if( pos == pe->inputEnd )
+                    if( pos >= pe->inputEnd )
                         break;
                     if( ! _parseStr( ut, pe, bli.it, bli.end, &pos ) )
                     {

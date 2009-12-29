@@ -193,8 +193,8 @@ match:
 
                     case UR_ATOM_SKIP:
                         // TODO - int! skip
-                        //if( pos >= ser->used )
-                        //    return 0;
+                        if( pos >= pe->inputEnd )
+                            goto failed;
                         ++rit;
                         ++pos;
                         break;
@@ -448,7 +448,7 @@ unexpected_end:
 
                 while( count < repMax )
                 {
-                    if( pos == pe->inputEnd )
+                    if( pos >= pe->inputEnd )
                         break;
                     if( ! _parseBlock( ut, pe, bi.it, bi.end, &pos ) )
                     {

@@ -23,3 +23,10 @@ print parse [1 2 token ...] [
 	any int! a: word! :a any word!
 ]
 probe a
+
+
+print "---- sanity checks"
+ogs: "frog clog dog smog bog woggle toggle"
+print parse copy ogs [
+    some [a: "smog" (clear a) | skip]
+]

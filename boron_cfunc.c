@@ -2908,7 +2908,8 @@ CFUNC(cfunc_parse)
             // Re-aquire.
             if( ! (si.buf = ur_bufferSerM(a1)) )
                 return UR_THROW;
-            pos = (pos == si.buf->used);
+            // Pos can be greater than used if input was erased.
+            pos = (pos >= si.buf->used);
         }
 
         ur_setId(res, UT_LOGIC);
