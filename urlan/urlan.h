@@ -23,8 +23,8 @@
 #include <stdint.h>
 
 
-#define UR_VERSION_STR  "0.1.0"
-#define UR_VERSION      0x000100
+#define UR_VERSION_STR  "0.1.1"
+#define UR_VERSION      0x000101
 
 
 enum UrlanDataType
