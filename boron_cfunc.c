@@ -1516,6 +1516,7 @@ CFUNC(cfunc_change)
 /*-cf-
     remove
         series      series or none!
+        /slice      Remove to end of series.
         /part
             number  int!
     return: series or none!
@@ -1524,8 +1525,10 @@ CFUNC(cfunc_change)
 */
 CFUNC(cfunc_remove)
 {
-#define OPT_REMOVE_PART 0x01
+#define OPT_REMOVE_SLICE    0x01
+#define OPT_REMOVE_PART     0x02
     USeriesIterM si;
+    uint32_t opt = CFUNC_OPTIONS;
     int part = 0;
     int type = ur_type(a1);
 
@@ -1541,11 +1544,15 @@ CFUNC(cfunc_remove)
     if( ! ur_seriesSliceM( ut, &si, a1 ) )
         return UR_THROW;
 
-    if( CFUNC_OPTIONS & OPT_REMOVE_PART )
+    if( opt & OPT_REMOVE_PART )
     {
         if( ! ur_is(a2, UT_INT) )
             return ur_error( ut, UR_ERR_TYPE, "remove expected int! part" );
         part = ur_int(a2);
+    }
+    else if( opt & OPT_REMOVE_SLICE )
+    {
+        part = si.end - si.it;
     }
 
     SERIES_DT( type )->remove( ut, &si, part );
