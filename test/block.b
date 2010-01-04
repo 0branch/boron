@@ -31,6 +31,7 @@ print "---- append"
 probe append [1 2 3] "end"
 probe append [1 2 3] [x y z]
 probe append/block [1 2 3] [x y z]
+probe append a: [1 2 3 4 five] a      ; Append to self
 
 
 print "---- select"

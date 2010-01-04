@@ -20,6 +20,7 @@ false
 [1 2 3 "end"]
 [1 2 3 x y z]
 [1 2 3 [x y z]]
+[1 2 3 4 five 1 2 3 4 five]
 ---- select
 1
 2

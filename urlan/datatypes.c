@@ -2610,7 +2610,12 @@ int block_append( UThread* ut, UBuffer* buf, const UCell* val )
     {
         UBlockIter bi;
         ur_blkSlice( ut, &bi, val );
-        ur_blkAppendCells( buf, bi.buf->ptr.cell, bi.end - bi.it );
+        if( bi.buf == buf )
+        {
+            ur_arrReserve( buf, buf->used + (bi.end - bi.it) );
+            ur_blkSlice( ut, &bi, val );
+        }
+        ur_blkAppendCells( buf, bi.it, bi.end - bi.it );
     }
     else
     {
