@@ -2514,6 +2514,39 @@ CFUNC(cfunc_make_dir)
 }
 
 
+#include <errno.h>
+
+/*-cf-
+    current-dir
+    return: File! of current working directory.
+*/
+CFUNC(cfunc_current_dir)
+{
+#ifdef _WIN32
+#define getcwd  _getcwd
+#define DIR_SLASH   '\\'
+#else
+#define DIR_SLASH   '/'
+#endif
+    UBuffer* str;
+    (void) a1;
+
+    str = ur_makeStringCell( ut, UR_ENC_LATIN1, 512, res );
+    ur_type(res) = UT_FILE;
+    if( getcwd( str->ptr.c, 512 ) )
+    {
+        str->used = strLen( str->ptr.c );
+        if( str->ptr.c[ str->used - 1 ] != DIR_SLASH )
+        {
+            str->ptr.c[ str->used ] = DIR_SLASH;
+            ++str->used;
+        }
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_ACCESS, strerror(errno) );
+}
+
+
 /*-cf-
     getenv
         val string!
@@ -2718,8 +2751,6 @@ CFUNC(cfunc_write)
         return errorType( "write expected binary!/string!/context! data" );
 }
 
-
-#include <errno.h>
 
 /*-cf-
     delete
