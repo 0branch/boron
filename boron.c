@@ -847,7 +847,8 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_gtQ,        "gt? a b" );
     addCFunc( cfunc_ltQ,        "lt? a b" );
     addCFunc( cfunc_typeQ,      "type? a" );
-    addCFunc( cfunc_encodingQ,  "encoding? a" );
+    addCFunc( cfunc_encodingQ,  "encoding? s" );
+    addCFunc( cfunc_encode,     "encode type s /bom" );
     addCFunc( cfunc_lowercase,  "lowercase s" );
     addCFunc( cfunc_uppercase,  "uppercase s" );
     addCFunc( cfunc_trim,       "trim s /indent /lines" );

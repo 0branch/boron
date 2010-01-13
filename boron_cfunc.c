@@ -3023,7 +3023,8 @@ CFUNC(cfunc_typeQ)
 
 
 /*-cf-
-    encoding? val
+    encoding?
+        value
     return: Encoding type word! or none! if val is not a string.
 */
 CFUNC(cfunc_encodingQ)
@@ -3040,6 +3041,91 @@ CFUNC(cfunc_encodingQ)
     else
         ur_setId(res, UT_NONE);
     return UR_OK;
+}
+
+
+/*-cf-
+    encode
+        type    word!   latin1, utf8, ucs2
+        data    string!
+        /bom    Prepend Unicode BOM for utf8 or ucs2 and return binary.
+    return: New string or binary with data converted to encoding type.
+*/
+CFUNC(cfunc_encode)
+{
+#define OPT_ENCODE_BOM  0x01
+    static const uint8_t _bomUtf8[3] = { 0xef, 0xbb, 0xbf };
+    const UCell* data = a2;
+    int type = ur_type(data);
+
+    if( ! ur_is(a1, UT_WORD) )
+        return errorType( "encode expected word! type" );
+
+    if( ur_isStringType( type ) )
+    {
+        USeriesIter si;
+        int enc;
+
+        switch( ur_atom(a1) )
+        {
+            case UR_ATOM_LATIN1:
+                enc = UR_ENC_LATIN1;
+                break;
+            case UR_ATOM_UTF8:
+                enc = UR_ENC_UTF8;
+                break;
+            case UR_ATOM_UCS2:
+                enc = UR_ENC_UCS2;
+                break;
+            default:
+                return ur_error( ut, UR_ERR_TYPE,
+                                 "encode passed invalid type '%s",
+                                 ur_atomCStr(ut, ur_atom(a1)) );
+        }
+
+        if( CFUNC_OPTIONS & OPT_ENCODE_BOM )
+        {
+            UBuffer* bin = ur_makeBinaryCell( ut, 0, res );
+
+            if( enc == UR_ENC_UTF8 )
+            {
+                ur_binAppendData( bin, _bomUtf8, 3 );
+            }
+            else if( enc == UR_ENC_UCS2 )
+            {
+                uint16_t bom = 0xfeff;
+                ur_binAppendData( bin, (uint8_t*) &bom, 2 );
+            }
+
+            ur_seriesSlice( ut, &si, data );
+
+            if( enc == si.buf->form )
+            {
+                ur_binAppendArray( bin, &si );
+            }
+            else
+            {
+                UBuffer tmp;
+                ur_strInit( &tmp, enc, 0 );
+                ur_strAppend( &tmp, si.buf, si.it, si.end );
+
+                si.buf = &tmp;
+                si.it  = 0;
+                si.end = tmp.used;
+                ur_binAppendArray( bin, &si );
+
+                ur_strFree( &tmp );
+            }
+        }
+        else
+        {
+            UBuffer* nstr = ur_makeStringCell( ut, enc, 0, res );
+            ur_seriesSlice( ut, &si, data );
+            ur_strAppend( nstr, si.buf, si.it, si.end );
+        }
+        return UR_OK;
+    }
+    return errorType( "encode expected string! data" );
 }
 
 

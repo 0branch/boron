@@ -222,6 +222,21 @@ void ur_binAppendData( UBuffer* buf, const uint8_t* data, int len )
 
 
 /**
+  Append array slice to binary buffer.
+
+  \param buf    Initialized binary buffer.
+  \param si     Data to append.  si.buf->elemSize must be valid.
+*/
+void ur_binAppendArray( UBuffer* buf, const USeriesIter* si )
+{
+    int esize = si->buf->elemSize;
+    int len = (si->end - si->it) * esize;
+    if( len > 0 )
+        ur_binAppendData( buf, si->buf->ptr.b + (si->it * esize), len );
+}
+
+
+/**
   Set UBinaryIter to binary slice.
 
   \param bi    Iterator struct to fill.

@@ -454,6 +454,7 @@ void     ur_binReserve( UBuffer*, int size );
 void     ur_binExpand( UBuffer*, int index, int count );
 void     ur_binErase( UBuffer*, int start, int count );
 void     ur_binAppendData( UBuffer*, const uint8_t* data, int len );
+void     ur_binAppendArray( UBuffer*, const USeriesIter* si );
 void     ur_binFree( UBuffer* );
 void     ur_binSlice( UThread*, UBinaryIter*, const UCell* cell );
 int      ur_binSliceM( UThread*, UBinaryIterM*, const UCell* cell );

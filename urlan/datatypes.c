@@ -1163,37 +1163,10 @@ int binary_make( UThread* ut, const UCell* from, UCell* res )
     {
         USeriesIter si;
         UBuffer* bin;
-        const uint8_t* data;
-        int len;
 
         bin = ur_makeBinaryCell( ut, 0, res );
-
         ur_seriesSlice( ut, &si, from );
-        len = si.end - si.it;
-
-        switch( si.buf->elemSize )
-        {
-            case 2:
-                data = (const uint8_t*) (si.buf->ptr.u16 + si.it);
-                len *= 2;
-                break;
-
-            case 4:
-                data = (const uint8_t*) (si.buf->ptr.u32 + si.it);
-                len *= 4;
-                break;
-
-            case 8:
-                data = (const uint8_t*) (si.buf->ptr.d + si.it);
-                len *= 8;
-                break;
-
-            default:
-                data = si.buf->ptr.b + si.it;
-                break;
-        }
-
-        ur_binAppendData( bin, data, len );
+        ur_binAppendArray( bin, &si );
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE,

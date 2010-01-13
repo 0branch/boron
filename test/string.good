@@ -1,5 +1,7 @@
 ---- encoding
 latin1
+latin1 ucs2
+#{EFBBBF53C3AE6E65206B6CC3A277656E}
 ---- append
 "xabc"
 ---- trim
