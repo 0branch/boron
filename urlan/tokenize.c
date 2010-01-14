@@ -27,6 +27,7 @@
 #define inline  __inline
 #endif
 
+extern double ur_stringToDate( const char*, const char*, const char** );
 
 #define isDigit(v)     (('0' <= v) && (v <= '9'))
 
@@ -880,29 +881,30 @@ number:
 
                 {
                 UBuffer* blk = BLOCK;
-                if( ch == '.' )         // UT_DECIMAL, UT_VEC3
+                switch( ch )
                 {
+                case '-':
+                    cell = ur_blkAppendNew( blk, UT_DATE );
+                    ur_decimal(cell) = ur_stringToDate( token, end, &it );
+                    break;
+                case '.':   // UT_DECIMAL, UT_VEC3
                     cell = ur_blkAppendNew( blk, UT_DECIMAL );
                     ur_decimal(cell) = str_toDouble( token, end, &it );
-                }
-                else if( ch == ':' )
-                {
+                    break;
+                case ':':
                     cell = ur_blkAppendNew( blk, UT_TIME );
                     ur_decimal(cell) = str_toTime( token, end, &it );
-                }
-                else if( ch == ',' )
-                {
+                    break;
+                case ',':
                     cell = ur_blkAppendNew( blk, UT_COORD );
                     it = str_toCoord( cell, token, end );
-                }
-                else if( ch == '#' )    // UT_BINARY
-                {
+                    break;
+                case '#':   // UT_BINARY
                     goto binary;
-                }
-                else
-                {
+                default:
                     cell = appendInt( blk, str_toInt64( token, end, &it ),
                                       INT32_MAX );
+                    break;
                 }
                 }
                 goto set_sol;
