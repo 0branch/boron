@@ -603,39 +603,43 @@ void ur_strAppend( UBuffer* str, const UBuffer* strB, UIndex itB, UIndex endB )
             uint8_t* dest;
             ur_arrReserve( str, str->used + usedB );
             dest = str->ptr.b + str->used;
-            if( strB->form == UR_ENC_LATIN1 )
+            switch( strB->form )
             {
+            case UR_ENC_LATIN1:
                 memCpy( dest, strB->ptr.c + itB, usedB );
                 str->used += usedB;
-            }
-            else if( strB->form == UR_ENC_UTF8 )
+                break;
+            case UR_ENC_UTF8:
                 str->used += copyUtf8ToLatin1( dest, strB->ptr.b + itB, usedB );
-            else
+                break;
+            case UR_ENC_UCS2:
                 str->used += copyUcs2ToLatin1( dest, strB->ptr.u16+itB, usedB );
+                break;
+            }
         }
             break;
 
         case UR_ENC_UTF8:
         {
             uint8_t* dest;
-            if( strB->form == UR_ENC_LATIN1 )
+            switch( strB->form )
             {
+            case UR_ENC_LATIN1:
                 ur_arrReserve( str, str->used + (usedB * 2) );
                 dest = str->ptr.b + str->used;
                 str->used += copyLatin1ToUtf8( dest, strB->ptr.b + itB, usedB );
-            }
-            else if( strB->form == UR_ENC_UTF8 )
-            {
+                break;
+            case UR_ENC_UTF8:
                 ur_arrReserve( str, str->used + usedB );
                 dest = str->ptr.b + str->used;
                 memCpy( dest, strB->ptr.b + itB, usedB );
                 str->used += usedB;
-            }
-            else
-            {
+                break;
+            case UR_ENC_UCS2:
                 ur_arrReserve( str, str->used + usedB*2 );
                 dest = str->ptr.b + str->used;
                 str->used += copyUcs2ToUtf8( dest, strB->ptr.u16 + itB, usedB );
+                break;
             }
         }
             break;
@@ -645,10 +649,16 @@ void ur_strAppend( UBuffer* str, const UBuffer* strB, UIndex itB, UIndex endB )
             uint16_t* dest;
             ur_arrReserve( str, str->used + usedB );
             dest = str->ptr.u16 + str->used;
-            if( ur_strIsUcs2(strB) )
+            switch( strB->form )
+            {
+            case UR_ENC_LATIN1:
+            case UR_ENC_UTF8:       // FIXME: Need copyUtf8ToUcs2().
+                copyAsciiToUtf16( dest, strB->ptr.c + itB, usedB );
+                break;
+            case UR_ENC_UCS2:
                 memCpy( dest, strB->ptr.u16 + itB, usedB * 2 );
-            else
-                copyAsciiToUtf16( dest, strB->ptr.c + itB, usedB ); //FIXME
+                break;
+            }
             str->used += usedB;
         }
             break;
