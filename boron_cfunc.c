@@ -3130,6 +3130,61 @@ CFUNC(cfunc_encode)
 
 
 /*-cf-
+    swap
+        data    binary!
+        /group  Specify number of elements to reverse
+            size    int!
+    return: Modified data.
+
+    Swap adjacent elements of a series.
+*/
+CFUNC(cfunc_swap)
+{
+#define OPT_SWAP_GROUP  0x01
+//#define OPT_SWAP_ORDER  0x02    /order block   block!
+    if( ur_is(a1, UT_BINARY) )
+    {
+        USeriesIterM si;
+        if( ! ur_seriesSliceM( ut, &si, a1 ) )
+            return UR_THROW;
+
+        if( CFUNC_OPTIONS & OPT_SWAP_GROUP )
+        {
+            char* bp;
+            int group = ur_int(a2);
+            if( group < 2 || group > (si.end - si.it) )
+                return ur_error( ut, UR_ERR_SCRIPT,
+                                 "swap group size (%d) is invalid", group );
+            bp = si.buf->ptr.c + si.it;
+            si.it += group;
+            for( ; si.it <= si.end; si.it += group, bp += group )
+                reverse_char( bp, bp + group );
+        }
+        else
+        {
+            uint8_t* bp;
+            uint8_t* bend;
+            int tmp;
+            if( (si.end - si.it) & 1 )
+                --si.end;
+            bp = si.buf->ptr.b + si.it;
+            bend = si.buf->ptr.b + si.end;
+            for( ; bp != bend; bp += 2 )
+            {
+                tmp = bp[0];
+                bp[0] = bp[1];
+                bp[1] = tmp;
+            }
+        }
+
+        *res = *a1;
+        return UR_OK;
+    }
+    return errorType( "swap expected binary!" );
+}
+
+
+/*-cf-
     lowercase
         value   char!/string!/file!
     return: Value converted to lowercase.

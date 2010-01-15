@@ -577,9 +577,17 @@ void boron_addCFunc( UThread* ut, int (*func)(UThread*,UCell*,UCell*),
 #define ARCH_WORD "unknown"
 #endif
 
+#ifdef __BIG_ENDIAN__
+#define ARCH_BIG  "true"
+#else
+#define ARCH_BIG  "false"
+#endif
+
 static const char setupScript[] =
     "environs: make context! [\n"
-    "  version: 0,1,1 os: '" OS_WORD " arch: '" ARCH_WORD "]\n"
+    "  version: 0,1,1\n"
+    "  os: '" OS_WORD " arch: '" ARCH_WORD " big-endian: " ARCH_BIG
+    "]\n"
     "q: :quit  yes: true  no: false\n"
     "eq?: :equal?\n"
     "tail?: :empty?\n"
@@ -849,6 +857,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_typeQ,      "type? a" );
     addCFunc( cfunc_encodingQ,  "encoding? s" );
     addCFunc( cfunc_encode,     "encode type s /bom" );
+    addCFunc( cfunc_swap,       "swap b /group size" );
     addCFunc( cfunc_lowercase,  "lowercase s" );
     addCFunc( cfunc_uppercase,  "uppercase s" );
     addCFunc( cfunc_trim,       "trim s /indent /lines" );

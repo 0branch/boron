@@ -32,3 +32,10 @@ probe a
 a: copy w
 probe change/part next a b 2
 probe a
+
+
+print "---- swap"
+probe swap #{FFFE680065006C006C006F00}
+probe swap/group #{00112233} 4
+probe swap/group #{0011223344556677} 3
+
