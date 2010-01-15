@@ -166,7 +166,7 @@ UCellCoord;
 typedef struct
 {
     UCellId id;
-    float num[3];
+    float xyz[3];
 }
 UCellVec3;
 

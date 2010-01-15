@@ -936,7 +936,7 @@ void vec3_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     {
         if( depth )
             ur_strAppendChar( str, ',' );
-        ur_strAppendDouble( str, cell->vec3.num[ depth ] );
+        ur_strAppendDouble( str, cell->vec3.xyz[ depth ] );
     }
 }
 
