@@ -3150,15 +3150,15 @@ CFUNC(cfunc_swap)
 
         if( CFUNC_OPTIONS & OPT_SWAP_GROUP )
         {
-            char* bp;
+            uint8_t* bp;
             int group = ur_int(a2);
             if( group < 2 || group > (si.end - si.it) )
                 return ur_error( ut, UR_ERR_SCRIPT,
                                  "swap group size (%d) is invalid", group );
-            bp = si.buf->ptr.c + si.it;
+            bp = si.buf->ptr.b + si.it;
             si.it += group;
             for( ; si.it <= si.end; si.it += group, bp += group )
-                reverse_char( bp, bp + group );
+                reverse_uint8_t( bp, bp + group );
         }
         else
         {

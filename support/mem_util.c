@@ -143,7 +143,7 @@ void reverse_ ## T( T* it, T* end ) { \
     } \
 }
 
-REVERSE(char)
+REVERSE(uint8_t)
 REVERSE(uint16_t)
 REVERSE(uint32_t)
 

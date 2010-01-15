@@ -32,7 +32,7 @@ const uint8_t* match_pattern_uint8_t( const uint8_t* it, const uint8_t* end,
 const uint16_t* match_pattern_uint16_t( const uint16_t* it, const uint16_t* end,
                                 const uint16_t* pit, const uint16_t* pend );
 
-void reverse_char( char* it, char* end );
+void reverse_uint8_t( uint8_t* it, uint8_t* end );
 void reverse_uint16_t( uint16_t* it, uint16_t* end );
 void reverse_uint32_t( uint32_t* it, uint32_t* end );
 

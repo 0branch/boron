@@ -397,12 +397,12 @@ static char _hexDigits[] = "0123456789ABCDEF";  //GHIJKLMNOPQRSTUVWXYZ";
     return cp;
 
 #if __WORDSIZE == 64
-#define int_to_char     int64_to_char
+#define int_to_uint8_t  int64_to_uint8_t
 #define int_to_uint16_t int64_to_uint16_t
 #else
-static char* int_to_char( int n, char* str )
+static uint8_t* int_to_uint8_t( int n, uint8_t* str )
 {
-    INT_TO_STR(char)
+    INT_TO_STR(uint8_t)
 }
 
 static uint16_t* int_to_uint16_t( int n, uint16_t* str )
@@ -411,9 +411,9 @@ static uint16_t* int_to_uint16_t( int n, uint16_t* str )
 }
 #endif
 
-static char* int64_to_char( int64_t n, char* str )
+static uint8_t* int64_to_uint8_t( int64_t n, uint8_t* str )
 {
-    INT_TO_STR(char)
+    INT_TO_STR(uint8_t)
 }
 
 static uint16_t* int64_to_uint16_t( int64_t n, uint16_t* str )
@@ -435,8 +435,8 @@ void ur_strAppendInt( UBuffer* str, int32_t n )
     }
     else
     {
-        char* cp = int_to_char( n, str->ptr.c + str->used );
-        str->used = cp - str->ptr.c;
+        uint8_t* cp = int_to_uint8_t( n, str->ptr.b + str->used );
+        str->used = cp - str->ptr.b;
     }
 }
 
@@ -454,8 +454,8 @@ void ur_strAppendInt64( UBuffer* str, int64_t n )
     }
     else
     {
-        char* cp = int64_to_char( n, str->ptr.c + str->used );
-        str->used = cp - str->ptr.c;
+        uint8_t* cp = int64_to_uint8_t( n, str->ptr.b + str->used );
+        str->used = cp - str->ptr.b;
     }
 }
 
@@ -475,7 +475,7 @@ static T* hex_to_ ## T( T* cp, uint32_t n, uint32_t hi ) { \
     return cp; \
 }
 
-HEX_TO_STR(char)
+HEX_TO_STR(uint8_t)
 HEX_TO_STR(uint16_t)
 
 /**
@@ -491,8 +491,8 @@ void ur_strAppendHex( UBuffer* str, uint32_t n, uint32_t hi )
     }
     else
     {
-        char* cp = hex_to_char( str->ptr.c + str->used, n, hi );
-        str->used = cp - str->ptr.c;
+        uint8_t* cp = hex_to_uint8_t( str->ptr.b + str->used, n, hi );
+        str->used = cp - str->ptr.b;
     }
 }
 
