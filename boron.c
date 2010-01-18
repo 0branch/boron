@@ -852,6 +852,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_parse,      "parse input rules" );
     addCFunc( cfunc_sameQ,      "same? a b" );
     addCFunc( cfunc_equalQ,     "equal? a b" );
+    addCFunc( cfunc_neQ,        "ne? a b" );
     addCFunc( cfunc_gtQ,        "gt? a b" );
     addCFunc( cfunc_ltQ,        "lt? a b" );
     addCFunc( cfunc_typeQ,      "type? a" );

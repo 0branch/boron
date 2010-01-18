@@ -2982,6 +2982,20 @@ CFUNC(cfunc_equalQ)
 
 
 /*-cf-
+    ne?
+        a
+        b
+    return: True if two values are not equivalent.
+*/
+CFUNC(cfunc_neQ)
+{
+    ur_setId(res, UT_LOGIC);
+    ur_int(res) = ur_equal( ut, a1, a2 ) ? 0 : 1;
+    return UR_OK;
+}
+
+
+/*-cf-
     gt?
         a
         b
