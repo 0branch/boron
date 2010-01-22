@@ -956,6 +956,49 @@ UDatatype dt_vec3 =
 // UT_WORD
 
 
+int word_makeType( UThread* ut, const UCell* from, UCell* res, int ntype )
+{
+    int type = ur_type(from);
+
+    if( ur_isWordType( type ) )
+    {
+        *res = *from;
+        ur_type(res) = ntype;
+        return UR_OK;
+    }
+    else if( type == UT_STRING )
+    {
+        USeriesIter si;
+        UAtom atom;
+
+        ur_seriesSlice( ut, &si, from );
+        if( si.buf->form == UR_ENC_LATIN1 )
+        {
+            atom = ur_internAtom( ut, si.buf->ptr.c + si.it,
+                                      si.buf->ptr.c + si.end );
+        }
+        else
+        {
+            UBuffer tmp;
+            ur_strInit( &tmp, UR_ENC_LATIN1, 0 );
+            ur_strAppend( &tmp, si.buf, si.it, si.end );
+            atom = ur_internAtom( ut, tmp.ptr.c, tmp.ptr.c + tmp.used );
+            ur_strFree( &tmp );
+        }
+        ur_setId(res, ntype);
+        ur_setWordUnbound(res, atom);
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE, "make word! expected word!/string!" );
+}
+
+
+int word_make( UThread* ut, const UCell* from, UCell* res )
+{
+    return word_makeType( ut, from, res, UT_WORD );
+}
+
+
 int word_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 {
     (void) ut;
@@ -1025,7 +1068,7 @@ void word_toShared( UCell* cell )
 UDatatype dt_word =
 {
     "word!",
-    unset_make,             unset_make,             unset_copy,
+    word_make,              word_make,              unset_copy,
     word_compare,           unset_select,
     word_toString,          word_toString,
     unset_recycle,          word_mark,              unset_destroy,
@@ -1035,6 +1078,12 @@ UDatatype dt_word =
 
 //----------------------------------------------------------------------------
 // UT_LITWORD
+
+
+int litword_make( UThread* ut, const UCell* from, UCell* res )
+{
+    return word_makeType( ut, from, res, UT_LITWORD );
+}
 
 
 void litword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
@@ -1048,7 +1097,7 @@ void litword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_litword =
 {
     "lit-word!",
-    unset_make,             unset_make,             unset_copy,
+    litword_make,           litword_make,           unset_copy,
     word_compare,           unset_select,
     litword_toString,       litword_toString,
     unset_recycle,          word_mark,              unset_destroy,
@@ -1058,6 +1107,12 @@ UDatatype dt_litword =
 
 //----------------------------------------------------------------------------
 // UT_SETWORD
+
+
+int setword_make( UThread* ut, const UCell* from, UCell* res )
+{
+    return word_makeType( ut, from, res, UT_SETWORD );
+}
 
 
 void setword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
@@ -1071,7 +1126,7 @@ void setword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_setword =
 {
     "set-word!",
-    unset_make,             unset_make,             unset_copy,
+    setword_make,           setword_make,           unset_copy,
     word_compare,           unset_select,
     setword_toString,       setword_toString,
     unset_recycle,          word_mark,              unset_destroy,
@@ -1081,6 +1136,12 @@ UDatatype dt_setword =
 
 //----------------------------------------------------------------------------
 // UT_GETWORD
+
+
+int getword_make( UThread* ut, const UCell* from, UCell* res )
+{
+    return word_makeType( ut, from, res, UT_GETWORD );
+}
 
 
 void getword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
@@ -1094,7 +1155,7 @@ void getword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_getword =
 {
     "get-word!",
-    unset_make,             unset_make,             unset_copy,
+    getword_make,           getword_make,           unset_copy,
     word_compare,           unset_select,
     getword_toString,       getword_toString,
     unset_recycle,          word_mark,              unset_destroy,
