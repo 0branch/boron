@@ -3456,6 +3456,27 @@ CFUNC(cfunc_now)
 
 
 /*-cf-
+    free
+        series
+    return: unset!
+
+    Clear series and free its memory buffer.
+*/
+CFUNC(cfunc_free)
+{
+    UBuffer* buf;
+    int type = ur_type(a1);
+    if( ! ur_isSeriesType( type ) )
+        return errorType( "free expected series" );
+    if( ! (buf = ur_bufferSerM(a1)) )
+        return UR_THROW;
+    DT( type )->destroy( buf );
+    ur_setId(res, UT_UNSET);
+    return UR_OK;
+}
+
+
+/*-cf-
     datatype?
         value
     return: True if value is a datatype!.
