@@ -2668,8 +2668,8 @@ CFUNC(cfunc_read)
         if( n > 0 )
         {
             dest->used = n;
-            //if( dest->type == UT_STRING )
-            //    ur_strFlatten( dest );
+            if( dest->type == UT_STRING )
+                ur_strFlatten( dest );
         }
         fclose( fp );
     }
@@ -2715,7 +2715,8 @@ CFUNC(cfunc_write)
 
         if( ur_is(data, UT_STRING) )
         {
-            if( ur_strIsUcs2(si.buf) )
+            if( ur_strIsUcs2(si.buf) ||
+                ((si.buf->form == UR_ENC_LATIN1) && ! ur_strIsAscii(si.buf)) )
             {
                 // Convert to UTF-8.
 

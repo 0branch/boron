@@ -476,6 +476,7 @@ void     ur_strAppendDouble( UBuffer*, double );
 void     ur_strAppendIndent( UBuffer*, int depth );
 void     ur_strAppend( UBuffer*, const UBuffer* strB, UIndex itB, UIndex endB );
 void     ur_strTermNull( UBuffer* );
+int      ur_strIsAscii( const UBuffer* );
 void     ur_strFlatten( UBuffer* );
 void     ur_strLowercase( UBuffer* str, UIndex start, UIndex send );
 void     ur_strUppercase( UBuffer* str, UIndex start, UIndex send );

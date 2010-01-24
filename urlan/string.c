@@ -681,6 +681,46 @@ void ur_strTermNull( UBuffer* str )
 
 
 /**
+  Test if all characters are ASCII.
+
+  \param str    Valid string buffer.
+
+  \return Non-zero if all characters are ASCII.
+*/
+int ur_strIsAscii( const UBuffer* str )
+{
+    switch( str->form )
+    {
+        case UR_ENC_LATIN1:
+        case UR_ENC_UTF8:
+        {
+            const uint8_t* it  = str->ptr.b;
+            const uint8_t* end = it + str->used;
+            while( it != end )
+            {
+                if( *it++ > 0x7f )
+                    return 0;
+            }
+        }
+            break;
+
+        case UR_ENC_UCS2:
+        {
+            const uint16_t* it  = str->ptr.u16;
+            const uint16_t* end = it + str->used;
+            while( it != end )
+            {
+                if( *it++ > 0x7f )
+                    return 0;
+            }
+        }
+            break;
+    }
+    return 1;
+}
+
+
+/**
   Convert a UTF-8 or UCS-2 string buffer to Latin-1 if possible.
 
   \param str    Valid string buffer.
@@ -692,7 +732,7 @@ void ur_strFlatten( UBuffer* str )
         case UR_ENC_UTF8:
         {
             int ch;
-            int convert = 0;
+            uint8_t* convert = 0;
             const uint8_t* it  = str->ptr.b;
             const uint8_t* end = it + str->used;
             while( it != end )
@@ -705,8 +745,9 @@ void ur_strFlatten( UBuffer* str )
                         ch = ((ch & 0x1f) << 6) | (*it & 0x3f);
                         if( ch < 256 )
                         {
+                            if( ! convert )
+                                convert = (uint8_t*) it - 1;
                             ++it;
-                            convert = 1;
                             continue;
                         }
                     }
@@ -715,8 +756,11 @@ void ur_strFlatten( UBuffer* str )
             }
 
             if( convert )
-                str->used = copyUtf8ToLatin1(str->ptr.b, str->ptr.b, str->used);
-
+            {
+                //printf( "KR flatten %d\n", (int) (convert - str->ptr.b) );
+                str->used = (convert - str->ptr.b) +
+                            copyUtf8ToLatin1(convert, convert, end - convert);
+            }
             str->form = UR_ENC_LATIN1;
         }
             break;
