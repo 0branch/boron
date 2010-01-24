@@ -991,6 +991,146 @@ UIndex ur_strFindChars( const UBuffer* str, UIndex start, UIndex end,
 }
 
 
+/*
+  Returns first occurance of pattern or 0 if it is not found.
+*/
+#define FIND_PATTERN_IC(T) \
+const T* find_pattern_ic_ ## T( const T* it, const T* end, \
+        const T* pit, const T* pend ) { \
+    T pfirst = ur_charLowercase(*pit++); \
+    while( it != end ) { \
+        if( ur_charLowercase(*it) == pfirst ) { \
+            const T* in = it + 1; \
+            const T* p  = pit; \
+            while( p != pend && in != end ) { \
+                if( ur_charLowercase(*in) != ur_charLowercase(*p) ) \
+                    break; \
+                ++in; \
+                ++p; \
+            } \
+            if( p == pend ) \
+                return it; \
+        } \
+        ++it; \
+    } \
+    return 0; \
+}
+
+FIND_PATTERN_IC(uint8_t)
+FIND_PATTERN_IC(uint16_t)
+
+
+/**
+  Find string in another string.
+
+  \param ai         String to search.
+  \param bi         Pattern to look for.
+  \param matchCase  If non-zero, compare character cases.
+
+  \return Index of pattern in string or -1 if not found.
+*/
+UIndex ur_strFind( const USeriesIter* ai, const USeriesIter* bi,
+                   int matchCase )
+{
+    const UBuffer* bufA = ai->buf;
+    const UBuffer* bufB = bi->buf;
+
+    if( bufA->elemSize != bufB->elemSize )
+        return -1;      // TODO: Handle all different encodings.
+
+    if( ur_strIsUcs2(bufA) )
+    {
+        const uint16_t* (*func)( const uint16_t*, const uint16_t*,
+                                 const uint16_t*, const uint16_t* );
+        const uint16_t* found;
+
+        func = matchCase ? find_pattern_uint16_t : find_pattern_ic_uint16_t;
+        found = func( bufA->ptr.u16 + ai->it,
+                      bufA->ptr.u16 + ai->end,
+                      bufB->ptr.u16 + bi->it,
+                      bufB->ptr.u16 + bi->end );
+        return found ? found - bufA->ptr.u16 : -1; 
+    }
+    else
+    {
+        const uint8_t* (*func)( const uint8_t*, const uint8_t*,
+                                const uint8_t*, const uint8_t* );
+        const uint8_t* found;
+
+        func = matchCase ? find_pattern_uint8_t : find_pattern_ic_uint8_t;
+        found = func( bufA->ptr.b + ai->it,
+                      bufA->ptr.b + ai->end,
+                      bufB->ptr.b + bi->it,
+                      bufB->ptr.b + bi->end );
+        return found ? found - bufA->ptr.b : -1; 
+    }
+}
+
+
+/*
+  Returns pointer in pattern at the end of the matching elements.
+*/
+#define MATCH_PATTERN_IC(T) \
+const T* match_pattern_ic_ ## T( const T* it, const T* end, \
+        const T* pit, const T* pend ) { \
+    while( pit != pend ) { \
+        if( it == end ) \
+            return pit; \
+        if( ur_charLowercase(*it) != ur_charLowercase(*pit) ) \
+            return pit; \
+        ++it; \
+        ++pit; \
+    } \
+    return pit; \
+}
+
+MATCH_PATTERN_IC(uint8_t)
+MATCH_PATTERN_IC(uint16_t)
+
+
+/**
+  Compare characters in two strings.
+
+  \param ai         String slice A.
+  \param bi         String slice B.
+  \param matchCase  If non-zero, compare character cases.
+
+  \return Number of characters which match in strings.
+*/
+UIndex ur_strMatch( const USeriesIter* ai, const USeriesIter* bi,
+                    int matchCase )
+{
+    const UBuffer* bufA = ai->buf;
+    const UBuffer* bufB = bi->buf;
+
+    if( bufA->elemSize != bufB->elemSize )
+        return 0;       // TODO: Handle all different encodings.
+
+    if( ur_strIsUcs2(bufA) )
+    {
+        const uint16_t* (*func)( const uint16_t*, const uint16_t*,
+                                 const uint16_t*, const uint16_t* );
+        const uint16_t* pstart = bufB->ptr.u16 + bi->it;
+
+        func = matchCase ? match_pattern_uint16_t : match_pattern_ic_uint16_t;
+        return func( bufA->ptr.u16 + ai->it,
+                     bufA->ptr.u16 + ai->end,
+                     pstart, bufB->ptr.u16 + bi->end ) - pstart;
+    }
+    else
+    {
+        const uint8_t* (*func)( const uint8_t*, const uint8_t*,
+                                const uint8_t*, const uint8_t* );
+        const uint8_t* pstart = bufB->ptr.b + bi->it;
+
+        func = matchCase ? match_pattern_uint8_t : match_pattern_ic_uint8_t;
+        return func( bufA->ptr.b + ai->it,
+                     bufA->ptr.b + ai->end,
+                     pstart, bufB->ptr.b + bi->end ) - pstart;
+    }
+}
+
+
 /**
   Return the character at a given position.
 

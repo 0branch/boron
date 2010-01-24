@@ -53,70 +53,6 @@ typedef struct
 StringParser;
 
 
-/*
-  Returns index in str where pattern is found or -1 if not found.
-*/
-static UIndex _findString( const UString* str, UIndex itN, UIndex endN,
-                           const uint8_t* pit, const uint8_t* pend,
-                           int matchCase )
-{
-    const uint8_t* it  = str->ptr.b + itN;
-    const uint8_t* end = str->ptr.b + endN;
-    (void) matchCase;
-    it = find_pattern_uint8_t( it, end, pit, pend );
-    if( ! it )
-        return -1;
-    return it - str->ptr.b;
-}
-
-
-#ifdef _MSC_VER
-#define inline  __inline
-#endif
-
-static inline int _toLower( int c )
-{
-    if( (c >= 'A') && (c <= 'Z') )
-        c += 'a' - 'A';
-    return c;
-}
-
-
-/*
-  Returns index in strA where match is complete or zero if strings do not
-  match.
-*/
-static UIndex _matchString( const UString* strA, UIndex iA, UIndex endA,
-                            const uint8_t* pit, const uint8_t* pend,
-                            int matchCase )
-{
-    const uint8_t* it  = strA->ptr.b + iA;
-    const uint8_t* end = strA->ptr.b + endA;
-
-    if( matchCase )
-    {
-        const uint8_t* pf;
-        pf = match_pattern_uint8_t( it, end, pit, pend );
-        if( pf == pend )
-            return iA + (pend - pit);
-        return 0;
-    }
-    else
-    {
-        while( pit != pend )
-        {
-            if( it == end )
-                return 0;
-            if( _toLower(*it) != _toLower(*pit) )
-                return 0;
-            ++it;
-            ++pit;
-        }
-        return it - strA->ptr.b;
-    }
-}
-
-
 static int _repeatChar( UString* input, UIndex pos, UIndex inputEnd,
                         int limit, int c )
 {
@@ -304,17 +240,22 @@ match:
 
                         case UT_STRING:
                         {
-                            UBinaryIter bi;
+                            USeriesIter si;
+                            USeriesIter sp;
 
-                            ur_binSlice( ut, &bi, tval );
-                            if( bi.buf->form == UR_ENC_UCS2 )
+                            si.buf = istr;
+                            si.it  = pos;
+                            si.end = pe->inputEnd;
+
+                            ur_seriesSlice( ut, &sp, tval );
+                            if( sp.buf->form == UR_ENC_UCS2 )
                                 goto bad_enc;
-                            pos = _findString( istr, pos, pe->inputEnd,
-                                               bi.it, bi.end, pe->matchCase );
+
+                            pos = ur_strFind( &si, &sp, pe->matchCase );
                             if( pos < 0 )
                                 goto failed;
                             if( ratom == UR_ATOM_THRU )
-                                pos += bi.end - bi.it;
+                                pos += sp.end - sp.it;
                         }
                             break;
 
@@ -488,14 +429,22 @@ match_block:
                 tval = rit;
 match_string:
             {
-                UBinaryIter bi;
-                ur_binSlice( ut, &bi, tval );
-                if( bi.buf->form == UR_ENC_UCS2 )
-                    goto bad_enc;
-                pos = _matchString( istr, pos, pe->inputEnd,
-                                    bi.it, bi.end, pe->matchCase );
-                if( pos > 0 )
+                USeriesIter si;
+                USeriesIter sp;
+                int plen;
+
+                si.buf = istr;
+                si.it  = pos;
+                si.end = pe->inputEnd;
+
+                ur_seriesSlice( ut, &sp, tval );
+                plen = sp.end - sp.it;
+
+                if( plen && (ur_strMatch( &si, &sp, pe->matchCase ) == plen) )
+                {
+                    pos += plen;
                     ++rit;
+                }
                 else
                     goto failed;
             }
@@ -564,22 +513,28 @@ repeat:
 
             case UT_STRING:
             {
-                int p2;
-                UBinaryIter bi;
-                ur_binSlice( ut, &bi, tval );
-                if( bi.buf->form == UR_ENC_UCS2 )
-                    goto bad_enc;
+                USeriesIter si;
+                USeriesIter sp;
+                int plen;
+
+                si.buf = istr;
+                si.it  = pos;
+                si.end = pe->inputEnd;
+
+                ur_seriesSlice( ut, &sp, tval );
+                plen = sp.end - sp.it;
 
                 count = 0;
-
-                while( count < repMax )
+                if( plen )
                 {
-                    p2 = _matchString( istr, pos, pe->inputEnd,
-                                       bi.it, bi.end, pe->matchCase );
-                    if( p2 < 1 )
-                        break;
-                    pos = p2;
-                    ++count;
+                    while( count < repMax )
+                    {
+                        if( ur_strMatch( &si, &sp, pe->matchCase ) != plen )
+                            break;
+                        si.it += plen;
+                        ++count;
+                    }
+                    pos = si.it;
                 }
             }
                 break;
@@ -681,12 +636,13 @@ parse_err:
                     and remain unchanged during the parsing.
   \param eval       Evaluator callback to do paren values in rule.
                     The callback must return UR_OK/UR_THROW.
+  \param matchCase  Use character case when comparing strings.
 
   \return UR_OK or UR_THROW.
 */
 int ur_parseString( UThread* ut, UBuffer* str, UIndex start, UIndex end,
                     UIndex* parsePos, const UBuffer* ruleBlk,
-                    int (*eval)( UThread*, const UCell* ) )
+                    int (*eval)( UThread*, const UCell* ), int matchCase )
 {
     StringParser p;
 
@@ -702,7 +658,7 @@ int ur_parseString( UThread* ut, UBuffer* str, UIndex start, UIndex end,
     p.inputEnd  = end;
     p.sliced    = (end != str->used);
     p.exception = PARSE_EX_NONE;
-    p.matchCase = 1;
+    p.matchCase = matchCase;
 
     *parsePos = start;
     _parseStr( ut, &p, ruleBlk->ptr.cell,

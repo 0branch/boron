@@ -2897,16 +2897,18 @@ extern int ur_parseBlock( UThread* ut, UBuffer*, UIndex start, UIndex end,
 
 extern int ur_parseString( UThread* ut, UBuffer*, UIndex start, UIndex end,
                            UIndex* parsePos, const UBuffer* ruleBlk,
-                           int (*eval)( UThread*, const UCell* ) );
+                           int (*eval)( UThread*, const UCell* ), int );
 
 /*-cf-
     parse
-        input  string!/block!
-        rules  block!  
+        input   string!/block!
+        rules   block!  
+        /case   Character case must match when comparing strings.
     return:  True if end of input reached.
 */
 CFUNC(cfunc_parse)
 {
+#define OPT_PARSE_CASE  0x01
     if( (ur_is(a1, UT_BLOCK) || ur_is(a1, UT_STRING)) &&
         ur_is(a2, UT_BLOCK) )
     {
@@ -2923,7 +2925,7 @@ CFUNC(cfunc_parse)
 
         if( ur_is(a1, UT_STRING) )
             ok = ur_parseString( ut, si.buf, si.it, si.end, &pos, rules,
-                                 boron_doVoid );
+                                 boron_doVoid, CFUNC_OPTIONS & OPT_PARSE_CASE );
         else
             ok = ur_parseBlock( ut, si.buf, si.it, si.end, &pos, rules,
                                 boron_doVoid );

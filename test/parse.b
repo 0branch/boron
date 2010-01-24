@@ -30,3 +30,13 @@ ogs: "frog clog dog smog bog woggle toggle"
 print parse copy ogs [
     some [a: "smog" (clear a) | skip]
 ]
+
+
+print "---- string case"
+in: {Mixed case from FROM From}
+rules: [some[ "From" (++ count) | skip ]]
+count: 0  parse      in rules  print count
+count: 0  parse/case in rules  print count
+rules: [some[ thru "From" (++ count) ]]
+count: 0  parse      in rules  print count
+count: 0  parse/case in rules  print count

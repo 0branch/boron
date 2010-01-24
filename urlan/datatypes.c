@@ -1651,27 +1651,6 @@ int string_convert( UThread* ut, const UCell* from, UCell* res )
 }
 
 
-/*
-  Returns pointer in pattern at the end of the matching elements.
-*/
-#define MATCH_PATTERN_IC(T) \
-const T* match_pattern_ic_ ## T( const T* it, const T* end, \
-        const T* pit, const T* pend ) { \
-    while( pit != pend ) { \
-        if( it == end ) \
-            return pit; \
-        if( ur_charLowercase(*it) != ur_charLowercase(*pit) ) \
-            return pit; \
-        ++it; \
-        ++pit; \
-    } \
-    return pit; \
-}
-
-MATCH_PATTERN_IC(uint8_t)
-MATCH_PATTERN_IC(uint16_t)
-
-
 #define COMPARE_IC(T) \
 int compare_ic_ ## T( const T* it, const T* end, \
         const T* itB, const T* endB ) { \
@@ -1717,43 +1696,18 @@ int string_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             {
             USeriesIter ai;
             USeriesIter bi;
+            int len;
 
             ur_seriesSlice( ut, &ai, a );
             ur_seriesSlice( ut, &bi, b );
+            len = ai.end - ai.it;
 
-            if( ai.buf->elemSize != bi.buf->elemSize )
-                return 0;       // TODO: Handle all different encodings.
-
-            if( (ai.end - ai.it) == (bi.end - bi.it) )
+            if( (bi.end - bi.it) == len )
             {
-                if( ur_strIsUcs2(ai.buf) )
-                {
-                    const uint16_t* (*func)( const uint16_t*, const uint16_t*,
-                                             const uint16_t*, const uint16_t* );
-                    const uint16_t* pos;
-                    const uint16_t* end = bi.buf->ptr.u16 + bi.end;
-
-                    func = (test == UR_COMPARE_EQUAL) ?
-                        match_pattern_ic_uint16_t : match_pattern_uint16_t;
-                    pos = func( ai.buf->ptr.u16 + ai.it,
-                                ai.buf->ptr.u16 + ai.end,
-                                bi.buf->ptr.u16 + bi.it, end );
-                    return pos == end;
-                }
-                else
-                {
-                    const uint8_t* (*func)( const uint8_t*, const uint8_t*,
-                                            const uint8_t*, const uint8_t* );
-                    const uint8_t* pos;
-                    const uint8_t* end = bi.buf->ptr.b + bi.end;
-
-                    func = (test == UR_COMPARE_EQUAL) ?
-                        match_pattern_ic_uint8_t : match_pattern_uint8_t;
-                    pos = func( ai.buf->ptr.b + ai.it,
-                                ai.buf->ptr.b + ai.end,
-                                bi.buf->ptr.b + bi.it, end );
-                    return pos == end;
-                }
+                if( (len == 0) ||
+                    (ur_strMatch( &ai, &bi, (test == UR_COMPARE_EQUAL_CASE) )
+                        == len ) )
+                    return 1;
             }
             }
             break;
