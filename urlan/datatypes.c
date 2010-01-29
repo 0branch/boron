@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2010 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -181,9 +181,10 @@
 
 
 #include "urlan_atoms.h"
+#include "bignum.h"
 
 
-#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
+//#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
 
 #define DT(dt)          (ut->types[ dt ])
 #define SERIES_DT(dt)   ((const USeriesType*) (ut->types[ dt ]))
@@ -494,10 +495,30 @@ int logic_make( UThread* ut, const UCell* from, UCell* res )
 {
     (void) ut;
     ur_setId(res, UT_LOGIC);
-    if( ANY3(from, UT_LOGIC, UT_CHAR, UT_INT) )
-        ur_int(res) = ur_int(from) ? 1 : 0;
-    else
-        ur_int(res) = 0;
+    switch( ur_type(from) )
+    {
+        case UT_NONE:
+            ur_int(res) = 0;
+            break;
+        case UT_LOGIC:
+        case UT_CHAR:
+        case UT_INT:
+            ur_int(res) = ur_int(from) ? 1 : 0;
+            break;
+        case UT_DECIMAL:
+            ur_int(res) = ur_decimal(from) ? 1 : 0;
+            break;
+        case UT_BIGNUM:
+        {
+            UCell tmp;
+            bignum_zero( &tmp );
+            ur_int(res) = bignum_equal(from, &tmp) ? 0 : 1;
+        }
+            break;
+        default:
+            ur_int(res) = 1;
+            break;
+    }
     return UR_OK;
 }
 
@@ -619,20 +640,36 @@ UDatatype dt_char =
 
 int int_make( UThread* ut, const UCell* from, UCell* res )
 {
-    if( ANY3(from, UT_LOGIC, UT_CHAR, UT_INT) )
+    ur_setId(res, UT_INT);
+    switch( ur_type(from) )
     {
-        ur_setId(res, UT_INT);
-        ur_int(res) = ur_int(from);
-    }
-    else if( ur_is(from, UT_DECIMAL) )
-    {
-        ur_setId(res, UT_INT);
-        ur_int(res) = ur_decimal(from);
-    }
-    else
-    {
-        return ur_error( ut, UR_ERR_TYPE,
-                         "make int! expected logic!/char!/int!/decimal!" );
+        case UT_NONE:
+            ur_int(res) = 0;
+            break;
+        case UT_LOGIC:
+        case UT_CHAR:
+        case UT_INT:
+            ur_int(res) = ur_int(from);
+            break;
+        case UT_DECIMAL:
+            ur_int(res) = ur_decimal(from);
+            break;
+        case UT_BIGNUM:
+            ur_int(res) = (int32_t) bignum_l(from);
+            break;
+#if 0
+        case UT_STRING:
+        {
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, from );
+            ur_int(res) = (int32_t) str_toInt64( si.buf->ptr.b + si.it,
+                                                 si.buf->ptr.b + si.end, 0 );
+        }
+            break;
+#endif
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                "make int! expected number or none!/logic!/char!" );
     }
     return UR_OK;
 }
@@ -697,19 +734,28 @@ UDatatype dt_int =
 
 int decimal_make( UThread* ut, const UCell* from, UCell* res )
 {
-    if( ur_is(from, UT_INT) )
+    ur_setId(res, UT_DECIMAL);
+    switch( ur_type(from) )
     {
-        ur_setId(res, UT_DECIMAL);
-        ur_decimal(res) = (double) ur_int(from);
-        return UR_OK;
+        case UT_NONE:
+            ur_decimal(res) = 0.0;
+            break;
+        case UT_LOGIC:
+        case UT_CHAR:
+        case UT_INT:
+            ur_decimal(res) = (double) ur_int(from);
+            break;
+        case UT_DECIMAL:
+            ur_decimal(res) = ur_decimal(from);
+            break;
+        case UT_BIGNUM:
+            ur_decimal(res) = bignum_d(from);
+            break;
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                "make decimal! expected number or none!/logic!/char!" );
     }
-    else if( ur_is(from, UT_DECIMAL) )
-    {
-        *res = *from;
-        return UR_OK;
-    }
-    return ur_error( ut, UR_ERR_TYPE,
-                     "make decimal! expected int!/decimal!" );
+    return UR_OK;
 }
 
 
@@ -810,25 +856,25 @@ int bignum_make( UThread* ut, const UCell* from, UCell* res )
         case UT_NONE:
             ur_setId(res, UT_BIGNUM);
             bignum_zero( res );
-            return UR_OK;
-
+            break;
+        case UT_LOGIC:
         case UT_CHAR:
         case UT_INT:
             ur_setId(res, UT_BIGNUM);
             bignum_seti( res, ur_int(from) );
-            return UR_OK;
-
+            break;
         case UT_DECIMAL:
             ur_setId(res, UT_BIGNUM);
             bignum_setd( res, ur_decimal(from) );
-            return UR_OK;
-
+            break;
         case UT_BIGNUM:
             *res = *from;
-            return UR_OK;
+            break;
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                "make bignum! expected number or none!/logic!/char!" );
     }
-    return ur_error( ut, UR_ERR_TYPE,
-                 "make bignum! expected none!/char!/int!/decimal!/bignum!" );
+    return UR_OK;
 }
 
 
@@ -929,6 +975,39 @@ UDatatype dt_date =
 // UT_VEC3
 
 
+static void vec3_setf( UCell* res, float n )
+{
+    float* f = res->vec3.xyz;
+    f[0] = f[1] = f[2] = n;
+}
+
+
+int vec3_make( UThread* ut, const UCell* from, UCell* res )
+{
+    ur_setId(res, UT_VEC3);
+    switch( ur_type(from) )
+    {
+        case UT_NONE:
+            vec3_setf( res, 0.0f );
+            break;
+        case UT_LOGIC:
+        case UT_INT:
+            vec3_setf( res, (float) ur_int(from) );
+            break;
+        case UT_DECIMAL:
+            vec3_setf( res, (float) ur_decimal(from) );
+            break;
+        case UT_VEC3:
+            memCpy( res->vec3.xyz, from->vec3.xyz, 3 * sizeof(float) );
+            break;
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                    "make vec3! expected none!/logic!/int!/decimal!" );
+    }
+    return UR_OK;
+}
+
+
 void vec3_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) ut;
@@ -944,7 +1023,7 @@ void vec3_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_vec3 =
 {
     "vec3!",
-    unset_make,             unset_make,             unset_copy,
+    vec3_make,              vec3_make,              unset_copy,
     unset_compare,          unset_select,
     vec3_toString,          vec3_toString,
     unset_recycle,          unset_mark,             unset_destroy,
