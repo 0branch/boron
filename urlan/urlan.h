@@ -1,7 +1,7 @@
 #ifndef URLAN_H
 #define URLAN_H
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2010 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -526,6 +526,7 @@ void     ur_arrExpand( UBuffer*, int index, int count );
 void     ur_arrErase( UBuffer*, int start, int count );
 void     ur_arrFree( UBuffer* );
 void     ur_arrAppendInt32( UBuffer*, int32_t );
+void     ur_arrAppendFloat( UBuffer*, float );
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2010 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -167,7 +167,8 @@ void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 
     ur_seriesSlice( ut, &si, cell );
 
-    ur_strAppendCStr( str, ur_atomCStr( ut, si.buf->form ) );
+    if( (si.buf->form != UR_ATOM_I32) && (si.buf->form != UR_ATOM_F32) )
+        ur_strAppendCStr( str, ur_atomCStr( ut, si.buf->form ) );
     ur_strAppendCStr( str, "#[" );
 
     switch( si.buf->form )
@@ -357,29 +358,15 @@ int vector_append( UThread* ut, UBuffer* buf, const UCell* val )
         vector_pokeDouble( buf, buf->used++, ur_decimal(val) );
         return UR_OK;
     }
-#if 0
     else if( vt == UT_VECTOR )
     {
         USeriesIter si;
-        int len;
-
         ur_seriesSlice( ut, &si, val );
-        len = si.end - si.it;
-        if( len )
-        {
-            if( (vt != UT_BINARY) && ur_strIsUcs2(si.buf) )
-            {
-                len *= 2;
-                si.it *= 2;
-            }
-            ur_binAppendData( buf, si.buf->ptr.b + si.it, len );
-
-        }
+        ur_vecAppend( buf, si.buf, si.it, si.end );
         return UR_OK;
     }
-#endif
     return ur_error( ut, UR_ERR_TYPE,
-                     "append vector! expected char!/int!/decimal!" );
+                     "append vector! expected char!/int!/decimal!/vector!" );
 }
 
 
