@@ -41,6 +41,7 @@ enum UrlanDataType
     UT_DATE,
     UT_COORD,
     UT_VEC3,
+    UT_TIMECODE,
                 /* The following reference buffers. */
     UT_WORD,
     UT_LITWORD,

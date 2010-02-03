@@ -266,6 +266,9 @@ static void _addDT( UEnv* env, int id, UDatatype* dt )
 
 extern UDatatype dt_coord;
 extern USeriesType dt_vector;
+#if CONFIG_TIMECODE
+extern UDatatype dt_timecode;
+#endif
 
 
 /**
@@ -338,6 +341,11 @@ UThread* ur_makeEnv( UDatatype* dt, int dtCount,
     addDT( UT_DATE,     &dt_date );
     addDT( UT_COORD,    &dt_coord );
     addDT( UT_VEC3,     &dt_vec3 );
+#if CONFIG_TIMECODE
+    addDT( UT_TIMECODE, &dt_timecode );
+#else
+    addDT( UT_TIMECODE, 0 );
+#endif
 
     addDT( UT_WORD,     &dt_word );
     addDT( UT_LITWORD,  &dt_litword );

@@ -1,5 +1,5 @@
 /*
-  Copyright 2007-2009 Karl Robillard
+  Copyright 2007-2010 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -36,83 +36,6 @@ static char* append02d( char* cp, int n )
     *cp++ = '0' + (n % 10);
     return cp;
 }
-
-
-#ifdef CONFIG_TIMECODE
-#if 0
-static void timecode_toString( UBuffer* str, const UCell* tc )
-{
-    char buf[ 14 ];
-    char* cp = buf;
-    int i = 0;
-
-    while( 1 )
-    {
-        cp = append02d( cp, tc->coord.n[i] );
-        if( ++i == 4 )
-            break;
-        *cp++ = ':';
-    }
-    if( tc->coord.flags & UR_FLAG_TIMECODE_DF )
-        *cp++ = 'D';
-    *cp = '\0';
-
-    ur_strAppendCStr( str, buf );
-}
-#endif
-
-
-#define isDigit(v)     (('0' <= v) && (v <= '9'))
-
-const char* ur_stringToTimeCode( const char* it, const char* end, UCell* cell )
-{
-    int c, i, n;
-    int16_t* elem = cell->coord.n;
-
-    if( it != end )
-    {
-        c = *it;
-        if( ! isDigit( c ) )        // Skip any sign (currently ignored).
-            ++it;
-    }
-
-    for( c = i = n = 0; it != end; ++it )
-    {
-        c = *it;
-        if( isDigit( c ) )
-        {
-            n = (n * 10) + (c - '0');
-        }
-        else
-        {
-            elem[i] = n;
-            n = 0;
-            if( ++i == 4 || c != ':' )
-                break;
-        }
-    }
-    for( ; i < 4; ++i )
-    {
-        elem[i] = n;
-        n = 0;
-    }
-
-    if( it != end )
-    {
-        c = *it;
-        if( c == 'D' || c == 'd' )
-        {
-            cell->coord.flags |= UR_FLAG_TIMECODE_DF;
-            ++it;
-        }
-        else if( c == 'N' || c == 'n' )
-        {
-            ++it;
-        }
-    }
-    return it;
-}
-#endif
 
 
 void date_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )

@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2010 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -139,6 +139,124 @@ UDatatype dt_coord =
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
 };
+
+
+#ifdef CONFIG_TIMECODE
+//----------------------------------------------------------------------------
+// UT_TIMECODE
+
+
+static int timecode_make( UThread* ut, const UCell* from, UCell* res )
+{
+    if( ur_is(from, UT_TIMECODE) )
+    {
+        *res = *from;
+        return UR_OK;
+    }
+    if( coord_make( ut, from, res ) )
+    {
+        int i;
+        for( i = res->coord.len; i < 4; ++i )
+            res->coord.n[i] = 0;
+        ur_type(res) = UT_TIMECODE;
+        return UR_OK;
+    }
+    return UR_THROW;
+}
+
+
+static
+void timecode_toString( UThread* ut, const UCell* cell, UBuffer* str,
+                        int depth )
+{
+    char buf[ 14 ];
+    char* cp = buf;
+    int i = 0;
+    int n;
+    (void) ut;
+    (void) depth;
+
+    while( 1 )
+    {
+        n = cell->coord.n[i];
+        *cp++ = '0' + (n / 10);
+        *cp++ = '0' + (n % 10);
+        if( ++i == 4 )
+            break;
+        *cp++ = ':';
+    }
+    if( cell->coord.flags & UR_FLAG_TIMECODE_DF )
+        *cp++ = 'D';
+    *cp = '\0';
+
+    ur_strAppendCStr( str, buf );
+}
+
+
+UDatatype dt_timecode =
+{
+    "timecode!",
+    timecode_make,          timecode_make,          unset_copy,
+    unset_compare,          coord_select,
+    timecode_toString,      timecode_toString,
+    unset_recycle,          unset_mark,             unset_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
+};
+
+
+#define isDigit(v)     (('0' <= v) && (v <= '9'))
+
+const char* ur_stringToTimeCode( const char* it, const char* end, UCell* cell )
+{
+    int c, i, n;
+    int16_t* elem = cell->coord.n;
+
+    cell->coord.len = 4;
+
+    if( it != end )
+    {
+        c = *it;
+        if( ! isDigit( c ) )        // Skip any sign (currently ignored).
+            ++it;
+    }
+
+    for( c = i = n = 0; it != end; ++it )
+    {
+        c = *it;
+        if( isDigit( c ) )
+        {
+            n = (n * 10) + (c - '0');
+        }
+        else
+        {
+            elem[i] = n;
+            n = 0;
+            if( ++i == 4 || c != ':' )
+                break;
+        }
+    }
+    for( ; i < 4; ++i )
+    {
+        elem[i] = n;
+        n = 0;
+    }
+
+    if( it != end )
+    {
+        c = *it;
+        if( c == 'D' || c == 'd' )
+        {
+            cell->coord.flags |= UR_FLAG_TIMECODE_DF;
+            ++it;
+        }
+        else if( c == 'N' || c == 'n' )
+        {
+            ++it;
+        }
+    }
+    return it;
+}
+#endif
 
 
 //EOF

@@ -177,6 +177,32 @@ double str_toDouble( const char* start, const char* end, const char** pos )
 }
 
 
+#ifdef CONFIG_TIMECODE
+extern const char* ur_stringToTimeCode( const char*, const char*, UCell* );
+
+/*
+  Returns non-zero if three colons are found.
+*/
+static int _isTimecode( const char* it, const char* end )
+{
+    int colons = 0;
+    int ch;
+    while( it != end )
+    {
+        ch = *it++;
+        if( ch == ':' )
+        {
+            if( ++colons == 3 )
+                return 1;
+        }
+        else if( ! isDigit(ch) )
+            break;
+    }
+    return 0;
+}
+#endif
+
+
 double str_toTime( const char* start, const char* end, const char** pos )
 {
     double sec;
@@ -978,6 +1004,14 @@ number:
                     ur_decimal(cell) = str_toDouble( token, end, &it );
                     break;
                 case ':':
+#ifdef CONFIG_TIMECODE
+                    if( _isTimecode( it, end ) )
+                    {
+                        cell = ur_blkAppendNew( blk, UT_TIMECODE );
+                        it = ur_stringToTimeCode( token, end, cell );
+                        break;
+                    }
+#endif
                     cell = ur_blkAppendNew( blk, UT_TIME );
                     ur_decimal(cell) = str_toTime( token, end, &it );
                     break;
