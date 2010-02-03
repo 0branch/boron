@@ -3,6 +3,7 @@ project "boron"
 checksum: true
 compress: true
 random:   true
+timecode: true
 
 if exists? config: %project.config [do config]
 
@@ -42,6 +43,9 @@ shlib %boron [
     if random [
         cflags {-DCONFIG_RANDOM}
         sources [%support/well512.c]
+    ]
+    if timecode [
+        cflags {-DCONFIG_TIMECODE}
     ]
     ;cflags {-DTRACK_MALLOC} sources [%urlan/memtrack.c]
 

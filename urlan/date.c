@@ -38,30 +38,36 @@ static char* append02d( char* cp, int n )
 }
 
 
-#ifdef UR_CONFIG_TIMECODE
-static void timecode_toString( UString* out, const UCell* tc )
+#ifdef CONFIG_TIMECODE
+#if 0
+static void timecode_toString( UBuffer* str, const UCell* tc )
 {
-    char* cp;
-    int i;
+    char buf[ 14 ];
+    char* cp = buf;
+    int i = 0;
 
-    EXPAND( out, 12 );
-    cp = out->ptr.c + out->used;
-    for( i = 0; i < 3; ++i )
+    while( 1 )
     {
-        cp = append02d( cp, tc->coord.elem[i] );
+        cp = append02d( cp, tc->coord.n[i] );
+        if( ++i == 4 )
+            break;
         *cp++ = ':';
     }
-    cp = append02d( cp, tc->coord.elem[3] );
     if( tc->coord.flags & UR_FLAG_TIMECODE_DF )
         *cp++ = 'D';
-    out->used = cp - out->ptr.c;
-}
+    *cp = '\0';
 
+    ur_strAppendCStr( str, buf );
+}
+#endif
+
+
+#define isDigit(v)     (('0' <= v) && (v <= '9'))
 
 const char* ur_stringToTimeCode( const char* it, const char* end, UCell* cell )
 {
     int c, i, n;
-    int16_t* elem = cell->coord.elem;
+    int16_t* elem = cell->coord.n;
 
     if( it != end )
     {
