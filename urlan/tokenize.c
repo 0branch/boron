@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2010 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -20,6 +20,7 @@
 
 #include <math.h>
 #include "urlan.h"
+#include "urlan_atoms.h"
 #include "bignum.h"
 #include "mem_util.h"
 
@@ -28,6 +29,7 @@
 #endif
 
 extern double ur_stringToDate( const char*, const char*, const char** );
+extern UIndex ur_makeVector( UThread*, UAtom type, int size );
 
 #define isDigit(v)     (('0' <= v) && (v <= '9'))
 
@@ -716,8 +718,11 @@ newline:
                 goto finish;
 
             case BIN:
+binary:
                 ++it;
-                if( it != end && *it == '{' )
+                if( it == end )
+                    goto invalid_bin;
+                if( *it == '{' )
                 {
                     int bn = 0;
                     ++it;
@@ -750,7 +755,88 @@ invalid_bin:
                         }
                     SCAN_END
                 }
-binary:
+                else if( *it == '[' )
+                {
+                    UBuffer* buf;
+                    UIndex tn;
+                    token = 0;
+
+                    tn = ur_makeVector( ut, UR_ATOM_I32, 0 );
+                    cell = ur_blkAppendNew( BLOCK, UT_VECTOR );
+                    buf = ur_buffer( tn );
+                    ur_setSeries( cell, tn, 0 );
+
+                    ++it;
+                    SCAN_LOOP
+                        if( IS_DELIM(ch) )
+                        {
+array_white:
+                            if( token )
+                            {
+                                if( ! buf->used )
+                                {
+                                    const char* cp = token;
+                                    while( cp != it )
+                                    {
+                                        if( *cp++ == '.' )
+                                        {
+                                            buf->form = UR_ATOM_F32;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if( buf->form == UR_ATOM_I32 )
+                                {
+                                    ur_arrAppendInt32( buf, (int32_t)
+                                        str_toInt64( token, it, 0 ) );
+                                }
+                                else
+                                {
+                                    ur_arrAppendFloat( buf, (float)
+                                        str_toDouble( token, it, 0 ) );
+                                }
+                                token = 0;
+                            }
+                            if( ch == '\n' )
+                            {
+array_newline:
+                                ++lines;
+                            }
+                            else if( ch == ';' )
+                            {
+                                ++it;
+                                SCAN_LOOP
+                                    if( ch == '\n' )
+                                        goto array_newline;
+                                SCAN_END
+                                break;
+                            }
+                            else if( ch == ']' )
+                            {
+                                ++it;
+                                goto set_sol;
+                            }
+                        }
+                        else if( ch == '/' )
+                        {
+                            ++it;
+                            if( it == end || *it != '*' )
+                                break;
+                            it = blockComment( ++it, end, &lines );
+                            if( it )
+                            {
+                                --it;
+                                goto array_white;
+                            }
+                            break;
+                        }
+                        else if( ! token )
+                        {
+                            token = it;
+                        }
+                    SCAN_END
+                    syntaxError( "Invalid array" );
+                }
                 break;
 
             case STR:

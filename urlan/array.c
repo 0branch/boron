@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2010 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -178,6 +178,19 @@ void ur_arrAppendInt32( UBuffer* buf, int32_t n )
 {
     ur_arrReserve( buf, buf->used + 1 );
     buf->ptr.i[ buf->used++ ] = n;
+}
+
+
+/**
+  Append float to array.
+
+  \param buf  Array buffer with elemSize of 4.
+  \param n    Number to append.
+*/
+void ur_arrAppendFloat( UBuffer* buf, float n )
+{
+    ur_arrReserve( buf, buf->used + 1 );
+    buf->ptr.f[ buf->used++ ] = n;
 }
 
 

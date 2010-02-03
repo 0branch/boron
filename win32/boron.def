@@ -126,15 +126,16 @@ EXPORTS
     ur_arrErase             @124
     ur_arrFree              @125
     ur_arrAppendInt32       @126
-    bignum_zero             @127
-    bignum_seti             @128
-    bignum_setl             @129
-    bignum_setd             @130
-    bignum_l                @131
-    bignum_d                @132
-    bignum_equal            @133
-    bignum_cmp              @134
-    bignum_negate           @135
-    bignum_add              @136
-    bignum_sub              @137
+    ur_arrAppendFloat       @127
+    bignum_zero             @128
+    bignum_seti             @129
+    bignum_setl             @130
+    bignum_setd             @131
+    bignum_l                @132
+    bignum_d                @133
+    bignum_equal            @134
+    bignum_cmp              @135
+    bignum_negate           @136
+    bignum_add              @137
+    bignum_sub              @138
     bignum_mul              @138
