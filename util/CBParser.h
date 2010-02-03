@@ -21,7 +21,7 @@ extern "C" {
 
 extern void   cbp_beginParse( UThread*, CBParser*, const UCell*, const UCell*,
                               UIndex ruleBlkN );
-extern UIndex cbp_beginParseStr( UThread*, CBParser*, UBuffer* input,
+extern UIndex cbp_beginParseStr( UThread*, CBParser*, const UBuffer* input,
                                  const char* rules, int rulesLen );
 extern int    cbp_matchRule( CBParser* );
 

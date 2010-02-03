@@ -45,7 +45,7 @@ void cbp_beginParse( UThread* ut, CBParser* cbp,
   Initialize CBParser given an input block and a set of rules in a C string.
   Returns index of rule block.
 */
-UIndex cbp_beginParseStr( UThread* ut, CBParser* cbp, UBuffer* input,
+UIndex cbp_beginParseStr( UThread* ut, CBParser* cbp, const UBuffer* input,
                           const char* rules, int rulesLen )
 {
     UCell tmp;
