@@ -58,19 +58,19 @@ uint16_t checksum_crc16( uint8_t* data, int byteCount )
   crc32_next and checksum_crc32 generated with universal_crc by Danjel McGougan
   and tweaked by hand.  See http://mcgougan.se/universal_crc/
 
-  universal_crc -b 32 -p 0x04c11db7 -i 0xffffffff -x 0xffffffff -r
-  CRC of the string "123456789" is 0xcbf43926
+  universal_crc -b 32 -p 0x04c11db7 -i 0xffffffff
+  CRC of the string "123456789" is 0x0376e6e7
 */
 static inline uint32_t crc32_next( uint32_t crc, uint8_t data )
 {
     uint32_t eor;
     unsigned int i = 8;
 
-    crc ^= data;
+    crc ^= (uint32_t)data << 24;
     do {
         /* This might produce branchless code */
-        eor = crc & 1 ? 0xedb88320 : 0;
-        crc >>= 1;
+        eor = crc & 0x80000000 ? 0x4c11db7 : 0;
+        crc <<= 1;
         crc ^= eor;
     } while (--i);
 
@@ -84,7 +84,7 @@ uint32_t checksum_crc32( uint8_t* data, int byteCount )
     if( byteCount ) do {
         crc = crc32_next( crc, *data++ );
     } while( --byteCount );
-    return ~crc;
+    return crc;
 }
 
 
