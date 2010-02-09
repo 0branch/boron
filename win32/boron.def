@@ -138,4 +138,4 @@ EXPORTS
     bignum_negate           @136
     bignum_add              @137
     bignum_sub              @138
-    bignum_mul              @138
+    bignum_mul              @139
