@@ -1,4 +1,4 @@
-project "boron"
+project: "boron"
 
 checksum: true
 compress: true
