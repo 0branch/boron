@@ -10,7 +10,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __sun__
+#include <inttypes.h>
+#else
 #include <stdint.h>
+#endif
 
 
 #ifdef _WIN32

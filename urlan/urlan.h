@@ -20,7 +20,14 @@
 */
 
 
+#ifdef __sun__
+#include <inttypes.h>
+#ifdef _BIG_ENDIAN
+#define __BIG_ENDIAN__
+#endif
+#else
 #include <stdint.h>
+#endif
 
 
 #define UR_VERSION_STR  "0.1.1"
