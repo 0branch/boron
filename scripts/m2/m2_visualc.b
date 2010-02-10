@@ -1,6 +1,8 @@
 ; m2 Visual-C++ template
 
 
+embed-manifest: true
+
 win32: func [blk] [do blk]
 
 console: does [ct/cfg_console: true]
@@ -165,8 +167,7 @@ exe_target: make target_env
         remove str
     ]
 
-    macro_text: func []
-    [
+    macro_text: func [] [
         emit [
             uc_name "_CFLAGS   = " menv_cflags ' ' gnu_string "/D" defines eol
             uc_name "_CXXFLAGS = $(" uc_name "_CFLAGS) " menv_cxxflags eol
@@ -188,11 +189,18 @@ exe_target: make target_env
         rejoin [" $(" uc_name "_SOURCES) $(" uc_name "_HEADERS)"]
     ]
 
-    rule_text: does
-    [
-        emit [ eol output_file ": " obj_macro local_libs link_libs
+    rule_text: does [
+        emit [
+            eol output_file ": " obj_macro local_libs link_libs
             {^/^-$(LINK) /out:$@ $(} uc_name {_LFLAGS) } obj_macro
             { $(} uc_name {_LIBS)} eol
+        ]
+        if embed-manifest [
+            emit [
+                {^-$(MT) -manifest } output_file
+                {.manifest -outputresource:} output_file
+                ';' pick [2 1] to-logic find output_file ".dll" eol
+            ]
         ]
     ]
 
@@ -209,8 +217,7 @@ lib_target: make exe_target [
         do config
     ]
 
-    rule_text: does
-    [
+    rule_text: does [
         emit [
             eol output_file ": " obj_macro
             "^/^-lib /nologo /out:$@ " obj_macro " $(" uc_name
@@ -246,6 +253,7 @@ LINK     = link.exe
 TAR      = tar.exe -cf
 ZIP      = zip.exe -r -9
 MOC      = $(QTDIR)\bin\moc.exe
+MT       = mt.exe
 
 }
 
