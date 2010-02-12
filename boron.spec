@@ -38,8 +38,9 @@ install -m 644 -T boron.x           $RPM_BUILD_ROOT%{_includedir}/boron/boron.h
 install -m 644 urlan/urlan.h        $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 644 urlan/urlan_atoms.h  $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 644 urlan/bignum.h       $RPM_BUILD_ROOT%{_includedir}/boron
-install -m 644 -s libboron.so.0.1.2 $RPM_BUILD_ROOT%{_libdir}
-ln -s libboron.so.0.1.2 $RPM_BUILD_ROOT%{_libdir}/libboron.so.0
+install -m 644 -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}
+ln -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron.so
+ln -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron.so.0
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -48,8 +49,9 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %dir %{_includedir}/boron
 %{_bindir}/boron
+%{_libdir}/libboron.so
 %{_libdir}/libboron.so.0
-%{_libdir}/libboron.so.0.1.2
+%{_libdir}/libboron.so.%{version}
 %{_includedir}/boron/boron.h
 %{_includedir}/boron/urlan.h
 %{_includedir}/boron/urlan_atoms.h
