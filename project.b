@@ -9,8 +9,8 @@ if exists? config: %project.config [do config]
 
 default [
     warn
-    debug
-   ;release
+   ;debug
+    release
 
     objdir %obj
     include_from [%. %urlan %support]

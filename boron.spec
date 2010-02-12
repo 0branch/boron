@@ -1,6 +1,6 @@
 Summary: Scripting language and C library useful for building DSLs
 Name: boron
-Version: 0.1.0
+Version: 0.1.2
 Release: 1
 License: LGPLv3+
 # Vendor:
@@ -38,8 +38,8 @@ install -m 644 -T boron.x           $RPM_BUILD_ROOT%{_includedir}/boron/boron.h
 install -m 644 urlan/urlan.h        $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 644 urlan/urlan_atoms.h  $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 644 urlan/bignum.h       $RPM_BUILD_ROOT%{_includedir}/boron
-install -m 644 -s libboron.so.0.1.0 $RPM_BUILD_ROOT%{_libdir}
-ln -s libboron.so.0.1.0 $RPM_BUILD_ROOT%{_libdir}/libboron.so.0
+install -m 644 -s libboron.so.0.1.2 $RPM_BUILD_ROOT%{_libdir}
+ln -s libboron.so.0.1.2 $RPM_BUILD_ROOT%{_libdir}/libboron.so.0
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -49,7 +49,7 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{_includedir}/boron
 %{_bindir}/boron
 %{_libdir}/libboron.so.0
-%{_libdir}/libboron.so.0.1.0
+%{_libdir}/libboron.so.0.1.2
 %{_includedir}/boron/boron.h
 %{_includedir}/boron/urlan.h
 %{_includedir}/boron/urlan_atoms.h

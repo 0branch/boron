@@ -19,6 +19,7 @@ add_definitions(
     -DCONFIG_CHECKSUM
     -DCONFIG_COMPRESS
     -DCONFIG_RANDOM
+#    -DCONFIG_TIMECODE
 #    -DCONFIG_NET
 )
 
@@ -64,7 +65,7 @@ add_library(boron-lib SHARED
 )
 
 set_target_properties(boron-lib PROPERTIES
-   VERSION 0.1.0
+   VERSION 0.1.2
    SOVERSION 0
    OUTPUT_NAME "boron")
 
