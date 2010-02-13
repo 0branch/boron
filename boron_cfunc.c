@@ -1069,47 +1069,67 @@ CFUNC(cfunc_switch)
 }
 
 
+extern void coord_pick( const UCell* cell, int index, UCell* res );
+extern void vec3_pick( const UCell* cell, int index, UCell* res );
+#define ORD_ERR_MSG "%s expected series/coord!/vec3!"
+
+
 /*-cf-
     first
-        series
+        series  series/coord!/vec3!
     return: First item in series or none!.
 */
 CFUNC(cfunc_first)
 {
     int type = ur_type(a1);
-    if( ! ur_isSeriesType( type ) )
-        return ur_error( ut, UR_ERR_TYPE, "first expected series" );
-    SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it, res );
+    if( ur_isSeriesType( type ) )
+        SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it, res );
+    else if( type == UT_COORD )
+        coord_pick( a1, 0, res );
+    else if( type == UT_VEC3 )
+        vec3_pick( a1, 0, res );
+    else
+        return ur_error( ut, UR_ERR_TYPE, ORD_ERR_MSG, "first" );
     return UR_OK;
 }
 
 
 /*-cf-
     second
-        series
+        series  series/coord!/vec3!
     return: Second item in series or none!.
 */
 CFUNC(cfunc_second)
 {
     int type = ur_type(a1);
-    if( ! ur_isSeriesType( type ) )
-        return ur_error( ut, UR_ERR_TYPE, "second expected series" );
-    SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it + 1, res );
+    if( ur_isSeriesType( type ) )
+        SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it + 1, res );
+    else if( type == UT_COORD )
+        coord_pick( a1, 1, res );
+    else if( type == UT_VEC3 )
+        vec3_pick( a1, 1, res );
+    else
+        return ur_error( ut, UR_ERR_TYPE, ORD_ERR_MSG, "second" );
     return UR_OK;
 }
 
 
 /*-cf-
     third
-        series
+        series  series/coord!/vec3!
     return: Third item in series or none!.
 */
 CFUNC(cfunc_third)
 {
     int type = ur_type(a1);
-    if( ! ur_isSeriesType( type ) )
-        return ur_error( ut, UR_ERR_TYPE, "third expected series" );
-    SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it + 2, res );
+    if( ur_isSeriesType( type ) )
+        SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it + 2, res );
+    else if( type == UT_COORD )
+        coord_pick( a1, 2, res );
+    else if( type == UT_VEC3 )
+        vec3_pick( a1, 2, res );
+    else
+        return ur_error( ut, UR_ERR_TYPE, ORD_ERR_MSG, "third" );
     return UR_OK;
 }
 

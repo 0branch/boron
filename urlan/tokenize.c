@@ -266,6 +266,35 @@ const char* str_toCoord( UCell* cell, const char* it, const char* end )
 }
 
 
+const char* str_toVec3( UCell* cell, const char* it, const char* end )
+{
+    float* nit  = cell->vec3.xyz;
+    float* nend = nit + 3;
+
+    while( it != end )
+    {
+        if( *it == ' ' || *it == '\t' )
+        {
+            ++it;
+        }
+        else
+        {
+            *nit++ = (float) str_toDouble( it, end, &it );
+            if( nit == nend )
+                break;
+            if( (it != end) && *it != ',' )
+                break;
+            ++it;
+        }
+    }
+
+    while( nit != nend )
+        *nit++ = 0.0f;
+
+     return it;
+}
+
+
 /* Whitespace: null space tab cr lf */
 static uint8_t charset_white[32] = {
     0x01,0x26,0x00,0x00,0x01,0x00,0x00,0x00,
@@ -1002,6 +1031,11 @@ number:
                 case '.':   // UT_DECIMAL, UT_VEC3
                     cell = ur_blkAppendNew( blk, UT_DECIMAL );
                     ur_decimal(cell) = str_toDouble( token, end, &it );
+                    if( (it != end) && (*it == ',') )
+                    {
+                        ur_type(cell) = UT_VEC3;
+                        it = str_toVec3( cell, token, end );
+                    }
                     break;
                 case ':':
 #ifdef CONFIG_TIMECODE

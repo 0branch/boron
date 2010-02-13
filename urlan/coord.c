@@ -94,22 +94,27 @@ int unset_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 */
 
 
+/* index is zero-based */
+void coord_pick( const UCell* cell, int index, UCell* res )
+{
+    if( (index < 0) || (index >= cell->coord.len) )
+    {
+        ur_setId(res, UT_NONE);
+    }
+    else
+    {
+        ur_setId(res, UT_INT);
+        ur_int(res) = cell->coord.n[ index ];
+    }
+}
+
+
 static
 int coord_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
 {
-    int i;
     if( ur_is(bi->it, UT_INT) )
     {
-        i = ur_int(bi->it) - 1;
-        if( i > -1 && i < cell->coord.len )
-        {
-            ur_setId(res, UT_INT);
-            ur_int(res) = cell->coord.n[ i ];
-        }
-        else
-        {
-            ur_setId(res, UT_NONE);
-        }
+        coord_pick( cell, ur_int(bi->it) - 1, res );
         ++bi->it;
         return UR_OK;
     }

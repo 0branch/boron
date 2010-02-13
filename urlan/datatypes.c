@@ -1000,9 +1000,52 @@ int vec3_make( UThread* ut, const UCell* from, UCell* res )
         case UT_VEC3:
             memCpy( res->vec3.xyz, from->vec3.xyz, 3 * sizeof(float) );
             break;
+        case UT_BLOCK:
+        {
+            UBlockIter bi;
+            const UCell* cell;
+            float num;
+            int len = 0;
+
+            ur_blkSlice( ut, &bi, from );
+            ur_foreach( bi )
+            {
+                if( ur_is(bi.it, UT_WORD) )
+                {
+                    cell = ur_wordCell( ut, bi.it );
+                    if( ! cell )
+                        return UR_THROW;
+                }
+#if 0
+                else if( ur_is(bi.it, UT_PATH) )
+                {
+                    if( ! ur_pathCell( ut, bi.it, res ) )
+                        return UR_THROW;
+                }
+#endif
+                else
+                {
+                    cell = bi.it;
+                }
+
+                if( ur_is(cell, UT_INT) )
+                    num = (float) ur_int(cell);
+                else if( ur_is(cell, UT_DECIMAL) )
+                    num = (float) ur_decimal(cell);
+                else
+                    break;
+
+                res->vec3.xyz[ len ] = num;
+                if( ++len == 3 )
+                    return UR_OK;
+            }
+            while( len < 3 )
+                res->vec3.xyz[ len++ ] = 0.0f;
+        }
+            break;
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                    "make vec3! expected none!/logic!/int!/decimal!" );
+                    "make vec3! expected none!/logic!/int!/decimal!/block!" );
     }
     return UR_OK;
 }
@@ -1020,11 +1063,39 @@ void vec3_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 }
 
 
+/* index is zero-based */
+void vec3_pick( const UCell* cell, int index, UCell* res )
+{
+    if( (index < 0) || (index >= 3) )
+    {
+        ur_setId(res, UT_NONE);
+    }
+    else
+    {
+        ur_setId(res, UT_DECIMAL);
+        ur_decimal(res) = cell->vec3.xyz[ index ];
+    }
+}
+
+
+static
+int vec3_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+{
+    if( ur_is(bi->it, UT_INT) )
+    {
+        vec3_pick( cell, ur_int(bi->it) - 1, res );
+        ++bi->it;
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_SCRIPT, "vec3 select expected int!" );
+}
+
+
 UDatatype dt_vec3 =
 {
     "vec3!",
     vec3_make,              vec3_make,              unset_copy,
-    unset_compare,          unset_select,
+    unset_compare,          vec3_select,
     vec3_toString,          vec3_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
