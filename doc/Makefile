@@ -1,13 +1,13 @@
-RST_STYLE = lsr_KR.css
+RST_STYLE = lsr.css
 
 
 dox:
 	doxygen
 	cp boron_logo2.jpg ./html
 
-html: func_ref.html
+html: UserManual.html
 
-pdf: func_ref.pdf
+pdf: UserManual.pdf
 
 
 %.html: %.rst
