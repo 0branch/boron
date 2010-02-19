@@ -16,3 +16,8 @@ print wx
 words: [x y]
 set words 21
 print words
+
+
+print "---- make"
+probe to-word int!
+;probe to-word int!/decimal!

@@ -360,6 +360,21 @@ void ur_datatypeAddType( UCell* cell, int type )
 }
 
 
+#if 0
+/*
+  If cell is any word and it has a datatype name then that type is returned.
+  Otherwise the datatype of the cell is returned.
+*/
+static int _wordType( UThread* ut, const UCell* cell )
+{
+    int type = ur_type(cell);
+    if( ur_isWordType(type) && (ur_atom(cell) < ur_datatypeCount(ut)) )
+        type = ur_atom(cell);
+    return type;
+}
+#endif
+
+
 int datatype_make( UThread* ut, const UCell* from, UCell* res )
 {
     (void) ut;
@@ -390,6 +405,7 @@ int datatype_compare( UThread* ut, const UCell* a, const UCell* b, int test )
                 return ((a->datatype.mask0 & b->datatype.mask0) ||
                         (a->datatype.mask1 & b->datatype.mask1));
             }
+            break;
 
         case UR_COMPARE_ORDER:
         case UR_COMPARE_ORDER_CASE:
@@ -399,6 +415,7 @@ int datatype_compare( UThread* ut, const UCell* a, const UCell* b, int test )
                     return 1;
                 if( ur_datatype(a) < ur_datatype(b) )
                     return -1;
+                // Order of two multi-types is undefined.
             }
             break;
     }
@@ -1108,6 +1125,7 @@ UDatatype dt_vec3 =
 
 int word_makeType( UThread* ut, const UCell* from, UCell* res, int ntype )
 {
+    UAtom atom;
     int type = ur_type(from);
 
     if( ur_isWordType( type ) )
@@ -1119,7 +1137,6 @@ int word_makeType( UThread* ut, const UCell* from, UCell* res, int ntype )
     else if( type == UT_STRING )
     {
         USeriesIter si;
-        UAtom atom;
 
         ur_seriesSlice( ut, &si, from );
         if( si.buf->form == UR_ENC_LATIN1 )
@@ -1135,9 +1152,16 @@ int word_makeType( UThread* ut, const UCell* from, UCell* res, int ntype )
             atom = ur_internAtom( ut, tmp.ptr.c, tmp.ptr.c + tmp.used );
             ur_strFree( &tmp );
         }
+set_atom:
         ur_setId(res, ntype);
         ur_setWordUnbound(res, atom);
         return UR_OK;
+    }
+    else if( type == UT_DATATYPE )
+    {
+        atom = ur_datatype(from);
+        if( atom < UT_MAX )
+            goto set_atom;
     }
     return ur_error( ut, UR_ERR_TYPE, "make word! expected word!/string!" );
 }
@@ -1149,9 +1173,27 @@ int word_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+/*
+  Returns atom (if cell is any word), datatype atom (if cell is a simple
+  datatype), or -1.
+*/
+static int word_atomOrType( const UCell* cell )
+{
+    int type = ur_type(cell);
+    if( ur_isWordType(type) )
+        return ur_atom(cell);
+    if( type == UT_DATATYPE )
+    {
+        type = ur_datatype(cell);
+        if( type < UT_MAX )
+            return type;
+    }
+    return -1;
+}
+
+
 int word_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 {
-    (void) ut;
     switch( test )
     {
         case UR_COMPARE_SAME:
@@ -1161,8 +1203,11 @@ int word_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 
         case UR_COMPARE_EQUAL:
         case UR_COMPARE_EQUAL_CASE:
-            if( ur_isWordType( ur_type(a) ) && ur_isWordType( ur_type(b) ) )
-                return ur_atom(a) == ur_atom(b);
+        {
+            int atomA = word_atomOrType( a );
+            if( (atomA > -1) && (atomA == word_atomOrType(b)) )
+                return 1;
+        }
             break;
 
         case UR_COMPARE_ORDER:

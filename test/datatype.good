@@ -5,3 +5,11 @@ false
 false
 true
 false
+---- compare to word
+true
+true
+Is string
+Is string or file
+---- make
+datatype!
+word!
