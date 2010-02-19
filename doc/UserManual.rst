@@ -3,6 +3,7 @@
 ==============================
 
 :Version:   0.1.2
+:Date:      |date|
 
 .. sectnum::
 .. contents::
@@ -102,15 +103,17 @@ Datatype      Examples
 `coord!`_     0,255,100  -1, 0, 0 
 `vec3!`_      0.0,255.0,100.0  -1.0, 0, 0 
 `string!`_    "hello"  {hello}
+`file!`_      %main.c %"/mnt/Project Backup/"
 `binary!`_    #{01afed}  #{00 33 ff a0}
 time!         10:02 -0:0:32.08
-`context!`_
+`vector!`_    #[1 2 3]  #[-85.33 2 44.8]
 `block!`_     []  [a b c]
 `paren!`_     ()  (a b c)
 path!         obj/x my-block/2
-set-path!     obj/x: my-block/2:
 lit-path!     'obj/x 'my-block/2
-`vector!`_    #[1 2 3]  #[-85.33 2 44.8]
+set-path!     obj/x: my-block/2:
+`context!`_   context [area: 4,5 color: red]
+error!
 `func!`_      inc2: func [n] [add n 2]
 ============  ==========
 
@@ -173,6 +176,35 @@ Example decimal values::
 
     -3.5685
     24.
+
+
+Coord!
+------
+
+Integer coordinate that is handy for specifying screen positions, rectangles,
+colors, etc.
+
+A coord! can hold up to six 16-bit integers.
+
+::
+
+   640,480       ; Screen size
+   45,10, 45,18  ; Rectangle
+   255,10,0      ; RGB triplet
+
+
+Vec3!
+-----
+
+Vec3 stores 3 floating point values.
+
+A Vec3 is specified as two or three decimal numbers separated by commas.
+If none of the numbers has a decimal point then the value will be a coord!.
+
+::
+
+    0.0, 1.0     ; Third component will be 0.0
+    1.0,0,100
 
 
 Word!
@@ -252,6 +284,20 @@ String examples:
    spans multiple lines.}
 
 
+File!
+-----
+
+A file value is a string which references a file or directory on the local
+filesystem.  They begin with a percent (%) character.  If any spaces are
+present in the path then it must be enclosed in double quotes.
+
+File examples::
+
+    %/tmp/dump.out
+    %"../input files/test42"
+    %C:\windows\system32.exe
+
+
 Vector!
 -------
 
@@ -260,35 +306,6 @@ Vectors hold a series of numbers using less memory than a block!.
 All numbers in a vector are either 32-bit integers or floating point values.
 If the first number is specified as a decimal!, all numbers will be floating
 point.
-
-
-Coord!
-------
-
-Integer coordinate that is handy for specifying screen coordinates, rectangles,
-colors, etc.
-
-A coord! can hold up to 6 16-bit integers.
-
-::
-
-   640,480       ; Screen coordinate
-   45,10, 45,18  ; Rectangle
-   255,10,0      ; RGB triplet
-
-
-Vec3!
------
-
-Vec3 stores 3 floating point values.
-
-A Vec3 is specified as two or three decimal numbers separated by commas.
-If none of the numbers has a decimal point then the value will be a coord!.
-
-::
-
-    0.0, 1.0     ; Third component will be 0.0
-    1.0,0,100
 
 
 Block!
@@ -305,6 +322,31 @@ Paren!
 ------
 
 Similar to a block, but automatically evaluated.
+
+
+Context!
+--------
+
+A context holds word/value pairs.
+
+Example context::
+
+    entry: make context! [
+      name: "John"
+      age: 44
+      job: 'farmer
+    ]
+    
+Contexts can be created from existing ones.  So given the previous entry
+context a new farmer could be created using *make* again.
+::
+
+    joe: make entry [name: "Joe" age: 32]
+
+The *context* word is normally used to make a new context instead of
+*make context!*::
+
+    entry: context [type: hybrid level: 2]
 
 
 Func!
@@ -343,31 +385,7 @@ a datatype in the signature block.
     ]
 
 
-Context!
---------
 
-A context holds word/value pairs.
-
-Example context::
-
-    entry: make context! [
-      name: "John"
-      age: 44
-      job: 'farmer
-    ]
-    
-Contexts can be created from existing ones.  So given the previous entry
-context a new farmer could be created using *make* again.
-::
-
-    joe: make entry [name: "Joe" age: 32]
-
-The *context* word is normally used to make a new context instead of
-*make context!*::
-
-    entry: context [type: hybrid level: 2]
-
-
-
+.. |date| date::
 .. _`function reference`: http://urlan.sf.net/boron/doc/func_ref.html
 .. _`code documentation`: http://urlan.sf.net/boron/doc/html/
