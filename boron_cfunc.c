@@ -2702,11 +2702,13 @@ CFUNC(cfunc_read)
         file    file!/string!
         data    binary!/string!/context!
         /append
+        /text   Emit new lines with carriage returns on Windows.
     return: unset!
 */
 CFUNC(cfunc_write)
 {
 #define OPT_WRITE_APPEND    0x01
+#define OPT_WRITE_TEXT      0x02
     const UCell* data = a2;
 
     if( ! ur_isStringType( ur_type(a1) ) )
@@ -2723,10 +2725,10 @@ CFUNC(cfunc_write)
     {
         FILE* fp;
         const char* filename;
+        const char* mode;
         USeriesIter si;
         UIndex size;
         size_t n;
-        int append = CFUNC_OPTIONS & OPT_WRITE_APPEND;
 
         filename = boron_cstr( ut, a1, 0 );
 
@@ -2748,14 +2750,18 @@ CFUNC(cfunc_write)
                 si.it = 0;
                 size = si.buf->used;
             }
-            // Write as text to add carriage ret.
-            fp = fopen( filename, append ? "a" : "w" );
-        }
-        else
-        {
-            fp = fopen( filename, append ? "ab" : "wb" );
         }
 
+        n = CFUNC_OPTIONS;
+        {
+        int append = n & OPT_WRITE_APPEND;
+        if( n & OPT_WRITE_TEXT )
+            mode = append ? "a" : "w";
+        else
+            mode = append ? "ab" : "wb";
+        }
+
+        fp = fopen( filename, mode );
         if( ! fp )
         {
             return ur_error( ut, UR_ERR_ACCESS,

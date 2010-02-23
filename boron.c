@@ -845,7 +845,7 @@ UThread* boron_makeEnv()
     addCFunc( cfunc_current_dir,"current-dir" );
     addCFunc( cfunc_getenv,     "getenv val" );
     addCFunc( cfunc_read,       "read from /text /into b" );
-    addCFunc( cfunc_write,      "write to data /append" );
+    addCFunc( cfunc_write,      "write to data /append /text" );
     addCFunc( cfunc_delete,     "delete file" );
     addCFunc( cfunc_rename,     "rename a b" );
     addCFunc( cfunc_load,       "load from" );
