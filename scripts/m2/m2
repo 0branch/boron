@@ -115,10 +115,10 @@ m2: context
 		]
 
 		file_rules: [
-			".c"   makerule_c
 			".cpp" makerule_cxx
 			".cxx" makerule_cxx
 			".cc"  makerule_cxx
+			".c"   makerule_c	 ; Must follow c++ entries.
 			".s"   makerule_asm
 			".asm" makerule_asm
 		]
