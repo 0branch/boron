@@ -168,6 +168,10 @@ exe_target: make target_env
     ]
 
     macro_text: func [] [
+        ifn empty? menv_aflags [
+            emit [uc_name "_AFLAGS   = " menv_aflags eol]
+        ]
+
         emit [
             uc_name "_CFLAGS   = " menv_cflags ' ' gnu_string "/D" defines eol
             uc_name "_CXXFLAGS = $(" uc_name "_CFLAGS) " menv_cxxflags eol
@@ -208,6 +212,8 @@ exe_target: make target_env
         rejoin ["^-$(" cc ") /c $(" uc_name flags ") /Fo" obj 
                 " $(" uc_name "_INCPATH) " src]
     ]
+
+    makerule_asm: func [obj src] [rule_makeobj "AS" "_AFLAGS" obj src]
 ]
 
 
@@ -247,6 +253,7 @@ nmake_header:
 
 #------ Compiler and tools
 
+AS       = ml.exe
 CC       = cl.exe
 CXX      = cl.exe
 LINK     = link.exe

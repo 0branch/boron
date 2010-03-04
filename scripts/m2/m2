@@ -27,7 +27,7 @@
 project_file: "project.b"
 template_file: 
 	;"/usr/local/lib/m2/m2_template.b"
-	"/home/karl/src/urlan/boron/m2/m2_linux.b"
+	"/home/karl/src/urlan/boron/scripts/m2/m2_linux.b"
 debug_include: false
 
 
@@ -89,6 +89,7 @@ m2: context
 		moc_files: []
 		srcmoc_files: []
 
+		menv_aflags: {}
 		menv_cflags: {}
 		menv_cxxflags: {}
 		menv_lflags: {}
@@ -106,15 +107,20 @@ m2: context
 		]
 		makerule_cxx: func [obj src] [link_cxx: true
 									   rule_makeobj "CXX" "_CXXFLAGS" obj src]
-		makerule_asm: func [obj src] [rule_makeobj "AS" "_ASFLAGS" obj src]
 		makerule_c:   func [obj src] [rule_makeobj "CC" "_CFLAGS" obj src]
+		makerule_asm: func [obj src] [
+			; Default to GNU
+			rejoin ["^-$(AS) $(" uc_name "_AFLAGS) -o " obj 
+					" $(" uc_name "_INCPATH) " src]
+		]
 
 		file_rules: [
+			".c"   makerule_c
 			".cpp" makerule_cxx
 			".cxx" makerule_cxx
 			".cc"  makerule_cxx
 			".s"   makerule_asm
-			".c"   makerule_c
+			".asm" makerule_asm
 		]
 
 		make_obj_rule: func [
@@ -317,6 +323,7 @@ m2: context
 	objdir:		func [dir] [ct/objdir: dir]
 	into:		func [dir] [ct/output_dir: term-dir dir]
 
+	aflags:		func [str string!] [add_flags ct/menv_aflags   str]
 	cflags:		func [str string!] [add_flags ct/menv_cflags   str]
 	cxxflags:	func [str string!] [add_flags ct/menv_cxxflags str]
 	lflags:		func [str string!] [add_flags ct/menv_lflags   str]

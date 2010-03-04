@@ -144,6 +144,10 @@ exe_target: make target_env
 
     macro_text: func []
     [
+        ifn empty? menv_aflags [
+            emit [uc_name "_AFLAGS   = " menv_aflags eol]
+        ]
+
         emit [
             uc_name "_CFLAGS   = " menv_cflags ' ' gnu_string "-D" defines eol
             uc_name "_CXXFLAGS = $(" uc_name "_CFLAGS) " menv_cxxflags eol
@@ -222,6 +226,7 @@ gnu_header:
 
 #------ Compiler and tools
 
+AS       = as
 CC       = gcc
 CXX      = g++
 LINK     = gcc
