@@ -93,4 +93,10 @@ print "---- bugs fixed"
 ; Found problem in makeVerifyFuncBlock().
 sources_from: func [path files block!] [verify_slash path]
 
-
+; Optional argument type checking
+oat: func [a int! /opt b string!] [
+    if opt [return b]
+    a
+]
+print oat 4
+print oat/opt 4 "opt-b"

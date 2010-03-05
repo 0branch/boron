@@ -100,7 +100,7 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
     FuncOption options[ MAX_OPT ];
     int localCount = 0;
     int optionCount = 0;
-    int optArgCount = 0;
+    int optArgs = 0;
     int prevOptPos = 0;
     UAtom optAtom = 0;
     UBuffer* prog = ur_buffer( BT->tempN );
@@ -198,19 +198,15 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
                             ur_ctxAddWordI( argCtx, ur_atom(bi.it) );
                         break;
                     }
-                    if( ! optArgCount )
+                    if( ! optArgs )
                     {
+                        ++optArgs;
                         prevOptPos = prog->used;
                         FO_RESERVE( 3 );
                         FO_EMIT( FO_option );
                         FO_EMIT2( optionCount - 1, 0 );
                     }
-                    ++optArgCount;
                 }
-#if 0
-                else
-                    ++argCount;
-#endif
                 ++localCount;
                 if( argCtx )
                     ur_ctxAddWordI( argCtx, ur_atom(bi.it) );
@@ -219,6 +215,7 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
             break;
 
         case UT_OPTION:
+            assert( optAtom != ATOM_LOCAL );
             optAtom = ur_atom(bi.it);
             if( optAtom == UR_ATOM_GHOST )
             {
@@ -231,17 +228,17 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
             if( optCtx )
                 ur_ctxAddWordI( optCtx, ur_atom(bi.it) );
 close_option:
-            if( optArgCount )
+            if( optArgs )
             {
-                prog->ptr.b[ prevOptPos + 2 ] = optArgCount + 2;
-                optArgCount = 0;
+                optArgs = 0;
+                prog->ptr.b[ prevOptPos + 2 ] = prog->used - prevOptPos;
             }
             break;
         }
     }
 
-    if( optArgCount )
-        prog->ptr.b[ prevOptPos + 2 ] = optArgCount + 2;
+    if( optArgs )
+        prog->ptr.b[ prevOptPos + 2 ] = prog->used - prevOptPos;
 
     if( optionCount )
     {
