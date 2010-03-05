@@ -210,10 +210,12 @@ exe_target: make target_env
 
     rule_makeobj: func [cc flags obj src] [
         rejoin ["^-$(" cc ") /c $(" uc_name flags ") /Fo" obj 
-                " $(" uc_name "_INCPATH) " src]
+                " $(" uc_name "_INCPATH) " custom_src src]
     ]
 
-    makerule_asm: func [obj src] [rule_makeobj "AS" "_AFLAGS" obj src]
+    makerule_asm: func [obj src] [
+        rule_makeobj "AS" "_AFLAGS" obj custom_src src
+    ]
 ]
 
 

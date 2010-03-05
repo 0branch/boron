@@ -85,6 +85,7 @@ m2: context
 		header_files: []
 		source_files: []
 		object_files: []
+		custom_flags: []	; Pairs of file & flags.
 
 		moc_files: []
 		srcmoc_files: []
@@ -100,10 +101,16 @@ m2: context
 		macro_text:
 		rule_text: none
 
+		custom_src: func [src | flags] [
+			either flags: select custom_flags src
+				[rejoin [src ' ' flags]]
+				[src]
+		]
+
 		rule_makeobj: func [cc flags obj src] [
 			; Default to GNU
 			rejoin ["^-$(" cc ") -c $(" uc_name flags ") -o " obj 
-					" $(" uc_name "_INCPATH) " src]
+					" $(" uc_name "_INCPATH) " custom_src src]
 		]
 		makerule_cxx: func [obj src] [link_cxx: true
 									   rule_makeobj "CXX" "_CXXFLAGS" obj src]
@@ -111,7 +118,7 @@ m2: context
 		makerule_asm: func [obj src] [
 			; Default to GNU
 			rejoin ["^-$(AS) $(" uc_name "_AFLAGS) -o " obj 
-					" $(" uc_name "_INCPATH) " src]
+					" $(" uc_name "_INCPATH) " custom_src src]
 		]
 
 		file_rules: [
@@ -168,7 +175,7 @@ m2: context
 				foreach [ext rfunc] file_rules [
 					;print [ext get rfunc]
 					if find src/1 ext [
-						append str rejoin [do rfunc obj src/1 "^/^/"]
+						append str join do rfunc obj src/1 "^/^/"
 						break
 					]
 				]
@@ -363,8 +370,14 @@ m2: context
 		append distribution_files arg
 	]
 
-	sources: func [arg block!] [
+	sources: func [arg block! /flags fstr] [
 		append ct/source_files arg
+		if flags [
+			forall arg [
+				append ct/custom_flags first arg
+				append ct/custom_flags fstr
+			]
+		]
 	]
 
 	sources_from: func [path files block!] [
