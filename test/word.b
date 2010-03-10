@@ -21,3 +21,8 @@ print words
 print "---- make"
 probe to-word int!
 ;probe to-word int!/decimal!
+
+
+print "---- toText"
+words: [a 'b c: :d]
+foreach w words [prin w prin ' '  probe w]

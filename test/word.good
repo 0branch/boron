@@ -8,3 +8,8 @@ none
 21 21
 ---- make
 int!
+---- toText
+a a
+b 'b
+c c:
+d :d

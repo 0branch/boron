@@ -1294,7 +1294,7 @@ UDatatype dt_litword =
     "lit-word!",
     litword_make,           litword_make,           unset_copy,
     word_compare,           unset_select,
-    litword_toString,       litword_toString,
+    litword_toString,       word_toString,
     unset_recycle,          word_mark,              unset_destroy,
     unset_markBuf,          word_toShared,          unset_bind
 };
@@ -1323,7 +1323,7 @@ UDatatype dt_setword =
     "set-word!",
     setword_make,           setword_make,           unset_copy,
     word_compare,           unset_select,
-    setword_toString,       setword_toString,
+    setword_toString,       word_toString,
     unset_recycle,          word_mark,              unset_destroy,
     unset_markBuf,          word_toShared,          unset_bind
 };
@@ -1352,7 +1352,7 @@ UDatatype dt_getword =
     "get-word!",
     getword_make,           getword_make,           unset_copy,
     word_compare,           unset_select,
-    getword_toString,       getword_toString,
+    getword_toString,       word_toString,
     unset_recycle,          word_mark,              unset_destroy,
     unset_markBuf,          word_toShared,          unset_bind
 };
