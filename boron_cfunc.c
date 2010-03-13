@@ -544,11 +544,11 @@ CFUNC(cfunc_infuse)
     } \
     else if( ur_isDecType(ur_type(a1)) ) { \
         if( ur_isIntType(ur_type(ra)) ) { \
-            ur_setId(res, UT_DECIMAL); \
+            ur_setId(res, ur_type(a1)); \
             ur_decimal(res) = ur_decimal(a1) OP ur_int(ra); \
             return UR_OK; \
         } else if( ur_isDecType(ur_type(ra)) ) { \
-            ur_setId(res, UT_DECIMAL); \
+            ur_setId(res, ur_type(a1)); \
             ur_decimal(res) = ur_decimal(a1) OP ur_decimal(ra); \
             return UR_OK; \
         } \
