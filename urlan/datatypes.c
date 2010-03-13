@@ -922,6 +922,26 @@ UDatatype dt_bignum =
 // UT_TIME
 
 
+int time_make( UThread* ut, const UCell* from, UCell* res )
+{
+    switch( ur_type(from) )
+    {
+        case UT_INT:
+            ur_setId(res, UT_TIME);
+            ur_decimal(res) = (float) ur_int(from);
+            break;
+        case UT_DECIMAL:
+            ur_setId(res, UT_TIME);
+            ur_decimal(res) = ur_decimal(from);
+            break;
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                "make time! expected int!/decimal!" );
+    }
+    return UR_OK;
+}
+
+
 void time_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     int seg;
@@ -962,7 +982,7 @@ void time_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 UDatatype dt_time =
 {
     "time!",
-    unset_make,             unset_make,             unset_copy,
+    time_make,              time_make,              unset_copy,
     decimal_compare,        unset_select,
     time_toString,          time_toString,
     unset_recycle,          unset_mark,             unset_destroy,
