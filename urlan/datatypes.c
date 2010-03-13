@@ -669,6 +669,8 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
             ur_int(res) = ur_int(from);
             break;
         case UT_DECIMAL:
+        case UT_TIME:
+        case UT_DATE:
             ur_int(res) = ur_decimal(from);
             break;
         case UT_BIGNUM:
@@ -763,6 +765,8 @@ int decimal_make( UThread* ut, const UCell* from, UCell* res )
             ur_decimal(res) = (double) ur_int(from);
             break;
         case UT_DECIMAL:
+        case UT_TIME:
+        case UT_DATE:
             ur_decimal(res) = ur_decimal(from);
             break;
         case UT_BIGNUM:
