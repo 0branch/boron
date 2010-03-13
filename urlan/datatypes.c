@@ -932,7 +932,7 @@ int time_make( UThread* ut, const UCell* from, UCell* res )
     {
         case UT_INT:
             ur_setId(res, UT_TIME);
-            ur_decimal(res) = (float) ur_int(from);
+            ur_decimal(res) = (double) ur_int(from);
             break;
         case UT_DECIMAL:
             ur_setId(res, UT_TIME);
