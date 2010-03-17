@@ -47,6 +47,15 @@
   @{
 */
 
+/** \def ur_cstr()
+  Make null terminated UTF-8 string in binary buffer.
+
+  This calls ur_cstring().
+
+  \param strC   Valid UT_STRING or UT_FILE cell.
+  \param bin    Initialized binary buffer to use.
+*/
+
 /** \def ur_strFree()
   A string is a simple array.
 */
@@ -1151,6 +1160,58 @@ int ur_strChar( const UBuffer* str, UIndex pos )
                                  : str->ptr.b[ pos ];
     }
     return -1;
+}
+
+
+/**
+  Make null terminated UTF-8 string in binary buffer.
+
+  \param str    Valid string buffer.
+  \param bin    Initialized binary buffer.  The contents are replaced with
+                the C string.
+  \param start  Start position in str.
+  \param end    End position in str.  A negative number is the same as
+                str->used.
+
+  \return Pointer to C string in bin.
+*/
+char* ur_cstring( const UBuffer* str, UBuffer* bin, UIndex start, UIndex end )
+{
+    int len = str->used;
+
+    if( (end > -1) && (end < len) )
+        len = end;
+    len -= start;
+    if( len > 0 )
+    {
+        ur_binReserve( bin, (len * 2) + 1 );
+
+        switch( str->form )
+        {
+            case UR_ENC_LATIN1:
+                // TODO: Prevent overflow of dest.
+                len = copyLatin1ToUtf8( bin->ptr.b, str->ptr.b + start, len );
+                break;
+
+            case UR_ENC_UTF8:
+                memCpy( bin->ptr.b, str->ptr.b + start, len ); 
+                break;
+
+            case UR_ENC_UCS2:
+                // TODO: Prevent overflow of dest.
+                len = copyUcs2ToUtf8( bin->ptr.b, str->ptr.u16 + start, len );
+                break;
+        }
+    }
+    else
+    {
+        ur_binReserve( bin, 1 );
+        len = 0;
+    }
+
+    bin->used = len;
+    bin->ptr.c[ len ] = '\0';
+    return bin->ptr.c;
 }
 
 

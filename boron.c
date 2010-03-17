@@ -286,9 +286,6 @@ void boron_reset( UThread* ut )
 }
 
 
-extern int copyLatin1ToUtf8( uint8_t* dest, const uint8_t* src, int len );
-extern int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int len );
-
 /**
   Make null terminated UTF-8 string in binary buffer.
 
@@ -300,47 +297,7 @@ extern int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int len );
 */
 char* boron_cstr( UThread* ut, const UCell* strC, UBuffer* bin )
 {
-    const UBuffer* str = ur_bufferSer(strC);
-    int len = str->used;
-
-    if( ! bin )
-        bin = ur_buffer( BT->tempN );
-
-    if( (strC->series.end > -1) && (strC->series.end < len) )
-        len = strC->series.end;
-    len -= strC->series.it;
-    if( len > 0 )
-    {
-        ur_binReserve( bin, (len * 2) + 1 );
-
-        switch( str->form )
-        {
-            case UR_ENC_LATIN1:
-                // TODO: Prevent overflow of dest.
-                len = copyLatin1ToUtf8( bin->ptr.b,
-                                        str->ptr.b + strC->series.it, len );
-                break;
-
-            case UR_ENC_UTF8:
-                memCpy( bin->ptr.b, str->ptr.b + strC->series.it, len ); 
-                break;
-
-            case UR_ENC_UCS2:
-                // TODO: Prevent overflow of dest.
-                len = copyUcs2ToUtf8( bin->ptr.b,
-                                      str->ptr.u16 + strC->series.it, len );
-                break;
-        }
-    }
-    else
-    {
-        ur_binReserve( bin, 1 );
-        len = 0;
-    }
-
-    bin->used = len;
-    bin->ptr.c[ len ] = '\0';
-    return bin->ptr.c;
+    return ur_cstr( strC, bin ? bin : ur_buffer( BT->tempN ) );
 }
 
 
@@ -358,7 +315,7 @@ char* boron_cpath( UThread* ut, const UCell* strC, UBuffer* bin )
 {
     if( ! bin )
         bin = ur_buffer( BT->tempN );
-    boron_cstr( ut, strC, bin );
+    ur_cstr( strC, bin );
     if( bin->used )
     {
         int ch = bin->ptr.b[ bin->used - 1 ];

@@ -495,6 +495,7 @@ UIndex   ur_strFindChars( const UBuffer*, UIndex start, UIndex end,
 UIndex   ur_strFind( const USeriesIter*, const USeriesIter*, int matchCase );
 UIndex   ur_strMatch( const USeriesIter*, const USeriesIter*, int matchCase );
 int      ur_strChar( const UBuffer*, UIndex pos );
+char*    ur_cstring( const UBuffer*, UBuffer* bin, UIndex start, UIndex end );
 #define  ur_strFree ur_arrFree
 #define  ur_strIsUcs2(buf)  ((buf)->form == UR_ENC_UCS2)
 
@@ -602,6 +603,9 @@ void     ur_arrAppendFloat( UBuffer*, float );
 #define ur_bufferSerM(c)    ur_bufferSeriesM(ut,c)
 
 #define ur_foreach(bi)      for(; bi.it != bi.end; ++bi.it)
+
+#define ur_cstr(strC,bin) \
+    ur_cstring(ur_bufferSer(strC), bin, strC->series.it, strC->series.end)
 
 
 #endif  /*EOF*/
