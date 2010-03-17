@@ -226,8 +226,6 @@ static void _validateEnv()
     UCell cell;
     int i;
 
-    //printf( "KR sizeof(pthread_t) = %lu\n", sizeof(pthread_t) );
-
     assert( sizeof(UCell) == 16 );
     assert( &cell.word.ctx == &cell.series.buf );
 
@@ -291,6 +289,13 @@ UThread* ur_makeEnv( UDatatype* dt, int dtCount,
     UEnv* env;
     UThread* ut;
     int i;
+
+#if 0
+    printf( "KR sizeof(pthread_t) = %lu\n", sizeof(pthread_t) );
+    printf( "KR sizeof(UEnv)      = %lu\n", sizeof(UEnv) );
+    printf( "KR sizeof(UThread)   = %lu\n", sizeof(UThread) );
+    printf( "KR sizeof(UBuffer)   = %lu\n", sizeof(UBuffer) );
+#endif
 
 #ifdef DEBUG
     _validateEnv();
