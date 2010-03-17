@@ -639,7 +639,7 @@ static const char setupScript[] =
 */
 UThread* boron_makeEnv()
 {
-    UThread* ut = ur_makeEnv( boron_types,
+    UThread* ut = ur_makeEnv( 2048, boron_types,
                               sizeof(boron_types) / sizeof(UDatatype),
                               sizeof(BoronThread), boron_threadMethod );
     if( ! ut )

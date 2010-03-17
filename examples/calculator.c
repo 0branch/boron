@@ -202,7 +202,7 @@ int main( int argc, char** argv )
 
     printf( "Urlan Calculator Example %s (%s)\n", UR_VERSION_STR, __DATE__ );
 
-    ut = ur_makeEnv( 0, 0, 0, 0 );
+    ut = ur_makeEnv( 256, 0, 0, 0, 0 );
     if( ! ut )
     {
         printf( "ur_makeEnv failed\n" );

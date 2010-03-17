@@ -272,6 +272,8 @@ extern UDatatype dt_timecode;
 /**
   Allocate UEnv and initial UThread.
 
+  \param atomLimit  Maximum number of atoms.
+                    Memory usage is (20 * atomLimit) bytes.
   \param dt         Pointer to array of user defined datatypes.
                     Pass zero if dtCount is zero.
   \param dtCount    Number of datatypes in dt.
@@ -282,7 +284,7 @@ extern UDatatype dt_timecode;
 
   \return Pointer to initial thread.
 */
-UThread* ur_makeEnv( UDatatype* dt, int dtCount,
+UThread* ur_makeEnv( int atomLimit, UDatatype* dt, int dtCount,
                      unsigned int thrSize,
                      void (*thrMethod)(UThread*, UThreadMethod) )
 {
@@ -307,8 +309,8 @@ UThread* ur_makeEnv( UDatatype* dt, int dtCount,
 
     ur_arrInit( &env->dataStore, sizeof(UBuffer), 0 );
 
-    ur_binInit( &env->atomNames, 8 * 2048 );
-    ur_arrInit( &env->atomTable, sizeof(AtomRec), 2048 );
+    ur_binInit( &env->atomNames, 8 * atomLimit );
+    ur_arrInit( &env->atomTable, sizeof(AtomRec), atomLimit );
     _rebuildAtomHash( &env->atomTable );
 
     env->typeCount = UT_BI_COUNT + dtCount;
