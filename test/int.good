@@ -1,7 +1,7 @@
 [0 0 0 1 -1]
 ---- hex
-[$0 $10 $FFFFFFFF]
-[$0 $10 $FFFFFFFF]
+[0x0 0x10 0xFFFFFFFF]
+[0x0 0x10 0xFFFFFFFF]
 int!
 Syntax Error: Invalid hexidecimal number (line 1)
 Trace:
@@ -9,4 +9,4 @@ Trace:
 ---- format
 16 -1
 16 -1
-$10 $FFFFFFFF
+0x10 0xFFFFFFFF

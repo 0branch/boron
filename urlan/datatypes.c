@@ -730,7 +730,10 @@ void int_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     (void) ut;
     (void) depth;
     if( ur_flags(cell, UR_FLAG_INT_HEX) )
+    {
+        ur_strAppendCStr( str, "0x" );
         ur_strAppendHex( str, ur_int(cell), 0 );
+    }
     else
         ur_strAppendInt( str, ur_int(cell) );
 }
@@ -905,7 +908,10 @@ void bignum_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     (void) ut;
     (void) depth;
     if( ur_flags(cell, UR_FLAG_INT_HEX) )
+    {
+        ur_strAppendCStr( str, "0x" );
         ur_strAppendHex( str, n & 0xffffffff, n >> 32 );
+    }
     else
         ur_strAppendInt64( str, n );
 }

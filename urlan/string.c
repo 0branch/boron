@@ -462,9 +462,7 @@ void ur_strAppendInt64( UBuffer* str, int64_t n )
 
 #define HEX_TO_STR(T) \
 static T* hex_to_ ## T( T* cp, uint32_t n, uint32_t hi ) { \
-    T* start; \
-    *cp++ = '$'; \
-    start = cp; \
+    T* start = cp; \
     do { \
         *cp++ = _hexDigits[ n & 15 ]; \
     } while( (n >>= 4) > 0 ); \
