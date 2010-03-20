@@ -23,6 +23,7 @@ exe %boron-qt [
     sources [
         %main.cpp
         %boron-qt.cpp
+        %UTreeModel.cpp
         %../util/CBParser.c
     ]
 ]

@@ -18,13 +18,20 @@ exec widget [
         tab [
             "Basic" [
                 vbox [
-                    hbox [button "Button" [] spacer]
+                    hbox [button "Button" [print "Button pressed"] spacer]
                     hbox [
                         label "Combo"
                         combo ["Item one" "Item two" "Last Item"]
+                            [print ["Combo activated:" index]]  ; Optional
                         spacer
                     ]
                     checkbox "Checkbox"
+                    list ["Name" "Age"] [
+                        "Chris"  32
+                        "Abe"    51
+                        "Sara"   28
+                    ]
+                        [print ["List activated:" index]]   ; Optional
                     spacer
                 ]
             ]

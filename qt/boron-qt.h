@@ -32,6 +32,7 @@
 #include <QPushButton>
 #include <QProgressBar>
 #include <QTabWidget>
+#include <QTreeView>
 #include <QTextEdit>
 
 
@@ -46,6 +47,7 @@ enum eWidgetType
     WT_Combo,
     WT_Tab,
     WT_TextEdit,
+    WT_TreeView,
     WT_Group,
     WT_Progress,
     WT_Watcher,
@@ -108,8 +110,6 @@ struct QtEnv
     QWidget* curWidget;
     QDialog* dialog;
     QString  filePath;     // Saves directory selected in last request-file.
-    UCell   watchEvent;
-    UCell   watchFile;
     WIDPool  pool;
 
     QEventLoop* loop;
@@ -180,6 +180,29 @@ public:
 public slots:
 
     void slotDo( int );
+
+private:
+
+    ExeBlock _blk;
+};
+
+
+class STreeView : public QTreeView
+{
+    Q_OBJECT
+
+public:
+
+    STreeView();
+    ~STreeView();
+
+    int _wid;
+
+    void setBlock( const UCell* );
+
+public slots:
+
+    void slotDo( const QModelIndex& );
 
 private:
 

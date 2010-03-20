@@ -31,6 +31,7 @@
 #include "bignum.h"
 #include "urlan_atoms.h"
 #include "CBParser.h"
+#include "UTreeModel.h"
 
 
 #define UT  qEnv.ut
@@ -237,7 +238,7 @@ static void cellToQString( const UCell* val, QString& str )
 }
 
 
-static QString qstring( const UCell* cell )
+QString qstring( const UCell* cell )
 {
     QString str;
     cellToQString( cell, str );
@@ -247,7 +248,7 @@ static QString qstring( const UCell* cell )
 
 static int getString( UThread* ut, const UCell* cell, QString& str )
 {
-    if( ur_is(cell, UT_GETWORD) )
+    if( ur_is(cell, UT_WORD) || ur_is(cell, UT_GETWORD) )
     {
         if( ! (cell = ur_wordCell( ut, cell )) )
             return UR_THROW;
@@ -381,8 +382,7 @@ static char layoutRules[] =
   "  'hbox block!\n"
   "| 'vbox block!\n"
   "| 'spacer\n"
-  "| 'label string!\n"
-  "| 'label word!\n"
+  "| 'label word!/string!\n"
   "| 'button string! block!\n"
   "| 'checkbox string!\n"
   "| 'combo get-word!/string!/block!\n"
@@ -391,6 +391,7 @@ static char layoutRules[] =
   "| 'resize coord!\n"
   "| 'line-edit string!\n"
   "| 'line-edit\n"
+  "| 'list word!/block! word!/block!\n"
   "| 'text-edit get-word!/string!\n"
   "| 'text-edit\n"
   "| 'group string! block!\n"
@@ -411,8 +412,7 @@ enum LayoutRules
     LD_HBOX,
     LD_VBOX,
     LD_SPACER,
-    LD_LABEL_STR,
-    LD_LABEL_WORD,
+    LD_LABEL,
     LD_BUTTON,
     LD_CHECKBOX,
     LD_COMBO,
@@ -421,6 +421,7 @@ enum LayoutRules
     LD_RESIZE,
     LD_LINE_EDIT_STR,
     LD_LINE_EDIT,
+    LD_LIST,
     LD_TEXT_EDIT_STR,
     LD_TEXT_EDIT,
     LD_GROUP,
@@ -435,6 +436,14 @@ enum LayoutRules
     LD_WEIGHT
 };
 
+
+#define MAKE_WIDGET(CL) \
+    if( ! parent.layout() ) \
+        goto no_layout; \
+    CL* pw = new CL; \
+    parent.addWidget( pw ); \
+    setWID( setWord, pw->_wid ); \
+    wid = pw;
 
 /*
    Layout Language
@@ -484,69 +493,37 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                 parent.box->addStretch( 1 );
                 break;
 
-            case LD_LABEL_STR:
-            case LD_LABEL_WORD:
+            case LD_LABEL:
             {
-                if( ! parent.layout() )
-                    goto no_layout;
-
-                SLabel* pw = new SLabel;
-                parent.addWidget( pw );
-                setWID( setWord, pw->_wid );
-
-                val = cbp.values + 1;
-                if( ur_is(val, UT_WORD) )
-                {
-                    if( ! (val = ur_wordCell( ut, val )) )
-                        return 0;
-                }
                 QString txt;
-                cellToQString( val, txt );
-                pw->setText( txt );
+                if( ! getString( ut, cbp.values + 1, txt ) )
+                    return 0;
 
-                wid = pw;
+                MAKE_WIDGET( SLabel )
+                pw->setText( txt );
             }
                 break;
 
             case LD_BUTTON:
             {
-                if( ! parent.layout() )
-                    goto no_layout;
-
-                SButton* pw = new SButton;
-                parent.addWidget( pw );
-                setWID( setWord, pw->_wid );
+                MAKE_WIDGET( SButton )
                 pw->setText( qstring( cbp.values + 1 ) );
                 pw->setBlock( cbp.values + 2 );
-                wid = pw;
             }
                 break;
 
             case LD_CHECKBOX:
             {
-                if( ! parent.layout() )
-                    goto no_layout;
-
-                SCheck* pw = new SCheck;
-                parent.addWidget( pw );
-                setWID( setWord, pw->_wid );
+                MAKE_WIDGET( SCheck )
                 pw->setText( qstring( cbp.values + 1 ) );
-                wid = pw;
             }
                 break;
 
             case LD_COMBO:
             {
-                if( ! parent.layout() )
-                    goto no_layout;
-
-                SCombo* pw = new SCombo;
-                parent.addWidget( pw );
-                setWID( setWord, pw->_wid );
-                wid = pw;
+                MAKE_WIDGET( SCombo )
 
                 val = cbp.values + 1;
-
                 if( ur_is(val, UT_GETWORD) )
                 {
                     if( ! (val = ur_wordCell( ut, val )) )
@@ -572,13 +549,7 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
 
             case LD_TAB:
             {
-                if( ! parent.layout() )
-                    goto no_layout;
-
-                STabWidget* pw = new STabWidget;
-                parent.addWidget( pw );
-                setWID( setWord, pw->_wid );
-                wid = pw;
+                MAKE_WIDGET( STabWidget )
 
                 if( ! tabWidgetBlock( ut, pw, cbp.values + 1 ) )
                     return 0;
@@ -611,29 +582,39 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
             case LD_LINE_EDIT_STR:
             case LD_LINE_EDIT:
             {
-                if( ! parent.layout() )
-                    goto no_layout;
-
-                SLineEdit* pw = new SLineEdit;
-                parent.addWidget( pw );
-                setWID( setWord, pw->_wid );
-                wid = pw;
+                MAKE_WIDGET( SLineEdit )
 
                 if( match == LD_LINE_EDIT_STR )
                     pw->setText( qstring( cbp.values + 1 ) );
             }
                 break;
 
+            case LD_LIST:
+            {
+                const UCell* hdr = cbp.values + 1;
+                if( ur_is(hdr, UT_GETWORD) )
+                {
+                    if( ! (hdr = ur_wordCell( ut, hdr )) )
+                        return 0;
+                }
+
+                val = cbp.values + 2;
+                if( ur_is(val, UT_GETWORD) )
+                {
+                    if( ! (val = ur_wordCell( ut, val )) )
+                        return 0;
+                }
+
+                MAKE_WIDGET( STreeView )
+                pw->setRootIsDecorated( false );
+                pw->setModel( new UTreeModel( pw, hdr, val ) );
+            }
+                break;
+
             case LD_TEXT_EDIT_STR:
             case LD_TEXT_EDIT:
             {
-                if( ! parent.layout() )
-                    goto no_layout;
-
-                STextEdit* pw = new STextEdit;
-                parent.addWidget( pw );
-                setWID( setWord, pw->_wid );
-                wid = pw;
+                MAKE_WIDGET( STextEdit )
 
                 if( match == LD_TEXT_EDIT_STR )
                 {
@@ -650,17 +631,10 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
 
             case LD_GROUP:
             {
-                if( ! parent.layout() )
-                    goto no_layout;
-
-                SGroup* pw = new SGroup;
-                parent.addWidget( pw );
-                setWID( setWord, pw->_wid );
-                wid = pw;
+                MAKE_WIDGET( SGroup )
 
                 val = cbp.values + 1;
                 pw->setTitle( qstring( val ) );
-
                 ++val;
 
                 LayoutInfo lo2;
@@ -718,6 +692,9 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                     SCombo* combo = qobject_cast<SCombo*>( wid );
                     if( combo )
                         combo->setBlock( cbp.values );
+                    STreeView* tree = qobject_cast<STreeView*>( wid );
+                    if( tree )
+                        tree->setBlock( cbp.values );
                 }
                 break;
 
@@ -746,14 +723,8 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
 
             case LD_PROGRESS:
             {
-                if( ! parent.layout() )
-                    goto no_layout;
-
-                SProgress* pw = new SProgress;
-                parent.addWidget( pw );
-                setWID( setWord, pw->_wid );
+                MAKE_WIDGET( SProgress )
                 pw->setRange( 0, ur_int(cbp.values+1) );
-                wid = pw;
             }
                 break;
 
@@ -1155,6 +1126,14 @@ CFUNC( cfunc_widgetValue )
             }
                 return UR_OK;
 
+            case WT_TreeView:
+            {
+                QTreeView* tree = (QTreeView*) rec->widget;
+                QModelIndex mi = tree->currentIndex();
+                ((UTreeModel*) tree->model())->blockSlice( mi, res );
+            }
+                return UR_OK;
+
             default:
                 break;
         }
@@ -1228,6 +1207,8 @@ CFUNC( cfunc_setWidgetValue )
                 ((QTextEdit*) rec->widget)->setPlainText( txt );
             }
                 break;
+
+            //case WT_TreeView:
 
             case WT_Progress:
                 if( ur_is(a2, UT_INT) )
@@ -1412,6 +1393,7 @@ void boron_initQt( UThread* ut )
 
     ur_internAtoms( ut, "index event file", atoms );
 
+    // Create 'index context for combo/list code blocks.
     qEnv.comboCtxN = n = ur_makeContext( ut, 1 );
     ur_hold( n );
     ur_ctxAddWord( ur_buffer(n), atoms[0] );
@@ -1603,6 +1585,54 @@ void SCombo::slotDo( int index )
 
         ur_setId(&tmp, UT_BLOCK);
         ur_setSeries(&tmp, _blk.n, 0 );
+
+        boron_doBlockQt( ut, &tmp );
+    }
+}
+
+
+//----------------------------------------------------------------------------
+
+
+STreeView::STreeView()
+{
+    _wid = qEnv.pool.add( this, WT_TreeView );
+}
+
+
+STreeView::~STreeView()
+{
+    qEnv.pool.remove( _wid );
+}
+
+
+void STreeView::setBlock( const UCell* val )
+{
+    if( ! _blk.n )
+        connect( this, SIGNAL(activated(const QModelIndex&)),
+                 this, SLOT(slotDo(const QModelIndex&)) );
+
+    _blk.setBlock( val );
+
+    UThread* ut = UT;
+    ur_bind( ut, ur_buffer( _blk.n ),
+                 ur_buffer( qEnv.comboCtxN ), UR_BIND_THREAD );
+}
+
+
+void STreeView::slotDo( const QModelIndex& mi )
+{
+    // Call activate block with 'index set to model block! slice.
+    if( _blk.n )
+    {
+        UCell tmp;
+        UThread* ut = UT;
+
+        ((UTreeModel*) model())->blockSlice( mi,
+                                     ur_buffer(qEnv.comboCtxN)->ptr.cell );
+
+        ur_setId(&tmp, UT_BLOCK);
+        ur_setSeries(&tmp, _blk.n, _blk.index);
 
         boron_doBlockQt( ut, &tmp );
     }
