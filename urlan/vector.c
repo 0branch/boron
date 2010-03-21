@@ -267,6 +267,58 @@ void vector_pick( const UBuffer* buf, UIndex n, UCell* res )
 }
 
 
+/*
+  Returns number of floats set in fv.
+*/
+int vector_pickFloatV( const UBuffer* buf, UIndex n, float* fv, int count )
+{
+    if( (buf->used - n) < count )
+        count = buf->used - n;
+
+    switch( buf->form )
+    {
+        case UR_ATOM_I16:
+        case UR_ATOM_U16:
+        {
+            int16_t* it  = buf->ptr.i16 + n;
+            int16_t* end = it + count;
+            while( it != end )
+                *fv++ = (float) *it++;
+        }
+            break;
+
+        case UR_ATOM_I32:
+        case UR_ATOM_U32:
+        {
+            int32_t* it  = buf->ptr.i + n;
+            int32_t* end = it + count;
+            while( it != end )
+                *fv++ = (float) *it++;
+        }
+            break;
+
+        case UR_ATOM_F32:
+        {
+            float* it  = buf->ptr.f + n;
+            float* end = it + count;
+            while( it != end )
+                *fv++ = *it++;
+        }
+            break;
+
+        case UR_ATOM_F64:
+        {
+            double* it  = buf->ptr.d + n;
+            double* end = it + count;
+            while( it != end )
+                *fv++ = (float) *it++;
+        }
+            break;
+    }
+    return count;
+}
+
+
 static void vector_pokeInt( UBuffer* buf, UIndex n, int32_t val )
 {
     switch( buf->form )

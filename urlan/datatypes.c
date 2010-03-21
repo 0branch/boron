@@ -1029,6 +1029,8 @@ static void vec3_setf( UCell* res, float n )
 }
 
 
+extern int vector_pickFloatV( const UBuffer*, UIndex n, float* fv, int count );
+
 int vec3_make( UThread* ut, const UCell* from, UCell* res )
 {
     ur_setId(res, UT_VEC3);
@@ -1086,6 +1088,15 @@ int vec3_make( UThread* ut, const UCell* from, UCell* res )
                 if( ++len == 3 )
                     return UR_OK;
             }
+            while( len < 3 )
+                res->vec3.xyz[ len++ ] = 0.0f;
+        }
+            break;
+        case UT_VECTOR:
+        {
+            int len;
+            len = vector_pickFloatV( ur_bufferSer(from), from->series.it,
+                                     res->vec3.xyz, 3 );
             while( len < 3 )
                 res->vec3.xyz[ len++ ] = 0.0f;
         }
