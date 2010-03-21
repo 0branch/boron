@@ -253,12 +253,12 @@ void vector_pick( const UBuffer* buf, UIndex n, UCell* res )
 
             case UR_ATOM_F32:
                 ur_setId(res, UT_DECIMAL);
-                ur_int(res) = buf->ptr.f[ n ];
+                ur_decimal(res) = buf->ptr.f[ n ];
                 break;
 
             case UR_ATOM_F64:
                 ur_setId(res, UT_DECIMAL);
-                ur_int(res) = buf->ptr.d[ n ];
+                ur_decimal(res) = buf->ptr.d[ n ];
                 break;
         } 
     }
@@ -288,7 +288,7 @@ static void vector_pokeInt( UBuffer* buf, UIndex n, int32_t val )
         case UR_ATOM_F64:
             buf->ptr.d[ n ] = (double) val;
             break;
-    } 
+    }
 }
 
 
@@ -313,7 +313,56 @@ static void vector_pokeDouble( UBuffer* buf, UIndex n, double val )
         case UR_ATOM_F64:
             buf->ptr.d[ n ] = val;
             break;
-    } 
+    }
+}
+
+
+static void vector_pokeFloatV( UBuffer* buf, UIndex n,
+                               const float* fv, int count )
+{
+    if( (buf->used - n) < count )
+        count = buf->used - n;
+
+    switch( buf->form )
+    {
+        case UR_ATOM_I16:
+        case UR_ATOM_U16:
+        {
+            int16_t* it  = buf->ptr.i16 + n;
+            int16_t* end = it + count;
+            while( it != end )
+                *it++ = (int16_t) *fv++;
+        }
+            break;
+
+        case UR_ATOM_I32:
+        case UR_ATOM_U32:
+        {
+            int32_t* it  = buf->ptr.i + n;
+            int32_t* end = it + count;
+            while( it != end )
+                *it++ = (int32_t) *fv++;
+        }
+            break;
+
+        case UR_ATOM_F32:
+        {
+            float* it  = buf->ptr.f + n;
+            float* end = it + count;
+            while( it != end )
+                *it++ = *fv++;
+        }
+            break;
+
+        case UR_ATOM_F64:
+        {
+            double* it  = buf->ptr.d + n;
+            double* end = it + count;
+            while( it != end )
+                *it++ = (double) *fv++;
+        }
+            break;
+    }
 }
 
 
@@ -325,6 +374,8 @@ void vector_poke( UBuffer* buf, UIndex n, const UCell* val )
             vector_pokeDouble( buf, n, ur_decimal(val) );
         else if( ur_is(val, UT_CHAR) || ur_is(val, UT_INT) )
             vector_pokeInt( buf, n, ur_int(val) );
+        else if( ur_is(val, UT_VEC3) )
+            vector_pokeFloatV( buf, n, val->vec3.xyz, 3 );
     }
 }
 
@@ -365,8 +416,15 @@ int vector_append( UThread* ut, UBuffer* buf, const UCell* val )
         ur_vecAppend( buf, si.buf, si.it, si.end );
         return UR_OK;
     }
+    else if( vt == UT_VEC3 )
+    {
+        ur_arrReserve( buf, buf->used + 3 );
+        buf->used += 3;
+        vector_pokeFloatV( buf, buf->used - 3, val->vec3.xyz, 3 );
+        return UR_OK;
+    }
     return ur_error( ut, UR_ERR_TYPE,
-                     "append vector! expected char!/int!/decimal!/vector!" );
+                 "append vector! expected char!/int!/decimal!/vec3!/vector!" );
 }
 
 
