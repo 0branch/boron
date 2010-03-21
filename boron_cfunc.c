@@ -553,32 +553,39 @@ CFUNC(cfunc_infuse)
             return UR_OK; \
         } \
     } \
+    else if( ur_is(a1,UT_VEC3) && ur_is(ra,UT_VEC3) ) { \
+        ur_setId(res, UT_VEC3); \
+        res->vec3.xyz[0] = a1->vec3.xyz[0] OP ra->vec3.xyz[0]; \
+        res->vec3.xyz[1] = a1->vec3.xyz[1] OP ra->vec3.xyz[1]; \
+        res->vec3.xyz[2] = a1->vec3.xyz[2] OP ra->vec3.xyz[2]; \
+        return UR_OK; \
+    } \
     return ur_error( ut, UR_ERR_TYPE, "math operation expected numbers" ); \
 }
 
 
 /*-cf-
     add
-        a   int!/decimal!
-        b   int!/decimal!
+        a   int!/decimal!/vec3!
+        b   int!/decimal!/vec3!
     return: Sum of two numbers.
 */
 /*-cf-
     sub
-        a   int!/decimal!
-        b   int!/decimal!
+        a   int!/decimal!/vec3!
+        b   int!/decimal!/vec3!
     return: Difference of two numbers.
 */
 /*-cf-
     mul
-        a   int!/decimal!
-        b   int!/decimal!
+        a   int!/decimal!/vec3!
+        b   int!/decimal!/vec3!
     return: Product of two numbers.
 */
 /*-cf-
     div
-        a   int!/decimal!
-        b   int!/decimal!
+        a   int!/decimal!/vec3!
+        b   int!/decimal!/vec3!
     return: Quotient of a divided by b.
 */
 MATH_FUNC( cfunc_add, + )
