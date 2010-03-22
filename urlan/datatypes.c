@@ -3218,15 +3218,29 @@ int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
 
 void context_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
-    UAtom* atoms;
+#define ASTACK_SIZE 8
+    union {
+        UAtom* heap;
+        UAtom  stack[ ASTACK_SIZE ];
+    } atoms;
     UAtom* ait;
+    int alloced;
     const UBuffer* buf = ur_bufferSer(cell);
     const UCell* it  = buf->ptr.cell;
     const UCell* end = it + buf->used;
 
     // Get word atoms in order.
-    atoms = ait = (UAtom*) memAlloc( sizeof(UAtom) * buf->used );
-    ur_ctxWordAtoms( buf, atoms );
+    if( buf->used > ASTACK_SIZE )
+    {
+        alloced = 1;
+        atoms.heap = ait = (UAtom*) memAlloc( sizeof(UAtom) * buf->used );
+        ur_ctxWordAtoms( buf, atoms.heap );
+    }
+    else
+    {
+        alloced = 0;
+        ur_ctxWordAtoms( buf, ait = atoms.stack );
+    }
 
     while( it != end )
     {
@@ -3238,7 +3252,8 @@ void context_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
         ++it;
     }
 
-    memFree( atoms );
+    if( alloced )
+        memFree( atoms.heap );
 }
 
 
