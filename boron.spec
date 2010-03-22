@@ -1,6 +1,6 @@
 Summary: Scripting language and C library useful for building DSLs
 Name: boron
-Version: 0.1.2
+Version: 0.1.4
 Release: 1
 License: LGPLv3+
 # Vendor:
