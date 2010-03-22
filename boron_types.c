@@ -231,14 +231,14 @@ close_option:
             if( optArgs )
             {
                 optArgs = 0;
-                prog->ptr.b[ prevOptPos + 2 ] = prog->used - prevOptPos;
+                prog->ptr.b[ prevOptPos + 2 ] = prog->used - prevOptPos - 1;
             }
             break;
         }
     }
 
     if( optArgs )
-        prog->ptr.b[ prevOptPos + 2 ] = prog->used - prevOptPos;
+        prog->ptr.b[ prevOptPos + 2 ] = prog->used - prevOptPos - 1;
 
     if( optionCount )
     {
