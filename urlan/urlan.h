@@ -408,7 +408,7 @@ USeriesType;
 extern "C" {
 #endif
 
-UThread* ur_makeEnv( int atomLimit, UDatatype* dt, int dtCount,
+UThread* ur_makeEnv( int atomLimit, UDatatype** dtTable, unsigned int dtCount,
                      unsigned int thrSize,
                      void (*thrMethod)(UThread*,UThreadMethod) );
 void     ur_freeEnv( UThread* );

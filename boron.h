@@ -1,7 +1,7 @@
 #ifndef BORON_H
 #define BORON_H
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2010 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -26,7 +26,8 @@
 enum BoronDataType
 {
     UT_FUNC = UT_BI_COUNT,
-    UT_CFUNC
+    UT_CFUNC,
+    UT_BORON_COUNT
 };
 
 
@@ -48,7 +49,7 @@ enum BoronWordBindings
 extern "C" {
 #endif
 
-UThread* boron_makeEnv();
+UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount );
 void     boron_freeEnv( UThread* );
 void     boron_addCFunc( UThread*, int (*func)(UThread*,UCell*,UCell*),
                          const char* sig );

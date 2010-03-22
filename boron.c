@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009-2010 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -634,52 +634,25 @@ static const char setupScript[] =
 */
 
 
-/**
-  Make Boron environment and initial thread.
+/*
+  Adds the following three words for each type: type type? to-type.
+  The type atoms (type!) must already be interned.
 */
-UThread* boron_makeEnv()
+static void _addDatatypeWords( UThread* ut, int typeCount )
 {
-    UThread* ut = ur_makeEnv( 2048, boron_types,
-                              sizeof(boron_types) / sizeof(UDatatype),
-                              sizeof(BoronThread), boron_threadMethod );
-    if( ! ut )
-        return 0;
-
-
-    // Need to override some Urlan methods.
-    dt_context.make = context_make_override;
-
-
-    // Add some useful words.
-    {
-    UAtom atoms[ 3 ];
+    UBuffer* ctx;
     const char* typeName;
     char* cp;
     char name[32];
     char args[6];
-    UBuffer* ctx;
-    UCell* cell;
     int i;
-    int typeCount;
 
-    ur_internAtoms( ut, "none true false", atoms );
-    ctx = ur_threadContext( ut );
-
-    cell = ur_ctxAddWord( ctx, atoms[0] );
-    ur_setId(cell, UT_NONE);
-
-    cell = ur_ctxAddWord( ctx, atoms[1] );
-    ur_setId(cell, UT_LOGIC);
-    ur_int(cell) = 1;
-
-    cell = ur_ctxAddWord( ctx, atoms[2] );
-    ur_setId(cell, UT_LOGIC);
-    ur_int(cell) = 0;
 
     // Datatype words.
-    typeCount = UT_BI_COUNT + (sizeof(boron_types) / sizeof(UDatatype));
+    ctx = ur_threadContext( ut );
     for( i = 0; i < typeCount; ++i )
         ur_makeDatatype( ur_ctxAddWord(ctx, i), i );
+
 
     args[0] = ' ';
     args[1] = 'v';
@@ -710,7 +683,62 @@ UThread* boron_makeEnv()
         //printf( "KR cfunc %s\n", name );
         boron_addCFunc( ut, cfunc_to_type, name );
     }
+}
+
+
+/**
+  Make Boron environment and initial thread.
+
+  \param dtTable    Array of pointers to user defined datatypes.
+                    Pass zero if dtCount is zero.
+  \param dtCount    Number of datatypes in dtTable.
+*/
+UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
+{
+    UThread* ut;
+
+    {
+    UDatatype* table[ UT_MAX - UT_BI_COUNT ];
+    unsigned int i;
+
+    for( i = 0; i < (sizeof(boron_types) / sizeof(UDatatype)); ++i )
+        table[i] = boron_types + i;
+    for( dtCount += i; i < dtCount; ++i )
+        table[i] = *dtTable++;
+
+    ut = ur_makeEnv( 2048, table, dtCount,
+                     sizeof(BoronThread), boron_threadMethod );
     }
+    if( ! ut )
+        return 0;
+
+
+    // Need to override some Urlan methods.
+    dt_context.make = context_make_override;
+
+
+    // Add some useful words.
+    {
+    UAtom atoms[ 3 ];
+    UBuffer* ctx;
+    UCell* cell;
+
+    ur_internAtoms( ut, "none true false", atoms );
+    ctx = ur_threadContext( ut );
+
+    cell = ur_ctxAddWord( ctx, atoms[0] );
+    ur_setId(cell, UT_NONE);
+
+    cell = ur_ctxAddWord( ctx, atoms[1] );
+    ur_setId(cell, UT_LOGIC);
+    ur_int(cell) = 1;
+
+    cell = ur_ctxAddWord( ctx, atoms[2] );
+    ur_setId(cell, UT_LOGIC);
+    ur_int(cell) = 0;
+    }
+
+    _addDatatypeWords( ut, UT_BI_COUNT + dtCount );
 
 
     // Add C functions.

@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009-2010 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -274,9 +274,9 @@ extern UDatatype dt_timecode;
 
   \param atomLimit  Maximum number of atoms.
                     Memory usage is (20 * atomLimit) bytes.
-  \param dt         Pointer to array of user defined datatypes.
+  \param dtTable    Array of pointers to user defined datatypes.
                     Pass zero if dtCount is zero.
-  \param dtCount    Number of datatypes in dt.
+  \param dtCount    Number of datatypes in dtTable.
   \param thrSize    Byte size of each thread in the environment.
                     Pass zero if no extra memory is needed.
   \param thrMethod  Callback function to initialize and cleanup threads.
@@ -284,7 +284,7 @@ extern UDatatype dt_timecode;
 
   \return Pointer to initial thread.
 */
-UThread* ur_makeEnv( int atomLimit, UDatatype* dt, int dtCount,
+UThread* ur_makeEnv( int atomLimit, UDatatype** dtTable, unsigned int dtCount,
                      unsigned int thrSize,
                      void (*thrMethod)(UThread*, UThreadMethod) )
 {
@@ -377,9 +377,9 @@ UThread* ur_makeEnv( int atomLimit, UDatatype* dt, int dtCount,
     i = UT_BI_COUNT;
     if( dtCount )
     {
-        UDatatype* dtEnd = dt + dtCount;
-        for( ; dt != dtEnd; ++dt, ++i )
-            addDT( i, dt );
+        UDatatype** dtEnd = dtTable + dtCount;
+        for( ; dtTable != dtEnd; ++dtTable, ++i )
+            addDT( i, *dtTable );
     }
 
     // Add atoms so the fixed atoms remain constant as the number of

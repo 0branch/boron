@@ -18,7 +18,7 @@ CFUNC(printHello)
 
 int main()
 {
-    UThread* ut = boron_makeEnv();                  // Startup.
+    UThread* ut = boron_makeEnv( 0, 0 );            // Startup.
     if( ! ut )
         return -1;
 
