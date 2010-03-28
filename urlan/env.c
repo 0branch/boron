@@ -453,7 +453,7 @@ void ur_freeEnv( UThread* ut )
     mutexFree( env->mutex );
 
 
-    ur_arrFree( &env->dataStore );
+    _destroyDataStore( env, &env->dataStore );
 
     ur_binFree( &env->atomNames );
     ur_arrFree( &env->atomTable );
