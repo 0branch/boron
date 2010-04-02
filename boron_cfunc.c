@@ -2347,7 +2347,7 @@ CFUNC(cfunc_reduce)
 /*-cf-
     probe
         value
-    return: unset!
+    return: value
 
     Print value in its serialized form.
 */
@@ -2362,7 +2362,7 @@ CFUNC(cfunc_probe)
     putc( '\n', stdout );
     ur_strFree( &str );
 
-    ur_setId( res, UT_UNSET );
+    *res = *a1;
     return UR_OK;
 }
 
