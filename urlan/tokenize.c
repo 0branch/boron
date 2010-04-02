@@ -1027,6 +1027,10 @@ number:
                 case '-':
                     cell = ur_blkAppendNew( blk, UT_DATE );
                     ur_decimal(cell) = ur_stringToDate( token, end, &it );
+                    if( it == token )
+                    {
+                        syntaxError( "Invalid date" );
+                    }
                     break;
                 case '.':   // UT_DECIMAL, UT_VEC3
                     cell = ur_blkAppendNew( blk, UT_DECIMAL );
