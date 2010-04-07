@@ -2700,32 +2700,34 @@ int block_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 }
 
 
+/*
+  If depth is -1 then the outermost pair of braces will be omitted.
+*/
 void block_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     UBlockIter bi;
     const UCell* start;
-    int brace = ur_type(cell);
+    int brace = 0;
 
-    if( brace == UT_BLOCK )
+    if( depth > -1 )
     {
-        ur_strAppendChar( str, '[' );
-        brace = ']';
-    }
-    else if( brace == UT_PAREN )
-    {
-        ur_strAppendChar( str, '(' );
-        brace = ')';
-    }
+        switch( ur_type(cell) )
+        {
+            case UT_BLOCK:
+                ur_strAppendChar( str, '[' );
+                brace = ']';
+                break;
+            case UT_PAREN:
+                ur_strAppendChar( str, '(' );
+                brace = ')';
+                break;
 #ifdef UR_CONFIG_MACROS
-    else if( braceType == UT_MACRO )
-    {
-        ur_strAppendCStr( str, "^(" );
-        brace = ')';
-    }
+            case UT_MACRO:
+                ur_strAppendCStr( str, "^(" );
+                brace = ')';
+                break;
 #endif
-    else
-    {
-        brace = 0;
+        }
     }
 
     ur_blkSlice( ut, &bi, cell );
@@ -2750,7 +2752,8 @@ void block_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     if( (start != bi.end) && (start->id.flags & UR_FLAG_SOL) )
     {
         ur_strAppendChar( str, '\n' );
-        ur_strAppendIndent( str, depth );
+        if( brace )
+            ur_strAppendIndent( str, depth );
     }
 
     if( brace )
