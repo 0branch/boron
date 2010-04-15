@@ -1849,44 +1849,44 @@ void string_copy( UThread* ut, const UCell* from, UCell* res )
 }
 
 
-int string_make( UThread* ut, const UCell* from, UCell* res )
-{
-    int type = ur_type(from);
-    if( ur_isStringType(type) )
-    {
-        string_copy( ut, from, res );
-    }
-    else
-    {
-        UIndex n;
-        if( type == UT_INT )
-        {
-            n = ur_makeString( ut, UR_ENC_LATIN1, ur_int(from) );
-        }
-        else
-        {
-            n = ur_makeString( ut, UR_ENC_LATIN1, 0 );
-            DT( type )->toString( ut, from, ur_buffer(n), 0 );
-        }
-        ur_setId( res, UT_STRING );
-        ur_setSeries( res, n, 0 );
-    }
-    return UR_OK;
-}
-
- 
 int string_convert( UThread* ut, const UCell* from, UCell* res )
 {
     int type = ur_type(from);
     if( ur_isStringType(type) )
+    {
         string_copy( ut, from, res );
+    }
+    else if( type == UT_BINARY )
+    {
+        UBinaryIter bi;
+        UIndex n;
+
+        ur_binSlice( ut, &bi, from );
+        n = ur_makeStringUtf8( ut, bi.it, bi.end );
+
+        ur_setId( res, UT_STRING );
+        ur_setSeries( res, n, 0 );
+    }
     else
+    {
         DT( type )->toString( ut, from,
                               ur_makeStringCell(ut, UR_ENC_LATIN1, 0, res), 0 );
+    }
     return UR_OK;
 }
 
 
+int string_make( UThread* ut, const UCell* from, UCell* res )
+{
+    if( ur_is(from, UT_INT) )
+    {
+        ur_makeStringCell( ut, UR_ENC_LATIN1, ur_int(from), res );
+        return UR_OK;
+    }
+    return string_convert( ut, from, res );
+}
+
+ 
 #define COMPARE_IC(T) \
 int compare_ic_ ## T( const T* it, const T* end, \
         const T* itB, const T* endB ) { \
