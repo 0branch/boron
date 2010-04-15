@@ -68,7 +68,7 @@ int main( int argc, char** argv )
     int ret = 0;
 
 
-    ut = boron_makeEnv();
+    ut = boron_makeEnv( 0, 0 );
     if( ! ut )
     {
         printf( "boron_makeEnv failed\n" );
