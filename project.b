@@ -76,6 +76,8 @@ shlib %boron [
         %support/quickSortIndex.c
 
         %boron.c
+        %port_file.c
+        %port_socket.c
     ]
 
     macx  [sources [%unix/os.c]]

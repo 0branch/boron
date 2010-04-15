@@ -489,6 +489,117 @@ void cfunc_toShared( UCell* cell )
 
 
 //----------------------------------------------------------------------------
+// UT_PORT
+
+
+extern void binary_mark( UThread* ut, UCell* cell );
+extern void binary_toShared( UCell* cell );
+
+
+/**
+  Register port device.
+
+  \param dev    Pointer to UPortDevice.
+*/
+void boron_addPortDevice( UThread* ut, UPortDevice* dev, UAtom name )
+{
+    UBuffer* ctx = &ut->env->ports;
+    int n = ur_ctxAddWordI( ctx, name );
+    ((UPortDevice**) ctx->ptr.v)[ n ] = dev;
+    ur_ctxSort( ctx );
+}
+
+
+static UPortDevice* portLookup( UThread* ut, UAtom name )
+{
+    UBuffer* ctx = &ut->env->ports;
+    int n = ur_ctxLookup( ctx, name );
+    if( n < 0 )
+        return 0;
+    return ((UPortDevice**) ctx->ptr.v)[ n ];
+}
+
+
+int port_make( UThread* ut, const UCell* from, UCell* res )
+{
+    UPortDevice* pdev = 0;
+    UBuffer* buf;
+    UIndex bufN;
+    UAtom name = 0;
+
+    switch( ur_type(from) )
+    {
+        case UT_STRING:
+        {
+            const char* cp;
+            const char* url = boron_cstr( ut, from, 0 );
+
+            for( cp = url; *cp; ++cp )
+            {
+                if( cp[0] == ':' && cp[1] == '/' && cp[2] == '/' )
+                {
+                    name = ur_internAtom( ut, url, cp );
+                    break;
+                }
+            }
+            if( ! name )
+                return ur_error( ut, UR_ERR_SCRIPT,
+                                 "make port! expected URL" );
+            pdev = portLookup( ut, name );
+        }
+            break;
+
+        case UT_FILE:
+            pdev = &port_file;
+            break;
+
+        case UT_BLOCK:
+        {
+            UBlockIter bi;
+            ur_blkSlice( ut, &bi, from );
+            if( (bi.it == bi.end) || ! ur_is(bi.it, UT_WORD) )
+                return ur_error( ut, UR_ERR_SCRIPT,
+                                 "make port! expected device word in block" );
+            pdev = portLookup( ut, name = ur_atom(bi.it) );
+        }
+            break;
+
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                             "make port! expected string!/file!/block!" );
+    }
+
+    if( ! pdev )
+        return ur_error( ut, UR_ERR_SCRIPT, "Port type %s does not exist",
+                         ur_atomCStr(ut, name) );
+
+    ur_genBuffers( ut, 1, &bufN );
+    buf = ur_buffer( bufN );
+    buf->type  = UT_PORT;
+    buf->form  = UR_PORT_SIMPLE;
+    buf->ptr.v = pdev;
+
+    if( ! pdev->open( ut, buf, from ) )
+        return UR_THROW;
+
+    ur_setId(res, UT_PORT);
+    ur_setSeries(res, bufN, 0);
+    return UR_OK;
+}
+
+
+void port_destroy( UBuffer* buf )
+{
+    if( buf->ptr.v )
+    {
+        UPortDevice* dev = (buf->form == UR_PORT_SIMPLE) ?
+            (UPortDevice*) buf->ptr.v : *((UPortDevice**) buf->ptr.v);
+        dev->close( buf );
+    }
+}
+
+
+//----------------------------------------------------------------------------
 
 
 UDatatype boron_types[] =
@@ -508,6 +619,14 @@ UDatatype boron_types[] =
     unset_toString,         unset_toText,
     unset_recycle,          cfunc_mark,             unset_destroy,
     unset_markBuf,          cfunc_toShared,         unset_bind
+  },
+  {
+    "port!",
+    port_make,              unset_make,             unset_copy,
+    unset_compare,          unset_select,
+    unset_toString,         unset_toText,
+    unset_recycle,          binary_mark,            port_destroy,
+    unset_markBuf,          binary_toShared,        unset_bind
   },
 };
 

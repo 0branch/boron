@@ -20,6 +20,7 @@
 
 #include "boron.h"
 #include "os.h"
+#include "env.h"
 #include "urlan_atoms.h"
 #include "mem_util.h"
 #include "str.h"
@@ -88,6 +89,9 @@ enum BoronEvalCells
     BT_CELL_COUNT
 };
 
+
+extern UPortDevice port_file;
+extern UPortDevice port_socket;
 
 #include "boron_types.c"
 
@@ -548,6 +552,7 @@ static const char setupScript[] =
     "q: :quit  yes: true  no: false\n"
     "eq?: :equal?\n"
     "tail?: :empty?\n"
+    "close: :free\n"
     "context: func [b block!] [make context! b]\n"
     "charset: func [s string!] [make bitset! s]\n"
     "error: func [s string! /ghost] [throw make error! s]\n"
@@ -590,6 +595,11 @@ static const char setupScript[] =
         series
     return: logic!
     Same as empty?
+*/
+/*-hf- close
+        port
+    return: unset!
+    Same as free.
 */
 /*-hf- context
         spec block!
@@ -686,6 +696,9 @@ static void _addDatatypeWords( UThread* ut, int typeCount )
 }
 
 
+extern CFUNC_PUB( cfunc_set_addr );
+
+
 /**
   Make Boron environment and initial thread.
 
@@ -695,6 +708,7 @@ static void _addDatatypeWords( UThread* ut, int typeCount )
 */
 UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 {
+    UAtom atoms[ 6 ];
     UThread* ut;
 
     {
@@ -712,18 +726,43 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     if( ! ut )
         return 0;
 
-
     // Need to override some Urlan methods.
     dt_context.make = context_make_override;
 
 
+    ur_internAtoms( ut, "none true false file udp tcp", atoms );
+
+
+    // Register ports.
+#if 1
+    ur_ctxInit( &ut->env->ports, 4 );
+    boron_addPortDevice( ut, &port_file,   atoms[3] );
+    boron_addPortDevice( ut, &port_socket, atoms[4] );
+    boron_addPortDevice( ut, &port_socket, atoms[5] );
+#else
+    {
+    int i;
+    UPortDevice* pd;
+    UBuffer* ctx = &ut->env->ports;
+
+    ur_ctxInit( ctx, 4 );
+    for( i = 3; i < 6; ++i )
+        ur_ctxAppendWord( ctx, atoms[i] );
+    ur_ctxSort( ctx );
+
+    pd = (UPortDevice*) ctx->ptr.v;
+    pd[0] = &port_file;     // file
+    pd[1] = &port_socket;   // udp
+    pd[2] = &port_socket;   // tcp
+    }
+#endif
+
+
     // Add some useful words.
     {
-    UAtom atoms[ 3 ];
     UBuffer* ctx;
     UCell* cell;
 
-    ur_internAtoms( ut, "none true false", atoms );
     ctx = ur_threadContext( ut );
 
     cell = ur_ctxAddWord( ctx, atoms[0] );
@@ -829,6 +868,8 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_make_dir,   "make-dir path /all" );
     addCFunc( cfunc_current_dir,"current-dir" );
     addCFunc( cfunc_getenv,     "getenv val" );
+    addCFunc( cfunc_open,       "open from" );
+    addCFunc( cfunc_set_addr,   "set-addr p host n" );
     addCFunc( cfunc_read,       "read from /text /into b" );
     addCFunc( cfunc_write,      "write to data /append /text" );
     addCFunc( cfunc_delete,     "delete file" );
@@ -881,7 +922,11 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 */
 void boron_freeEnv( UThread* ut )
 {
-    ur_freeEnv( ut );
+    if( ut )
+    {
+        ur_ctxFree( &ut->env->ports );
+        ur_freeEnv( ut );
+    }
 }
 
 

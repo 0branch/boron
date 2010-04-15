@@ -2606,11 +2606,55 @@ CFUNC(cfunc_getenv)
 }
 
 
+/*-cf-
+    open
+        device  string!/file!/block!
+    return: port!
+
+    Create port!.
+*/
+//#define cfunc_open  port_make
+CFUNC(cfunc_open)
+{
+    return port_make( ut, a1, res );
+}
+
+
+#if 0
+/*
+    close
+        port    port!
+    return: unset!
+
+    Destroy port!.
+*/
+CFUNC(cfunc_close)
+{
+    UBuffer* buf;
+    if( ! ur_is(a1, UT_PORT) )
+        return ur_error( ut, UR_ERR_TYPE, "close expected port!" );
+    if( ! (buf = ur_bufferSerM(a1)) )
+        return UR_THROW;
+    DT( UT_PORT )->destroy( buf );
+    ur_setId(res, UT_UNSET);
+    return UR_OK;
+}
+#endif
+
+
+//dev = ((UPortDevice**) ut->env->ports.ptr.v)[ buf->form ]; 
+
+#define PORT_SITE(dev,pbuf,portC) \
+    UBuffer* pbuf = ur_buffer( portC->series.buf ); \
+    UPortDevice* dev = (pbuf->form == UR_PORT_SIMPLE) ? \
+        (UPortDevice*) pbuf->ptr.v : *((UPortDevice**) pbuf->ptr.v)
+
+
 extern int ur_readDir( UThread*, const char* filename, UCell* res );
 
 /*-cf-
     read
-        file    file!/string!
+        source  file!/string!/port!
         /text
         /into
             buffer  binary!/string!
@@ -2633,8 +2677,19 @@ CFUNC(cfunc_read)
     OSFileInfo info;
     uint32_t opt = CFUNC_OPTIONS;
 
+
+    if( ur_is(a1, UT_PORT) )
+    {
+        PORT_SITE(dev, pbuf, a1);
+        if( ! dev )
+            return errorScript( "cannot read from closed port" );
+        ur_setId(res, UT_NONE);
+        return dev->read( ut, pbuf, res, 0 );
+    }
+
     if( ! ur_isStringType( ur_type(a1) ) )
-        return errorType( "read expected file!/string!" );
+        return errorType( "read expected file!/string!/port! source" );
+
     filename = boron_cpath( ut, a1, 0 );
 
     if( ! ur_fileInfo( filename, &info, FI_Size | FI_Type ) )
@@ -2706,7 +2761,7 @@ CFUNC(cfunc_read)
 
 /*-cf-
     write
-        file    file!/string!
+        dest    file!/string!/port!
         data    binary!/string!/context!
         /append
         /text   Emit new lines with carriage returns on Windows.
@@ -2718,8 +2773,16 @@ CFUNC(cfunc_write)
 #define OPT_WRITE_TEXT      0x02
     const UCell* data = a2;
 
+    if( ur_is(a1, UT_PORT) )
+    {
+        PORT_SITE(dev, pbuf, a1);
+        if( ! dev )
+            return errorScript( "cannot write to closed port" );
+        return dev->write( ut, pbuf, data );
+    }
+
     if( ! ur_isStringType( ur_type(a1) ) )
-        return errorType( "write expected file!/string! filename" );
+        return errorType( "write expected file!/string!/port! dest" );
 
     if( ur_is(data, UT_CONTEXT) )
     {
@@ -3492,17 +3555,17 @@ CFUNC(cfunc_now)
 
 /*-cf-
     free
-        series
+        resource    series/port!
     return: unset!
 
-    Clear series and free its memory buffer.
+    Clear series and free its memory buffer or close port.
 */
 CFUNC(cfunc_free)
 {
     UBuffer* buf;
     int type = ur_type(a1);
-    if( ! ur_isSeriesType( type ) )
-        return errorType( "free expected series" );
+    if( ! ur_isSeriesType( type ) && (type != UT_PORT) )
+        return errorType( "free expected series/port!" );
     if( ! (buf = ur_bufferSerM(a1)) )
         return UR_THROW;
     DT( type )->destroy( buf );

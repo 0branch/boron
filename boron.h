@@ -27,6 +27,7 @@ enum BoronDataType
 {
     UT_FUNC = UT_BI_COUNT,
     UT_CFUNC,
+    UT_PORT,
     UT_BORON_COUNT
 };
 
@@ -45,6 +46,25 @@ enum BoronWordBindings
 #define CFUNC_OPTIONS   a1[-1].series.end
 
 
+enum PortForm
+{
+    UR_PORT_SIMPLE,     // buf->ptr.v is UPortDevice*.
+    UR_PORT_EXT,        // buf->ptr.v is UPortDevice**.
+};
+
+
+typedef struct UPortDevice  UPortDevice;
+
+struct UPortDevice
+{
+    int  (*open) ( UThread*, UBuffer*, const UCell* from );
+    void (*close)( UBuffer* );
+    int  (*read) ( UThread*, UBuffer*, UCell*, int part );
+    int  (*write)( UThread*, UBuffer*, const UCell* );
+    int  (*seek) ( UThread*, UBuffer*, UCell* );
+};
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -53,6 +73,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount );
 void     boron_freeEnv( UThread* );
 void     boron_addCFunc( UThread*, int (*func)(UThread*,UCell*,UCell*),
                          const char* sig );
+void     boron_addPortDevice( UThread*, UPortDevice*, UAtom name );
 void     boron_bindDefault( UThread*, UIndex blkN );
 int      boron_doCStr( UThread*, const char* cmd, int len );
 UCell*   boron_result( UThread* );
