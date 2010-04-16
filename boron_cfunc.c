@@ -2683,7 +2683,10 @@ CFUNC(cfunc_read)
         PORT_SITE(dev, pbuf, a1);
         if( ! dev )
             return errorScript( "cannot read from closed port" );
-        ur_setId(res, UT_NONE);
+        if( opt & OPT_READ_INTO )
+            *res = *a2;
+        else
+            ur_setId(res, UT_NONE);
         return dev->read( ut, pbuf, res, 0 );
     }
 
