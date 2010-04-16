@@ -461,6 +461,10 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 
 #include "boron_cfunc.c"
 
+#ifdef CONFIG_THREAD
+#include "boron_thread.c"
+#endif
+
 
 /**
   Add C function to the thread context.
@@ -893,6 +897,10 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_to_dec,     "to-dec n" );
     addCFunc( cfunc_now,        "now /date" );
     addCFunc( cfunc_free,       "free s" );
+#ifdef CONFIG_THREAD
+    addCFunc( cfunc_sleep,      "sleep n" );
+    addCFunc( cfunc_thread,     "thread body" );
+#endif
 #ifdef CONFIG_CHECKSUM
     addCFunc( cfunc_checksum,   "checksum val /sha1 /crc16 /crc32" );
 #endif

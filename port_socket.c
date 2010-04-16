@@ -24,10 +24,6 @@ static char* WSAGetLastErrorMessage()
 
 #else
 
-#ifdef __linux__
-#define __USE_POSIX
-#endif
-
 #include <errno.h>
 #include <string.h>
 #include <netdb.h>

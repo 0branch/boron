@@ -20,7 +20,7 @@ add_definitions(
     -DCONFIG_COMPRESS
     -DCONFIG_RANDOM
 #    -DCONFIG_TIMECODE
-#    -DCONFIG_NET
+    -DCONFIG_THREAD
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -61,6 +61,8 @@ add_library(boron-lib SHARED
     support/quickSortIndex.c
     support/well512.c
     boron.c
+    port_file.c
+    port_socket.c
     ${OS_FILE}
 )
 

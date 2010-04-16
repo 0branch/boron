@@ -4,6 +4,7 @@ checksum: true
 compress: true
 random:   true
 timecode: true
+thread:   true
 
 if exists? config: %project.config [do config]
 
@@ -21,8 +22,8 @@ default [
         universal
     ]
     unix [
-        cflags {-std=c99}
-        ;cflags {-std=gnu99}    ; Try this if c99 fails.
+        ;cflags {-std=c99}
+        cflags {-std=gnu99}    ; Try this if c99 fails.
         cflags {-pedantic}
     ]
     win32 [
@@ -46,6 +47,10 @@ shlib %boron [
     ]
     if timecode [
         cflags {-DCONFIG_TIMECODE}
+    ]
+    if thread [
+        cflags {-DCONFIG_THREAD}
+        linux [libs %pthread]
     ]
     ;cflags {-DTRACK_MALLOC} sources [%urlan/memtrack.c]
 
