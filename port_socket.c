@@ -316,12 +316,10 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from )
 
     if( socket > -1 )
     {
-        portBuf->form = UR_PORT_EXT;
         portBuf->TCP  = (ns.socktype == SOCK_STREAM) ? 1 : 0;
         portBuf->FD   = socket;
 
-        ext->dev = portBuf->ptr.v;
-        portBuf->ptr.v = ext;
+        boron_extendPort( portBuf, (UPortDevice**) ext );
 
         //printf( "KR socket_open %d %d\n", portBuf->FD, portBuf->TCP );
         return UR_OK;

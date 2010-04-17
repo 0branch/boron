@@ -51,6 +51,7 @@ shlib %boron [
     if thread [
         cflags {-DCONFIG_THREAD}
         linux [libs %pthread]
+        sources [%port_thread.c]
     ]
     ;cflags {-DTRACK_MALLOC} sources [%urlan/memtrack.c]
 

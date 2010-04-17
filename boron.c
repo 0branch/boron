@@ -92,6 +92,9 @@ enum BoronEvalCells
 
 extern UPortDevice port_file;
 extern UPortDevice port_socket;
+#ifdef CONFIG_THREAD
+extern UPortDevice port_thread;
+#endif
 
 #include "boron_types.c"
 
@@ -712,7 +715,7 @@ extern CFUNC_PUB( cfunc_set_addr );
 */
 UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 {
-    UAtom atoms[ 6 ];
+    UAtom atoms[ 7 ];
     UThread* ut;
 
     {
@@ -734,31 +737,16 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     dt_context.make = context_make_override;
 
 
-    ur_internAtoms( ut, "none true false file udp tcp", atoms );
+    ur_internAtoms( ut, "none true false file udp tcp thread", atoms );
 
 
     // Register ports.
-#if 1
     ur_ctxInit( &ut->env->ports, 4 );
     boron_addPortDevice( ut, &port_file,   atoms[3] );
     boron_addPortDevice( ut, &port_socket, atoms[4] );
     boron_addPortDevice( ut, &port_socket, atoms[5] );
-#else
-    {
-    int i;
-    UPortDevice* pd;
-    UBuffer* ctx = &ut->env->ports;
-
-    ur_ctxInit( ctx, 4 );
-    for( i = 3; i < 6; ++i )
-        ur_ctxAppendWord( ctx, atoms[i] );
-    ur_ctxSort( ctx );
-
-    pd = (UPortDevice*) ctx->ptr.v;
-    pd[0] = &port_file;     // file
-    pd[1] = &port_socket;   // udp
-    pd[2] = &port_socket;   // tcp
-    }
+#ifdef CONFIG_THREAD
+    boron_addPortDevice( ut, &port_thread, atoms[6] );
 #endif
 
 
@@ -899,7 +887,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_free,       "free s" );
 #ifdef CONFIG_THREAD
     addCFunc( cfunc_sleep,      "sleep n" );
-    addCFunc( cfunc_thread,     "thread body" );
+    addCFunc( cfunc_thread,     "thread body /port" );
 #endif
 #ifdef CONFIG_CHECKSUM
     addCFunc( cfunc_checksum,   "checksum val /sha1 /crc16 /crc32" );

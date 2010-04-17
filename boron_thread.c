@@ -93,21 +93,34 @@ static void* threadRoutine( void* arg )
 {
     UThread* ut = (UThread*) arg;
     UBuffer* bin = ur_buffer( BT->tempN );
-    boron_doCStr( ut, bin->ptr.c, bin->used );
+    if( ! boron_doCStr( ut, bin->ptr.c, bin->used ) )
+    {
+        UBuffer str;
+        UCell* ex = boron_exception( ut );
+        ur_strInit( &str, UR_ENC_UTF8, 0 );
+        ur_toText( ut, ex, &str );
+        ur_strTermNull( &str );
+        puts( str.ptr.c );
+        ur_strFree( &str );
+    }
     ur_destroyThread( ut );
     return 0;
 }
 
 
+extern void boron_installThreadPort( UThread*, const UCell*, UThread* );
+
 /*-cf-
     thread
         body    block!
-    return: unset!
+        /port   Create thread port
+    return: Thread port or unset!
 
     Create a new thread.
 */
 CFUNC( cfunc_thread )
 {
+#define OPT_THREAD_PORT 0x01
     OSThread osThr;
     UThread* child;
     UBuffer code;
@@ -145,6 +158,15 @@ CFUNC( cfunc_thread )
     ur_strFree( &code );
     }
 
+    ur_setId(res, UT_UNSET);
+
+    if( CFUNC_OPTIONS & OPT_THREAD_PORT )
+    {
+        if( ! ur_makePort( ut, &port_thread, res, res ) )
+            return UR_THROW;
+        boron_installThreadPort( ut, res, child );
+    }
+
 #ifdef _WIN32
     osThr = CreateThread( NULL, 0, threadRoutine, child, 0, &winId );
     if( osThr == NULL )
@@ -154,7 +176,12 @@ CFUNC( cfunc_thread )
     {
         return ur_error( ut, UR_ERR_INTERNAL, "Could not create thread" );
     }
-    ur_setId(res, UT_UNSET);
+
+#ifndef _WIN32
+    // Detach to automatically release thread memory when it exits.
+    pthread_detach( osThr );
+#endif
+
     return UR_OK;
 }
 

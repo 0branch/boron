@@ -74,6 +74,7 @@ void     boron_freeEnv( UThread* );
 void     boron_addCFunc( UThread*, int (*func)(UThread*,UCell*,UCell*),
                          const char* sig );
 void     boron_addPortDevice( UThread*, UPortDevice*, UAtom name );
+void     boron_extendPort( UBuffer* port, UPortDevice** ext );
 void     boron_bindDefault( UThread*, UIndex blkN );
 int      boron_doCStr( UThread*, const char* cmd, int len );
 UCell*   boron_result( UThread* );

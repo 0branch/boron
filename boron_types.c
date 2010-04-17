@@ -490,6 +490,15 @@ void cfunc_toShared( UCell* cell )
 
 //----------------------------------------------------------------------------
 // UT_PORT
+/*
+  UBuffer members:
+    type        UT_PORT
+    elemSize    Unused
+    form        UR_PORT_SIMPLE, UR_PORT_EXT
+    flags       Unused
+    used        Unused
+    ptr.v       UPortDevice* or UPortDevice**
+*/
 
 
 extern void binary_mark( UThread* ut, UCell* cell );
@@ -498,8 +507,10 @@ extern void binary_toShared( UCell* cell );
 
 /**
   Register port device.
+  A single device may be added multiple times with different names.
 
   \param dev    Pointer to UPortDevice.
+  \param name   Name of device.
 */
 void boron_addPortDevice( UThread* ut, UPortDevice* dev, UAtom name )
 {
@@ -507,6 +518,17 @@ void boron_addPortDevice( UThread* ut, UPortDevice* dev, UAtom name )
     int n = ur_ctxAddWordI( ctx, name );
     ((UPortDevice**) ctx->ptr.v)[ n ] = dev;
     ur_ctxSort( ctx );
+}
+
+
+/*
+  Called from UPortDevice::open() method if extended data is used.
+*/
+void boron_extendPort( UBuffer* port, UPortDevice** ext )
+{
+    port->form = UR_PORT_EXT;
+    *ext = port->ptr.v;
+    port->ptr.v = ext;
 }
 
 
@@ -520,11 +542,34 @@ static UPortDevice* portLookup( UThread* ut, UAtom name )
 }
 
 
+int ur_makePort( UThread* ut, UPortDevice* pdev, const UCell* from, UCell* res )
+{
+    UBuffer* buf;
+    UIndex bufN;
+
+    ur_genBuffers( ut, 1, &bufN );
+    buf = ur_buffer( bufN );
+
+    buf->type  = UT_PORT;
+    buf->form  = UR_PORT_SIMPLE;
+    buf->ptr.v = pdev;
+
+    if( ! pdev->open( ut, buf, from ) )
+    {
+        //buf = ur_buffer( bufN );    // Re-aquire
+        buf->ptr.v = 0;
+        return UR_THROW;
+    }
+
+    ur_setId(res, UT_PORT);
+    ur_setSeries(res, bufN, 0);
+    return UR_OK;
+}
+
+
 int port_make( UThread* ut, const UCell* from, UCell* res )
 {
     UPortDevice* pdev = 0;
-    UBuffer* buf;
-    UIndex bufN;
     UAtom name = 0;
 
     switch( ur_type(from) )
@@ -573,18 +618,7 @@ int port_make( UThread* ut, const UCell* from, UCell* res )
         return ur_error( ut, UR_ERR_SCRIPT, "Port type %s does not exist",
                          ur_atomCStr(ut, name) );
 
-    ur_genBuffers( ut, 1, &bufN );
-    buf = ur_buffer( bufN );
-    buf->type  = UT_PORT;
-    buf->form  = UR_PORT_SIMPLE;
-    buf->ptr.v = pdev;
-
-    if( ! pdev->open( ut, buf, from ) )
-        return UR_THROW;
-
-    ur_setId(res, UT_PORT);
-    ur_setSeries(res, bufN, 0);
-    return UR_OK;
+    return ur_makePort( ut, pdev, from, res );
 }
 
 
