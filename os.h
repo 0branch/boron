@@ -34,12 +34,17 @@
 
 typedef HANDLE              OSThread;
 typedef CRITICAL_SECTION    OSMutex;
+typedef CONDITION_VARIABLE  OSCond;
 
 #define mutexInitF(mh) \
     (InitializeCriticalSectionAndSpinCount(&mh,0x80000400) == 0)
 #define mutexFree(mh)       DeleteCriticalSection(&mh)
 #define mutexLock(mh)       EnterCriticalSection(&mh)
 #define mutexUnlock(mh)     LeaveCriticalSection(&mh)
+#define condInit(cond)      InitializeConditionVariable(&cond)
+#define condFree(cond)
+#define condWaitF(cond,mh)  (! SleepConditionVariableCS(&cond,&mh,INFINITE))
+#define condSignal(cond)    WakeConditionVariable(&cond)
 
 #else
 
@@ -51,11 +56,16 @@ typedef CRITICAL_SECTION    OSMutex;
 
 typedef pthread_t           OSThread;
 typedef pthread_mutex_t     OSMutex;
+typedef pthread_cond_t      OSCond;
 
 #define mutexInitF(mh)      (pthread_mutex_init(&mh,0) == -1)
 #define mutexFree(mh)       pthread_mutex_destroy(&mh)
 #define mutexLock(mh)       pthread_mutex_lock(&mh)
 #define mutexUnlock(mh)     pthread_mutex_unlock(&mh)
+#define condInit(cond)      pthread_cond_init(&cond,0)
+#define condFree(cond)      pthread_cond_destroy(&cond)
+#define condWaitF(cond,mh)  pthread_cond_wait(&cond,&mh)
+#define condSignal(cond)    pthread_cond_signal(&cond)
 
 #endif
 

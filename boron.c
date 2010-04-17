@@ -747,6 +747,9 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     boron_addPortDevice( ut, &port_socket, atoms[5] );
 #ifdef CONFIG_THREAD
     boron_addPortDevice( ut, &port_thread, atoms[6] );
+
+    // thread_queue() stores buffers in cells.
+    assert( sizeof(UBuffer) <= sizeof(UCell) );
 #endif
 
 

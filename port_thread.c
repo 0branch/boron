@@ -16,6 +16,8 @@ typedef struct
     UPortDevice* dev;
     OSMutex mutexA;
     OSMutex mutexB;
+    OSCond  condA;
+    OSCond  condB;
     UBuffer queueA;     // SIDE_A writes here.
     UBuffer queueB;     // SIDE_B writes here.
     UIndex  itA;
@@ -77,6 +79,8 @@ fail:
         mutexFree( ext->mutexA );
         goto fail;
     }
+    condInit( ext->condA );
+    condInit( ext->condB );
     ur_blkInit( &ext->queueA, UT_BLOCK, 0 );
     ur_blkInit( &ext->queueB, UT_BLOCK, 0 );
     ext->queueA.END_OPEN = 0;
@@ -123,6 +127,8 @@ static void thread_close( UBuffer* port )
     {
         mutexFree( ext->mutexA );
         mutexFree( ext->mutexB );
+        condFree( ext->condA );
+        condFree( ext->condB );
         ur_blkFree( &ext->queueA );
         ur_blkFree( &ext->queueB );
         memFree( port->ptr.v );
@@ -140,6 +146,9 @@ static UIndex thread_dequeue( UThread* ut, UBuffer* queue, UIndex it,
     {
         UBuffer* buf;
         UIndex bufN;
+
+        // NOTE: Mutex will by locked for a while if ur_genBuffers triggers
+        //       a recycle.
 
         ur_genBuffers( ut, 1, &bufN );
         dest->series.buf = bufN;
@@ -167,15 +176,29 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
     if( port->SIDE == SIDE_A )
     {
         mutexLock( ext->mutexB );
-        if( ext->itB < ext->queueB.used )
-            ext->itB = thread_dequeue( ut, &ext->queueB, ext->itB, dest );
+        while( ext->itB >= ext->queueB.used )
+        {
+            if( condWaitF( ext->condB, ext->mutexB ) )
+            {
+                mutexUnlock( ext->mutexB );
+                goto waitError;
+            }
+        }
+        ext->itB = thread_dequeue( ut, &ext->queueB, ext->itB, dest );
         mutexUnlock( ext->mutexB );
     }
     else
     {
         mutexLock( ext->mutexA );
-        if( ext->itA < ext->queueA.used )
-            ext->itA = thread_dequeue( ut, &ext->queueA, ext->itA, dest );
+        while( ext->itA >= ext->queueA.used )
+        {
+            if( condWaitF( ext->condA, ext->mutexA ) )
+            {
+                mutexUnlock( ext->mutexA );
+                goto waitError;
+            }
+        }
+        ext->itA = thread_dequeue( ut, &ext->queueA, ext->itA, dest );
         mutexUnlock( ext->mutexA );
     }
 
@@ -187,6 +210,10 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
     }
 
     return UR_OK;
+
+waitError:
+
+    return ur_error( ut, UR_ERR_INTERNAL, "thread_read condWait failed" );
 }
 
 
@@ -226,14 +253,20 @@ static int thread_write( UThread* ut, UBuffer* port, const UCell* data )
     {
         mutexLock( ext->mutexA );
         if( ext->queueA.END_OPEN )
+        {
             thread_queue( &ext->queueA, data, buf );
+            condSignal( ext->condA );
+        }
         mutexUnlock( ext->mutexA );
     }
     else
     {
         mutexLock( ext->mutexB );
         if( ext->queueB.END_OPEN )
+        {
             thread_queue( &ext->queueB, data, buf );
+            condSignal( ext->condB );
+        }
         mutexUnlock( ext->mutexB );
     }
     return UR_OK;
