@@ -131,6 +131,28 @@ static void thread_close( UBuffer* port )
 }
 
 
+static UIndex thread_dequeue( UThread* ut, UBuffer* queue, UIndex it,
+                              UCell* dest )
+{
+    *dest = queue->ptr.cell[ it ];
+    ++it;
+    if( ur_isSeriesType(ur_type(dest)) && ! ur_isShared( dest->series.buf ) )
+    {
+        UBuffer* buf;
+        UIndex bufN;
+
+        ur_genBuffers( ut, 1, &bufN );
+        dest->series.buf = bufN;
+        buf = ur_buffer( bufN );
+        memCpy( buf, queue->ptr.cell + it, sizeof(UBuffer) );
+        ++it;
+    }
+    if( it == queue->used )
+        it = queue->used = 0;
+    return it;
+}
+
+
 #define ur_unbind(c)    (c)->word.ctx = UR_INVALID_BUF
 
 static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
@@ -146,24 +168,14 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
     {
         mutexLock( ext->mutexB );
         if( ext->itB < ext->queueB.used )
-        {
-            *dest = ext->queueB.ptr.cell[ ext->itB ];
-            ++ext->itB;
-            if( ext->itB == ext->queueB.used )
-                ext->itB = ext->queueB.used = 0;
-        }
+            ext->itB = thread_dequeue( ut, &ext->queueB, ext->itB, dest );
         mutexUnlock( ext->mutexB );
     }
     else
     {
         mutexLock( ext->mutexA );
         if( ext->itA < ext->queueA.used )
-        {
-            *dest = ext->queueA.ptr.cell[ ext->itA ];
-            ++ext->itA;
-            if( ext->itA == ext->queueA.used )
-                ext->itA = ext->queueA.used = 0;
-        }
+            ext->itA = thread_dequeue( ut, &ext->queueA, ext->itA, dest );
         mutexUnlock( ext->mutexA );
     }
 
@@ -173,41 +185,55 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
         if( ur_binding(dest) == UR_BIND_THREAD )
             ur_unbind(dest);
     }
-    else if( ur_isSeriesType(type) )
-    {
-        if( ! ur_isShared( dest->series.buf ) )
-            ur_setId(dest, UT_NONE);
-    }
 
     return UR_OK;
 }
 
 
+static void thread_queue( UBuffer* queue, const UCell* data, UBuffer* buf )
+{
+    ur_arrReserve( queue, queue->used + 2 );
+    queue->ptr.cell[ queue->used ] = *data;
+    ++queue->used;
+    if( buf )
+    {
+        memCpy( queue->ptr.cell + queue->used, buf, sizeof(UBuffer) );
+        ++queue->used;
+
+        // Buffer is directly transferred through port to avoid copying.
+        buf->used  = 0;
+        buf->ptr.v = 0;
+    }
+}
+
+
 static int thread_write( UThread* ut, UBuffer* port, const UCell* data )
 {
+    UBuffer* buf;
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
-    (void) ut;
+    int type = ur_type(data);
 
-    /*
-    if( ur_type(data) > UT_OPTION )
+    if( ur_isSeriesType(type) && ! ur_isShared( data->series.buf ) )
     {
-        return ur_error( ut, UR_ERR_TYPE,
-                         "Cannot send buffers through thread port" );
+        buf = ur_bufferSerM( data );
+        if( ! buf )
+            return UR_THROW;
     }
-    */
+    else
+        buf = 0;
 
     if( port->SIDE == SIDE_A )
     {
         mutexLock( ext->mutexA );
         if( ext->queueA.END_OPEN )
-            ur_blkPush( &ext->queueA, data );
+            thread_queue( &ext->queueA, data, buf );
         mutexUnlock( ext->mutexA );
     }
     else
     {
         mutexLock( ext->mutexB );
         if( ext->queueB.END_OPEN )
-            ur_blkPush( &ext->queueB, data );
+            thread_queue( &ext->queueB, data, buf );
         mutexUnlock( ext->mutexB );
     }
     return UR_OK;
