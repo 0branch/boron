@@ -265,6 +265,27 @@ static int thread_write( UThread* ut, UBuffer* port, const UCell* data )
         buf = ur_bufferSerM( data );
         if( ! buf )
             return UR_THROW;
+
+        if( ur_isBlockType(type) )
+        {
+            UCell* it  = buf->ptr.cell;
+            UCell* end = it + buf->used;
+            while( it != end )
+            {
+                type = ur_type(it);
+                if( ur_isWordType(type) )
+                {
+                    if( ur_binding(it) == UR_BIND_THREAD )
+                        ur_unbind(it);
+                }
+                else if( ur_isSeriesType(type) )
+                {
+                    return ur_error( ut, UR_ERR_INTERNAL,
+                        "Cannot write block containing series to thread port" );
+                }
+                ++it;
+            }
+        }
     }
     else
         buf = 0;
