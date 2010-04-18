@@ -154,23 +154,14 @@ static void thread_close( UBuffer* port )
 }
 
 
-static UIndex thread_dequeue( UThread* ut, UBuffer* queue, UIndex it,
-                              UCell* dest )
+static UIndex thread_dequeue( UBuffer* queue, UIndex it, UCell* dest,
+                              UBuffer* transitBuf )
 {
     *dest = queue->ptr.cell[ it ];
     ++it;
     if( ur_isSeriesType(ur_type(dest)) && ! ur_isShared( dest->series.buf ) )
     {
-        UBuffer* buf;
-        UIndex bufN;
-
-        // NOTE: Mutex will by locked for a while if ur_genBuffers triggers
-        //       a recycle.
-
-        ur_genBuffers( ut, 1, &bufN );
-        dest->series.buf = bufN;
-        buf = ur_buffer( bufN );
-        memCpy( buf, queue->ptr.cell + it, sizeof(UBuffer) );
+        memCpy( transitBuf, queue->ptr.cell + it, sizeof(UBuffer) );
         ++it;
     }
     if( it == queue->used )
@@ -183,12 +174,11 @@ static UIndex thread_dequeue( UThread* ut, UBuffer* queue, UIndex it,
 
 static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
 {
+    UBuffer tbuf;
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
-    int type;
-    (void) ut;
     (void) part;
 
-    ur_setId(dest, UT_NONE);
+    tbuf.type = 0;
 
     if( port->SIDE == SIDE_A )
     {
@@ -201,7 +191,7 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
                 goto waitError;
             }
         }
-        ext->itB = thread_dequeue( ut, &ext->queueB, ext->itB, dest );
+        ext->itB = thread_dequeue( &ext->queueB, ext->itB, dest, &tbuf );
         mutexUnlock( ext->mutexB );
     }
     else
@@ -215,15 +205,28 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
                 goto waitError;
             }
         }
-        ext->itA = thread_dequeue( ut, &ext->queueA, ext->itA, dest );
+        ext->itA = thread_dequeue( &ext->queueA, ext->itA, dest, &tbuf );
         mutexUnlock( ext->mutexA );
     }
 
-    type = ur_type(dest);
-    if( ur_isWordType(type) )
+    if( tbuf.type )
     {
-        if( ur_binding(dest) == UR_BIND_THREAD )
-            ur_unbind(dest);
+        UIndex bufN;
+
+        dest->series.buf = UR_INVALID_BUF;
+        ur_genBuffers( ut, 1, &bufN );
+        dest->series.buf = bufN;
+
+        memCpy( ur_buffer( bufN ), &tbuf, sizeof(UBuffer) );
+    }
+    else
+    {
+        int type = ur_type(dest);
+        if( ur_isWordType(type) )
+        {
+            if( ur_binding(dest) == UR_BIND_THREAD )
+                ur_unbind(dest);
+        }
     }
 
     return UR_OK;
