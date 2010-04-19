@@ -400,14 +400,22 @@ static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int part )
         buf = ur_bufferSerM( dest );
         if( ! buf )
             return UR_THROW;
-        ur_binReserve( buf, len );
+        count = ur_testAvail( buf );
+        if( count < len )
+            ur_binReserve( buf, len );
+        else
+            len = count;
     }
     else if( ur_is(dest, UT_STRING) )
     {
         buf = ur_bufferSerM( dest );
         if( ! buf )
             return UR_THROW;
-        ur_arrReserve( buf, len );
+        count = ur_testAvail( buf );
+        if( count < len )
+            ur_arrReserve( buf, len );
+        else
+            len = count;
     }
 
     if( buf )
