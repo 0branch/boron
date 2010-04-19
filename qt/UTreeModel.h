@@ -9,7 +9,7 @@ class UTreeModel : public QAbstractItemModel
 {
 public:
 
-    UTreeModel( QObject* parent, const UCell* hdr, const UCell* data );
+    UTreeModel( QObject* parent, const UCell* hdr, const UCell* data = 0 );
     ~UTreeModel();
 
     QVariant data( const QModelIndex& , int role ) const;
@@ -19,6 +19,7 @@ public:
     int rowCount( const QModelIndex& parent ) const;
     int columnCount( const QModelIndex& parent ) const;
 
+    void setData( const UCell* data );
     void blockSlice( const QModelIndex& index, UCell* res );
 
 private:

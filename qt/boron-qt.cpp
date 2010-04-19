@@ -691,10 +691,16 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                 {
                     SCombo* combo = qobject_cast<SCombo*>( wid );
                     if( combo )
+                    {
                         combo->setBlock( cbp.values );
+                        break;
+                    }
                     STreeView* tree = qobject_cast<STreeView*>( wid );
                     if( tree )
+                    {
                         tree->setBlock( cbp.values );
+                        break;
+                    }
                 }
                 break;
 
@@ -856,21 +862,28 @@ CFUNC( cfunc_execExit )
 
 /*-cf-
     close
-        code int!/none!/logic!/word!
+        code int!/none!/logic!/word!/port!
     return: unset! or throws 'close.
 */
 CFUNC( cfunc_close )
 {
-    (void) res;
+    int type = ur_type(a1);
 
-    if( ur_is(a1, UT_INT) )
+    if( type == UT_INT )
     {
         WIDPool::REC* rec = qEnv.pool.record( ur_int(a1) );
         if( rec && (rec->type == WT_Dialog || rec->type == WT_Widget) )
             rec->widget->close();
-        ur_setId(res, UT_UNSET);
-        return UR_OK;
     }
+#if 1
+    else if( type == UT_PORT )      // Boron close (cfunc_free)
+    {
+        UBuffer* buf;
+        if( ! (buf = ur_bufferSerM(a1)) )
+            return UR_THROW;
+        ut->types[ type ]->destroy( buf );
+    }
+#endif
     else
     {
         if( qEnv.dialog )
@@ -881,6 +894,8 @@ CFUNC( cfunc_close )
         ur_blkAppendCells( ur_errorBlock(ut), a1, 1 );
         return boron_throwWord( ut, qEnv.atom_close );
     }
+    ur_setId(res, UT_UNSET);
+    return UR_OK;
 }
 
 
@@ -1208,7 +1223,12 @@ CFUNC( cfunc_setWidgetValue )
             }
                 break;
 
-            //case WT_TreeView:
+            case WT_TreeView:
+            {
+                QTreeView* tree = (QTreeView*) rec->widget;
+                ((UTreeModel*) tree->model())->setData( a2 );
+            }
+                break;
 
             case WT_Progress:
                 if( ur_is(a2, UT_INT) )
