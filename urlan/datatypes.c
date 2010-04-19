@@ -655,6 +655,8 @@ UDatatype dt_char =
 // UT_INT
 
 
+extern int64_t str_toInt64( const char*, const char*, const char** pos );
+
 int int_make( UThread* ut, const UCell* from, UCell* res )
 {
     ur_setId(res, UT_INT);
@@ -676,19 +678,20 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
         case UT_BIGNUM:
             ur_int(res) = (int32_t) bignum_l(from);
             break;
-#if 0
         case UT_STRING:
         {
             USeriesIter si;
             ur_seriesSlice( ut, &si, from );
-            ur_int(res) = (int32_t) str_toInt64( si.buf->ptr.b + si.it,
-                                                 si.buf->ptr.b + si.end, 0 );
+            if( ur_strIsUcs2(si.buf) )
+                ur_int(res) = 0;
+            else
+                ur_int(res) = (int32_t) str_toInt64(si.buf->ptr.c + si.it,
+                                                    si.buf->ptr.c + si.end, 0);
         }
             break;
-#endif
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                "make int! expected number or none!/logic!/char!" );
+                "make int! expected number or none!/logic!/char!/string!" );
     }
     return UR_OK;
 }
@@ -754,6 +757,8 @@ UDatatype dt_int =
 // UT_DECIMAL
 
 
+extern double str_toDouble( const char*, const char*, const char** pos );
+
 int decimal_make( UThread* ut, const UCell* from, UCell* res )
 {
     ur_setId(res, UT_DECIMAL);
@@ -775,9 +780,20 @@ int decimal_make( UThread* ut, const UCell* from, UCell* res )
         case UT_BIGNUM:
             ur_decimal(res) = bignum_d(from);
             break;
+        case UT_STRING:
+        {
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, from );
+            if( ur_strIsUcs2(si.buf) )
+                ur_decimal(res) = 0;
+            else
+                ur_decimal(res) = str_toDouble( si.buf->ptr.c + si.it,
+                                                si.buf->ptr.c + si.end, 0 );
+        }
+            break;
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                "make decimal! expected number or none!/logic!/char!" );
+                "make decimal! expected number or none!/logic!/char!/string!" );
     }
     return UR_OK;
 }
@@ -894,9 +910,21 @@ int bignum_make( UThread* ut, const UCell* from, UCell* res )
         case UT_BIGNUM:
             *res = *from;
             break;
+        case UT_STRING:
+        {
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, from );
+            ur_setId(res, UT_BIGNUM);
+            if( ur_strIsUcs2(si.buf) )
+                bignum_zero( res );
+            else
+                bignum_setl(res, str_toInt64( si.buf->ptr.c + si.it,
+                                              si.buf->ptr.c + si.end, 0) );
+        }
+            break;
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                "make bignum! expected number or none!/logic!/char!" );
+                "make bignum! expected number or none!/logic!/char!/string!" );
     }
     return UR_OK;
 }
