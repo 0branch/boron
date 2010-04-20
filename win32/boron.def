@@ -142,3 +142,4 @@ EXPORTS
     bignum_add              @140
     bignum_sub              @141
     bignum_mul              @142
+    vec3_setf               @143
