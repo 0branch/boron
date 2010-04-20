@@ -26,10 +26,13 @@
 #endif
 #ifdef BORON_GL
 #include "boron-gl.h"
+#define boron_makeEnv   boron_makeEnvGL
+#define boron_freeEnv   boron_freeEnvGL
+#define APPNAME     "Boron-GL"
+#else
+#define APPNAME     "Boron"
 #endif
 
-
-#define APPNAME     "Boron"
 
 #define ESC         27
 #define PRINT_MAX   156
@@ -72,10 +75,6 @@ int main( int argc, char** argv )
         puts( "boron_makeEnv failed" );
         return 70;      // EX_SOFTWARE
     }
-
-#ifdef BORON_GL
-    boron_initGL( ut );
-#endif
 
     ur_freezeEnv( ut );
 
@@ -289,9 +288,6 @@ prompt:
 
 quit:
 
-#ifdef BORON_GL
-    boron_freeGL( ut );
-#endif
     ur_strFree( &rstr );
     boron_freeEnv( ut );
 
