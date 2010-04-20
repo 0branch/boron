@@ -1219,7 +1219,11 @@ CFUNC( cfunc_setWidgetValue )
             {
                 QString txt;
                 cellToQString( a2, txt );
-                ((QTextEdit*) rec->widget)->setPlainText( txt );
+                QTextEdit* edit = (QTextEdit*) rec->widget;
+                if( txt[0] == '<' )
+                    edit->setHtml( txt );
+                else
+                    edit->setPlainText( txt );
             }
                 break;
 
