@@ -33,16 +33,8 @@
 
 #define SEARCH_LEN      5
 #define SORTED(buf)     buf->flags
-#define ENTRIES(buf)    ((WordEntry*) (buf->ptr.cell + ur_avail(buf)))
+#define ENTRIES(buf)    ((UAtomEntry*) (buf->ptr.cell + ur_avail(buf)))
 #define FORWARD         8
-
-
-typedef struct
-{
-    UAtom    atom;
-    uint16_t index;     // LIMIT: 65535 words per contex.
-}
-WordEntry;
 
 
 /** \struct UBindTarget
@@ -143,7 +135,7 @@ void ur_ctxReserve( UBuffer* buf, int size )
         na = (size < 4) ? 4 : size;
 
     mem = (uint8_t*) memAlloc( FORWARD +
-                               (sizeof(WordEntry) + sizeof(UCell)) * na  );
+                               (sizeof(UAtomEntry) + sizeof(UCell)) * na  );
     assert( mem );
 
     if( buf->ptr.b )
@@ -153,7 +145,7 @@ void ur_ctxReserve( UBuffer* buf, int size )
             uint8_t* dest = mem + FORWARD;
             memCpy( dest, buf->ptr.cell, buf->used * sizeof(UCell) );
             dest += na * sizeof(UCell);
-            memCpy( dest, ENTRIES(buf), buf->used * sizeof(WordEntry) );
+            memCpy( dest, ENTRIES(buf), buf->used * sizeof(UAtomEntry) );
         }
         memFree( buf->ptr.b - FORWARD );
     }
@@ -220,7 +212,7 @@ UBuffer* ur_ctxClone( UThread* ut, const UBuffer* src, UCell* cell )
     UBuffer* nc = ur_makeContextCell( ut, src->used, cell );
     UIndex hold = ur_hold( cell->context.buf );
 
-    memCpy( ENTRIES(nc), ENTRIES(src), src->used * sizeof(WordEntry) );
+    memCpy( ENTRIES(nc), ENTRIES(src), src->used * sizeof(UAtomEntry) );
     nc->used = src->used;
     ur_deepCopyCells( ut, nc->ptr.cell, src->ptr.cell, src->used );
 
@@ -266,7 +258,7 @@ void ur_ctxAppend( UBuffer* dest, const UBuffer* src )
     memCpy( ctx->ptr.cell, src->ptr.cell, usedB * sizeof(UCell) );
     memCpy( ctx->ptr.b + (availA * sizeof(UCell),
             ENTRIES(buf),
-            usedB * sizeof(WordEntry) );
+            usedB * sizeof(UAtomEntry) );
 }
 #endif
 
@@ -314,8 +306,8 @@ void ur_ctxWordAtoms( const UBuffer* ctx, UAtom* atoms )
 {
     if( ctx->used > 0 )
     {
-        const WordEntry* it = ENTRIES(ctx);
-        const WordEntry* end = it + ctx->used;
+        const UAtomEntry* it = ENTRIES(ctx);
+        const UAtomEntry* end = it + ctx->used;
         while( it != end )
         {
             atoms[it->index] = it->atom;
@@ -325,10 +317,13 @@ void ur_ctxWordAtoms( const UBuffer* ctx, UAtom* atoms )
 }
 
 
-/*
-   Returns index of atom in word block or -1 if not found.
+/**
+  Find an atom in a UAtomEntry table using a binary search.
+  The table must have been previously sorted with ur_atomsSort().
+
+  \return Index of atom in table or -1 if not found.
 */
-static int _binarySearch( const WordEntry* words, int count, UAtom atom )
+int ur_atomsSearch( const UAtomEntry* entries, int count, UAtom atom )
 {
     UAtom midAtom;
     int mid;
@@ -338,14 +333,14 @@ static int _binarySearch( const WordEntry* words, int count, UAtom atom )
     while( low <= high )
     {
         mid = ((unsigned int) (low + high)) >> 1;
-        midAtom = words[ mid ].atom;
+        midAtom = entries[ mid ].atom;
 
         if( midAtom < atom )
             low = mid + 1;
         else if( midAtom > atom )
             high = mid - 1;
         else
-            return words[ mid ].index;
+            return entries[ mid ].index;
     }
 
     // Atom not found.
@@ -364,12 +359,12 @@ static int _binarySearch( const WordEntry* words, int count, UAtom atom )
 */
 int ur_ctxLookupNoSort( const UBuffer* ctx, UAtom atom )
 {
-    const WordEntry* went = ENTRIES(ctx);
+    const UAtomEntry* went = ENTRIES(ctx);
 
     if( (ctx->used < SEARCH_LEN) || (! SORTED(ctx)) )
     {
-        const WordEntry* it  = went;
-        const WordEntry* end = went + ctx->used;
+        const UAtomEntry* it  = went;
+        const UAtomEntry* end = went + ctx->used;
         while( it != end )
         {
             if( it->atom == atom )
@@ -378,7 +373,7 @@ int ur_ctxLookupNoSort( const UBuffer* ctx, UAtom atom )
         }
         return -1;
     }
-    return _binarySearch( went, ctx->used, atom );
+    return ur_atomsSearch( went, ctx->used, atom );
 }
 
 
@@ -395,7 +390,7 @@ int ur_ctxLookupNoSort( const UBuffer* ctx, UAtom atom )
 int ur_ctxAppendWord( UBuffer* ctx, UAtom atom )
 {
     int wrdN;
-    WordEntry* went;
+    UAtomEntry* went;
 
 
     wrdN = ctx->used;
@@ -455,11 +450,19 @@ UCell* ur_ctxAddWord( UBuffer* ctx, UAtom atom )
     entries[a] = entries[b]; \
     entries[b] = swapTmp
 
-static void _quickSort( WordEntry* entries, int low, int high )
+/**
+  Perform quicksort on UAtomEntry table.
+  Pass low of 0 and high of (count - 1) to sort the entire table.
+
+  \param entries    Array of initialized UAtomEntry structs.
+  \param low        First entry in sort partition.
+  \param high       Last entry in sort partition.
+*/
+void ur_atomsSort( UAtomEntry* entries, int low, int high )
 {
     int i, j;
     UAtom val;
-    WordEntry swapTmp;
+    UAtomEntry swapTmp;
 
     if( low >= high )
         return;
@@ -476,8 +479,8 @@ static void _quickSort( WordEntry* entries, int low, int high )
         QS_SWAP( i, j );
     }
     QS_SWAP( low, j );
-    _quickSort( entries, low, j-1 );
-    _quickSort( entries, j+1, high );
+    ur_atomsSort( entries, low, j-1 );
+    ur_atomsSort( entries, j+1, high );
 }
 
 
@@ -495,7 +498,7 @@ UBuffer* ur_ctxSort( UBuffer* ctx )
     if( ! SORTED(ctx) )
     {
         if( ctx->used )
-            _quickSort( ENTRIES(ctx), 0, ctx->used - 1 );
+            ur_atomsSort( ENTRIES(ctx), 0, ctx->used - 1 );
         SORTED(ctx) = 1;
     }
     return ctx;
@@ -529,7 +532,7 @@ const UBuffer* ur_sortedContext( UThread* ut, const UCell* cell )
         return 0;
     }
 
-    _quickSort( ENTRIES(ctx), 0, ctx->used - 1 );
+    ur_atomsSort( ENTRIES(ctx), 0, ctx->used - 1 );
     SORTED(ctx) = 1;
     return ctx;
 }
@@ -548,14 +551,14 @@ const UBuffer* ur_sortedContext( UThread* ut, const UCell* cell )
 */
 int ur_ctxLookup( const UBuffer* ctx, UAtom atom )
 {
-    const WordEntry* went;
+    const UAtomEntry* went;
 
     if( ctx->used < SEARCH_LEN )
     {
         if( ctx->used )
         {
-            const WordEntry* it;
-            const WordEntry* end;
+            const UAtomEntry* it;
+            const UAtomEntry* end;
 
             it = went = ENTRIES(ctx);
             end = it + ctx->used;
@@ -574,14 +577,14 @@ int ur_ctxLookup( const UBuffer* ctx, UAtom atom )
         if( ! SORTED(ctx) )
         {
 #if 0
-            _quickSort( went, 0, ctx->used - 1 );
+            ur_atomsSort( went, 0, ctx->used - 1 );
             SORTED(ctx) = 1;
 #else
             assert( 0 && "Context is not sorted" );
             return -1;
 #endif
         }
-        return _binarySearch( went, ctx->used, atom );
+        return ur_atomsSearch( went, ctx->used, atom );
     }
 }
 

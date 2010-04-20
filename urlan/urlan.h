@@ -404,6 +404,14 @@ typedef struct
 USeriesType;
 
 
+typedef struct
+{
+    UAtom    atom;
+    uint16_t index;     // LIMIT: 65535 words per context.
+}
+UAtomEntry;
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -419,6 +427,8 @@ int      ur_datatypeCount( UThread* );
 UAtom    ur_internAtom( UThread*, const char* it, const char* end );
 UAtom*   ur_internAtoms( UThread*, const char* words, UAtom* atoms );
 const char* ur_atomCStr( UThread*, UAtom atom );
+void     ur_atomsSort( UAtomEntry* entries, int low, int high );
+int      ur_atomsSearch( const UAtomEntry* entries, int count, UAtom atom );
 void     ur_genBuffers( UThread*, int count, UIndex* index );
 void     ur_destroyBuffer( UThread*, UBuffer* );
 UIndex   ur_holdBuffer( UThread*, UIndex bufN );
