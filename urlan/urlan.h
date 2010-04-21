@@ -548,8 +548,6 @@ void     ur_arrFree( UBuffer* );
 void     ur_arrAppendInt32( UBuffer*, int32_t );
 void     ur_arrAppendFloat( UBuffer*, float );
 
-void     vec3_setf( UCell*, float );
-
 #ifdef __cplusplus
 }
 #endif

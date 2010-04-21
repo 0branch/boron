@@ -1064,7 +1064,7 @@ UDatatype dt_date =
 // UT_VEC3
 
 
-void vec3_setf( UCell* res, float n )
+static void vec3_setf( UCell* res, float n )
 {
     float* f = res->vec3.xyz;
     f[0] = f[1] = f[2] = n;
