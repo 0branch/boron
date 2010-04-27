@@ -594,6 +594,7 @@ int port_make( UThread* ut, const UCell* from, UCell* res )
         }
             break;
 
+        case UT_INT:
         case UT_FILE:
             pdev = &port_file;
             break;
@@ -611,7 +612,7 @@ int port_make( UThread* ut, const UCell* from, UCell* res )
 
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                             "make port! expected string!/file!/block!" );
+                             "make port! expected int!/string!/file!/block!" );
     }
 
     if( ! pdev )

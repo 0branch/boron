@@ -55,8 +55,6 @@ shlib %boron [
     ]
     ;cflags {-DTRACK_MALLOC} sources [%urlan/memtrack.c]
 
-    win32 [lflags "/def:win32\boron.def"]
-
     sources_from %urlan [
         %env.c
         %array.c
@@ -88,7 +86,11 @@ shlib %boron [
 
     macx  [sources [%unix/os.c]]
     unix  [sources [%unix/os.c]]
-    win32 [sources [%win32/os.c]]
+    win32 [
+        sources [%win32/os.c]
+        lflags "/def:win32\boron.def"
+        libs %ws2_32
+    ]
 ]
 
 exe %boron [

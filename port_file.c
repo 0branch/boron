@@ -23,9 +23,24 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#ifdef _WIN32
+#include <io.h>
+#include <stdio.h>
+#define open    _open
+#define close   _close
+#define read    _read
+#define write   _write
+#define lseek   _lseek
+#define S_IRUSR _S_IREAD
+#define S_IWUSR _S_IWRITE
+#define S_IRGRP 0
+#define S_IROTH 0
+#define ssize_t int
+#else
+#include <unistd.h>
+#endif
 
 
 #define FD  used
@@ -37,7 +52,15 @@ static int file_open( UThread* ut, UBuffer* port, const UCell* from )
     int flags;
     const char* path;
 
-    if( ur_is(from, UT_FILE) )
+    if( ur_is(from, UT_INT) )
+    {
+        // Standard I/O
+        // 0,1,2 - stdin, stdout, stderr
+        fd = ur_int(from);
+        if( fd < 0 || fd > 2 )
+            return ur_error( ut, UR_ERR_SCRIPT, "Cannot open std file %d", fd );
+    }
+    else if( ur_is(from, UT_FILE) )
     {
         path = boron_cstr( ut, from, 0 );
 

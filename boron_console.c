@@ -21,6 +21,9 @@
 #include "boron.h"
 #include "urlan_atoms.h"
 #include "str.h"
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
 
 
 #define APPNAME     "Boron"
@@ -112,6 +115,15 @@ usage_err:
     }
 
     ur_strInit( &rstr, UR_ENC_UTF8, 0 );
+
+#ifdef _WIN32
+    {
+    WORD wsver;
+    WSADATA wsdata;
+    wsver = MAKEWORD( 2, 2 );
+    WSAStartup( wsver, &wsdata );
+    }
+#endif
 
     if( fileN )
     {
@@ -272,6 +284,10 @@ quit:
 
     ur_strFree( &rstr );
     boron_freeEnv( ut );
+
+#ifdef _WIN32
+    WSACleanup();
+#endif
 
     return ret;
 }
