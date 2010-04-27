@@ -106,7 +106,7 @@
   \param str    String buffer to append to.
   \param depth  Indentation depth.
 */
-/** \fn const char (*UDatatype::recycle)(UThread*, int phase)
+/** \fn void (*UDatatype::recycle)(UThread*, int phase)
   Performs thread global garbage collection duties for the datatype.
   This is called twice from ur_recycle(), first with UR_RECYCLE_MARK, then
   with UR_RECYCLE_SWEEP.
