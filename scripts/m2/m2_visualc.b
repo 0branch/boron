@@ -144,11 +144,9 @@ exe_target: make target_env
         ;libs {user32}    ; gdi32
         if cfg/qt [
             append qt4-libs: copy cfg/qt [core main]
-            
             libs_from %"$(QTDIR)/lib" 
-                rejoin bind qt4-libs either cfg/debug
-                        [qt-debug-libraries]
-                        [qt-libraries]
+                rejoin bind qt4-libs
+                    either cfg/debug [qt-debug-libraries] [qt-libraries]
 
             libs {comdlg32 winspool advapi32 shell32 ole32}
         ]
@@ -241,6 +239,12 @@ shlib_target: make exe_target [
         do config
         ;cflags {-MT}
         lflags {/DLL}
+        if cfg/qt [
+            append qt4-libs: copy cfg/qt [core]
+            libs_from %"$(QTDIR)/lib" 
+                rejoin bind qt4-libs
+                    either cfg/debug [qt-debug-libraries] [qt-libraries]
+        ]
     ]
 ]
 
