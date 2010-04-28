@@ -29,6 +29,7 @@
 #define PRINT_MAX   156
 
 #ifdef _WIN32
+#include <winsock2.h>
 extern "C" void redirectIOToConsole();
 #define OPEN_CONSOLE    redirectIOToConsole();
 #else
@@ -109,6 +110,15 @@ int main( int argc, char** argv )
     }
 
     ur_strInit( &rstr, UR_ENC_UTF8, 0 );
+
+#ifdef _WIN32
+    {
+    WORD wsver;
+    WSADATA wsdata;
+    wsver = MAKEWORD( 2, 2 );
+    WSAStartup( wsver, &wsdata );
+    }
+#endif
 
     if( fileN )
     {
@@ -256,6 +266,10 @@ quit:
     ur_strFree( &rstr );
     boron_freeQt();
     boron_freeEnv( ut );
+
+#ifdef _WIN32
+    WSACleanup();
+#endif
 
     return ret;
 }

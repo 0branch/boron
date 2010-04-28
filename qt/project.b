@@ -18,6 +18,7 @@ exe %boron-qt [
     win32 [
         include_from %../win32
         sources_from %../win32 [%win32console.c]
+        libs %ws2_32
     ]
 
     sources [
