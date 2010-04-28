@@ -1,8 +1,8 @@
 #!/usr/bin/boron
 /*
 	M2 - A meta-make tool
-	Copyright 2001-2009 Karl Robillard
-	Version 1.0.0
+	Copyright 2001-2010 Karl Robillard
+	Version 1.0.1
 
 	TODO:
 		* Remove files outside the build directory from dist rule.
@@ -388,11 +388,15 @@ m2: context
 		]
 	]
 
+	var-name: func [name] [
+		; NMake does not allow '-' in variable names.
+		replace/all uppercase copy name '-' '_'
+	]
+
 	exe: func [{Builds executable rule.} basename blk]
 	[
 		add_target (make exe_target [
-				name: basename
-				uc_name: uppercase copy name
+				uc_name: var-name name: basename
 				cfg: make configuration []
 			]) blk
 	]
@@ -400,8 +404,7 @@ m2: context
 	lib: func [{Builds static library rule.} basename blk]
 	[
 		add_target (make lib_target [
-				name: basename
-				uc_name: join "LIB_" uppercase copy name
+				uc_name: join "LIB_" var-name name: basename
 				cfg: make configuration []
 			]) blk
 
@@ -411,8 +414,7 @@ m2: context
 	shlib: func [{Builds shared library rule.} basename blk]
 	[
 		add_target (make shlib_target [
-				name: basename
-				uc_name: join "SLIB_" uppercase copy name
+				uc_name: join "SLIB_" var-name name: basename
 				cfg: make configuration []
 			]) blk
 	]
@@ -420,8 +422,7 @@ m2: context
 	rule: func [{Builds generic make rule.} basename blk]
 	[
 		add_target (make rule_target [
-				name: basename
-				uc_name: uppercase copy name
+				uc_name: var-name name: basename
 				cfg: make configuration []
 			]) blk
 	]
