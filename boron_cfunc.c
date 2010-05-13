@@ -2990,6 +2990,30 @@ check_str:
 }
 
 
+/*-cf-
+    save
+        dest    file!/string!/port!
+        data
+    return: unset!
+*/
+CFUNC(cfunc_save)
+{
+    UCell args[3];
+    UBuffer* str;
+
+    ur_setId(args, UT_LOGIC);
+    OPT_BITS(args) = 0;             // Clear options.
+
+    args[1] = *a1;
+
+    str = ur_makeStringCell( ut, UR_ENC_UTF8, 0, res );
+    ur_toStr( ut, a2, str, -1 );
+    args[2] = *res;
+
+    return cfunc_write( ut, args + 1, res );
+}
+
+
 extern int ur_parseBlock( UThread* ut, UBuffer*, UIndex start, UIndex end,
                           UIndex* parsePos, const UBuffer* ruleBlk,
                           int (*eval)( UThread*, const UCell* ) );

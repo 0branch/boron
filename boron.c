@@ -870,6 +870,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_delete,     "delete file" );
     addCFunc( cfunc_rename,     "rename a b" );
     addCFunc( cfunc_load,       "load from" );
+    addCFunc( cfunc_save,       "save to data" );
     addCFunc( cfunc_parse,      "parse input rules /case" );
     addCFunc( cfunc_sameQ,      "same? a b" );
     addCFunc( cfunc_equalQ,     "equal? a b" );
