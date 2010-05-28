@@ -422,7 +422,7 @@ UThread* ur_makeEnv( int atomLimit, UDatatype** dtTable, unsigned int dtCount,
 void     ur_freeEnv( UThread* );
 void     ur_freezeEnv( UThread* );
 UThread* ur_makeThread( const UThread* );
-void     ur_destroyThread( UThread* );
+int      ur_destroyThread( UThread* );
 int      ur_datatypeCount( UThread* );
 UAtom    ur_internAtom( UThread*, const char* it, const char* end );
 UAtom*   ur_internAtoms( UThread*, const char* words, UAtom* atoms );

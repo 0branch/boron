@@ -158,7 +158,7 @@ static void _destroyDataStore( UEnv* env, UBuffer* store )
 /*
    Free memory used by UThread.
 
-   This does NOT remove the thread from the environemnt thread list.
+   This does NOT remove the thread from the environment thread list.
    ur_destroyThread() must be used for that.
 */
 static void _threadFree( UThread* ut )
@@ -190,14 +190,17 @@ UThread* ur_makeThread( const UThread* ut )
   called.
 
   \param ut Thread created with ur_makeThread()
+
+  \return Non-zero if ur_freeEnv() is called.
 */
-void ur_destroyThread( UThread* ut )
+int ur_destroyThread( UThread* ut )
 {
     if( ! ut )
         return;
     if( ut == ut->nextThread )
     {
         ur_freeEnv( ut );
+        return 1;
     }
     else
     {
@@ -216,6 +219,7 @@ void ur_destroyThread( UThread* ut )
         UNLOCK_GLOBAL
 
         _threadFree( ut );
+        return 0;
     }
 }
 
