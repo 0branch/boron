@@ -779,9 +779,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 
 #define addCFunc(func,spec)    boron_addCFunc(ut, func, spec)
 
-#ifdef DEBUG
     addCFunc( cfunc_nop,     "nop" );
-#endif
     addCFunc( cfunc_quit,    "quit" );
     addCFunc( cfunc_halt,    "halt" );
     addCFunc( cfunc_return,  "return val" );

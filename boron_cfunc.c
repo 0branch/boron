@@ -38,16 +38,21 @@
 #define a3  (a1 + 2)
 
 
-#ifdef DEBUG
+/*
+  Undocumented debug function.
+*/
 CFUNC(cfunc_nop)
 {
     (void) ut;
     (void) a1;
+#if 1
+    (void) res;
+#else
     // Must set result to something; it may be uninitialized.
     ur_setId(res, UT_UNSET);
+#endif
     return UR_OK;
 }
-#endif
 
 
 /*-cf-
