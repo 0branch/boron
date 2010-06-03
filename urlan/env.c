@@ -196,7 +196,7 @@ UThread* ur_makeThread( const UThread* ut )
 int ur_destroyThread( UThread* ut )
 {
     if( ! ut )
-        return;
+        return 0;
     if( ut == ut->nextThread )
     {
         ur_freeEnv( ut );

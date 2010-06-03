@@ -484,6 +484,20 @@ int none_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+int none_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    (void) ut;
+    switch( test )
+    {
+        case UR_COMPARE_SAME:
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            return ur_type(a) == ur_type(b);
+    }
+    return 0;
+}
+
+
 void none_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) ut;
@@ -497,7 +511,7 @@ UDatatype dt_none =
 {
     "none!",
     none_make,              none_make,              unset_copy,
-    unset_compare,          unset_select,
+    none_compare,           unset_select,
     none_toString,          none_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
