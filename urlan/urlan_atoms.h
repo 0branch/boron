@@ -3,7 +3,15 @@
 
 enum UrlanFixedAtoms
 {
-    UR_ATOM_QUIT = 64,
+    UR_ATOM_NONE = 64,
+    UR_ATOM_TRUE,
+    UR_ATOM_FALSE,
+    UR_ATOM_ON,
+    UR_ATOM_OFF,
+    UR_ATOM_YES,
+    UR_ATOM_NO,
+
+    UR_ATOM_QUIT,
     UR_ATOM_HALT,
     UR_ATOM_RETURN,
     UR_ATOM_BREAK,

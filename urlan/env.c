@@ -402,8 +402,9 @@ UThread* ur_makeEnv( int atomLimit, UDatatype** dtTable, unsigned int dtCount,
 
     // Intern commonly used atoms.
     {
-    UAtom atoms[ 43 ];
+    UAtom atoms[ 50 ];
     ur_internAtoms( ut,
+                    "none true false on off yes no\n"
                     "quit halt return break ghost words\n"
                     "latin1 utf8 ucs2\n"
                     "+ - / * = < > <= >=\n"
