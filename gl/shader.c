@@ -248,6 +248,7 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
 
             ++pi;
         }
+        ur_ctxSort( ctx );
     }
 
     ur_genBuffers( ut, 1, &bufN );
