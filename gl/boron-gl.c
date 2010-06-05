@@ -62,34 +62,35 @@ TexFont* ur_texFontV( UThread* ut, const UCell* cell )
 static void eventHandler( GLView* view, GLViewEvent* event )
 {
     struct GLEnv* env = (struct GLEnv*) view->user;
+    GWidget* wp = env->eventWidget;
 
     switch( event->type )
     {
-#if 0
+        /*
         case GLV_EVENT_RESIZE:
-#if 0
             env->view_wd     = (double) view->width;
             env->view_hd     = (double) view->height;
             env->view_aspect = env->view_wd / env->view_hd;
-#endif
-            //gui_resizeRootArea( &glEnv.gui, view->width, view->height );
+            break;
+        */
+        case GLV_EVENT_CLOSE:
+            if( ! wp )
+            {
+                boron_throwWord( env->guiUT, UR_ATOM_QUIT );
+                UR_GUI_THROW;   // Ignores any later events.
+                return;
+            }
             break;
 
-        case GLV_EVENT_CLOSE:
-            gEnv.running = 0;
-            glv_setEventHandler( gView, 0 );    // Ignore any later events.
-            break;
-#endif
         case GLV_EVENT_FOCUS_IN:
             // Unset prevMouseX to prevent large delta jump.
             env->prevMouseX = MOUSE_UNSET;
             break;
-
+        /*
         case GLV_EVENT_FOCUS_OUT:
             break;
-
+        */
         case GLV_EVENT_MOTION:
-#if 1
             // Set mouse deltas here so no one else needs to calculate them.
             if( env->prevMouseX == MOUSE_UNSET )
             {
@@ -103,27 +104,18 @@ static void eventHandler( GLView* view, GLViewEvent* event )
             }
             env->prevMouseX = event->x;
             env->prevMouseY = event->y;
-#endif
-            // fall through...
-/*
+            break;
+        /*
         case GLV_EVENT_BUTTON_DOWN:
         case GLV_EVENT_BUTTON_UP:
         case GLV_EVENT_WHEEL:
         case GLV_EVENT_KEY_DOWN:
         case GLV_EVENT_KEY_UP:
-*/
-        default:
-        {
-            //gui_dispatch( &glEnv.gui, event );
-
-            if( env->rootWidgets.used )
-            {
-                GWidget* wp = ((GWidget**) env->rootWidgets.ptr.v)[0];
-                wp->wclass->dispatch( env->guiUT, wp, event );
-            }
-        }
-            break;
+        */
     }
+
+    if( wp )
+        wp->wclass->dispatch( env->guiUT, wp, event );
 }
 
 
@@ -316,6 +308,7 @@ CFUNC( uc_text_size )
 
 /*-cf-
     handle-events
+        widget  none!/widget!
         /wait
     return: unset!
 */
@@ -323,8 +316,7 @@ CFUNC( uc_handle_events )
 {
     (void) ut;
 
-    // Set handler in case UR_GUI_THROW has removed it.
-    glv_setEventHandler( gView, eventHandler );
+    glEnv.eventWidget = ur_is(a1, UT_WIDGET) ? ur_widgetPtr(a1) : 0;
 
     if( CFUNC_OPTIONS & 1 )
         glv_waitEvent( gView );
@@ -333,6 +325,8 @@ CFUNC( uc_handle_events )
     if( glEnv.guiThrow )
     {
         glEnv.guiThrow = 0;
+        // Restore handler removed by UR_GUI_THROW.
+        glv_setEventHandler( gView, eventHandler );
         return UR_THROW;
     }
 
@@ -1857,7 +1851,9 @@ extern GWidgetClass wclass_button;
 
 UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
 {
+#ifdef __linux__
     static char joyStr[] = "joystick";
+#endif
     UThread* ut;
     const GLubyte* gstr;
 
@@ -1902,7 +1898,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     /*
     addCFunc( uc_text_size,      "text-size" );
     */
-    addCFunc( uc_handle_events,  "handle-events /wait" );
+    addCFunc( uc_handle_events,  "handle-events wid /wait" );
     addCFunc( uc_clear_color,    "clear-color color" );
     addCFunc( uc_display_swap,   "display-swap" );
     addCFunc( uc_display_area,   "display-area" );
@@ -1957,7 +1953,11 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
 #endif
 
 #ifndef NO_AUDIO
-    aud_startup();
+    {
+    char* var = getenv( "BORON_GL_AUDIO" );
+    if( ! var || (var[0] != '0') )
+        aud_startup();
+    }
 #endif
 
     gView = glv_create( GLV_ATTRIB_DOUBLEBUFFER | GLV_ATTRIB_MULTISAMPLE );

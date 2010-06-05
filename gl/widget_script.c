@@ -69,7 +69,8 @@ static void remapKeys( UThread* ut, const UCell* cell )
         ur_blkSliceM( ut, &bi, cell );
         ur_foreach( bi )
         {
-            if( ur_is(bi.it, UT_BLOCK) )
+            // Skip code blocks and previously mapped keys (ints).
+            if( ur_is(bi.it, UT_BLOCK) || ur_is(bi.it, UT_INT) )
                 continue;
             uc_key_code( ut, bi.it, bi.it );
         }

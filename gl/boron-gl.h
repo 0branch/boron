@@ -117,6 +117,7 @@ struct GLEnv
 {
     GLView* view;
     UAtomEntry* drawOpTable;
+    GWidget* eventWidget;
     UThread* guiUT;
     UBuffer tmpStr;
     UBuffer widgetClasses;

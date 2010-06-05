@@ -25,6 +25,7 @@
 #include <winsock2.h>
 #endif
 #ifdef BORON_GL
+#include <stdlib.h>
 #include "boron-gl.h"
 #define boron_makeEnv   boron_makeEnvGL
 #define boron_freeEnv   boron_freeEnvGL
@@ -43,9 +44,12 @@ void usage( const char* arg0 )
     printf( APPNAME " %s (%s)\n\n", UR_VERSION_STR, __DATE__ );
     printf( "Usage: %s [options] [script] [arguments]\n\n", arg0 );
     printf( "Options:\n"
-          //"  -s      Disable security\n"
+#ifdef BORON_GL
+            "  -audio  Disable audio\n"
+#endif
             "  -e exp  Evaluate expression\n"
             "  -h      Show this help and exit\n"
+          //"  -s      Disable security\n"
           );
 }
 
@@ -69,16 +73,7 @@ int main( int argc, char** argv )
     int ret = 0;
 
 
-    ut = boron_makeEnv( 0, 0 );
-    if( ! ut )
-    {
-        puts( "boron_makeEnv failed" );
-        return 70;      // EX_SOFTWARE
-    }
-
-    ur_freezeEnv( ut );
-
-
+    // Parse arguments.
     if( argc > 1 )
     {
         int i;
@@ -91,6 +86,11 @@ int main( int argc, char** argv )
             {
                 switch( arg[1] )
                 {
+#ifdef BORON_GL
+                    case 'a':
+                        setenv( "BORON_GL_AUDIO", "0", 1 );
+                        break;
+#endif
                     case 'e':
                         if( ++i >= argc )
                             goto usage_err;
@@ -120,6 +120,16 @@ usage_err:
         }
     }
 
+
+    ut = boron_makeEnv( 0, 0 );
+    if( ! ut )
+    {
+        puts( "boron_makeEnv failed" );
+        return 70;      // EX_SOFTWARE
+    }
+    ur_freezeEnv( ut );
+
+
     ur_strInit( &rstr, UR_ENC_UTF8, 0 );
 
 #ifdef _WIN32
@@ -134,15 +144,15 @@ usage_err:
     if( fileN )
     {
         char* pos;
-        int exp;
+        int expression;
 
         if( fileN < 0 )
         {
             fileN = -fileN;
-            exp = 1;
+            expression = 1;
         }
         else
-            exp = 0;
+            expression = 0;
 
         pos = cmd;
         cmd[ sizeof(cmd) - 1 ] = -1;
@@ -166,7 +176,7 @@ usage_err:
             pos = str_copy( pos, "args: none " );
         }
 
-        if( exp )
+        if( expression )
         {
             pos = str_copy( pos, argv[fileN] );
         }
