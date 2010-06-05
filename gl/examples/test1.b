@@ -73,7 +73,7 @@ font-dl: draw-list [
     text 10,300 "Hello World!"
 ]
 
-main-dl: draw-list [
+demo-exec draw-list [
     clear
 
     camera view-cam
@@ -81,18 +81,4 @@ main-dl: draw-list [
 
     camera ortho-cam
     call font-dl
-]
-
-
-window: make widget! demo-window
-;js: open [joystick]
-
-while [true] [
-    ;draw window
-    draw main-dl
-    display-swap
-
-    ;while [ev: read js] [probe ev]
-    ;sleep 0.3
-    handle-events/wait window
 ]

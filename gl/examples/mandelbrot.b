@@ -58,7 +58,7 @@ void main() {
 
 cube-dl: draw-list load %data/model/box_tex.b
 
-main-dl: draw-list [
+demo-exec draw-list [
     clear
 
     camera view-cam
@@ -70,13 +70,6 @@ main-dl: draw-list [
     ;camera ortho-cam
     ;shader matte-sh
     ;call timer-bar-dl
-]
-
-window: make widget! demo-window
-while [true] [
-    draw main-dl
-    display-swap
-    handle-events/wait window
 ]
 
 ;eof

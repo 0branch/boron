@@ -68,6 +68,15 @@ view-cam: make camera [
     turntable 0 0
 ]
 
+demo-exec: func [dl | window] [
+    window: make widget! demo-window
+    while [true] [
+        draw dl
+        display-swap
+        handle-events/wait window
+    ]
+]
+
 while [true] [
     ex: catch load first args
     ifn eq? 'reload ex [
