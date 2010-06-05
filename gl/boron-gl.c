@@ -1052,16 +1052,17 @@ CFUNC( uc_look_at )
 }
 
 
-#ifdef KR_TODO
-#define INTERP(R,A,B)     R = A + (B - A) * frac;
-
 /*
    res may be v1 or v2.
 
    \return non-zero if successful.
 */
-static int _lerpCells( UCell* v1, UCell* v2, double frac, UCell* res )
+static int _lerpCells( const UCell* v1, const UCell* v2, double frac,
+                       UCell* res )
 {
+#define INTERP(R,A,B)   R = A + (B - A) * frac;
+#define V3(cell,n)      cell->vec3.xyz[n]
+
     if( ur_type(v1) == ur_type(v2) )
     {
         if( frac < 0.0 )
@@ -1078,9 +1079,9 @@ static int _lerpCells( UCell* v1, UCell* v2, double frac, UCell* res )
         else if( ur_is(v1, UT_VEC3) )
         {
             ur_setId(res, UT_VEC3);
-            INTERP( res->vec3.xyz[0], v1->vec3.xyz[0], v2->vec3.xyz[0] );
-            INTERP( res->vec3.xyz[1], v1->vec3.xyz[1], v2->vec3.xyz[1] );
-            INTERP( res->vec3.xyz[2], v1->vec3.xyz[2], v2->vec3.xyz[2] );
+            INTERP( V3(res,0), V3(v1,0), V3(v2,0) );
+            INTERP( V3(res,1), V3(v1,1), V3(v2,1) );
+            INTERP( V3(res,2), V3(v1,2), V3(v2,2) );
             return 1;
         }
         else if( ur_is(v1, UT_COORD) )
@@ -1091,8 +1092,7 @@ static int _lerpCells( UCell* v1, UCell* v2, double frac, UCell* res )
                 len = v2->coord.len;
             for( i = 0; i < len; ++i )
             {
-                INTERP( res->coord.elem[i],
-                        v1->coord.elem[i], v2->coord.elem[i] );
+                INTERP( res->coord.n[i], v1->coord.n[i], v2->coord.n[i] );
             }
             ur_setId(res, UT_COORD);
             res->coord.len = len;
@@ -1103,23 +1103,25 @@ static int _lerpCells( UCell* v1, UCell* v2, double frac, UCell* res )
 }
 
 
-// (val1 val2 time -- valI)
+#define LERP_MSG    "lerp expected two similar decimal!/coord!/vec3! values"
+
+/*-cf-
+    lerp
+        value1      decimal!/coord!/vec3!
+        value2      decimal!/coord!/vec3!
+        fraction    decimal!
+    return: Interpolated value.
+*/
 CFUNC( uc_lerp )
 {
-    UCell* v1;
-    UCell* v2;
+    UCell* a2   = a1 + 1;
+    UCell* frac = a1 + 2;
 
-    if( ur_is(tos, UT_DECIMAL) )
+    if( ur_is(frac, UT_DECIMAL) )
     {
-        v2 = ur_s_prev(tos);
-        v1 = ur_s_prev(v2);
-        if( _lerpCells( v1, v2, ur_decimal(tos), v1 ) )
-        {
-            UR_S_DROPN( 2 );
-            return;
-        }
-        return ur_error( ut, UR_ERR_TYPE,
-                     "lerp expected 2 decimal!/vec3!/coord! values" );
+        if( _lerpCells( a1, a2, ur_decimal(frac), res ) )
+            return UR_OK;
+        return ur_error( ut, UR_ERR_TYPE, LERP_MSG );
     }
     return ur_error( ut, UR_ERR_TYPE, "lerp expected decimal! fraction" );
 }
@@ -1128,95 +1130,88 @@ CFUNC( uc_lerp )
 /*
   cv & res may be the same.
 
-  Return zero if error thrown.
+  Return UR_OK/UR_THROW.
 */
 static int _curveValue( UThread* ut, UCell* cv, UCell* res, double t )
 {
-    UBlock* blk;
-    UCell* it;
-    UCell* end;
-    UCell* v1;
+    UBlockIter bi;
+    const UCell* v1;
     int len;
     double t1, d;
 
-    blk = ur_block( cv );
-    UR_ITER_BLOCK( it, end, blk, cv )
-    len = end - it;
+    ur_blkSlice( ut, &bi, cv );
+    len = bi.end - bi.it;
     if( len & 1 )
     {
         --len;
-        --end;
+        --bi.end;
     }
     if( len )
     {
         v1 = 0;
-        while( it != end )
+        while( bi.it != bi.end )
         {
             // Assume decimal! for speed.
-            if( t <= ur_decimal(it) )
+            if( t <= ur_decimal(bi.it) )
             {
                 if( ! v1 )
                 {
-                    ur_copyCell( res, it[1] );
-                    return 1;
+                    *res = bi.it[1];
+                    return UR_OK;
                 }
 
                 t1 = ur_decimal(v1);
-                d  = ur_decimal(it) - t1;
+                d  = ur_decimal(bi.it) - t1;
                 if( ! d )
                     goto copy;
 
-                if( _lerpCells( v1 + 1, it + 1, (t - t1) / d, res ) )
-                    return 1;
-
-                return ur_error( ut, UR_ERR_TYPE,
-                         "lerp expected 2 decimal!/vec3!/coord! values" );
-                return 0;
+                if( _lerpCells( v1 + 1, bi.it + 1, (t - t1) / d, res ) )
+                    return UR_OK;
+                return ur_error( ut, UR_ERR_TYPE, LERP_MSG );
             }
-            v1 = it;
-            it += 2;
+            v1 = bi.it;
+            bi.it += 2;
         }
 copy:
-        ur_copyCell( res, v1[1] );
+        *res = v1[1];
     }
     else
     {
-        ur_setNone( res );
+        ur_setId( res, UT_NONE );
     }
-    return 1;
+    return UR_OK;
 }
 
 
-// (curve t -- val)
-CFUNC( uc_curve_value )
+/*-cf-
+    curve-at
+        curve   block!
+        time    int!/decimal!
+    return: Value on curve at time.
+
+    The curve block is a sequence of time and value pairs, ordered by time.
+*/
+CFUNC( uc_curve_at )
 {
+    UCell* a2 = a1 + 1;
     double t;
-    UCell* cv;
 
-    if( ur_is(tos, UT_DECIMAL) )
-        t = ur_decimal(tos);
-    else if( ur_is(tos, UT_INT) )
-        t = (double) ur_int(tos);
+    if( ! ur_is(a1, UT_BLOCK) )
+        return ur_error( ut, UR_ERR_TYPE, "curve-value expected block! curve" );
+
+    if( ur_is(a2, UT_DECIMAL) )
+        t = ur_decimal(a2);
+    else if( ur_is(a2, UT_INT) )
+        t = (double) ur_int(a2);
     else
-        goto bad_dt;
+        return ur_error( ut, UR_ERR_TYPE,
+                         "curve-value expected int!/decimal! time" );
 
-    cv = ur_s_prev(tos);
-    if( ur_is(cv, UT_BLOCK) )
-    {
-        if( _curveValue( ut, cv, cv, t ) )
-        {
-            UR_S_DROP;
-        }
-        return;
-    }
-
-bad_dt:
-
-    return ur_error( ut, UR_ERR_TYPE,
-                 "curve-value expected block! int!/decimal!" );
+    return _curveValue( ut, a1, res, t );
 }
 
 
+#ifdef KR_TODO
 enum ContextIndexAnimation
 {
     CI_ANIM_VALUE = 0,
@@ -1895,9 +1890,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( uc_stop,           "stop n" );
     addCFunc( uc_show,           "show wid" );
     addCFunc( uc_hide,           "hide wid" );
-    /*
-    addCFunc( uc_text_size,      "text-size" );
-    */
+    //addCFunc( uc_text_size,      "text-size" );
     addCFunc( uc_handle_events,  "handle-events wid /wait" );
     addCFunc( uc_clear_color,    "clear-color color" );
     addCFunc( uc_display_swap,   "display-swap" );
@@ -1916,9 +1909,9 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_cos,         "cos n" );
     addCFunc( cfunc_sin,         "sin n" );
     addCFunc( uc_look_at,        "look-at a b" );
+    addCFunc( uc_lerp,           "lerp a b f" );
+    addCFunc( uc_curve_at,       "curve-at a b" );
     /*
-    addCFunc( uc_lerp,           "lerp" );
-    addCFunc( uc_curve_value,    "curve-value" );
     addCFunc( uc_animate,        "animate" );
 #ifdef TIMER_GROUP
     addCFunc( uc_timer_group,    "timer-group" );

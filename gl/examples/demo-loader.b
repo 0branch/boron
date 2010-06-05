@@ -11,6 +11,7 @@ ifn args [
 ]
 
 display 640,480
+clear-color 0.1,0.3,0.8
 
 zoom: 1.0
 

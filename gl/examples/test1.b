@@ -3,7 +3,6 @@
 
 ;print gl-extensions
 ;ortho-cam: copy ortho-cam
-clear-color 0.1,0.3,0.8
 
 
  fontA: make font! [%data/font/20thfont.ttf 22]
