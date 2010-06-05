@@ -52,9 +52,6 @@ static struct GLIdRecord _glid;
 
 void glid_startup()
 {
-#if 1
-    memSet( &_glid, 0, sizeof(_glid) );
-#else
     ur_arrInit( &_glid.tex, sizeof(uint32_t), 64 );
     ur_arrInit( &_glid.ren, sizeof(uint32_t),  0 );
     ur_arrInit( &_glid.fbo, sizeof(uint32_t),  0 );
@@ -62,7 +59,6 @@ void glid_startup()
     ur_binInit( &_glid.renMark, 0 );
     ur_binInit( &_glid.fboMark, 0 );
     _glid.unsorted = 0;
-#endif
 }
 
 
