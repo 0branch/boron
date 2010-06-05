@@ -175,7 +175,7 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
 
         case UT_WORD:
         case UT_LITWORD:
-            if( ur_atom(bi.it) < UT_BI_COUNT )
+            if( ur_atom(bi.it) < UT_MAX )
             {
                 if( localCount )
                 {
