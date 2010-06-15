@@ -1922,7 +1922,6 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
     if( type != ur_type(argB) )
         return ur_error( ut, UR_ERR_TYPE,
                  "intersect/difference expected series of the same type" );
-    ur_seriesSlice( ut, &si, argB );
 
     dt = SERIES_DT( type );
 
@@ -1930,7 +1929,10 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
     {
         UBlockIter bi;
         UBuffer* blk = ur_makeBlockCell( ut, type, 0, res );
+
         ur_blkSlice( ut, &bi, a1 );
+        ur_seriesSlice( ut, &si, argB );
+
         if( intersect )
         {
             USeriesIter ri;
