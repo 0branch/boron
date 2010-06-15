@@ -225,6 +225,27 @@ UBuffer* ur_ctxClone( UThread* ut, const UBuffer* src, UCell* cell )
 
 
 /**
+  Create a shallow copy of a context and set cell to reference the new context.
+  No binding is done, so any blocks remain bound to the source context.
+
+  \param src    Context to copy.
+  \param cell   Cell to initialize.
+
+  \return Pointer to context buffer.
+*/
+UBuffer* ur_ctxMirror( UThread* ut, const UBuffer* src, UCell* cell )
+{
+    UBuffer* nc = ur_makeContextCell( ut, src->used, cell );
+
+    memCpy( nc->ptr.cell, src->ptr.cell, src->used * sizeof(UCell) );
+    memCpy( ENTRIES(nc), ENTRIES(src), src->used * sizeof(UAtomEntry) );
+    nc->used = src->used;
+
+    return nc;
+}
+
+
+/**
   Add the set-word! values in a series of cells to the words in a context.
 
   \param ctx    Destination context.

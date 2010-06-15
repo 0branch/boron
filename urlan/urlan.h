@@ -527,6 +527,7 @@ int      ur_setPath( UThread*, const UCell* path, const UCell* src );
 UIndex   ur_makeContext( UThread*, int size );
 UBuffer* ur_makeContextCell( UThread*, int size, UCell* cell );
 UBuffer* ur_ctxClone( UThread*, const UBuffer* src, UCell* cell );
+UBuffer* ur_ctxMirror( UThread*, const UBuffer* src, UCell* cell );
 void     ur_ctxInit( UBuffer*, int size );
 void     ur_ctxReserve( UBuffer*, int size );
 void     ur_ctxFree( UBuffer* );
