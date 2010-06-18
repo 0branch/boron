@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009-2010 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -37,9 +37,9 @@ static unsigned long _clockSeed()
 
 /*-cf-
     random
-        data    logic!/int!/decimal!/coord! or series.
+        data    logic!/int!/decimal!/coord!/vec3! or series.
         /seed   Use data as generator seed.
-    return: Random number, series position, or none! if /seed option used.
+    return: Random number, series position, or seed if /seed option used.
 
     If data is a number, then a number from 1 through data will be returned.
 
@@ -53,8 +53,9 @@ CFUNC(cfunc_random)
 
     if( CFUNC_OPTIONS & OPT_RANDOM_SEED )
     {
-        init_genrand( (type == UT_INT) ? (uint32_t) ur_int(a1) : _clockSeed() );
-        ur_setId(res, UT_NONE);
+        ur_setId(res, UT_INT);
+        ur_int(res) = (type == UT_INT) ? ur_int(a1) : (int32_t) _clockSeed();
+        init_genrand( (uint32_t) ur_int(res) );
         return UR_OK;
     }
 
@@ -100,6 +101,19 @@ CFUNC(cfunc_random)
             {
                 n = a1->coord.n[ i ];
                 res->coord.n[ i ] = n ? (genrand_int32() % n) + 1 : 0;
+            }
+        }
+            break;
+
+        case UT_VEC3:
+        {
+            int i;
+            float n;
+            ur_setId(res, UT_VEC3);
+            for( i = 0; i < 3; ++i )
+            {
+                n = a1->vec3.xyz[ i ];
+                res->vec3.xyz[ i ] = n ? genrand_real2() * n : 0.0f;
             }
         }
             break;
