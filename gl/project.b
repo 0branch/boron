@@ -86,7 +86,7 @@ exe %boron-gl [
     linux [
         ;libs_from %/usr/X11R6/lib [%X11 %Xxf86vm]
         libs [%X11 %Xxf86vm]
-        libs [%freetype %bz2 %png %glv]
+        libs [%freetype %bz2 %png %glv %m]
         libs [%openal %vorbis %vorbisfile]
     ]
     macx [
