@@ -805,6 +805,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_maximum, "maximum a b" );
     addCFunc( cfunc_make,    "make type spec" );
     addCFunc( cfunc_copy,    "copy val /deep" );
+    addCFunc( cfunc_reserve, "reserve ser size" );
     addCFunc( cfunc_does,    "does body" );
     addCFunc( cfunc_func,    "func spec body" );
     addCFunc( cfunc_probe,   "probe val" );

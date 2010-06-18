@@ -730,6 +730,50 @@ CFUNC(cfunc_copy)
 
 
 /*-cf-
+    reserve
+        series
+        size    Number of elements to reserve.
+    return: Series.
+*/
+CFUNC(cfunc_reserve)
+{
+    UBuffer* buf;
+    int size;
+    int type = ur_type(a1);
+
+    if( ! ur_isSeriesType( type ) )
+        return errorType( "reserve expected series" );
+    if( ! ur_is(a2, UT_INT) )
+        return errorType( "reserve expected int! size" );
+    if( ! (buf = ur_bufferSerM(a1)) )
+        return UR_THROW;
+
+    size = a1->series.it + ur_int(a2);
+#if 1
+    switch( type )
+    {
+        case UT_BINARY:
+        case UT_BITSET:
+            ur_binReserve( buf, size );
+            break;
+
+        case UT_BLOCK:
+        case UT_PAREN:
+        case UT_VECTOR:
+        case UT_STRING:
+        case UT_FILE:
+            ur_arrReserve( buf, size );
+            break;
+    }
+#else
+    DT( type )->reserve( ut, a1, size );
+#endif
+    *res = *a1;
+    return UR_OK;
+}
+
+
+/*-cf-
     does
         body  block!
     return: func!
