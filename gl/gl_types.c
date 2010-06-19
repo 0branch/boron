@@ -218,6 +218,7 @@ int raster_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
         default:
             return ur_error( ut, UR_ERR_SCRIPT, "Invalid select!" );
     }
+    ++bi->it;
     return UR_OK;
 }
 
