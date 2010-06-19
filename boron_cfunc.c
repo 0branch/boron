@@ -558,12 +558,21 @@ CFUNC(cfunc_infuse)
             return UR_OK; \
         } \
     } \
-    else if( ur_is(a1,UT_VEC3) && ur_is(ra,UT_VEC3) ) { \
-        ur_setId(res, UT_VEC3); \
-        res->vec3.xyz[0] = a1->vec3.xyz[0] OP ra->vec3.xyz[0]; \
-        res->vec3.xyz[1] = a1->vec3.xyz[1] OP ra->vec3.xyz[1]; \
-        res->vec3.xyz[2] = a1->vec3.xyz[2] OP ra->vec3.xyz[2]; \
-        return UR_OK; \
+    else if( ur_is(a1,UT_VEC3) ) { \
+        if( ur_is(ra,UT_VEC3) ) { \
+            ur_setId(res, UT_VEC3); \
+            res->vec3.xyz[0] = a1->vec3.xyz[0] OP ra->vec3.xyz[0]; \
+            res->vec3.xyz[1] = a1->vec3.xyz[1] OP ra->vec3.xyz[1]; \
+            res->vec3.xyz[2] = a1->vec3.xyz[2] OP ra->vec3.xyz[2]; \
+            return UR_OK; \
+        } else if( ur_is(ra,UT_DECIMAL) ) { \
+            float n = ur_decimal(ra); \
+            ur_setId(res, UT_VEC3); \
+            res->vec3.xyz[0] = a1->vec3.xyz[0] OP n; \
+            res->vec3.xyz[1] = a1->vec3.xyz[1] OP n; \
+            res->vec3.xyz[2] = a1->vec3.xyz[2] OP n; \
+            return UR_OK; \
+        } \
     } \
     return ur_error( ut, UR_ERR_TYPE, "math operation expected numbers" ); \
 }
