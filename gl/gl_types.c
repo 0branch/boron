@@ -216,7 +216,7 @@ int raster_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
             break;
 
         default:
-            return ur_error( ut, UR_ERR_SCRIPT, "Invalid select!" );
+            return ur_error( ut, UR_ERR_SCRIPT, "Invalid raster select" );
     }
     ++bi->it;
     return UR_OK;
@@ -872,113 +872,302 @@ void shader_mark( UThread* ut, UCell* cell )
 */
 
 
-#if 0
 //----------------------------------------------------------------------------
-// UT_PORT
-/*
-  UBuffer members:
-    type        UT_PORT
-    elemSize    Unused
-    form        UR_PORT_SIMPLE, UR_PORT_EXT
-    flags       Unused
-    used        Unused
-    ptr.v       UPortDevice* or UPortDevice**
-*/
+// UT_FBO
 
 
-int ur_makePort( UThread* ut, UPortDevice* pdev, const UCell* from, UCell* res )
+const char* _framebufferStatus()
 {
-    UBuffer* buf;
-    UIndex bufN;
-
-    ur_genBuffers( ut, 1, &bufN );
-    buf = ur_buffer( bufN );
-
-    buf->type  = UT_PORT;
-    buf->form  = UR_PORT_SIMPLE;
-    buf->ptr.v = pdev;
-
-    if( ! pdev->open( ut, buf, from ) )
+    GLenum status;
+    status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT );
+    switch( status )
     {
-        //buf = ur_buffer( bufN );    // Re-aquire
-        buf->ptr.v = 0;
-        return UR_THROW;
+        case GL_FRAMEBUFFER_COMPLETE_EXT:
+            return 0;
+
+        case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
+            return "Unsupported framebuffer format";
+
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+            return "Framebuffer incomplete, missing attachment";
+
+        case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+            return
+            "Framebuffer incomplete, attached images must have same dimensions";
+
+        case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+            return
+            "Framebuffer incomplete, attached images must have same format";
+
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
+            return "Framebuffer incomplete, missing draw buffer";
+
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
+            return "Framebuffer incomplete, missing read buffer";
+
+        default:
+            assert(0);
+            return 0;
+    }
+}
+
+
+/*
+    coord!/texture!
+    TODO: [size 'depth]
+    TODO: [size 'shadow] to replace shadowmap?
+*/
+int fbo_make( UThread* ut, const UCell* from, UCell* res )
+{
+    GLint dim[2];
+    GLuint fbName;
+    GLuint depthName = 0;
+    GLuint texName;
+    const char* err;
+    UAtom sel = 0;
+
+
+    if( ur_is(from, UT_TEXTURE) )
+    {
+        fbName = glid_genFramebuffer();
+        texName = ur_texId(from);
+
+        if( sel == UR_ATOM_DEPTH )
+        {
+            glBindTexture( GL_TEXTURE_2D, texName );
+            glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,
+                                      dim );
+            glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT,
+                                      dim + 1 );
+        }
+    }
+    else if( ur_is(from, UT_COORD) )
+    {
+        TextureDef def;
+
+        fbName = glid_genFramebuffer();
+
+        _texCoord( &def, from );
+
+        texName = glid_genTexture();
+        glBindTexture( GL_TEXTURE_2D, texName );
+
+        glTexImage2D( GL_TEXTURE_2D, 0, def.comp, def.width, def.height,
+                      0, def.format, GL_UNSIGNED_BYTE, 0 );
+        /*
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, def.wrap );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, def.wrap );
+        */
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+
+        if( sel == UR_ATOM_DEPTH )
+        {
+            dim[0] = def.width;
+            dim[1] = def.height;
+        }
+    }
+    else
+    {
+        return ur_error( ut, UR_ERR_TYPE,
+                         "make framebuffer! expected texture!/coord!" );
     }
 
-    ur_setId(res, UT_PORT);
-    ur_setSeries(res, bufN, 0);
+    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, fbName );
+
+    glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT,
+                               GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D,
+                               texName, 0 );
+
+    if( sel == UR_ATOM_DEPTH )
+    {
+        depthName = glid_genRenderbuffer();
+        glBindRenderbufferEXT( GL_RENDERBUFFER_EXT, depthName );
+        glRenderbufferStorageEXT( GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT,
+                                  dim[0], dim[1] );
+        glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT,
+                    GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depthName );
+    }
+
+    if( (err = _framebufferStatus()) )
+        return ur_error( ut, UR_ERR_INTERNAL, err );
+
+    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, 0 );
+
+    ur_setId( res, UT_FBO );
+    ur_fboId(res)    = fbName;
+    ur_fboRenId(res) = depthName;
+    ur_fboTexId(res) = texName;
+
     return UR_OK;
 }
 
 
-int port_make( UThread* ut, const UCell* from, UCell* res )
+static
+int fbo_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
 {
-    UPortDevice* pdev = 0;
-    UAtom name = 0;
-
-    switch( ur_type(from) )
+    if( ur_is(bi->it, UT_WORD) )
     {
-        case UT_STRING:
+        switch( ur_atom(bi->it) )
         {
-            const char* cp;
-            const char* url = boron_cstr( ut, from, 0 );
-
-            for( cp = url; *cp; ++cp )
-            {
-                if( cp[0] == ':' && cp[1] == '/' && cp[2] == '/' )
-                {
-                    name = ur_internAtom( ut, url, cp );
-                    break;
-                }
-            }
-            if( ! name )
-                return ur_error( ut, UR_ERR_SCRIPT,
-                                 "make port! expected URL" );
-            pdev = portLookup( ut, name );
-        }
+        case UR_ATOM_RASTER:
+            textureToRaster( ut, GL_TEXTURE_2D, ur_fboTexId(cell), res );
             break;
 
-        case UT_FILE:
-            pdev = &port_file;
-            break;
-
-        case UT_BLOCK:
-        {
-            UBlockIter bi;
-            ur_blkSlice( ut, &bi, from );
-            if( (bi.it == bi.end) || ! ur_is(bi.it, UT_WORD) )
-                return ur_error( ut, UR_ERR_SCRIPT,
-                                 "make port! expected device word in block" );
-            pdev = portLookup( ut, name = ur_atom(bi.it) );
-        }
+        case UR_ATOM_TEXTURE:
+            ur_setId(res, UT_TEXTURE);
+            ur_texId(res)   = ur_fboTexId(cell);
+            ur_texRast(res) = 0;
             break;
 
         default:
-            return ur_error( ut, UR_ERR_TYPE,
-                             "make port! expected string!/file!/block!" );
+            return ur_error( ut, UR_ERR_SCRIPT, "Invalid fbo select" );
+        }
+        ++bi->it;
+        return UR_OK;
     }
-
-    if( ! pdev )
-        return ur_error( ut, UR_ERR_SCRIPT, "Port type %s does not exist",
-                         ur_atomCStr(ut, name) );
-
-    return ur_makePort( ut, pdev, from, res );
+    return ur_error( ut, UR_ERR_SCRIPT, "fbo select expected word!" );
 }
 
 
-void port_destroy( UBuffer* buf )
+static void fbo_mark( UThread* ut, UCell* cell )
 {
-    if( buf->ptr.v )
-    {
-        UPortDevice* dev = (buf->form == UR_PORT_SIMPLE) ?
-            (UPortDevice*) buf->ptr.v : *((UPortDevice**) buf->ptr.v);
-        dev->close( buf );
-    }
+    (void) ut;
+    glid_gcMarkFramebuffer( ur_fboId(cell) );
+    glid_gcMarkRenderbuffer( ur_fboRenId(cell) );
+    glid_gcMarkTexture( ur_fboTexId(cell) );
 }
-#endif
 
 
 //----------------------------------------------------------------------------
+// UT_VBO
+/*
+  UBuffer is only 12 bytes on 32-bit CPUs so we only have room for two
+  GL buffer names.
+
+  UBuffer members:
+    type        UT_VBO
+    elemSize    Number of GL buffers (1 or 2)
+    form        Unused
+    flags       Unused
+    used        GL buffer 1
+    ptr.v       GL buffer 2
+*/
+
+
+/**
+  \return Buffer index.  If resp is non-zero, it is set.
+*/
+UIndex ur_makeVbo( UThread* ut, GLenum attrUsage, int acount, float* attr,
+                   int icount, uint16_t* indices )
+{
+    GLuint* gbuf;
+    UBuffer* buf;
+    UIndex bufN;
+    int nbuf = 1;
+
+    if( acount && icount )
+        ++nbuf;
+
+    ur_genBuffers( ut, 1, &bufN );
+    buf = ur_buffer( bufN );
+
+    memSet( buf, 0, sizeof(UBuffer) );
+    buf->type  = UT_VBO;
+    vbo_count(buf) = nbuf;
+
+    gbuf = vbo_bufIds(buf);
+    glGenBuffers( nbuf, gbuf );
+
+    if( acount )
+    {
+        glBindBuffer( GL_ARRAY_BUFFER, *gbuf++ );
+        glBufferData( GL_ARRAY_BUFFER, sizeof(float) * acount,
+                      attr, attrUsage );
+    }
+
+    if( icount )
+    {
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, *gbuf );
+        glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof(uint16_t) * icount,
+                      indices, GL_STATIC_DRAW );
+    }
+
+    return bufN;
+}
+
+
+/*
+  int!/coord!/vec3!
+  ; [count static|dynamic]
+*/
+int vbo_make( UThread* ut, const UCell* from, UCell* res )
+{
+    UIndex n;
+    GLenum usage = GL_STATIC_DRAW;
+
+#if 0
+    if( ur_is(res, UT_WORD) )
+    {
+        switch( ur_atom(res) )
+        {
+            case UR_ATOM_STREAM:
+                usage = GL_STREAM_DRAW;
+                break;
+            case UR_ATOM_DYNAMIC:
+                usage = GL_DYNAMIC_DRAW;
+                break;
+        }
+        res = ur_s_prev(res);
+    }
+#endif
+
+    if( ur_is(from, UT_INT) )
+    {
+        n = ur_makeVbo( ut, usage, ur_int(from), NULL, 0, NULL );
+        goto build;
+    }
+    else if( ur_is(from, UT_COORD) )
+    {
+        n = ur_makeVbo( ut, usage, from->coord.n[0], NULL,
+                                   from->coord.n[1], NULL );
+        goto build;
+    }
+    else if( ur_is(from, UT_VECTOR) )
+    {
+        const UBuffer* buf = ur_bufferSer(from);
+        if( buf->form == UR_ATOM_F32 )
+        {
+            n = ur_makeVbo( ut, usage, buf->used, buf->ptr.f, 0, NULL );
+            goto build;
+        }
+    }
+    return ur_error( ut, UR_ERR_TYPE,
+                     "make vbo! make expected int!/coord!/vector!" );
+
+build:
+
+    ur_setId( res, UT_VBO );
+    ur_setSeries( res, n, 0 );
+    return UR_OK;
+}
+
+
+static void vbo_mark( UThread* ut, UCell* cell )
+{
+    ur_markBuffer( ut, ur_vboResN(cell) );
+}
+
+
+static void vbo_destroy( UBuffer* buf )
+{
+    if( vbo_count(buf) )
+        glDeleteBuffers( vbo_count(buf), vbo_bufIds(buf) );
+}
+
+
+//----------------------------------------------------------------------------
+// UT_WIDGET
 
 
 void ur_arrAppendPtr( UBuffer* arr, void* ptr )
@@ -1140,18 +1329,18 @@ UDatatype gl_types[] =
   },
   {
     "fbo!",
-    unset_make,             unset_make,             unset_copy,
-    unset_compare,          unset_select,
+    fbo_make,               unset_make,             unset_copy,
+    unset_compare,          fbo_select,
     unset_toString,         unset_toText,
-    unset_recycle,          unset_mark,             unset_destroy,
+    unset_recycle,          fbo_mark,               unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
   },
   {
     "vbo!",
-    unset_make,             unset_make,             unset_copy,
+    vbo_make,               unset_make,             unset_copy,
     unset_compare,          unset_select,
     unset_toString,         unset_toText,
-    unset_recycle,          unset_mark,             unset_destroy,
+    unset_recycle,          vbo_mark,               vbo_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
   },
   {

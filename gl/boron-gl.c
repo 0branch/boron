@@ -1665,13 +1665,16 @@ CFUNC( uc_perlin )
 #endif
 
 
-#ifdef KR_TODO
 extern const char* _framebufferStatus();
 
-// (size -- framebuffer)
-CFUNC( uc_shadowmap )
+/*-cf-
+    shadowmap
+        size    coord!
+    return: framebuffer
+*/
+CFUNC( cfunc_shadowmap )
 {
-    if( ur_is(tos, UT_COORD) )
+    if( ur_is(a1, UT_COORD) )
     {
         GLuint fboName;
         GLuint texName;
@@ -1687,7 +1690,7 @@ CFUNC( uc_shadowmap )
         glTexImage2D( GL_TEXTURE_2D, 0,
                       (depthBits == 16) ? GL_DEPTH_COMPONENT16 :
                                           GL_DEPTH_COMPONENT24,
-                      tos->coord.elem[0], tos->coord.elem[1], 0,
+                      a1->coord.n[0], a1->coord.n[1], 0,
                       GL_DEPTH_COMPONENT,
                       //GL_UNSIGNED_INT,
                       GL_UNSIGNED_BYTE,
@@ -1717,15 +1720,14 @@ CFUNC( uc_shadowmap )
 
         glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, 0 );
 
-        ur_setId(tos, UT_FBO);
-        ur_fboId(tos)    = fboName;
-        ur_fboRenId(tos) = 0;
-        ur_fboTexId(tos) = texName;
-        return;
+        ur_setId(res, UT_FBO);
+        ur_fboId(res)    = fboName;
+        ur_fboRenId(res) = 0;
+        ur_fboTexId(res) = texName;
+        return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "shadowmap expected coord!" );
 }
-#endif
 
 
 /*-cf-
@@ -1929,8 +1931,8 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     /*
     addCFunc( uc_particle_sim,   "particle-sim" );
     //addCFunc( uc_perlin,         "perlin" );
-    addCFunc( uc_shadowmap,      "shadowmap" );
     */
+    addCFunc( cfunc_shadowmap,   "shadowmap size" );
     addCFunc( cfunc_dot,         "dot a b" );
     addCFunc( cfunc_cross,       "cross a b" );
     addCFunc( cfunc_normalize,   "normalize vec" );

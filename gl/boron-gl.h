@@ -149,8 +149,7 @@ void     ur_rasterBlit( RasterHead* src,  uint16_t* srcRect,
 TexFont* ur_texFontV( UThread*, const UCell* );
 
 UIndex ur_makeVbo( UThread*, GLenum attrUsage, int acount, float* attr,
-                   int icount, uint16_t* indices,
-                   UBuffer** resp );
+                   int icount, uint16_t* indices );
 
 
 #define ur_rasterElements(rh)       (((char*) rh) + sizeof(RasterHead))
@@ -172,9 +171,9 @@ UIndex ur_makeVbo( UThread*, GLenum attrUsage, int acount, float* attr,
 
 #define ur_vboResN(c)       (c)->series.buf
 
-// Verex-buffer UBuffer members
-#define vbo_count(res)      (res)->elemSize
-#define vbo_bufIds(res)     ((GLuint*) &(res)->used)
+// vbo! UBuffer members
+#define vbo_count(buf)      (buf)->elemSize
+#define vbo_bufIds(buf)     ((GLuint*) &(buf)->used)
 
 
 #define UR_GUI_THROW \

@@ -478,28 +478,28 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk )
 
             switch( atom )
             {
+            case UR_ATOM_MINUS:
+                // Ignore values; unused attribute.
+                break;
+
             case UR_ATOM_COLOR:
                 //glColorPointer( 3, GL_FLOAT, stride, offset );
                 emitOp1( DP_COLOR_OFFSET, B_STRIDE_OFFSET );
-                offset += size * sizeof(GL_FLOAT);
                 break;
 
             case UR_ATOM_NORMAL:
                 //glNormalPointer( GL_FLOAT, stride, offset );
                 emitOp1( DP_NORMAL_OFFSET, B_STRIDE_OFFSET );
-                offset += size * sizeof(GL_FLOAT);
                 break;
 
             case UR_ATOM_TEXTURE:
                 //glTexCoordPointer( 2, GL_FLOAT, stride, offset );
                 emitOp1( DP_UV_OFFSET, B_STRIDE_OFFSET );
-                offset += size * sizeof(GL_FLOAT);
                 break;
 
             case UR_ATOM_VERTEX:
                 //glVertexPointer( 3, GL_FLOAT, stride, offset );
                 emitOp1( DP_VERTEX_OFFSET, B_STRIDE_OFFSET );
-                offset += size * sizeof(GL_FLOAT);
                 break;
 
             default:
@@ -514,10 +514,11 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk )
                 }
 
                 emitOp2( DP_ATTR_OFFSET, (loc << 8) | size, B_STRIDE_OFFSET );
-                offset += size * sizeof(GL_FLOAT);
             }
                 break;
             }
+
+            offset += size * sizeof(GL_FLOAT);
         }
     }
     return 1;
