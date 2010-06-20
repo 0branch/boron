@@ -2981,24 +2981,47 @@ dispatch:
             if( ds->samplesQueryId )
             {
                 GLuint samples;
-                GLuint id;
+                GLuint id = 1;
 
                 glEndQuery( GL_SAMPLES_PASSED );
 
-                // Poke query results into result int!/vector!
+                if( ur_is(val, UT_VECTOR) )
+                {
+                    int used;
 
-                for( id = 1; id <= ds->samplesQueryId; ++id )
+                    // if( ur_isShared() )
+                    blk = ur_buffer( val->series.buf );
+                    used = ds->samplesQueryId;
+                    if( used > blk->used )
+                        used = blk->used;
+
+                    // Poke query results into result vector!
+                    if( blk->form == UR_ATOM_I32 )
+                    {
+                        int32_t* it  = blk->ptr.i;
+                        int32_t* end = it + used;
+                        for( ; it != end; ++id )
+                        {
+                            glGetQueryObjectuiv(id, GL_QUERY_RESULT, &samples);
+                            *it++ = samples;
+                        }
+                    }
+                    else if( blk->form == UR_ATOM_F32 )
+                    {
+                        float* it  = blk->ptr.f;
+                        float* end = it + used;
+                        for( ; it != end; ++id )
+                        {
+                            glGetQueryObjectuiv(id, GL_QUERY_RESULT, &samples);
+                            *it++ = (float) samples;
+                        }
+                    }
+                }
+                else
                 {
                     glGetQueryObjectuiv( id, GL_QUERY_RESULT, &samples );
-                    //printf( "KR samples %d %d\n", id, samples );
-                    if( ur_is(val, UT_VECTOR) )
-                    {
-                    }
-                    else
-                    {
-                        ur_setId(val, UT_INT);
-                        ur_int(val) = samples;
-                    }
+                    ur_setId(val, UT_INT);
+                    ur_int(val) = samples;
                 }
             }
         }
