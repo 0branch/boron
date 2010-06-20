@@ -803,6 +803,10 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_xor,     "xor a b" );
     addCFunc( cfunc_minimum, "minimum a b" );
     addCFunc( cfunc_maximum, "maximum a b" );
+    addCFunc( cfunc_sqrt,    "sqrt n" );
+    addCFunc( cfunc_cos,     "cos n" );
+    addCFunc( cfunc_sin,     "sin n" );
+    addCFunc( cfunc_atan,    "atan n" );
     addCFunc( cfunc_make,    "make type spec" );
     addCFunc( cfunc_copy,    "copy val /deep" );
     addCFunc( cfunc_reserve, "reserve ser size" );

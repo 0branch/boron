@@ -671,6 +671,48 @@ CFUNC(cfunc_maximum)
 }
 
 
+static int _mathFunc( UThread* ut, const UCell* a1, UCell* res,
+                      double (*func)(double) )
+{
+    double n;
+    if( ur_is(a1, UT_DECIMAL) )
+        n = ur_decimal(a1);
+    else if( ur_is(a1, UT_INT) )
+        n = (double) ur_int(a1);
+    else
+        return errorType( "math function expected int!/decimal!" );
+    ur_setId(res, UT_DECIMAL);
+    ur_decimal(res) = func( n );
+    return UR_OK;
+}
+
+
+/*-cf-
+    sqrt
+        n   int!/decimal!
+    return: Square root of number.
+*/
+/*-cf-
+    cos
+        n   int!/decimal!
+    return: Cosine of number.
+*/
+/*-cf-
+    sin
+        n   int!/decimal!
+    return: Sine of number.
+*/
+/*-cf-
+    atan
+        n   int!/decimal!
+    return: Arc tangent of number.
+*/
+CFUNC(cfunc_sqrt) { return _mathFunc( ut, a1, res, sqrt ); }
+CFUNC(cfunc_cos)  { return _mathFunc( ut, a1, res, cos ); }
+CFUNC(cfunc_sin)  { return _mathFunc( ut, a1, res, sin ); }
+CFUNC(cfunc_atan) { return _mathFunc( ut, a1, res, atan ); }
+
+
 extern int context_make( UThread* ut, const UCell* from, UCell* res );
 extern UDatatype dt_context;
 

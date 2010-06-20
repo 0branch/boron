@@ -1050,13 +1050,13 @@ static void fbo_mark( UThread* ut, UCell* cell )
     elemSize    Number of GL buffers (1 or 2)
     form        Unused
     flags       Unused
-    used        GL buffer 1
-    ptr.v       GL buffer 2
+    used        GL buffer 1 (GL_ARRAY_BUFFER)
+    ptr.v       GL buffer 2 (GL_ELEMENT_ARRAY_BUFFER)
 */
 
 
 /**
-  \return Buffer index.  If resp is non-zero, it is set.
+  \return UBuffer index.
 */
 UIndex ur_makeVbo( UThread* ut, GLenum attrUsage, int acount, float* attr,
                    int icount, uint16_t* indices )
@@ -1098,29 +1098,48 @@ UIndex ur_makeVbo( UThread* ut, GLenum attrUsage, int acount, float* attr,
 
 
 /*
-  int!/coord!/vec3!
-  ; [count static|dynamic]
+  int!    - GL_ARRAY_BUFFER of given size
+  vector! - GL_ARRAY_BUFFER of given data.
+  coord!  - GL_ARRAY_BUFFER and GL_ELEMENT_ARRAY_BUFFER of given sizes.
+  [int!/coord!/vector! dynamic | static | stream]
 */
 int vbo_make( UThread* ut, const UCell* from, UCell* res )
 {
     UIndex n;
     GLenum usage = GL_STATIC_DRAW;
 
-#if 0
-    if( ur_is(res, UT_WORD) )
+    if( ur_is(from, UT_BLOCK) )
     {
-        switch( ur_atom(res) )
+        UBlockIter bi;
+        ur_blkSlice( ut, &bi, from );
+        ur_foreach( bi )
         {
-            case UR_ATOM_STREAM:
-                usage = GL_STREAM_DRAW;
-                break;
-            case UR_ATOM_DYNAMIC:
-                usage = GL_DYNAMIC_DRAW;
-                break;
+            if( ur_is(bi.it, UT_WORD) )
+            {
+                switch( ur_atom(bi.it) )
+                {
+                    case UR_ATOM_DYNAMIC:
+                        usage = GL_DYNAMIC_DRAW;
+                        break;
+                    case UR_ATOM_STATIC:
+                        usage = GL_STATIC_DRAW;
+                        break;
+                    case UR_ATOM_STREAM:
+                        usage = GL_STREAM_DRAW;
+                        break;
+                    default:
+                        from = ur_wordCell( ut, bi.it );
+                        if( ! from )
+                            return UR_THROW;
+                        break;
+                }
+            }
+            else
+            {
+                from = bi.it;
+            }
         }
-        res = ur_s_prev(res);
     }
-#endif
 
     if( ur_is(from, UT_INT) )
     {

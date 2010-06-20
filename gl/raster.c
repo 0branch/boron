@@ -23,7 +23,7 @@
 #include "boron-gl.h"
 
 
-int ur_rasterElementSize( RasterHead* r )
+int ur_rasterElementSize( const RasterHead* r )
 {
     switch( r->format )
     {
@@ -41,7 +41,8 @@ struct BlitRect
 };
 
 
-static void setBlitRect( struct BlitRect* br, RasterHead* rh, uint16_t* subr )
+static void setBlitRect( struct BlitRect* br, const RasterHead* rh,
+                         uint16_t* subr )
 {
     if( subr )
     {
@@ -65,10 +66,10 @@ static void setBlitRect( struct BlitRect* br, RasterHead* rh, uint16_t* subr )
 }
 
 
-void ur_rasterBlit( RasterHead* src, uint16_t* srcRect,
+void ur_rasterBlit( const RasterHead* src, uint16_t* srcRect,
                     RasterHead* dest, uint16_t* destRect )
 {
-    char* sp;
+    const char* sp;
     char* dp;
     struct BlitRect sr;
     struct BlitRect dr;

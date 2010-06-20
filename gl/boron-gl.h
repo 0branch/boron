@@ -142,8 +142,8 @@ extern void ur_addWidgetClasses( GWidgetClass** classTable, int count );
 extern GWidgetClass* ur_widgetClass( UAtom name );
 
 UBuffer* ur_makeRaster( UThread*, int format, int w, int h, UCell* res );
-int      ur_rasterElementSize( RasterHead* );
-void     ur_rasterBlit( RasterHead* src,  uint16_t* srcRect,
+int      ur_rasterElementSize( const RasterHead* );
+void     ur_rasterBlit( const RasterHead* src,  uint16_t* srcRect,
                         RasterHead* dest, uint16_t* destRect );
 
 TexFont* ur_texFontV( UThread*, const UCell* );
@@ -156,6 +156,7 @@ UIndex ur_makeVbo( UThread*, GLenum attrUsage, int acount, float* attr,
 #define ur_rasterBytesPerRow(rh)    (rh->width * ur_rasterElementSize(rh))
 
 #define ur_rastHead(c)      ((const RasterHead*) ur_bufferSer(c)->ptr.v)
+#define ur_rastHeadM(c)     ((RasterHead*) ur_bufferSer(c)->ptr.v)
 #define ur_rastElem(bin)    ur_rasterElements((bin)->ptr.b)
 
 #define ur_fontRast(c)      ((UCellRasterFont*) (c))->rasterN

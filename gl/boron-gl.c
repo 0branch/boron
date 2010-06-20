@@ -961,56 +961,12 @@ CFUNC( cfunc_limit )
 
 
 /*-cf-
-    cos
-        number int!/decimal!
-    return: Cosine of number.
-*/
-CFUNC( cfunc_cos )
-{
-    double n;
-
-    if( ur_is(a1, UT_DECIMAL) )
-        n = ur_decimal(a1);
-    else if( ur_is(a1, UT_INT) )
-        n = (double) ur_int(a1);
-    else
-        return ur_error( ut, UR_ERR_TYPE, "cos expected int!/decimal!");
-
-    ur_setId(res, UT_DECIMAL);
-    ur_decimal(res) = cos( n );
-    return UR_OK;
-}
-
-
-/*-cf-
-    sin
-        number int!/decimal!
-    return: Sine of number.
-*/
-CFUNC( cfunc_sin )
-{
-    double n;
-
-    if( ur_is(a1, UT_DECIMAL) )
-        n = ur_decimal(a1);
-    else if( ur_is(a1, UT_INT) )
-        n = (double) ur_int(a1);
-    else
-        return ur_error( ut, UR_ERR_TYPE, "sin expected int!/decimal!");
-
-    ur_setId(res, UT_DECIMAL);
-    ur_decimal(res) = sin( n );
-    return UR_OK;
-}
-
-
-/*-cf-
     look-at
         matrix vector!
         dir    vec3!
     return: Transformed matrix.
 */
-CFUNC( uc_look_at )
+CFUNC( cfunc_look_at )
 {
     UCell* a2 = a1 + 1;
     UBuffer* mat;
@@ -1112,7 +1068,7 @@ static int _lerpCells( const UCell* v1, const UCell* v2, double frac,
         fraction    decimal!
     return: Interpolated value.
 */
-CFUNC( uc_lerp )
+CFUNC( cfunc_lerp )
 {
     UCell* a2   = a1 + 1;
     UCell* frac = a1 + 2;
@@ -1191,7 +1147,7 @@ copy:
 
     The curve block is a sequence of time and value pairs, ordered by time.
 */
-CFUNC( uc_curve_at )
+CFUNC( cfunc_curve_at )
 {
     UCell* a2 = a1 + 1;
     double t;
@@ -1346,72 +1302,83 @@ CFUNC( uc_animate )
     }
     return UR_OK;
 }
+#endif
 
 
-// (dest-rast src-rast dest-coord -- dest-rast)
-CFUNC( uc_blit )
+/*-cf-
+    blit
+        dest    raster!
+        src     raster!
+        pos     coord!  Desitination position
+    return: dest
+*/
+CFUNC( cfunc_blit )
 {
-    UCell* src;
-    UCell* dst;
+    const UCell* src = a1 + 1;
+    const UCell* pos = a1 + 2;
     uint16_t* rp;
     uint16_t rect[4];
 
-    src = ur_s_prev(tos);
-    dst = ur_s_prev(src);
-
-    if( ur_is(tos, UT_COORD) &&
+    if( ur_is(a1,  UT_RASTER) &&
         ur_is(src, UT_RASTER) &&
-        ur_is(dst, UT_RASTER) )
+        ur_is(pos, UT_COORD) )
     {
-        if( tos->coord.len > 3 )
+        if( pos->coord.len > 3 )
         {
-            rp = (uint16_t*) tos->coord.elem;
+            rp = (uint16_t*) pos->coord.n;
         }
         else
         {
             rp = rect;
-            rp[0] = tos->coord.elem[0];
-            rp[1] = tos->coord.elem[1];
+            rp[0] = pos->coord.n[0];
+            rp[1] = pos->coord.n[1];
             rp[2] = rp[3] = 0xffff;
         }
 
-        ur_rasterBlit( ur_rastHead(src), 0, ur_rastHead(dst), rp );
+        ur_rasterBlit( ur_rastHead(src), 0, ur_rastHeadM(a1), rp );
+        *res = *a1;
         return UR_OK;
     }
-    else
-    {
-        return ur_error( ut, UR_ERR_TYPE,
-                         "blit expected raster! raster! coord!" );
-    }
+    return ur_error( ut, UR_ERR_TYPE, "blit expected raster! raster! coord!" );
 }
 
 
 // (font offset -- font)
-CFUNC( uc_move_glyphs )
+/*-cf-
+    move-glyphs
+        font    rfont!
+        offset  coord!
+    return: unset!
+*/
+CFUNC( cfunc_move_glyphs )
 {
     TexFont* tf;
-    UCell* prev = ur_s_prev(tos);
+    UCell* off = a1 + 1;
 
-    if( ur_is(tos, UT_COORD) && (tf = ur_texFontV( ut, prev )) )
+    if( ur_is(off, UT_COORD) && (tf = ur_texFontV( ut, a1 )) )
     {
-        txf_moveGlyphs( tf, tos->coord.elem[0], tos->coord.elem[1] );
+        txf_moveGlyphs( tf, off->coord.n[0], off->coord.n[1] );
+        ur_setId(res, UT_UNSET);
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "move-glyphs expected font! coord!" );
 }
 
 
-#define ur_setLogic(c,b)      ur_setId(c,UT_LOGIC); ur_logic(c) = b
-
-// (rect pnt -- logic)
+/*-cf-
+    point-in
+        rect    coord!
+        point   coord!
+    return: logic!
+*/
 CFUNC( uc_point_in )
 {
-    UCell* res = ur_s_prev(tos);
-    if( ur_is(tos, UT_COORD) && ur_is(res, UT_COORD) )
+    UCell* a2 = a1 + 1;
+    if( ur_is(a1, UT_COORD) && ur_is(a2, UT_COORD) )
     {
         int inside;
-        int16_t* pnt  = tos->coord.elem;
-        int16_t* rect = res->coord.elem;
+        int16_t* rect = a1->coord.n;
+        int16_t* pnt  = a2->coord.n;
         if( pnt[0] < rect[0] ||
             pnt[1] < rect[1] ||
             pnt[0] > (rect[0] + rect[2]) ||
@@ -1419,16 +1386,20 @@ CFUNC( uc_point_in )
             inside = 0;
         else
             inside = 1;
-        ur_setLogic(res, inside);
+        ur_setId(res, UT_LOGIC);
+        ur_int(res) = inside;
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "point-in expected 2 coord! values" );
 }
 
 
-/*
-  (vbo vector! len -- vbo)
-  (vbo vector! stride,offset,npv -- vbo)
+/*-cf-
+    change-vbo
+        buffer  vbo!
+        data    vector!
+        length  int!/coord! (stride,offset,npv)
+    return: unset!
 */
 CFUNC( uc_change_vbo )
 {
@@ -1436,36 +1407,36 @@ CFUNC( uc_change_vbo )
     int offset;
     int copyLen;
     int loops;
-    UCell* vec = ur_s_prev(tos);
-    UCell* vbo = ur_s_prev(vec);
+    UCell* vec = a1 + 1;
+    UCell* len = a1 + 2;
+    (void) res;
 
-    if( ur_is(tos, UT_COORD) )
+    if( ur_is(len, UT_COORD) )
     {
-        stride  = tos->coord.elem[0];
-        offset  = tos->coord.elem[1];
-        copyLen = tos->coord.elem[2];
+        stride  = len->coord.n[0];
+        offset  = len->coord.n[1];
+        copyLen = len->coord.n[2];
     }
-    else if( ur_is(tos, UT_INT) )
+    else if( ur_is(len, UT_INT) )
     {
         stride  = 0;
         offset  = 0;
-        copyLen = ur_int(tos);
+        copyLen = ur_int(len);
     }
     else
         goto bad_dt;
 
-    if( ur_is(vec, UT_VECTOR) && (ur_vectorDT(vec) == UT_DECIMAL) &&
-        ur_is(vbo, UT_VBO) )
+    if( ur_is(vec, UT_VECTOR) && //(ur_vectorDT(vec) == UT_DECIMAL) &&
+        ur_is(a1, UT_VBO) )
     {
-        UArray* arr;
-        UResource* res = ur_resPtr( ur_vboResN(vbo) );
-        GLuint* buf = vbo_bufIds(res);
+        const UBuffer* arr = ur_bufferSer(vec);
+        UBuffer* vbo = ur_buffer( ur_vboResN(a1) );
+        GLuint* buf = vbo_bufIds(vbo);
 
-        arr = ur_bin(vec);
 
         // TODO: Need way to check if buf[0] is an GL_ARRAY_BUFFER.
 
-        if( vbo_count(res) && arr->used && copyLen )
+        if( vbo_count(vbo) && arr->used && copyLen )
         {
             GLfloat* dst;
             float* src = arr->ptr.f;
@@ -1535,17 +1506,14 @@ CFUNC( uc_change_vbo )
                 glUnmapBuffer( GL_ARRAY_BUFFER );
             }
         }
-
-        UR_S_DROPN( 2 );
-        return;
+        return UR_OK;
     }
 
 bad_dt:
 
     return ur_error( ut, UR_ERR_TYPE,
-                 "change-vbo expected vertex-buffer! vector! int!/coord!" );
+                     "change-vbo expected vbo! vector! int!/coord!" );
 }
-#endif
 
 
 // Should 'gl-extensions, etc. be replaced with a single 'gl-info call that
@@ -1766,11 +1734,11 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    57
+#define FA_COUNT    58
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
-        "size close\n"
+        "add size close\n"
         "width height area rect raster texture\n"
         "elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
@@ -1784,7 +1752,7 @@ static void _createFixedAtoms( UThread* ut )
         atoms );
 
 #ifdef DEBUG
-    if( atoms[0] != UR_ATOM_SIZE || atoms[2] != UR_ATOM_WIDTH )
+    if( atoms[0] != UR_ATOM_ADD || atoms[3] != UR_ATOM_WIDTH )
     {
         int i;
         for( i = 0; i < FA_COUNT; ++i )
@@ -1792,9 +1760,10 @@ static void _createFixedAtoms( UThread* ut )
     }
 #endif
 
-    assert( atoms[0] == UR_ATOM_SIZE );
-    assert( atoms[1] == UR_ATOM_CLOSE );
-    assert( atoms[2] == UR_ATOM_WIDTH );
+    assert( atoms[0] == UR_ATOM_ADD );
+    assert( atoms[1] == UR_ATOM_SIZE );
+    assert( atoms[2] == UR_ATOM_CLOSE );
+    assert( atoms[3] == UR_ATOM_WIDTH );
     assert( atoms[FA_COUNT - 1] == UR_ATOM_BINARY );
 }
 
@@ -1908,11 +1877,9 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_to_degrees,  "to-degrees n" );
     addCFunc( cfunc_to_radians,  "to-radians n" );
     addCFunc( cfunc_limit,       "limit n min max" );
-    addCFunc( cfunc_cos,         "cos n" );
-    addCFunc( cfunc_sin,         "sin n" );
-    addCFunc( uc_look_at,        "look-at a b" );
-    addCFunc( uc_lerp,           "lerp a b f" );
-    addCFunc( uc_curve_at,       "curve-at a b" );
+    addCFunc( cfunc_look_at,     "look-at a b" );
+    addCFunc( cfunc_lerp,        "lerp a b f" );
+    addCFunc( cfunc_curve_at,    "curve-at a b" );
     /*
     addCFunc( uc_animate,        "animate" );
 #ifdef TIMER_GROUP
@@ -1920,12 +1887,11 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( uc_add_timer,      "add-timer" );
     addCFunc( uc_check_timers,   "check-timers" );
 #endif
-    addCFunc( uc_animate,        "animate" );
-    addCFunc( uc_blit,           "blit" );
-    addCFunc( uc_move_glyphs,    "move-glyphs" );
-    addCFunc( uc_point_in,       "point-in" );
-    addCFunc( uc_change_vbo,     "change-vbo" );
     */
+    addCFunc( cfunc_blit,        "blit a b pos" );
+    addCFunc( cfunc_move_glyphs, "move-glyphs f pos" );
+    addCFunc( uc_point_in,       "point-in" );
+    addCFunc( uc_change_vbo,     "change-vbo a b n" );
     addCFunc( uc_gl_extensions,  "gl-extensions" );
     addCFunc( uc_gl_max_textures,"gl-max-textures" );
     /*

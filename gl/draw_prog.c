@@ -111,7 +111,7 @@ enum DPOpcode
     DP_SHADOW_END,
     DP_SAMPLES_QUERY,
     DP_SAMPLES_BEGIN,
-    DP_SAMPLES_END,         // blkN
+    DP_SAMPLES_END,         // blkN index
     DP_LIGHT,               // blkN
     DP_74,
     DP_75,
@@ -1895,14 +1895,14 @@ bad_quad:
                 emitOp( DP_SHADOW_END );
                 break;
 
-            case DOP_SAMPLES_QUERY:     // dlist-block process-block
+            case DOP_SAMPLES_QUERY:     // result word! dlist block!
             {
                 INC_PC
-                if( ! ur_is(pc, UT_BLOCK) )
+                if( ! ur_is(pc, UT_WORD) )
                 {
 samples_err:
                     ur_error( ut, UR_ERR_SCRIPT,
-                              "samples-query expected block! block!" );
+                              "samples-query expected word! block!" );
                     goto error;
                 }
                 val = pc;
@@ -1911,12 +1911,9 @@ samples_err:
                     goto samples_err;
 
                 emitOp( DP_SAMPLES_QUERY );
-                if( dp_compile( emit, ut, val->series.buf ) != UR_OK )
+                if( dp_compile( emit, ut, pc->series.buf ) != UR_OK )
                     goto error;
-                emitOp1( DP_SAMPLES_END, pc->series.buf );
-
-                refBlock( emit, pc->series.buf );
-                //emitOp1( DP_EVAL_BLOCK, pc->series.buf );
+                emitWordOp( emit, val, DP_SAMPLES_END );
             }
                 break;
 
@@ -2002,11 +1999,15 @@ samples_err:
                 INC_PC
                 switch( ur_atom(pc) )
                 {
+                    case UR_ATOM_ON:    op = DP_BLEND_ON;    break;
                     case UR_ATOM_OFF:   op = DP_BLEND_OFF;   break;
-                    case UR_ATOM_PLUS:  op = DP_BLEND_ADD;   break;
+                    case UR_ATOM_ADD:   op = DP_BLEND_ADD;   break;
                     case UR_ATOM_BURN:  op = DP_BLEND_BURN;  break;
                     case UR_ATOM_TRANS: op = DP_BLEND_TRANS; break;
-                    default:            op = DP_BLEND_ON;    break;
+                    default:
+                        ur_error( ut, UR_ERR_SCRIPT,
+                              "blend expected word! (on off add burn trans)" );
+                        goto error;
                 }
                 emitOp( op );
             }
@@ -2973,10 +2974,10 @@ dispatch:
             ++ds->samplesQueryId;
             glBeginQuery( GL_SAMPLES_PASSED, ds->samplesQueryId );
             break;
-#ifdef KR_TODO
+
         case DP_SAMPLES_END:
         {
-            uint32_t blkN = *pc++;
+            PC_WORD( blk, val );
             if( ds->samplesQueryId )
             {
                 GLuint samples;
@@ -2984,22 +2985,25 @@ dispatch:
 
                 glEndQuery( GL_SAMPLES_PASSED );
 
-                // Push query results on stack and call process-block.
+                // Poke query results into result int!/vector!
 
                 for( id = 1; id <= ds->samplesQueryId; ++id )
                 {
                     glGetQueryObjectuiv( id, GL_QUERY_RESULT, &samples );
                     //printf( "KR samples %d %d\n", id, samples );
-                    UR_S_GROW;
-                    ur_initInt( UR_TOS, samples );
+                    if( ur_is(val, UT_VECTOR) )
+                    {
+                    }
+                    else
+                    {
+                        ur_setId(val, UT_INT);
+                        ur_int(val) = samples;
+                    }
                 }
-
-                if( ! boron_eval( ut, blkN, 0 ) )
-                    return UR_THROW;
             }
         }
             break;
-#endif
+
         case DP_LIGHT:
         {
             UCell cell;
