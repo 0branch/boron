@@ -50,6 +50,7 @@ add_library(boron-lib SHARED
     urlan/date.c
     urlan/env.c
     urlan/gc.c
+    urlan/parse_binary.c
     urlan/parse_block.c
     urlan/parse_string.c
     urlan/path.c
