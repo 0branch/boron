@@ -536,6 +536,7 @@ void     ur_ctxSetWords( UBuffer*, const UCell* it, const UCell* end );
 int      ur_ctxAppendWord( UBuffer*, UAtom atom );
 int      ur_ctxAddWordI( UBuffer*, UAtom atom );
 UCell*   ur_ctxAddWord( UBuffer*, UAtom atom );
+void     ur_ctxWordAtoms( const UBuffer*, UAtom* atoms );
 int      ur_ctxLookupNoSort( const UBuffer*, UAtom atom );
 int      ur_ctxLookup( const UBuffer*, UAtom atom );
 const UBuffer* ur_sortedContext( UThread*, const UCell* );
