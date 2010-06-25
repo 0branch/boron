@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009-2010 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -18,7 +18,11 @@
 */
 
 
+#if CONFIG_COMPRESS == 2
 #include <bzlib.h>
+#else
+#include <zlib.h>
+#endif
 
 
 /*-cf-
@@ -35,7 +39,11 @@ CFUNC(cfunc_compress)
         UBuffer* bin;
         char* inp;      // Would be const except for bz2 interface.
         unsigned int len;
+#ifdef ZLIB_H
+        uLongf blen;
+#else
         unsigned int blen;
+#endif
 
         ur_seriesSlice( ut, &si, a1 );
         if( ur_is(a1, UT_STRING) && ur_strIsUcs2(si.buf) )
@@ -76,9 +84,14 @@ CFUNC(cfunc_compress)
         if( len > 0 )
         {
             int ret;
+#ifdef ZLIB_H
+            ret = compress( bin->ptr.b + bin->used, &blen, (Bytef*) inp, len );
+            if( ret == Z_BUF_ERROR )
+#else
             ret = BZ2_bzBuffToBuffCompress( bin->ptr.c + bin->used, &blen,
                                             inp, len, 3, 0, 0 );
             if( ret == BZ_OUTBUFF_FULL )
+#endif
                 return ur_error( ut, UR_ERR_ACCESS, "compress buffer full" );
             bin->used += blen;
         }
@@ -99,6 +112,46 @@ CFUNC(cfunc_compress)
 */
 int ur_decompress( const void* data, int len, UBuffer* binOut )
 {
+#ifdef ZLIB_H
+#define BUF_LOW     32
+    z_stream strm;
+    int ok;
+
+    strm.zalloc = Z_NULL;
+    strm.zfree  = Z_NULL;
+    strm.opaque = Z_NULL;
+    strm.next_in  = (uint8_t*) data;
+    strm.avail_in = len;
+
+    ok = inflateInit( &strm );
+    if( ok != Z_OK )
+    {
+        //fprintf( stderr, "zlib inflateInit failure (%d)", ok );
+        return 0;
+    }
+
+    ur_binReserve( binOut, (len < BUF_LOW) ? BUF_LOW : len );
+    strm.next_out  = binOut->ptr.b;
+    strm.avail_out = ur_avail(binOut);
+
+    do
+    {
+        if( strm.avail_out < BUF_LOW )
+        {
+            ur_binReserve( binOut, ur_avail(binOut) + (2 * BUF_LOW) );
+            strm.next_out  = binOut->ptr.b + strm.total_out;
+            strm.avail_out = ur_avail(binOut) - strm.total_out;
+        }
+
+        ok = inflate( &strm, Z_NO_FLUSH );
+        binOut->used = strm.total_out;
+    }
+    while( ok == Z_OK );
+
+    inflateEnd( &strm );
+
+    return (ok == Z_STREAM_END) ? 1 : 0;
+#else
 #define BUF_LOW     32
     bz_stream strm;
     int ok;
@@ -138,6 +191,7 @@ int ur_decompress( const void* data, int len, UBuffer* binOut )
     BZ2_bzDecompressEnd( &strm );
 
     return (ok == BZ_STREAM_END) ? 1 : 0;
+#endif
 }
 
 

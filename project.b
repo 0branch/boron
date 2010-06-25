@@ -1,7 +1,7 @@
 project: "boron"
 
 checksum: true
-compress: true
+compress: 'zlib
 random:   true
 timecode: true
 thread:   true
@@ -35,8 +35,14 @@ shlib %boron [
     if checksum [
         cflags {-DCONFIG_CHECKSUM}
     ]
-    if compress [
-        cflags {-DCONFIG_COMPRESS}
+    if eq? compress 'zlib [
+        cflags {-DCONFIG_COMPRESS=1}
+        win32 [libs %zdll]
+        macx  [libs %z]
+        unix  [libs {z m}]
+    ]
+    if eq? compress 'bzip2 [
+        cflags {-DCONFIG_COMPRESS=2}
         win32 [libs %libbz2]
         macx  [libs %bz2]
         unix  [libs {bz2 m}]
