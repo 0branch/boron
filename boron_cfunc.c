@@ -36,6 +36,7 @@
 
 #define a2  (a1 + 1)
 #define a3  (a1 + 2)
+#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
 
 
 /*
@@ -528,72 +529,31 @@ CFUNC(cfunc_infuse)
 }
 
 
-#define INT_MASK    ((1<<UT_CHAR) | (1<<UT_INT))
-#define DEC_MASK    ((1<<UT_DECIMAL) | (1<<UT_TIME) | (1<<UT_DATE))
-#define ur_isIntType(type)  ((1<<type) & INT_MASK)
-#define ur_isDecType(type)  ((1<<type) & DEC_MASK)
-
-#define MATH_FUNC(name,OP) \
- CFUNC(name) { \
-    const UCell* ra = a2; \
-    if( ur_isIntType(ur_type(a1)) ) { \
-        if( ur_isIntType(ur_type(ra)) ) { \
-            ur_setId(res, ur_type(a1)); \
-            ur_int(res) = ur_int(a1) OP ur_int(ra); \
-            return UR_OK; \
-        } else if( ur_isDecType(ur_type(ra)) ) { \
-            ur_setId(res, UT_DECIMAL); \
-            ur_decimal(res) = ur_int(a1) OP ur_decimal(ra); \
-            return UR_OK; \
-        } \
-    } \
-    else if( ur_isDecType(ur_type(a1)) ) { \
-        if( ur_isIntType(ur_type(ra)) ) { \
-            ur_setId(res, ur_type(a1)); \
-            ur_decimal(res) = ur_decimal(a1) OP ur_int(ra); \
-            return UR_OK; \
-        } else if( ur_isDecType(ur_type(ra)) ) { \
-            ur_setId(res, ur_type(a1)); \
-            ur_decimal(res) = ur_decimal(a1) OP ur_decimal(ra); \
-            return UR_OK; \
-        } \
-    } \
-    else if( ur_is(a1,UT_VEC3) ) { \
-        if( ur_is(ra,UT_VEC3) ) { \
-            ur_setId(res, UT_VEC3); \
-            res->vec3.xyz[0] = a1->vec3.xyz[0] OP ra->vec3.xyz[0]; \
-            res->vec3.xyz[1] = a1->vec3.xyz[1] OP ra->vec3.xyz[1]; \
-            res->vec3.xyz[2] = a1->vec3.xyz[2] OP ra->vec3.xyz[2]; \
-            return UR_OK; \
-        } else if( ur_is(ra,UT_DECIMAL) ) { \
-            float n = ur_decimal(ra); \
-            ur_setId(res, UT_VEC3); \
-            res->vec3.xyz[0] = a1->vec3.xyz[0] OP n; \
-            res->vec3.xyz[1] = a1->vec3.xyz[1] OP n; \
-            res->vec3.xyz[2] = a1->vec3.xyz[2] OP n; \
-            return UR_OK; \
-        } \
-    } \
-    return ur_error( ut, UR_ERR_TYPE, "math operation expected numbers" ); \
+#define OPER_FUNC(name,OP) \
+CFUNC(name) { \
+    int t = ur_type(a1); \
+    if( t < ur_type(a2) ) \
+        t = ur_type(a2); \
+    return ut->types[ t ]->operate( ut, a1, a2, res, OP ); \
 }
 
 
 /*-cf-
     add
         a   int!/decimal!/vec3!
-        b   int!/decimal!/vec3!
+        b   int!/decimal!/vec3!/block!
     return: Sum of two numbers.
 */
 /*-cf-
     sub
         a   int!/decimal!/vec3!
-        b   int!/decimal!/vec3!
+        b   int!/decimal!/vec3!/block!
     return: Difference of two numbers.
 */
 /*-cf-
     mul
         a   int!/decimal!/vec3!
-        b   int!/decimal!/vec3!
+        b   int!/decimal!/vec3!/block!
     return: Product of two numbers.
 */
 /*-cf-
@@ -602,47 +562,33 @@ CFUNC(cfunc_infuse)
         b   int!/decimal!/vec3!
     return: Quotient of a divided by b.
 */
-MATH_FUNC( cfunc_add, + )
-MATH_FUNC( cfunc_sub, - )
-MATH_FUNC( cfunc_mul, * )
-MATH_FUNC( cfunc_div, / )
-
-
-#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
-
-#define BITWISE_FUNC(name,OP,msg) \
-CFUNC(name) { \
-    if( ANY3(a1, UT_LOGIC, UT_CHAR, UT_INT) && \
-        ANY3(a2, UT_LOGIC, UT_CHAR, UT_INT) ) { \
-        ur_setId(res, ur_type(a1)); \
-        ur_int(res) = ur_int(a1) OP ur_int(a2); \
-        return UR_OK; \
-    } else \
-        return ur_error(ut, UR_ERR_TYPE, "%s expected logic!/char!/int!", msg);\
-}
+OPER_FUNC( cfunc_add, UR_OP_ADD )
+OPER_FUNC( cfunc_sub, UR_OP_SUB )
+OPER_FUNC( cfunc_mul, UR_OP_MUL )
+OPER_FUNC( cfunc_div, UR_OP_DIV )
 
 
 /*-cf-
     and
         a   logic!/char!/int!
-        b   logic!/char!/int!
+        b   logic!/char!/int!/block!
     return: Bitwise AND.
 */
 /*-cf-
     or
         a   logic!/char!/int!
-        b   logic!/char!/int!
+        b   logic!/char!/int!/block!
     return: Bitwise OR.
 */
 /*-cf-
     xor
         a   logic!/char!/int!
-        b   logic!/char!/int!
+        b   logic!/char!/int!/block!
     return: Bitwise exclusive OR.
 */
-BITWISE_FUNC( cfunc_and, &, "and" )
-BITWISE_FUNC( cfunc_or,  |, "or")
-BITWISE_FUNC( cfunc_xor, ^, "xor" )
+OPER_FUNC( cfunc_and, UR_OP_AND )
+OPER_FUNC( cfunc_or,  UR_OP_OR )
+OPER_FUNC( cfunc_xor, UR_OP_XOR )
 
 
 /*-cf-

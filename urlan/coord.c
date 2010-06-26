@@ -139,7 +139,7 @@ UDatatype dt_coord =
 {
     "coord!",
     coord_make,             coord_make,             unset_copy,
-    unset_compare,          coord_select,
+    unset_compare,          unset_operate,          coord_select,
     coord_toString,         coord_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
@@ -202,7 +202,7 @@ UDatatype dt_timecode =
 {
     "timecode!",
     timecode_make,          timecode_make,          unset_copy,
-    unset_compare,          coord_select,
+    unset_compare,          unset_operate,          coord_select,
     timecode_toString,      timecode_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind

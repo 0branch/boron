@@ -642,7 +642,7 @@ UDatatype boron_types[] =
   {
     "func!",
     unset_make,             unset_make,             func_copy,
-    unset_compare,          func_select,
+    unset_compare,          unset_operate,          func_select,
     func_toString,          func_toString,
     unset_recycle,          func_mark,              func_destroy,
     unset_markBuf,          func_toShared,          func_bind
@@ -650,7 +650,7 @@ UDatatype boron_types[] =
   {
     "cfunc!",
     unset_make,             unset_make,             unset_copy,
-    unset_compare,          func_select,
+    unset_compare,          unset_operate,          func_select,
     unset_toString,         unset_toText,
     unset_recycle,          cfunc_mark,             unset_destroy,
     unset_markBuf,          cfunc_toShared,         unset_bind
@@ -658,7 +658,7 @@ UDatatype boron_types[] =
   {
     "port!",
     port_make,              unset_make,             unset_copy,
-    unset_compare,          unset_select,
+    unset_compare,          unset_operate,          unset_select,
     unset_toString,         unset_toText,
     unset_recycle,          binary_mark,            port_destroy,
     unset_markBuf,          binary_toShared,        unset_bind

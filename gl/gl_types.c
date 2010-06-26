@@ -1309,7 +1309,7 @@ UDatatype gl_types[] =
   {
     "draw-prog!",
     dprog_make,             unset_make,             unset_copy,
-    dprog_compare,          unset_select,
+    dprog_compare,          unset_operate,          unset_select,
     unset_toString,         unset_toText,
     unset_recycle,          dprog_mark,             dprog_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
@@ -1317,7 +1317,7 @@ UDatatype gl_types[] =
   {
     "raster!",
     raster_make,            raster_make,            binary_copy,
-    unset_compare,          raster_select,
+    unset_compare,          unset_operate,          raster_select,
     unset_toString,         unset_toText,
     unset_recycle,          binary_mark,            binary_destroy,
     unset_markBuf,          binary_toShared,        unset_bind
@@ -1325,7 +1325,7 @@ UDatatype gl_types[] =
   {
     "texture!",
     texture_make,           texture_make,           unset_copy,
-    unset_compare,          texture_select,
+    unset_compare,          unset_operate,          texture_select,
     unset_toString,         unset_toText,
     texture_recycle,        texture_mark,           unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
@@ -1333,7 +1333,7 @@ UDatatype gl_types[] =
   {
     "font!",
     rfont_make,             rfont_make,             unset_copy,
-    unset_compare,          rfont_select,
+    unset_compare,          unset_operate,          rfont_select,
     unset_toString,         unset_toText,
     unset_recycle,          rfont_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
@@ -1341,7 +1341,7 @@ UDatatype gl_types[] =
   {
     "shader!",
     shader_make,            shader_make,            unset_copy,
-    unset_compare,          unset_select,
+    unset_compare,          unset_operate,          unset_select,
     unset_toString,         unset_toText,
     unset_recycle,          binary_mark,            shader_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
@@ -1349,7 +1349,7 @@ UDatatype gl_types[] =
   {
     "fbo!",
     fbo_make,               unset_make,             unset_copy,
-    unset_compare,          fbo_select,
+    unset_compare,          unset_operate,          fbo_select,
     unset_toString,         unset_toText,
     unset_recycle,          fbo_mark,               unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
@@ -1357,7 +1357,7 @@ UDatatype gl_types[] =
   {
     "vbo!",
     vbo_make,               unset_make,             unset_copy,
-    unset_compare,          unset_select,
+    unset_compare,          unset_operate,          unset_select,
     unset_toString,         unset_toText,
     unset_recycle,          vbo_mark,               vbo_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
@@ -1365,7 +1365,7 @@ UDatatype gl_types[] =
   {
     "widget!",
     widget_make,            unset_make,             unset_copy,
-    unset_compare,          widget_select,
+    unset_compare,          unset_operate,          widget_select,
     unset_toString,         unset_toText,
     widget_recycle,         widget_mark,            unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind

@@ -21,6 +21,7 @@
 extern int  unset_make( UThread*, const UCell* from, UCell* res );
 extern void unset_copy( UThread*, const UCell* from, UCell* res );
 extern int  unset_compare( UThread*, const UCell* a, const UCell* b, int mode );
+extern int  unset_operate( UThread*, const UCell*, const UCell*, UCell*, int );
 extern int  unset_select( UThread*, const UCell* cell, UBlockIter* bi,
                           UCell* res );
 extern int  unset_fromString( UThread*, const UBuffer* str, UCell* res );

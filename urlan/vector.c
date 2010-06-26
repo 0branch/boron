@@ -587,7 +587,7 @@ USeriesType dt_vector =
     {
     "vector!",
     vector_make,            vector_convert,         vector_copy,
-    unset_compare,          vector_select,
+    unset_compare,          unset_operate,          vector_select,
     vector_toString,        vector_toString,
     unset_recycle,          binary_mark,            array_destroy,
     unset_markBuf,          binary_toShared,        unset_bind

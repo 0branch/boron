@@ -352,7 +352,19 @@ enum UrlanCompareTest
     UR_COMPARE_EQUAL,
     UR_COMPARE_EQUAL_CASE,
     UR_COMPARE_ORDER,
-    UR_COMPARE_ORDER_CASE
+    UR_COMPARE_ORDER_CASE,
+};
+
+enum UrlanOperator
+{
+    UR_OP_ADD,
+    UR_OP_SUB,
+    UR_OP_MUL,
+    UR_OP_DIV,
+    UR_OP_MOD,
+    UR_OP_AND,
+    UR_OP_OR,
+    UR_OP_XOR
 };
 
 enum UrlanRecyclePhase
@@ -369,6 +381,7 @@ struct UDatatype
     int  (*convert)   ( UThread*, const UCell* from, UCell* res );
     void (*copy)      ( UThread*, const UCell* from, UCell* res );
     int  (*compare)   ( UThread*, const UCell* a, const UCell* b, int test );
+    int  (*operate)   ( UThread*, const UCell*, const UCell*, UCell* res, int );
     int  (*select)    ( UThread*, const UCell* cell, UBlockIter* bi,UCell* res);
     void (*toString)  ( UThread*, const UCell* cell, UBuffer* str, int depth );
     void (*toText)    ( UThread*, const UCell* cell, UBuffer* str, int depth );
