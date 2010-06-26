@@ -24,6 +24,7 @@
 #include "urlan_atoms.h"
 #include "mem_util.h"
 #include "str.h"
+#include "bignum.h"
 #include "quickSortIndex.h"
 
 
@@ -803,6 +804,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_xor,     "xor a b" );
     addCFunc( cfunc_minimum, "minimum a b" );
     addCFunc( cfunc_maximum, "maximum a b" );
+    addCFunc( cfunc_abs,     "abs n" );
     addCFunc( cfunc_sqrt,    "sqrt n" );
     addCFunc( cfunc_cos,     "cos n" );
     addCFunc( cfunc_sin,     "sin n" );
@@ -855,6 +857,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_any_blockQ, "any-block? val" );
     addCFunc( cfunc_any_wordQ,  "any-word? val" );
     addCFunc( cfunc_complement, "complement val" );
+    addCFunc( cfunc_negate,     "negate n" );
     addCFunc( cfunc_intersect,  "intersect a b" );
     addCFunc( cfunc_difference, "difference a b" );
     addCFunc( cfunc_sort,       "sort ser /case" );

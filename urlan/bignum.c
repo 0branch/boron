@@ -268,6 +268,17 @@ int bignum_cmp( const UCell* a, const UCell* b )
 
 
 /**
+  Convert to absolute value.
+*/
+void bignum_abs( UCell* cell )
+{
+    const Limb* bn = BIG(cell);
+    if( isNeg(bn) )
+        bignum_negate( cell, cell );
+}
+
+
+/**
   Negate the bignum.
   Cell and result may be the same.
 */

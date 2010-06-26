@@ -671,6 +671,39 @@ CFUNC(cfunc_maximum)
 }
 
 
+/*-cf-
+    abs
+        n   int!/decimal!/time!/bignum!
+    return: Absolute value of n.
+*/
+CFUNC(cfunc_abs)
+{
+    int type = ur_type(a1);
+    switch( type )
+    {
+        case UT_INT:
+            ur_setId(res, type);
+            ur_int(res) = abs( ur_int(a1) );
+            break;
+
+        case UT_DECIMAL:
+        case UT_TIME:
+            ur_setId(res, type);
+            ur_decimal(res) = fabs( ur_decimal(a1) );
+            break;
+
+        case UT_BIGNUM:
+            *res = *a1;
+            bignum_abs( res );
+            break;
+
+        default:
+            return ur_error( ut, UR_ERR_TYPE, "abs expected int!/decimal!" );
+    }
+    return UR_OK;
+}
+
+
 static int _mathFunc( UThread* ut, const UCell* a1, UCell* res,
                       double (*func)(double) )
 {
@@ -2006,6 +2039,66 @@ CFUNC(cfunc_complement)
 }
 
 
+/*-cf-
+    negate
+        value   int!/decimal!/time!/bignum!/coord!/vec3!/bitset!
+    return: Negated value.
+*/
+CFUNC( cfunc_negate )
+{
+    int type = ur_type(a1);
+    switch( type )
+    {
+        case UT_INT:
+            ur_setId(res, type);
+            ur_int(res) = -ur_int(a1);
+            break;
+
+        case UT_DECIMAL:
+        case UT_TIME:
+            ur_setId(res, type);
+            ur_decimal(res) = -ur_decimal(a1);
+            break;
+
+        case UT_BIGNUM:
+            // Must setId before bignum call (clears first Limb).
+            ur_setId(res, type);
+            bignum_negate( a1, res );
+            break;
+
+        case UT_COORD:
+        {
+            int16_t* it  = a1->coord.n;
+            int16_t* end = it + a1->coord.len;
+            int16_t* dst = res->coord.n;
+            while( it != end )
+            {
+                *dst++ = -*it;
+                ++it;
+            }
+            ur_setId(res, type);
+            res->coord.len = a1->coord.len;
+        }
+            break;
+
+        case UT_VEC3:
+            ur_setId(res, type);
+            res->vec3.xyz[0] = -a1->vec3.xyz[0];
+            res->vec3.xyz[1] = -a1->vec3.xyz[1];
+            res->vec3.xyz[2] = -a1->vec3.xyz[2];
+            break;
+
+        case UT_BITSET:
+            return cfunc_complement( ut, a1, res );
+
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                             "negate expected number or bitset!" );
+    }
+    return UR_OK;
+}
+
+
 static int set_relation( UThread* ut, const UCell* a1, UCell* res,
                          int intersect )
 {
@@ -3144,7 +3237,7 @@ CFUNC(cfunc_parse)
         USeriesIterM si;
         const UBuffer* rules;
         UIndex pos;
-        int ok;
+        int ok = 0;
 
         if( ! ur_seriesSliceM( ut, &si, a1 ) )
             return UR_THROW;

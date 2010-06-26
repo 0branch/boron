@@ -30,6 +30,7 @@ int64_t bignum_l( const UCell* );
 double  bignum_d( const UCell* );
 int     bignum_equal( const UCell*, const UCell* );
 int     bignum_cmp( const UCell*, const UCell* );
+void    bignum_abs( UCell* );
 void    bignum_negate( const UCell*, UCell* result );
 void    bignum_add( const UCell*, const UCell*, UCell* result );
 void    bignum_sub( const UCell*, const UCell*, UCell* result );
