@@ -17,7 +17,7 @@ set(CMAKE_SKIP_RPATH true)
 # Config defines
 add_definitions(
     -DCONFIG_CHECKSUM
-    -DCONFIG_COMPRESS
+    -DCONFIG_COMPRESS=1
     -DCONFIG_RANDOM
 #    -DCONFIG_TIMECODE
     -DCONFIG_THREAD
@@ -74,10 +74,12 @@ set_target_properties(boron-lib PROPERTIES
    OUTPUT_NAME "boron")
 
 if (APPLE)
-    target_link_libraries(boron-lib m bz2)
+    target_link_libraries(boron-lib m z)
+#   target_link_libraries(boron-lib m bz2)
 endif ()
 if (UNIX AND NOT APPLE)
-    target_link_libraries(boron-lib m bz2 pthread)
+    target_link_libraries(boron-lib m z pthread)
+#   target_link_libraries(boron-lib m bz2 pthread)
 endif ()
 if (WIN32)
     target_link_libraries(boron-lib ws2_32)
