@@ -5,8 +5,8 @@ enum GLFixedAtoms
 {
     UR_ATOM_ADD   = 217,
     UR_ATOM_SIZE  = 238,
-    UR_ATOM_CLOSE = 361,
-    UR_ATOM_WIDTH = 375,
+    UR_ATOM_CLOSE = 363,
+    UR_ATOM_WIDTH = 377,
     UR_ATOM_HEIGHT,
     UR_ATOM_AREA,
     UR_ATOM_RECT,

@@ -3614,12 +3614,22 @@ void context_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 }
 
 
+/*
+  If depth is -1 then the context word and braces will be omitted.
+*/
 void context_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
-    ur_strAppendCStr( str, "context [\n" );
-    context_toText( ut, cell, str, depth + 1 );
-    ur_strAppendIndent( str, depth );
-    ur_strAppendCStr( str, "]" );
+    if( depth < 0 )
+    {
+        context_toText( ut, cell, str, 0 );
+    }
+    else
+    {
+        ur_strAppendCStr( str, "context [\n" );
+        context_toText( ut, cell, str, depth + 1 );
+        ur_strAppendIndent( str, depth );
+        ur_strAppendCStr( str, "]" );
+    }
 }
 
 

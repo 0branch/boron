@@ -2486,6 +2486,33 @@ CFUNC(cfunc_reduce)
 
 
 /*-cf-
+    mold
+        value
+        /contents   Omit the outer braces from block and context values.
+    return: string!
+
+    Convert value to its serialized form.
+*/
+CFUNC(cfunc_mold)
+{
+#define OPT_MOLD_CONTENTS   0x01
+    int enc = UR_ENC_LATIN1;
+    int len = 0;
+
+    if( ur_isStringType( ur_type(a1) ) )
+    {
+        const UBuffer* str = ur_bufferSer(a1);
+        enc = str->form;
+        len = str->used + 2;
+    }
+    ur_toStr( ut, a1,
+              ur_makeStringCell( ut, enc, len, res ),
+              (CFUNC_OPTIONS & OPT_MOLD_CONTENTS) ? -1 : 0 );
+    return UR_OK;
+}
+
+
+/*-cf-
     probe
         value
     return: value
@@ -2554,20 +2581,21 @@ CFUNC(cfunc_print)
 
 /*-cf-
     to-text
-        val
+        value
     return: string!
 */
 CFUNC(cfunc_to_text)
 {
     int enc = UR_ENC_LATIN1;
+    int len = 0;
 
-    if( ur_is(a1, UT_STRING) )
+    if( ur_isStringType( ur_type(a1) ) )
     {
         const UBuffer* str = ur_bufferSer(a1);
         enc = str->form;
+        len = str->used;
     }
-    ur_toText( ut, a1, ur_makeStringCell( ut, enc, 0, res ) );
-
+    ur_toText( ut, a1, ur_makeStringCell( ut, enc, len, res ) );
     return UR_OK;
 }
 

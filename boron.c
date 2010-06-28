@@ -814,6 +814,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_reserve, "reserve ser size" );
     addCFunc( cfunc_does,    "does body" );
     addCFunc( cfunc_func,    "func spec body" );
+    addCFunc( cfunc_mold,    "mold val /contents" );
     addCFunc( cfunc_probe,   "probe val" );
     addCFunc( cfunc_prin,    "prin val" );
     addCFunc( cfunc_print,   "print val" );
