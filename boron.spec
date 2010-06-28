@@ -13,7 +13,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-build
 #BuildRequires: cmake libbzip2_1-devel
 BuildRequires: cmake zlib1-devel
 %else
-BuildRequires: cmake
+BuildRequires: cmake zlib-devel
 %endif
 
 %description
