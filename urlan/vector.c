@@ -578,7 +578,6 @@ int vector_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 
 
 extern void binary_mark( UThread* ut, UCell* cell );
-extern void array_destroy( UBuffer* buf );
 extern void binary_toShared( UCell* cell );
 
 
@@ -589,7 +588,7 @@ USeriesType dt_vector =
     vector_make,            vector_convert,         vector_copy,
     unset_compare,          unset_operate,          vector_select,
     vector_toString,        vector_toString,
-    unset_recycle,          binary_mark,            array_destroy,
+    unset_recycle,          binary_mark,            ur_arrFree,
     unset_markBuf,          binary_toShared,        unset_bind
     },
     vector_pick,            vector_poke,            vector_append,

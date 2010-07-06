@@ -203,6 +203,8 @@
 #define DT(dt)          (ut->types[ dt ])
 #define SERIES_DT(dt)   ((const USeriesType*) (ut->types[ dt ]))
 
+#define block_destroy   ur_arrFree
+#define string_destroy  ur_arrFree
 #define context_markBuf block_markBuf
 
 void block_markBuf( UThread* ut, UBuffer* buf );
@@ -1835,12 +1837,6 @@ void binary_mark( UThread* ut, UCell* cell )
 }
 
 
-void binary_destroy( UBuffer* buf )
-{
-    ur_binFree( buf );
-}
-
-
 void binary_toShared( UCell* cell )
 {
     UIndex n = cell->series.buf;
@@ -2024,7 +2020,7 @@ USeriesType dt_binary =
     binary_make,            binary_make,            binary_copy,
     binary_compare,         unset_operate,          binary_select,
     binary_toString,        binary_toString,
-    unset_recycle,          binary_mark,            binary_destroy,
+    unset_recycle,          binary_mark,            ur_binFree,
     unset_markBuf,          binary_toShared,        unset_bind
     },
     binary_pick,            binary_poke,            binary_append,
@@ -2097,7 +2093,7 @@ USeriesType dt_bitset =
     bitset_make,            bitset_make,            binary_copy,
     unset_compare,          unset_operate,          unset_select,
     bitset_toString,        bitset_toString,
-    unset_recycle,          binary_mark,            binary_destroy,
+    unset_recycle,          binary_mark,            ur_binFree,
     unset_markBuf,          binary_toShared,        unset_bind
     },
     binary_pick,            binary_poke,            binary_append,
@@ -2369,12 +2365,6 @@ void string_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     (void) depth;
     ur_strAppend( str, ss, cell->series.it,
                   (cell->series.end > -1) ? cell->series.end : ss->used );
-}
-
-
-void array_destroy( UBuffer* buf )
-{
-    ur_arrFree( buf );
 }
 
 
@@ -2764,7 +2754,7 @@ USeriesType dt_string =
     string_make,            string_convert,         string_copy,
     string_compare,         unset_operate,          string_select,
     string_toString,        string_toText,
-    unset_recycle,          binary_mark,            array_destroy,
+    unset_recycle,          binary_mark,            string_destroy,
     unset_markBuf,          binary_toShared,        unset_bind
     },
     string_pick,            string_poke,            string_append,
@@ -2837,7 +2827,7 @@ USeriesType dt_file =
     file_make,              file_convert,           file_copy,
     string_compare,         unset_operate,          string_select,
     file_toString,          string_toText,
-    unset_recycle,          binary_mark,            array_destroy,
+    unset_recycle,          binary_mark,            string_destroy,
     unset_markBuf,          binary_toShared,        unset_bind
     },
     string_pick,            string_poke,            string_append,
@@ -3333,7 +3323,7 @@ USeriesType dt_block =
     block_make,             block_convert,          block_copy,
     block_compare,          block_operate,          block_select,
     block_toString,         block_toText,
-    unset_recycle,          block_mark,             array_destroy,
+    unset_recycle,          block_mark,             block_destroy,
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
@@ -3370,7 +3360,7 @@ USeriesType dt_paren =
     paren_make,             paren_convert,          block_copy,
     block_compare,          unset_operate,          block_select,
     block_toString,         block_toString,
-    unset_recycle,          block_mark,             array_destroy,
+    unset_recycle,          block_mark,             block_destroy,
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
@@ -3434,7 +3424,7 @@ USeriesType dt_path =
     path_make,              path_make,              block_copy,
     block_compare,          unset_operate,          block_select,
     path_toString,          path_toString,
-    unset_recycle,          block_mark,             array_destroy,
+    unset_recycle,          block_mark,             block_destroy,
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
@@ -3453,7 +3443,7 @@ USeriesType dt_litpath =
     path_make,              path_make,              block_copy,
     block_compare,          unset_operate,          block_select,
     path_toString,          path_toString,
-    unset_recycle,          block_mark,             array_destroy,
+    unset_recycle,          block_mark,             block_destroy,
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
@@ -3472,7 +3462,7 @@ USeriesType dt_setpath =
     path_make,              path_make,              block_copy,
     block_compare,          unset_operate,          block_select,
     path_toString,          path_toString,
-    unset_recycle,          block_mark,             array_destroy,
+    unset_recycle,          block_mark,             block_destroy,
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
