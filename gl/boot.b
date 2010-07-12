@@ -160,6 +160,41 @@ load-texture: func [file /mipmap /clamp | spec] [
 
 
 ;-----------------------------------------------------------------------------
+
+
+audio-sample: context [
+    sample-format:
+    rate:
+    data: none
+]
+
+; Returns audio-sample context.
+load-wav: func [file | csize format channels srate bps sdata] [
+    parse read file [
+        little-endian
+        "RIFF" u32 "WAVEfmt "
+        csize:    u32
+        format:   u16
+        channels: u16
+        srate:    u32 u32 u16
+        bps:      u16
+        "data"
+        csize:    u32
+        copy sdata csize
+    ]
+    if ne? format 1 [
+        error "WAV data is compressed"
+    ]
+    format: make coord! [bps channels 0]
+    make audio-sample copy [
+        sample-format: format
+        rate: srate
+        data: sdata
+    ]
+]
+
+
+;-----------------------------------------------------------------------------
 ; Math Helpers
 
 

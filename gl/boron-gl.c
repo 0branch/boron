@@ -388,8 +388,6 @@ CFUNC( uc_display_swap )
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     */
 
-    aud_update();
-
     return UR_OK;
 }
 
@@ -1734,13 +1732,13 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    58
+#define FA_COUNT    59
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
         "add size close\n"
         "width height area rect raster texture\n"
-        "elem focus resize key-down key-up\n"
+        "gui-style elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
         "ambient diffuse specular pos shader vertex normal fragment\n"
         "default wait dynamic static stream left right center\n"
@@ -1811,8 +1809,17 @@ static void _createDrawOpTable( UThread* ut )
 #include "math3d.c"
 
 
+CFUNC_PUB( cfunc_buffer_audio );
+
+
 extern GWidgetClass wclass_script;
+/*
+extern GWidgetClass wclass_hbox;
+extern GWidgetClass wclass_vbox;
+extern GWidgetClass wclass_window;
 extern GWidgetClass wclass_button;
+extern GWidgetClass wclass_checkbox;
+*/
 
 
 UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
@@ -1872,7 +1879,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( uc_key_code,       "key-code" );
     addCFunc( cfunc_load_png,    "load-png f" );
     addCFunc( cfunc_save_png,    "save-png f rast" );
-    //addCFunc( uc_buffer_audio,   "buffer-audio" );
+    addCFunc( cfunc_buffer_audio,"buffer-audio a" );
     addCFunc( cfunc_display,     "display size /fullscreen" );
     addCFunc( cfunc_to_degrees,  "to-degrees n" );
     addCFunc( cfunc_to_radians,  "to-radians n" );
@@ -1954,9 +1961,15 @@ cleanup:
     ur_arrInit( &glEnv.rootWidgets, sizeof(GWidget*), 0 );
 
     {
-    GWidgetClass* classes[2];
+    GWidgetClass* classes[ 4 ];
+
     classes[0] = &wclass_script;
-    //classes[1] = &wclass_button;
+    //classes[1] = &wclass_hbox;
+    //classes[2] = &wclass_vbox;
+    //classes[3] = &wclass_window;
+    //classes[4] = &wclass_button;
+    //classes[5] = &wclass_checkbox;
+
     ur_addWidgetClasses( classes, 1 );
     }
 
@@ -2001,7 +2014,11 @@ void ur_addWidgetClasses( GWidgetClass** classTable, int count )
     str->used = 0;
     ur_arrInit( &atoms, sizeof(UAtom), count );
     for( i = 0; i < count; ++i )
+    {
+        if( i )
+            ur_strAppendChar( str, ' ' );
         ur_strAppendCStr( str, classTable[ i ]->name );
+    }
     ur_strTermNull( str );
     ur_internAtoms( glEnv.guiUT, str->ptr.c, atoms.ptr.u16 );
     }

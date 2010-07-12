@@ -47,6 +47,7 @@
 #include <AL/alc.h>
 #ifdef USE_ALUT
 #include <AL/alut.h>
+#include <time.h>
 #endif
 
 #endif
@@ -58,9 +59,6 @@
 #include "audio.h"
 
 
-void aud_stopMusic();
-
-
 #define SAMPLE_ID(sd)   ur_int(sd)
 
 #define FX_COUNT        14
@@ -69,7 +67,21 @@ void aud_stopMusic();
 #define SOURCE_COUNT    FX_COUNT + AMBIENT_COUNT
 
 
-static int _audioUp = 0;
+enum AudioState
+{
+    AUDIO_DOWN,
+    AUDIO_AL_UP,
+    AUDIO_THREAD_UP
+};
+
+
+static int _audioUp = AUDIO_DOWN;
+
+static OSThread _athread;
+static OSMutex _musicMutex;
+static OSMutex _acmdMutex;
+static UBuffer _acmd;
+
 #ifndef USE_ALUT
 static ALCdevice*  _adevice  = 0;
 static ALCcontext* _acontext = 0;
@@ -156,12 +168,94 @@ static void _startMusic()
 }
 
 
+enum AudioCommand
+{
+    CMD_SOUND,
+    CMD_MUSIC,
+    CMD_QUIT
+};
+
+#define SLEEP_MS    32
+
+static void aud_update();
+
+#ifdef _WIN32
+static DWORD WINAPI audioThread( LPVOID arg )
+#else
+static void* audioThread( void* arg )
+#endif
+{
+    int32_t* it;
+    int32_t* end;
+    int quit = 0;
+#ifdef _WIN32
+#define SLEEP   Sleep( SLEEP_MS )
+#else
+#define SLEEP   nanosleep( &stime, 0 )
+    struct timespec stime;
+
+    stime.tv_sec = 0;
+    stime.tv_nsec = SLEEP_MS * 1000000;
+#endif
+    (void) arg;
+
+    while( 1 )
+    {
+        mutexLock( _acmdMutex );
+        if( _acmd.used )
+        {
+            it = _acmd.ptr.i;
+            end = it + _acmd.used;
+            while( it != end )
+            {
+                switch( *it )
+                {
+                    case CMD_SOUND:
+                        ++it;
+                        break;
+
+                    case CMD_QUIT:
+                        quit = 1;
+                        break;
+                }
+                ++it;
+            }
+            _acmd.used = 0;
+        }
+        mutexUnlock( _acmdMutex );
+
+        if( quit )
+            return 0;
+
+        mutexLock( _musicMutex );
+        aud_update();
+        mutexUnlock( _musicMutex );
+
+        SLEEP;
+    }
+}
+
+
+static void aud_command( int cmd, int data )
+{
+    mutexLock( _acmdMutex );
+    ur_arrAppendInt32( &_acmd, cmd );
+    if( data > -1 )
+        ur_arrAppendInt32( &_acmd, data );
+    mutexUnlock( _acmdMutex );
+}
+
+
 /**
   Called once at program startup.
   Returns 0 on a fatal error.
 */
 int aud_startup()
 {
+#ifdef _WIN32
+    DWORD winId;
+#endif
+
 #ifdef USE_ALUT
     if( alutInit( 0, 0 ) == AL_FALSE )
         return 0;
@@ -176,9 +270,38 @@ int aud_startup()
     alGenSources( SOURCE_COUNT, _asource );
     alGenBuffers( MUSIC_BUFFERS, _musicBuffers );
 
-    _audioUp = 1;
+    _audioUp = AUDIO_AL_UP;
 
+
+    // Create audio thread and command queue.
+
+    ur_arrInit( &_acmd, sizeof(uint32_t), 0 );
+    if( mutexInitF( _acmdMutex ) )
+        goto mutex0_fail;
+    if( mutexInitF( _musicMutex ) )
+        goto mutex1_fail;
+
+#ifdef _WIN32
+    _athread = CreateThread( NULL, 0, audioThread, 0, 0, &winId );
+    if( _athread == NULL )
+        goto thread_fail;
+#else
+    if( pthread_create( &_athread, 0, audioThread, 0 ) != 0 )
+        goto thread_fail;
+#endif
+
+    _audioUp = AUDIO_THREAD_UP;
     return 1;
+
+thread_fail:
+    mutexFree( _musicMutex );
+
+mutex1_fail:
+    mutexFree( _acmdMutex );
+
+mutex0_fail:
+    aud_shutdown();
+    return 0;
 }
 
 
@@ -188,6 +311,18 @@ int aud_startup()
 */
 void aud_shutdown()
 {
+    if( _audioUp == AUDIO_THREAD_UP )
+    {
+        aud_command( CMD_QUIT, -1 );
+#ifdef _WIN32
+        WaitForSingleObject( _athread, INFINITE );
+#else
+        pthread_join( _athread, 0 );
+#endif
+        mutexFree( _acmdMutex );
+        mutexFree( _musicMutex );
+    }
+
     if( _audioUp )
     {
         aud_stopMusic();
@@ -203,14 +338,17 @@ void aud_shutdown()
         alcDestroyContext( _acontext );
         alcCloseDevice( _adevice );
 #endif
+        _audioUp = AUDIO_DOWN;
     }
 }
 
 
+//static void _stopMusic();
+
 /**
   Called periodically (once per frame) to drive sound engine.
 */
-void aud_update()
+static void aud_update()
 {
 #if 0
     static Millisec prev = 0;
@@ -244,7 +382,7 @@ void aud_update()
             }
             else
             {
-                aud_stopMusic();
+                _stopMusic();
             }
             return;
         }
@@ -303,6 +441,14 @@ int wav_loader( UBuffer* filename, uint8_t* sig, int sigLen )
 #endif
 
 
+enum AudioSampleContext
+{
+    CI_SAMPLE_FORMAT,
+    CI_RATE,
+    CI_DATA
+};
+
+
 /*-cf-
     buffer-audio
         audio-sample    context!
@@ -324,7 +470,7 @@ CFUNC_PUB( cfunc_buffer_audio )
     if( ! ur_is(a1, UT_CONTEXT) )
         goto bad_ctx;
     buf = ur_bufferSer(a1);
-    cell = ur_ctxCell(buf, 0);
+    cell = ur_ctxCell(buf, CI_SAMPLE_FORMAT);
     if( ! ur_is(cell, UT_COORD) )
         goto bad_ctx;
     alFormat = ((cell->coord.n[0] - 8) / 4) + (cell->coord.n[1] - 1);
@@ -332,12 +478,12 @@ CFUNC_PUB( cfunc_buffer_audio )
         return ur_error( ut, UR_ERR_TYPE, "Invalid audio-sample format" );
     alFormat = formats[ alFormat ];
 
-    cell = ur_ctxCell(buf, 1);
+    cell = ur_ctxCell(buf, CI_RATE);
     if( ! ur_is(cell, UT_INT) )
         goto bad_ctx;
     freq = ur_int(cell);
 
-    cell = ur_ctxCell(buf, 2);
+    cell = ur_ctxCell(buf, CI_DATA);
     if( ! ur_is(cell, UT_BINARY) )
         goto bad_ctx;
     buf = ur_bufferSer(cell);
@@ -460,13 +606,31 @@ void osStopSound( int id )
 #endif
 
 
+static void _stopMusic()
+{
+    if( _musicSource )
+    {
+        alSourceStop( _musicSource );
+        alDeleteSources( 1, &_musicSource );
+        _musicSource = 0;
+    }
+
+    if( _bgStream )
+    {
+        ov_clear( &_vf );   // Closes _bgStream for us.
+        _bgStream = 0;
+    }
+}
+
+
 void aud_playMusic( const char* file )
 {
     if( _audioUp )
     {
         //dprint( "aud_playMusic( %s )", file );
 
-        aud_stopMusic();
+        mutexLock( _musicMutex );
+        _stopMusic();
 
         _bgStream = fopen( file, "rb" );
         if( ! _bgStream )
@@ -496,6 +660,7 @@ void aud_playMusic( const char* file )
 
             _startMusic();
         }
+        mutexUnlock( _musicMutex );
     }
 }
 
@@ -504,18 +669,9 @@ void aud_stopMusic()
 {
     if( _audioUp )
     {
-        if( _musicSource )
-        {
-            alSourceStop( _musicSource );
-            alDeleteSources( 1, &_musicSource );
-            _musicSource = 0;
-        }
-
-        if( _bgStream )
-        {
-            ov_clear( &_vf );   // Closes _bgStream for us.
-            _bgStream = 0;
-        }
+        mutexLock( _musicMutex );
+        _stopMusic();
+        mutexUnlock( _musicMutex );
     }
 }
 
@@ -525,7 +681,10 @@ void aud_stopMusic()
 */
 void aud_setSoundVolume( int vol )
 {
-    alListenerf( AL_GAIN, ((ALfloat) vol) / 256.0f );
+    if( _audioUp )
+    {
+        alListenerf( AL_GAIN, ((ALfloat) vol) / 256.0f );
+    }
 }
 
 
@@ -536,9 +695,15 @@ void aud_setMusicVolume( int vol )
 {
     //ALfloat gain;
     //alGetListenerfv( AL_GAIN, &gain );
-    _musicGain = ((ALfloat) vol) / 256.0f;
-    if( _musicSource )
-        alSourcef( _musicSource, AL_GAIN, _musicGain );
+    if( _audioUp )
+    {
+        _musicGain = ((ALfloat) vol) / 256.0f;
+
+        mutexLock( _musicMutex );
+        if( _musicSource )
+            alSourcef( _musicSource, AL_GAIN, _musicGain );
+        mutexUnlock( _musicMutex );
+    }
 }
 
 

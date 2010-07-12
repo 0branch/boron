@@ -26,7 +26,6 @@
 
 extern void binary_copy( UThread*, const UCell* from, UCell* res );
 extern void binary_mark( UThread*, UCell* cell );
-extern void binary_destroy( UBuffer* buf );
 extern void binary_toShared( UCell* cell );
 extern int boron_doVoid( UThread* ut, const UCell* blkC );
 
@@ -1214,7 +1213,10 @@ static int widget_make( UThread* ut, const UCell* from, UCell* res )
                                  "widget make expected widget name" );
             wclass = ur_widgetClass( ur_atom(bi.it) );
             if( ! wclass )
-                return ur_error( ut, UR_ERR_SCRIPT, "unknown widget class" );
+            {
+                return ur_error( ut, UR_ERR_SCRIPT, "unknown widget class '%s",
+                                 ur_atomCStr(ut, ur_atom(bi.it)) );
+            }
             wp = wclass->make( ut, &bi );
             if( ! wp )
                 return UR_THROW;
@@ -1319,7 +1321,7 @@ UDatatype gl_types[] =
     raster_make,            raster_make,            binary_copy,
     unset_compare,          unset_operate,          raster_select,
     unset_toString,         unset_toText,
-    unset_recycle,          binary_mark,            binary_destroy,
+    unset_recycle,          binary_mark,            ur_binFree,
     unset_markBuf,          binary_toShared,        unset_bind
   },
   {

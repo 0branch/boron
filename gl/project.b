@@ -71,9 +71,9 @@ lib %boron-gl [
         %rfont.c
         %shader.c
         %TexFont.c
-       ;%wav_load.c
         %port_joystick.c
         %widget_script.c
+       ;%widget_button.c
     ]
 ]
 
@@ -87,7 +87,7 @@ exe %boron-gl [
         ;libs_from %/usr/X11R6/lib [%X11 %Xxf86vm]
         libs [%X11 %Xxf86vm]
         libs [%freetype %bz2 %png %glv %m]
-        libs [%openal %vorbis %vorbisfile]
+        libs [%openal %vorbis %vorbisfile %pthread]
     ]
     macx [
         libs [%freetype %bz2 %png]
