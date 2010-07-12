@@ -300,10 +300,13 @@ mutex1_fail:
     mutexFree( _acmdMutex );
 
 mutex0_fail:
+    //ur_arrFree( &_acmd );
     aud_shutdown();
     return 0;
 }
 
+
+static void _stopMusic();
 
 /**
   Called once when program exits.
@@ -321,11 +324,13 @@ void aud_shutdown()
 #endif
         mutexFree( _acmdMutex );
         mutexFree( _musicMutex );
+
+        ur_arrFree( &_acmd );
     }
 
     if( _audioUp )
     {
-        aud_stopMusic();
+        _stopMusic();
 
         alDeleteSources( SOURCE_COUNT, _asource );
         alDeleteBuffers( MUSIC_BUFFERS, _musicBuffers );
@@ -342,8 +347,6 @@ void aud_shutdown()
     }
 }
 
-
-//static void _stopMusic();
 
 /**
   Called periodically (once per frame) to drive sound engine.
