@@ -30,8 +30,8 @@
 #endif
 
 
-#define UR_VERSION_STR  "0.1.6"
-#define UR_VERSION      0x000106
+#define UR_VERSION_STR  "0.1.7"
+#define UR_VERSION      0x000107
 
 
 enum UrlanDataType
@@ -628,6 +628,8 @@ void     ur_arrAppendFloat( UBuffer*, float );
 #define ur_bufferSerM(c)    ur_bufferSeriesM(ut,c)
 
 #define ur_foreach(bi)      for(; bi.it != bi.end; ++bi.it)
+
+#define ur_wordCStr(c)      ur_atomCStr(ut, ur_atom(c))
 
 #define ur_cstr(strC,bin) \
     ur_cstring(ur_bufferSer(strC), bin, strC->series.it, strC->series.end)

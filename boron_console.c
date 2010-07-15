@@ -286,7 +286,7 @@ prompt:
 
                             default:
                                 printf( "**unhandled excepetion %s\n",
-                                        ur_atomCStr(ut,ur_atom(ex)) );
+                                        ur_wordCStr( ex ) );
                                 break;
                         }
                     }

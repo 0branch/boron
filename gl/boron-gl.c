@@ -636,7 +636,7 @@ CFUNC_PUB( uc_key_code )
     }
     else if( ur_isWordType( ur_type(a1) ) )
     {
-        const char* str = ur_atomCStr( ut, ur_atom(a1) );
+        const char* str = ur_wordCStr( a1 );
         code = _keyCode( str, strLen(str) );
     }
     else

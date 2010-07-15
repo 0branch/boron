@@ -455,7 +455,7 @@ CFUNC(cfunc_bind)
         ctxN = ctxArg->word.ctx;
         if( ctxN == UR_INVALID_BUF )
             return ur_error( ut, UR_ERR_SCRIPT, "bind word '%s is unbound",
-                             ur_atomCStr(ut, ur_atom(ctxArg)) );
+                             ur_wordCStr( ctxArg ) );
     }
     else if( ur_is(ctxArg, UT_CONTEXT) )
         ctxN = ctxArg->series.buf;
@@ -511,7 +511,7 @@ CFUNC(cfunc_infuse)
         ctxN = ctxArg->word.ctx;
         if( ctxN == UR_INVALID_BUF )
             return ur_error( ut, UR_ERR_SCRIPT, "infuse word '%s is unbound",
-                             ur_atomCStr(ut, ur_atom(ctxArg)) );
+                             ur_wordCStr( ctxArg ) );
     }
     else if( ur_is(ctxArg, UT_CONTEXT) )
         ctxN = ctxArg->series.buf;
@@ -3403,7 +3403,7 @@ CFUNC(cfunc_encode)
             default:
                 return ur_error( ut, UR_ERR_TYPE,
                                  "encode passed invalid type '%s",
-                                 ur_atomCStr(ut, ur_atom(a1)) );
+                                 ur_wordCStr( a1 ) );
         }
 
         if( CFUNC_OPTIONS & OPT_ENCODE_BOM )

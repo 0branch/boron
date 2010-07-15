@@ -980,7 +980,7 @@ const UCell* ur_wordCell( UThread* ut, const UCell* cell )
     {
         case UR_BIND_UNBOUND:
             ur_error( ut, UR_ERR_SCRIPT, "unbound word '%s",
-                      ur_atomCStr( ut, ur_atom(cell) ) );
+                      ur_wordCStr( cell ) );
             return 0;
 
         case UR_BIND_THREAD:
@@ -996,7 +996,7 @@ const UCell* ur_wordCell( UThread* ut, const UCell* cell )
     }
 
     ur_error( ut, UR_ERR_SCRIPT, "word '%s has invalid binding",
-              ur_atomCStr( ut, ur_atom(cell) ) );
+              ur_wordCStr( cell ) );
     return 0;
 }
 
@@ -1015,7 +1015,7 @@ UCell* ur_wordCellM( UThread* ut, const UCell* cell )
     {
         case UR_BIND_UNBOUND:
             ur_error( ut, UR_ERR_SCRIPT, "unbound word '%s",
-                      ur_atomCStr( ut, ur_atom(cell) ) );
+                      ur_wordCStr( cell ) );
             return 0;
 
         case UR_BIND_THREAD:
@@ -1024,7 +1024,7 @@ UCell* ur_wordCellM( UThread* ut, const UCell* cell )
 
         case UR_BIND_ENV:
             ur_error( ut, UR_ERR_SCRIPT, "word '%s is in shared storage",
-                      ur_atomCStr( ut, ur_atom(cell) ) );
+                      ur_wordCStr( cell ) );
             return 0;
 
         default:
@@ -1032,7 +1032,7 @@ UCell* ur_wordCellM( UThread* ut, const UCell* cell )
     }
 
     ur_error( ut, UR_ERR_SCRIPT, "word '%s has invalid binding",
-              ur_atomCStr( ut, ur_atom(cell) ) );
+              ur_wordCStr( cell ) );
     return 0;
 }
 

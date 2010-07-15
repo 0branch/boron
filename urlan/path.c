@@ -50,7 +50,7 @@ int ur_pathCell( UThread* ut, const UCell* pc, UCell* res )
     if( ur_is(node, UT_UNSET) )
     {
         return ur_error( ut, UR_ERR_SCRIPT, "Path word '%s is unset",
-                         ur_atomCStr(ut, ur_atom(bi.it)) );
+                         ur_wordCStr( bi.it ) );
     }
 
     ++bi.it;
@@ -163,7 +163,7 @@ int ur_setPath( UThread* ut, const UCell* path, const UCell* src )
                     {
                         return ur_error( ut, UR_ERR_SCRIPT,
                                 "Path word '%s is unset",
-                                ur_atomCStr(ut, ur_atom(bi.it)) );
+                                ur_wordCStr( bi.it ) );
                     }
                 }
                 break;

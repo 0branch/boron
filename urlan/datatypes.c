@@ -1532,7 +1532,7 @@ int word_compare( UThread* ut, const UCell* a, const UCell* b, int test )
         case UR_COMPARE_ORDER_CASE:
             if( ur_type(a) == ur_type(b) )
             {
-#define ATOM_STR(cell)  (const uint8_t*) ur_atomCStr(ut, ur_atom(cell))
+#define ATOM_STR(cell)  (const uint8_t*) ur_wordCStr(cell)
 #define ATOM_LEN(str)   strLen((const char*) str)
                 const uint8_t* strA = ATOM_STR(a);
                 const uint8_t* strB = ATOM_STR(b);
@@ -1548,7 +1548,7 @@ int word_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 void word_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) depth;
-    ur_strAppendCStr( str, ur_atomCStr( ut, ur_atom(cell) ) );
+    ur_strAppendCStr( str, ur_wordCStr( cell ) );
 }
 
 
@@ -1603,7 +1603,7 @@ void litword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) depth;
     ur_strAppendChar( str, '\'' );
-    ur_strAppendCStr( str, ur_atomCStr( ut, ur_atom(cell) ) );
+    ur_strAppendCStr( str, ur_wordCStr( cell ) );
 }
 
 
@@ -1631,7 +1631,7 @@ int setword_make( UThread* ut, const UCell* from, UCell* res )
 void setword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) depth;
-    ur_strAppendCStr( str, ur_atomCStr( ut, ur_atom(cell) ) );
+    ur_strAppendCStr( str, ur_wordCStr( cell ) );
     ur_strAppendChar( str, ':' );
 }
 
@@ -1661,7 +1661,7 @@ void getword_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) depth;
     ur_strAppendChar( str, ':' );
-    ur_strAppendCStr( str, ur_atomCStr( ut, ur_atom(cell) ) );
+    ur_strAppendCStr( str, ur_wordCStr( cell ) );
 }
 
 
@@ -1684,7 +1684,7 @@ void option_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) depth;
     ur_strAppendChar( str, '/' );
-    ur_strAppendCStr( str, ur_atomCStr( ut, ur_atom(cell) ) );
+    ur_strAppendCStr( str, ur_wordCStr( cell ) );
 }
 
 
@@ -3519,7 +3519,7 @@ int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
         int i = ur_ctxLookup( ctx, ur_atom(bi->it) );
         if( i < 0 )
             return ur_error( ut, UR_ERR_SCRIPT, "context has no word '%s",
-                             ur_atomCStr(ut, ur_atom(bi->it)) );
+                             ur_wordCStr( bi->it ) );
         *res = *ur_ctxCell(ctx, i);
         ++bi->it;
         return UR_OK;

@@ -46,7 +46,7 @@ int calc_eval( UThread* ut, UCell* cell, double* res )
             else
             {
                 return ur_error( ut, UR_ERR_SCRIPT, "Invalid word '%s",
-                                 ur_atomCStr(ut, ur_atom(cell)) );
+                                 ur_wordCStr( cell ) );
             }
         }
             break;

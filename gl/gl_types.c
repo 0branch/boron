@@ -1215,7 +1215,7 @@ static int widget_make( UThread* ut, const UCell* from, UCell* res )
             if( ! wclass )
             {
                 return ur_error( ut, UR_ERR_SCRIPT, "unknown widget class '%s",
-                                 ur_atomCStr(ut, ur_atom(bi.it)) );
+                                 ur_wordCStr( bi.it ) );
             }
             wp = wclass->make( ut, &bi );
             if( ! wp )

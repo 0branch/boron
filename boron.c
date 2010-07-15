@@ -1154,8 +1154,8 @@ int boron_eval1( UThread* ut, UCell* blkC, UCell* res )
             if( ur_is(cell, UT_UNSET) )
             {
                 ur_error( ut, UR_ERR_SCRIPT, "unset word '%s",
-                          ur_atomCStr( ut, ur_atom(
-                             ur_bufferSer(blkC)->ptr.cell + blkC->series.it) ) );
+                          ur_wordCStr( ur_bufferSer(blkC)->ptr.cell +
+                                       blkC->series.it ) );
                 goto traceError;
             }
             goto set_res;
