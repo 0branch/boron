@@ -230,6 +230,7 @@ float* geo_attrNTV( Geometry* geo, float* vert, const float* ntv )
   \param rect   View rectangle (x,y,width,height)
   \param tsize  Texture size (x,y)
   \param tc     Texture coordinates (left,bot,right,top,corner-x,corner-y)
+  \param skin   If non-zero then tc corner size must be set.
 */
 void geo_quadSkin( Geometry* geo, const int16_t* rect,
                    const int16_t* tsize, const int16_t* tc, int skin )

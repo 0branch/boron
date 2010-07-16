@@ -1068,7 +1068,7 @@ static void _box( DPCompiler* emit, const float* minv, const float* maxv,
   Returns switch id.
 */
 // LIMIT: Switch Id limits draw-prog to 65k 32-bit words.
-uint16_t dp_beginSwitch( DPCompiler* emit, int count )
+DPSwitch dp_beginSwitch( DPCompiler* emit, int count )
 {
     union
     {
@@ -1077,7 +1077,7 @@ uint16_t dp_beginSwitch( DPCompiler* emit, int count )
     }
     fw;
     uint16_t* sp;
-    uint16_t sid;
+    DPSwitch sid;
     int i;
     int wcount;
     int jmp;
@@ -1103,7 +1103,7 @@ uint16_t dp_beginSwitch( DPCompiler* emit, int count )
 }
 
 
-void dp_endCase( DPCompiler* emit, uint16_t sid )
+void dp_endCase( DPCompiler* emit, DPSwitch sid )
 {
     uint16_t* sp = (uint16_t*) (emit->inst.ptr.u32 + sid);
     uint32_t n = sp[0];
@@ -1123,7 +1123,7 @@ void dp_endCase( DPCompiler* emit, uint16_t sid )
 }
 
 
-void dp_endSwitch( DPCompiler* emit, uint16_t sid, uint16_t caseN )
+void dp_endSwitch( DPCompiler* emit, DPSwitch sid, uint16_t caseN )
 {
     uint32_t* pc;
     uint16_t* sp;
@@ -1157,7 +1157,7 @@ void dp_endSwitch( DPCompiler* emit, uint16_t sid, uint16_t caseN )
 /*
   \param n   Which switch to take.  Zero based.
 */
-void dp_setSwitch( DPHeader* dp, uint16_t sid, uint16_t caseN )
+void dp_setSwitch( DPHeader* dp, DPSwitch sid, uint16_t caseN )
 {
     uint16_t* sp = (uint16_t*) (dp_byteCode(dp) + sid);
     if( caseN < sp[1] )
@@ -1613,12 +1613,12 @@ bad_sphere:
             }
                 break;
 
-            case DOP_QUAD:          // quad      tex-size uvs area
-                                    // quad/skin tex-size uvs,corner area
+            case DOP_QUAD:          // quad tex-size uvs area
+                                    // quad tex-size uvs,corner area (skin)
             {
                 const UCell* ts;    // Texture size
                 const UCell* tc;    // Texture coordinates
-                int skin = 0;   //KR_TODO ur_sel(pc);  // == UR_ATOM_SKIN
+                int skin;
 
                 INC_PC
                 PC_VALUE(ts)
@@ -1632,6 +1632,7 @@ bad_quad:
                 PC_VALUE(tc);
                 if( ! ur_is(tc, UT_COORD) )
                     goto bad_quad;
+                skin = tc->coord.len > 4;
                 INC_PC
                 PC_VALUE(val);
                 if( ! ur_is(val, UT_COORD) )
@@ -2178,7 +2179,7 @@ void ur_endDP( UThread* ut, UBuffer* res, DPCompiler* prev )
 }
 
 
-void ur_setDPSwitch( UThread* ut, UIndex resN, uint16_t sid, int n )
+void ur_setDPSwitch( UThread* ut, UIndex resN, DPSwitch sid, int n )
 {
     DPHeader* dp = (DPHeader*) ur_buffer(resN)->ptr.v;
     if( dp /*&& (dp->uid == uid)*/ )

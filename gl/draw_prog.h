@@ -78,12 +78,16 @@ struct DrawTextState
 };
 
 
+typedef uint16_t    DPSwitch;
+
 typedef struct
 {
     GLuint samplesQueryId;
 }
 DPState;
 
+
+extern DPCompiler* gDPC;
 
 UIndex ur_makeDrawProg( UThread* );
 void   ur_markDrawProg( UThread*, UIndex );
@@ -94,12 +98,12 @@ int    ur_runDrawProg( UThread*, DPState*, UIndex progN );
 DPCompiler* ur_beginDP( DPCompiler* );
 int  ur_compileDP( UThread*, const UCell* blkCell, int handleError );
 void ur_endDP( UThread*, UBuffer*, DPCompiler* prev );
-void ur_setDPSwitch( UThread*, UIndex resN, uint16_t sid, int n );
+void ur_setDPSwitch( UThread*, UIndex resN, DPSwitch sid, int n );
 
 
-uint16_t dp_beginSwitch( DPCompiler*, int count );
-void     dp_endCase( DPCompiler*, uint16_t sid );
-void     dp_endSwitch( DPCompiler*, uint16_t sid, uint16_t n );
+DPSwitch dp_beginSwitch( DPCompiler*, int count );
+void     dp_endCase( DPCompiler*, DPSwitch sid );
+void     dp_endSwitch( DPCompiler*, DPSwitch sid, uint16_t n );
 
 
 void vbo_initTextIndices( uint16_t* ip, int idx, int glyphCount );
