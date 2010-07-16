@@ -1244,8 +1244,6 @@ call_func:
     ++blkC->series.it;
     if( boron_call( ut, (UCellFunc*) cell, blkC, res ) )
         return UR_OK;
-    // NOTE: This slows down throw of non-error values.
-    //ur_appendTrace( ut, blkC->series.buf, --blkC->series.it );
     return UR_THROW;
 
 end_of_block:
@@ -1254,8 +1252,6 @@ end_of_block:
 
 traceError:
 
-    // NOTE: This slows down throw of non-error values.
-    //ur_appendTrace( ut, blkC->series.buf, blkC->series.it );
     return UR_THROW;
 }
 
@@ -1357,7 +1353,7 @@ void boron_bindDefault( UThread* ut, UIndex blkN )
 }
 
 
-/*
+/**
   Evaluate block and get result.
 
   blkC and res may point to the same cell.
@@ -1391,14 +1387,38 @@ int boron_doBlock( UThread* ut, const UCell* blkC, UCell* res )
     while( bc2.series.it < bc2.series.end )
     {
         if( ! boron_eval1( ut, &bc2, res ) )
-        {
-            // NOTE: This slows down throw of non-error values.
-            //ur_appendTrace( ut, bc2.series.buf, bc2.series.it );
             return UR_THROW;
-        }
     }
     //reportStack( ut );
 
+    return UR_OK;
+}
+
+
+/**
+  Evaluate block and get result.
+
+  \param blkN   Index of block to do.  This buffer must be held.
+  \param res    Result. This cell must be in a held block.
+
+  \return UR_OK/UR_THROW.
+*/
+int boron_doBlockN( UThread* ut, UIndex blkN, UCell* res )
+{
+    UCell bc2;
+
+    ur_setId( res, UT_UNSET );
+
+    ur_setId( &bc2, UT_BLOCK );
+    bc2.series.buf = blkN;
+    bc2.series.it  = 0;
+    bc2.series.end = ur_bufferE( blkN )->used;
+
+    while( bc2.series.it < bc2.series.end )
+    {
+        if( ! boron_eval1( ut, &bc2, res ) )
+            return UR_THROW;
+    }
     return UR_OK;
 }
 

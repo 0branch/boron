@@ -76,6 +76,8 @@ void     boron_addCFunc( UThread*, int (*func)(UThread*,UCell*,UCell*),
 void     boron_addPortDevice( UThread*, UPortDevice*, UAtom name );
 void     boron_extendPort( UBuffer* port, UPortDevice** ext );
 void     boron_bindDefault( UThread*, UIndex blkN );
+int      boron_doBlock( UThread*, const UCell* blkC, UCell* res );
+int      boron_doBlockN( UThread*, UIndex blkN, UCell* res );
 int      boron_doCStr( UThread*, const char* cmd, int len );
 UCell*   boron_result( UThread* );
 UCell*   boron_exception( UThread* );
