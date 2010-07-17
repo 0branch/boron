@@ -11,7 +11,6 @@
   "    near: -100.0\n"
   "    far: 100.0\n"
   "]\n"
-  "gui-style:\n"
   "gui-style-proto: context [\n"
   "    texture:\n"
   "    tex-size:\n"

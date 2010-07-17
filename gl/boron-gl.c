@@ -1341,12 +1341,11 @@ CFUNC( cfunc_blit )
 }
 
 
-// (font offset -- font)
 /*-cf-
     move-glyphs
-        font    rfont!
+        font    font!
         offset  coord!
-    return: unset!
+    return: Modified font.
 */
 CFUNC( cfunc_move_glyphs )
 {
@@ -1356,7 +1355,7 @@ CFUNC( cfunc_move_glyphs )
     if( ur_is(off, UT_COORD) && (tf = ur_texFontV( ut, a1 )) )
     {
         txf_moveGlyphs( tf, off->coord.n[0], off->coord.n[1] );
-        ur_setId(res, UT_UNSET);
+        *res = *a1;
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "move-glyphs expected font! coord!" );
@@ -1723,7 +1722,7 @@ static char _bootScript[] =
     ;
 
 
-//extern CFUNC_PUB( uc_buffer_audio );
+extern CFUNC_PUB( cfunc_buffer_audio );
 extern CFUNC_PUB( cfunc_load_png );
 extern CFUNC_PUB( cfunc_save_png );
 //extern CFUNC_PUB( uc_particle_sim );
@@ -1732,11 +1731,11 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    59
+#define FA_COUNT    61
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
-        "add size close\n"
+        "add size text close\n"
         "width height area rect raster texture\n"
         "gui-style elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
@@ -1746,11 +1745,11 @@ static void _createFixedAtoms( UThread* ut )
         "min mag mipmap gray\n"
         "burn color trans sprite\n"
         "once ping-pong pong\n"
-        "collide fall integrate attach anchor binary",
+        "collide fall integrate attach anchor binary action",
         atoms );
 
 #ifdef DEBUG
-    if( atoms[0] != UR_ATOM_ADD || atoms[3] != UR_ATOM_WIDTH )
+    if( atoms[0] != UR_ATOM_ADD || atoms[4] != UR_ATOM_WIDTH )
     {
         int i;
         for( i = 0; i < FA_COUNT; ++i )
@@ -1760,9 +1759,10 @@ static void _createFixedAtoms( UThread* ut )
 
     assert( atoms[0] == UR_ATOM_ADD );
     assert( atoms[1] == UR_ATOM_SIZE );
-    assert( atoms[2] == UR_ATOM_CLOSE );
-    assert( atoms[3] == UR_ATOM_WIDTH );
-    assert( atoms[FA_COUNT - 1] == UR_ATOM_BINARY );
+    assert( atoms[2] == UR_ATOM_TEXT );
+    assert( atoms[3] == UR_ATOM_CLOSE );
+    assert( atoms[4] == UR_ATOM_WIDTH );
+    assert( atoms[FA_COUNT - 1] == UR_ATOM_ACTION );
 }
 
 
@@ -1809,17 +1809,12 @@ static void _createDrawOpTable( UThread* ut )
 #include "math3d.c"
 
 
-CFUNC_PUB( cfunc_buffer_audio );
-
-
 extern GWidgetClass wclass_script;
-/*
 extern GWidgetClass wclass_hbox;
 extern GWidgetClass wclass_vbox;
 extern GWidgetClass wclass_window;
 extern GWidgetClass wclass_button;
 extern GWidgetClass wclass_checkbox;
-*/
 
 
 UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
@@ -1964,11 +1959,13 @@ cleanup:
     GWidgetClass* classes[ 4 ];
 
     classes[0] = &wclass_script;
-    //classes[1] = &wclass_hbox;
-    //classes[2] = &wclass_vbox;
-    //classes[3] = &wclass_window;
-    //classes[4] = &wclass_button;
-    //classes[5] = &wclass_checkbox;
+    /*
+    classes[1] = &wclass_hbox;
+    classes[2] = &wclass_vbox;
+    classes[3] = &wclass_window;
+    classes[4] = &wclass_button;
+    classes[5] = &wclass_checkbox;
+    */
 
     ur_addWidgetClasses( classes, 1 );
     }

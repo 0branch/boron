@@ -18,7 +18,6 @@ ortho-cam: make camera [
 
 
 ; Must match order of ContextIndexStyle in gui.h
-gui-style:
 gui-style-proto: context [
     texture:
     tex-size:
