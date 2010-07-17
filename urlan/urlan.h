@@ -143,7 +143,7 @@ typedef struct
     uint8_t  type;
     uint8_t  flags;
     uint8_t  n;
-    uint8_t  bitCount;
+    uint8_t  _pad0;
     uint32_t mask0;     /* LIMIT: Maximum of 96 datatypes. */
     uint32_t mask1;
     uint32_t mask2;

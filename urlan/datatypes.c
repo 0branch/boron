@@ -341,19 +341,16 @@ void ur_makeDatatype( UCell* cell, int type )
     {
         cell->datatype.mask0 = 1 << type;
         cell->datatype.mask1 = cell->datatype.mask2 = 0;
-        cell->datatype.bitCount = 1;
     }
     else if( type < 64 )
     {
         cell->datatype.mask1 = 1 << (type - 32);
         cell->datatype.mask0 = cell->datatype.mask2 = 0;
-        cell->datatype.bitCount = 1;
     }
     else
     {
         cell->datatype.mask1 = 
         cell->datatype.mask0 = cell->datatype.mask2 = 0xffffffff;
-        cell->datatype.bitCount = UT_MAX;
     }
 }
 
@@ -386,7 +383,6 @@ void ur_datatypeAddType( UCell* cell, int type )
     {
         *mp |= mask;
         cell->datatype.n = UT_TYPEMASK;
-        ++cell->datatype.bitCount;
     }
 }
 
@@ -464,29 +460,30 @@ void datatype_toString(UThread* ut, const UCell* cell, UBuffer* str, int depth)
     }
     else
     {
-        int i;
-        int count = cell->datatype.bitCount;
-        int mask = 1;
-        int cellMask = cell->datatype.mask0;
-        int maxt = ut->env->typeCount;
-        for( i = 0; i < maxt; ++i )
+        int mask;
+        int dtBits;
+
+        dt = 0;
+        dtBits = cell->datatype.mask0;
+loop:
+        for( mask = 1; dtBits; ++dt, mask <<= 1 )
         {
-            if( mask & cellMask )
+            if( mask & dtBits )
             {
-                ur_strAppendCStr( str, ur_atomCStr( ut, i ) );
-                if( --count )
-                    ur_strAppendChar( str, '/' );
-                else
-                    break;
+                dtBits &= ~mask;
+                ur_strAppendCStr( str, ur_atomCStr( ut, dt ) );
+                ur_strAppendChar( str, '/' );
             }
-            if( i == 31 )
-            {
-                mask = 1;
-                cellMask = cell->datatype.mask1;
-            }
-            else
-                mask <<= 1;
         }
+        if( dt <= 32 )
+        {
+            if( (dtBits = cell->datatype.mask1) )
+            {
+                dt = 32;
+                goto loop;
+            }
+        }
+        --str->used;    // Remove extra '/'.
     }
 }
 
