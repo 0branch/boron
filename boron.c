@@ -464,6 +464,7 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 #endif
 
 #include "boron_cfunc.c"
+#include "boron_serialize.c"
 
 #ifdef CONFIG_THREAD
 #include "boron_thread.c"
@@ -896,6 +897,8 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_to_dec,     "to-dec n" );
     addCFunc( cfunc_now,        "now /date" );
     addCFunc( cfunc_free,       "free s" );
+    addCFunc( cfunc_serialize,  "serialize b" );
+    addCFunc( cfunc_unserialize,"unserialize b" );
 #ifdef CONFIG_THREAD
     addCFunc( cfunc_sleep,      "sleep n" );
     addCFunc( cfunc_thread,     "thread body /port" );
@@ -1335,12 +1338,6 @@ assign:
 */
 void boron_bindDefault( UThread* ut, UIndex blkN )
 {
-    UBlockIter bi;
-
-    bi.buf = ur_buffer(blkN);
-    bi.it  = bi.buf->ptr.cell;
-    bi.end = bi.it + bi.buf->used;
-
 #if 0
     {
     UBuffer* ctx = ur_threadContext(ut);
