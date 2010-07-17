@@ -1,0 +1,41 @@
+273
+#{424F5231000000DC0000000F1712816300000064000500050105C0FFFFFFFE05C0FFFFFFFF8D00000D00019701009402001203008D010401020D010402030D010403040D010404051C051C061407010214070202061703050218080017090014000548656C6C6F120800112233AABBCCDD1C0506020304051C0A1C051C061407010214070202061C03070809140B000504021C03070809140C0005021C051400082A2A746578742A2A17020504140D0017030506140E000D00011C03070809020202140003426F62140003546F6D14000374776F1400057468726565736F6D6520776F72647320637478312063747832206974657220736C69632063747850206E616D65207370656564206368696C6400}
+408
+[
+    none!/int!/decimal! 0 -1 2147483647 -2147483648
+    some words
+    [1 (2 "two") [3 "three" words]]
+    "Hello" #{00112233AABBCCDD}
+    ctx1 ctx2 iter slic context [
+        name: "Bob"
+        speed: 2
+        child: none
+    ] context [
+        name: "Tom"
+        speed: 1
+        child: context [
+            name: "Bob"
+            speed: 2
+            child: none
+        ]
+    ] "text**" "text"
+]
+[
+    none!/int!/decimal! 0 -1 2147483647 -2147483648
+    some words
+    [1 (2 "two") [3 "three" words]]
+    "Hello" #{00112233AABBCCDD}
+    ctx1 ctx2 iter slic context [
+        name: "Bob"
+        speed: 2
+        child: none
+    ] context [
+        name: "Tom"
+        speed: 1
+        child: context [
+            name: "Bob"
+            speed: 2
+            child: none
+        ]
+    ] "text**" "text"
+]
