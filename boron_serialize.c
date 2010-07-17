@@ -113,6 +113,26 @@ static void _pushU32( UBuffer* bin, uint32_t n )
 }
 
 
+static void _pushU64( UBuffer* bin, uint64_t* src )
+{
+#ifdef __BIG_ENDIAN__
+    uint8_t* bp = bin->ptr.b + bin->used;
+    uint8_t* sp = (uint8_t*) src;
+    *bp++ = sp[7];
+    *bp++ = sp[6];
+    *bp++ = sp[5];
+    *bp++ = sp[4];
+    *bp++ = sp[3];
+    *bp++ = sp[2];
+    *bp++ = sp[1];
+    *bp   = sp[0];
+#else
+    memCpy( bin->ptr.b + bin->used, src, 8 );
+#endif
+    bin->used += 8;
+}
+
+
 enum Pack32Count
 {
     PACK_1   = 0,
@@ -198,6 +218,7 @@ static void _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
             break;
 
         case UT_INT:
+            // UR_FLAG_INT_HEX
             packS32( ur_int(bi.it) );
             break;
 
@@ -205,10 +226,39 @@ static void _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
         case UT_BIGNUM:
         case UT_TIME:
         case UT_DATE:
-        case UT_COORD:
-        case UT_VEC3:
-        case UT_TIMECODE:
+            _pushU64( bin, (uint64_t*) &ur_decimal(bi.it) );
             break;
+
+        case UT_COORD:
+            push8( bi.it->coord.len );
+        {
+            const int16_t* np = bi.it->coord.n;
+            const int16_t* nend = np + bi.it->coord.len;
+            while( np != nend )
+                packS32( *np++ );
+        }
+            break;
+
+        case UT_VEC3:
+        {
+            uint32_t* np = (uint32_t*) bi.it->vec3.xyz;
+            packU32( np[0] );
+            packU32( np[1] );
+            packU32( np[2] );
+        }
+            break;
+
+#ifdef CONFIG_TIMECODE
+        case UT_TIMECODE:
+            push8( ur_flags(bi.it, UR_FLAG_TIMECODE_DF) );
+        {
+            const int16_t* np = bi.it->coord.n;
+            const int16_t* nend = np + 4;
+            while( np != nend )
+                packS32( *np++ );
+        }
+            break;
+#endif
 
         case UT_WORD:
         case UT_LITWORD:
@@ -413,6 +463,26 @@ static uint32_t _pullU32( UBinaryIter* bi )
 }
 
 
+static void _pullU64( UBinaryIter* bi, uint64_t* dest )
+{
+#ifdef __BIG_ENDIAN__
+    const uint8_t* bp = bi->it;
+    uint8_t* dp = (uint8_t*) dest;
+    *dp++ = bp[7];
+    *dp++ = bp[6];
+    *dp++ = bp[5];
+    *dp++ = bp[4];
+    *dp++ = bp[3];
+    *dp++ = bp[2];
+    *dp++ = bp[1];
+    *dp   = bp[0];
+#else
+    memCpy( dest, bi->it, 8 );
+#endif
+    bi->it += 8;
+}
+
+
 static uint32_t _unpackU32( UBinaryIter* bi )
 {
     uint32_t n = bi->it[0];
@@ -504,12 +574,41 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
         case UT_BIGNUM:
         case UT_TIME:
         case UT_DATE:
+            _pullU64( bi, (uint64_t*) &ur_decimal(cell) );
             break;
 
         case UT_COORD:
-        case UT_VEC3:
-        case UT_TIMECODE:
+            pull8( cell->coord.len );
+        {
+            int16_t* np = cell->coord.n;
+            int16_t* nend = np + cell->coord.len;
+            while( np != nend )
+                unpackS32( *np++ );
+        }
             break;
+
+        case UT_VEC3:
+        {
+            uint32_t* np = (uint32_t*) cell->vec3.xyz;
+            unpackU32( np[0] );
+            unpackU32( np[1] );
+            unpackU32( np[2] );
+        }
+            break;
+
+#ifdef CONFIG_TIMECODE
+        case UT_TIMECODE:
+            pull8( n );
+            if( n )
+                ur_setFlags(cell, UR_FLAG_TIMECODE_DF );
+        {
+            int16_t* np = cell->coord.n;
+            int16_t* nend = np + 4;
+            while( np != nend )
+                unpackS32( *np++ );
+        }
+            break;
+#endif
 
         case UT_WORD:
         case UT_LITWORD:

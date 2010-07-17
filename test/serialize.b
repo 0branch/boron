@@ -1,9 +1,12 @@
 
 input: [
     none!/int!/decimal! 0 -1 2147483647 -2147483648
-    some words
+    0.0 1.0 -654321.123456 4:59:20.56
+    -99.0,0.0,1028.9432 32767,-32768 -1,2,-3,4,-5,6
+    ; 01:02:03:45D
+    some words set: words:'lit 'words :get :words 
     [1 (2 "two") [3 "three" words]]
-    "Hello" #{00112233AABBCCDD}
+    "Tasty treats." #{00112233AABBCCDD}
     ctx1 ctx2 iter slic
 ]
 
