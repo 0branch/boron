@@ -828,6 +828,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_ifn,     "ifn exp body /ghost" );
     addCFunc( cfunc_either,  "either exp a b /ghost" );
     addCFunc( cfunc_while,   "while exp body /ghost" );
+    addCFunc( cfunc_forever, "forever body /ghost" );
     addCFunc( cfunc_loop,    "loop n body /ghost" );
     addCFunc( cfunc_select,  "select data val" );
     addCFunc( cfunc_switch,  "switch val body" );

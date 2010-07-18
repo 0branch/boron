@@ -994,6 +994,30 @@ CFUNC(cfunc_while)
 
 
 /*-cf-
+    forever
+        body    block!
+    return: Result of body.
+
+    Repeat body until break or exception thrown.
+*/
+CFUNC(cfunc_forever)
+{
+    if( ! ur_is(a1, UT_BLOCK) )
+        return ur_error( ut, UR_ERR_TYPE, "forever expected block! body" );
+    while( 1 )
+    {
+        if( ! boron_doBlock( ut, a1, res ) )
+        {
+            if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+                break;
+            return UR_THROW;
+        }
+    }
+    return UR_OK;
+}
+
+
+/*-cf-
     loop
         range   int!/block!
         body    block!

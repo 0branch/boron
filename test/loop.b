@@ -8,3 +8,11 @@ print "---- range"
 loop [a 3] [print a]
 loop [a 5 7] [print ['loopB a]]
 loop [a -18 0 5] [print a]
+
+
+print "---- forever"
+i: 0
+forever [
+    if eq? 10 ++ i [break]
+]
+print i
