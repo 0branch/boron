@@ -2029,30 +2029,42 @@ USeriesType dt_binary =
 // UT_BITSET
 
 
+UBuffer* ur_makeBitsetCell( UThread* ut, int bitCount, UCell* res )
+{
+    UBuffer* buf;
+    int bytes = (bitCount + 7) / 8;
+
+    buf = ur_makeBinaryCell( ut, bytes, res );
+    ur_type(res) = UT_BITSET;
+
+    buf->used = bytes;
+    memSet( buf->ptr.b, 0, buf->used );
+
+    return buf;
+}
+
+
 #define setBit(array,n)      (array[(n)>>3] |= 1<<((n)&7))
 
 int bitset_make( UThread* ut, const UCell* from, UCell* res )
 {
-    if( ur_is(from, UT_BINARY) )
+    if( ur_is(from, UT_INT) )
     {
-        return binary_make( ut, from, res );
+        ur_makeBitsetCell( ut, ur_int(from), res );
+        return UR_OK;
+    }
+    else if( ur_is(from, UT_BINARY) )
+    {
+        binary_copy( ut, from, res );
+        ur_type(res) = UT_BITSET;
+        return UR_OK;
     }
     else if( ur_is(from, UT_STRING) )
     {
         UBuffer* buf;
         UBinaryIter si;
-        uint8_t* bits;
-        UIndex n;
        
-        //buf = ur_makeBinaryCell( ut, 32, res, UT_BITSET );
-        n = ur_makeBinary( ut, 32 );
-        ur_setId(res, UT_BITSET);
-        ur_setSeries(res, n, 0 );
-
-        buf = ur_buffer(n);
-        buf->used = 32;
-        bits = buf->ptr.b;
-        memSet( bits, 0, buf->used );
+        buf = ur_makeBitsetCell( ut, 256, res );
 
         ur_binSlice( ut, &si, from );
         if( ur_strIsUcs2(si.buf) )
@@ -2062,6 +2074,8 @@ int bitset_make( UThread* ut, const UCell* from, UCell* res )
         }
         else
         {
+            uint8_t* bits = buf->ptr.b;
+            int n;
             ur_foreach( si )
             {
                 n = *si.it;
@@ -2071,7 +2085,8 @@ int bitset_make( UThread* ut, const UCell* from, UCell* res )
 
         return UR_OK;
     }
-    return ur_error( ut, UR_ERR_TYPE, "make bitset! expected string!" );
+    return ur_error( ut, UR_ERR_TYPE,
+                     "make bitset! expected int!/binary!/string!" );
 }
 
 
