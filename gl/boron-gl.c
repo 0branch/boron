@@ -1956,18 +1956,16 @@ cleanup:
     ur_arrInit( &glEnv.rootWidgets, sizeof(GWidget*), 0 );
 
     {
-    GWidgetClass* classes[ 4 ];
+    GWidgetClass* classes[ 6 ];
 
     classes[0] = &wclass_script;
-    /*
     classes[1] = &wclass_hbox;
     classes[2] = &wclass_vbox;
     classes[3] = &wclass_window;
     classes[4] = &wclass_button;
     classes[5] = &wclass_checkbox;
-    */
 
-    ur_addWidgetClasses( classes, 1 );
+    ur_addWidgetClasses( classes, 6 );
     }
 
     return ut;

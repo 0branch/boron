@@ -51,40 +51,38 @@
 #include "draw_prog.h"
 
 
-extern DPCompiler* gDPC;
 extern void block_markBuf( UThread* ut, UBuffer* buf );
 extern int boron_doVoid( UThread* ut, const UCell* blkC );
-extern int boron_doBlock( UThread* ut, const UCell* ec, UCell* res );
 
 
 //#define REPORT_LAYOUT   1
 
-#define GScalar     int16_t
 #define MAX_DIM     0x7fff
 
 
 #define IS_ENABLED(wp)  (! (wp->flags & GW_DISABLED))
 
-#define EACH_CHILD(parent,it)   for(it = parent->child; it; it = it->next)
+#define EACH_CHILD(parent,it)   for(it = parent->child; it; it = it->next) {
 
-#ifdef KR_TODO
 #define EACH_SHOWN_CHILD(parent,it) \
     EACH_CHILD(parent,it) \
-        if( it.w->flags & GW_HIDDEN ) \
-            continue;
-
-#define EACH_ROOT(it) \
-    for(it.id = ui->rootList; IS_VALID(it.id); it.id = it.w->next) { \
-        it.w = WPTR(it.id);
-
-#define EACH_SHOWN_ROOT(it) \
-    EACH_ROOT(it) \
-        if( it.w->flags & GW_HIDDEN ) \
+        if( it->flags & GW_HIDDEN ) \
             continue;
 
 #define EACH_END    }
 
 #define MIN(x,y)    ((x) < (y) ? (x) : (y))
+
+
+#ifdef KR_TODO
+#define EACH_ROOT(it) \
+    for(it.id = ui->rootList; IS_VALID(it.id); it.id = it->next) { \
+        it = WPTR(it.id);
+
+#define EACH_SHOWN_ROOT(it) \
+    EACH_ROOT(it) \
+        if( it->flags & GW_HIDDEN ) \
+            continue;
 
 
 #define INIT_EVENT(ms,et,ec,es,ex,ey) \
@@ -149,32 +147,31 @@ int gui_widgetContains( const GWidget* wp, int x, int y )
 }
 
 
-#ifdef KR_TODO
 /*
   Set cell to coord! holding widget area.
 */
-static void gui_initRectCoord( UCell* cell, GWidget* w, UAtom what )
+void gui_initRectCoord( UCell* cell, GWidget* w, UAtom what )
 {
     ur_setId(cell, UT_COORD);
     if( what == UR_ATOM_SIZE )
     {
         cell->coord.len = 2;
-        cell->coord.n[0] = w->w;
-        cell->coord.n[1] = w->h;
+        cell->coord.n[0] = w->area.w;
+        cell->coord.n[1] = w->area.h;
     }
     else if( what == UR_ATOM_POS )
     {
         cell->coord.len = 2;
-        cell->coord.n[0] = w->x;
-        cell->coord.n[1] = w->y;
+        cell->coord.n[0] = w->area.x;
+        cell->coord.n[1] = w->area.y;
     }
     else
     {
         cell->coord.len = 4;
-        cell->coord.n[ 0 ] = w->x;
-        cell->coord.n[ 1 ] = w->y;
-        cell->coord.n[ 2 ] = w->w;
-        cell->coord.n[ 3 ] = w->h;
+        cell->coord.n[ 0 ] = w->area.x;
+        cell->coord.n[ 1 ] = w->area.y;
+        cell->coord.n[ 2 ] = w->area.w;
+        cell->coord.n[ 3 ] = w->area.h;
     }
 }
 
@@ -186,24 +183,16 @@ static void gui_initRectCoord( UCell* cell, GWidget* w, UAtom what )
 #define no_render   0
 
 
-static void no_event( GUI* ui, GWidget* wp, const GLViewEvent* ev )
+static void no_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
-    (void) ui;
+    (void) ut;
     (void) wp;
     (void) ev;
 }
 
 
-static void base_layout( GUI* ui, GWidget* wp )
+int gui_areaSelect( GWidget* wp, UAtom atom, UCell* result )
 {
-    (void) ui;
-    (void) wp;
-}
-
-
-static int base_select( GUI* ui, GWidget* wp, UAtom atom, UCell* result )
-{
-    (void) ui;
     switch( atom )
     {
         case UR_ATOM_RECT:
@@ -217,8 +206,8 @@ static int base_select( GUI* ui, GWidget* wp, UAtom atom, UCell* result )
 
 
 #define gui_areaChanged(wp,rect) \
-    ((wp->x != rect->x) || (wp->y != rect->y) || \
-     (wp->w != rect->w) || (wp->h != rect->h))
+    ((wp->area.x != rect->x) || (wp->area.y != rect->y) || \
+     (wp->area.w != rect->w) || (wp->area.h != rect->h))
 
 /*
   Returns non-zero if area changed.
@@ -234,6 +223,7 @@ static int areaUpdate( GWidget* wp, GRect* rect )
 }
 
 
+#if 0
 //----------------------------------------------------------------------------
 
 
@@ -243,8 +233,8 @@ static void expand_init( GUI* ui, GWidget* wp, const UCell* arg, int argc )
     (void) arg;
     (void) argc;
 
-    wp->w = 0;
-    wp->h = 0;
+    wp->area.w = 0;
+    wp->area.h = 0;
 }
 
 
@@ -262,41 +252,35 @@ static void expand_sizeHint( GUI* ui, GWidget* wp, GSizeHint* size )
     size->policyX = GW_EXPANDING;
     size->policyY = GW_EXPANDING;
 }
+#endif
 
 
 //----------------------------------------------------------------------------
 
 
+#define BOX_MEMBERS \
+    uint16_t marginL; \
+    uint16_t marginT; \
+    uint16_t marginR; \
+    uint16_t marginB; \
+    uint16_t spacing; \
+    uint8_t  rows; \
+    uint8_t  cols;
+
 typedef struct
 {
     GWidget wid;
-
-    uint16_t marginL;
-    uint16_t marginT;
-    uint16_t marginR;
-    uint16_t marginB;
-    uint16_t spacing;
-    uint16_t _pad;
-
-    // For window or group classes
-    UIndex   dp[2];
-    UIndex   titleN;
-    UIndex   eventN;        // Event handler block
-
-    // Future...
-    uint8_t  layoutType;
-    uint8_t  rows;
-    uint8_t  cols;
+    BOX_MEMBERS
 }
-BoxWidget;
+Box;
 
-#define BOX_DATA(wp)    ((BoxData*) (wp)->cell)
+#define EX_PTR  Box* ep = (Box*) wp
 
 
 /*
   mc must be a coord!
 */
-static void setBoxMargins( BoxData* wd, const UCell* mc )
+static void setBoxMargins( Box* wd, const UCell* mc )
 {
     wd->marginL = mc->coord.n[0];
     wd->marginT = mc->coord.n[1];
@@ -318,50 +302,64 @@ static void setBoxMargins( BoxData* wd, const UCell* mc )
 }
 
 
+GWidgetClass wclass_hbox;
+GWidgetClass wclass_vbox;
+
 // box [margin coord!] block
-static void box_init( GUI* ui, GWidget* wp, const UCell* arg, int argc )
+static GWidget* box_make( UThread* ut, UBlockIter* bi )
 {
-    BoxData* wd = BOX_DATA(wp);
-    (void) ui;
-    (void) arg;
-    (void) argc;
+    Box* ep;
+    (void) ut;
 
-    wp->flags |= GW_DISABLED;   // Does not handle input. 
+    ep = (Box*) gui_allocWidget( sizeof(Box), &wclass_hbox );
 
-    wd->marginL = 0;
-    wd->marginT = 0;
-    wd->marginR = 0;
-    wd->marginB = 0;
-    wd->spacing = 8;
+    ep->wid.flags |= GW_DISABLED;   // Does not handle input. 
 
+    ep->marginL = 0;
+    ep->marginT = 0;
+    ep->marginR = 0;
+    ep->marginB = 0;
+    ep->spacing = 8;
+
+    /*
     if( argc == 3 )
     {
-        setBoxMargins( wd, arg + 1 );
+        setBoxMargins( ep, arg + 1 );
     }
+    */
+
+    ++bi->it;
+    return 0;
 }
 
 
-static void box_mark( GUI* ui, GWidget* wp )
+static void box_free( GWidget* wp )
+{
+    memFree( wp );
+}
+
+
+static void box_mark( UThread* ut, GWidget* wp )
 {
     GMarkFunc func;
-    GWidgetIt it;
+    GWidget* it;
+
     EACH_CHILD( wp, it )
-        func = CLASS( it.w ).mark;
-        if( func )
-            func( ui, it.w );
+        if( (func = it->wclass->mark) )
+            func( ut, it );
     EACH_END
 }
 
 
-static void hbox_sizeHint( GUI* ui, GWidget* wp, GSizeHint* size )
+static void hbox_sizeHint( GWidget* wp, GSizeHint* size )
 {
-    GWidgetIt it;
+    EX_PTR;
+    GWidget* it;
     GSizeHint cs;
     int count = 0;
-    BoxData* wd = BOX_DATA(wp);
 
-    size->minW    = wd->marginL + wd->marginR;
-    size->minH    = wd->marginT + wd->marginB;
+    size->minW    = ep->marginL + ep->marginR;
+    size->minH    = ep->marginT + ep->marginB;
     size->maxW    = MAX_DIM;
     size->maxH    = MAX_DIM;
     size->weightX = 2;
@@ -371,14 +369,14 @@ static void hbox_sizeHint( GUI* ui, GWidget* wp, GSizeHint* size )
 
     EACH_SHOWN_CHILD( wp, it )
         ++count;
-        CLASS( it.w ).sizeHint( ui, it.w, &cs );
+        it->wclass->sizeHint( it, &cs );
         size->minW += cs.minW;
         if( size->minH < cs.minH )
             size->minH = cs.minH;
     EACH_END
 
     if( count > 1 )
-        size->minW += (count - 1) * wd->spacing;
+        size->minW += (count - 1) * ep->spacing;
 }
 
 
@@ -395,16 +393,16 @@ typedef struct
 LayoutData;
 
 
-static void layout_query( GUI* ui, GWidget* wp, LayoutData* lo )
+static void layout_query( GWidget* wp, LayoutData* lo )
 {
-    GWidgetIt it;
+    GWidget* it;
     GSizeHint* hint = lo->hint;
 
     lo->count = 0;
 
     EACH_SHOWN_CHILD( wp, it )
         assert( lo->count < MAX_LO_WIDGETS );
-        CLASS( it.w ).sizeHint( ui, it.w, hint );
+        it->wclass->sizeHint( it, hint );
         ++hint;
         ++lo->count;
     EACH_END
@@ -448,22 +446,22 @@ static void layout_stats( LayoutData* lo, int axis )
 }
 
 
-static void hbox_layout( GUI* ui, GWidget* wp /*, GRect* rect*/ )
+static void hbox_layout( UThread* ut, GWidget* wp /*, GRect* rect*/ )
 {
-    GWidgetIt it;
+    EX_PTR;
+    GWidget* it;
     GSizeHint* hint;
     GSizeHint* hend;
     LayoutData lo;
     GRect cr;
     int dim;
     int room;
-    BoxData* wd = BOX_DATA(wp);
 
-    layout_query( ui, wp, &lo );
+    layout_query( wp, &lo );
     layout_stats( &lo, 'x' );
 
-    room = wp->w - wd->marginL - wd->marginR -
-           (wd->spacing * (lo.count - 1));
+    room = wp->area.w - ep->marginL - ep->marginR -
+           (ep->spacing * (lo.count - 1));
     if( room > lo.required )
     {
         //int excess = room - lo.required;
@@ -505,24 +503,24 @@ static void hbox_layout( GUI* ui, GWidget* wp /*, GRect* rect*/ )
 
     //gui_setArea( wp, rect );
 
-    dim = wp->x + wd->marginL;
-    room = wp->h - wd->marginT - wd->marginB;
+    dim = wp->area.x + ep->marginL;
+    room = wp->area.h - ep->marginT - ep->marginB;
     hint = lo.hint;
     EACH_SHOWN_CHILD( wp, it )
         cr.x = dim;
-        cr.y = wp->y + wd->marginB;
+        cr.y = wp->area.y + ep->marginB;
         cr.w = hint->minW;
         cr.h = MIN( hint->maxH, room );
 
-        dim += cr.w + wd->spacing;
+        dim += cr.w + ep->spacing;
 
 #ifdef REPORT_LAYOUT
         printf( "KR hbox layout  id %d  class %d  %d,%d,%d,%d\n",
-                it.id, it.w->classId, cr.x, cr.y, cr.w, cr.h );
+                it.id, it->classId, cr.x, cr.y, cr.w, cr.h );
 #endif
-        //if( areaUpdate( it.w, &cr ) )
-        areaUpdate( it.w, &cr );        // Always call layout to recompile DL.
-            CLASS( it.w ).layout( ui, it.w );
+        //if( areaUpdate( it, &cr ) )
+        areaUpdate( it, &cr );        // Always call layout to recompile DL.
+            it->wclass->layout( ut, it );
         ++hint;
     EACH_END
 }
@@ -530,13 +528,10 @@ static void hbox_layout( GUI* ui, GWidget* wp /*, GRect* rect*/ )
 
 static void box_render( GUI* ui, GWidget* wp )
 {
-    GWidgetIt it;
-    GRenderFunc rfunc;
+    GWidget* it;
 
     EACH_SHOWN_CHILD( wp, it )
-        rfunc = CLASS( it.w ).render;
-        if( rfunc )
-            rfunc( ui, it.w );
+        it->wclass->render( ui, it );
     EACH_END
 }
 
@@ -544,15 +539,15 @@ static void box_render( GUI* ui, GWidget* wp )
 //----------------------------------------------------------------------------
 
 
-static void vbox_sizeHint( GUI* ui, GWidget* wp, GSizeHint* size )
+static void vbox_sizeHint( GWidget* wp, GSizeHint* size )
 {
-    GWidgetIt it;
+    EX_PTR;
+    GWidget* it;
     GSizeHint cs;
     int count = 0;
-    BoxData* wd = BOX_DATA(wp);
 
-    size->minW    = wd->marginL + wd->marginR;
-    size->minH    = wd->marginT + wd->marginB;
+    size->minW    = ep->marginL + ep->marginR;
+    size->minH    = ep->marginT + ep->marginB;
     size->maxW    = MAX_DIM;
     size->maxH    = MAX_DIM;
     size->weightX = 2;
@@ -562,33 +557,33 @@ static void vbox_sizeHint( GUI* ui, GWidget* wp, GSizeHint* size )
 
     EACH_SHOWN_CHILD( wp, it )
         ++count;
-        CLASS( it.w ).sizeHint( ui, it.w, &cs );
+        it->wclass->sizeHint( it, &cs );
         size->minH += cs.minH;
         if( size->minW < cs.minW )
             size->minW = cs.minW;
     EACH_END
 
     if( count > 1 )
-        size->minH += (count - 1) * wd->spacing;
+        size->minH += (count - 1) * ep->spacing;
 }
 
 
-static void vbox_layout( GUI* ui, GWidget* wp /*, GRect* rect*/ )
+static void vbox_layout( UThread* ut, GWidget* wp /*, GRect* rect*/ )
 {
-    GWidgetIt it;
+    EX_PTR;
+    GWidget* it;
     GSizeHint* hint;
     GSizeHint* hend;
     LayoutData lo;
     GRect cr;
     int dim;
     int room;
-    BoxData* wd = BOX_DATA(wp);
 
-    layout_query( ui, wp, &lo );
+    layout_query( wp, &lo );
     layout_stats( &lo, 'y' );
 
-    room = wp->h - wd->marginT - wd->marginB -
-           (wd->spacing * (lo.count - 1));
+    room = wp->area.h - ep->marginT - ep->marginB -
+           (ep->spacing * (lo.count - 1));
     if( room > lo.required )
     {
         //int excess = room - lo.required;
@@ -630,24 +625,24 @@ static void vbox_layout( GUI* ui, GWidget* wp /*, GRect* rect*/ )
 
     //gui_setArea( wp, rect );
 
-    dim = wp->y + wp->h - wd->marginT;
-    room = wp->w - wd->marginL - wd->marginR;
+    dim = wp->area.y + wp->area.h - ep->marginT;
+    room = wp->area.w - ep->marginL - ep->marginR;
     hint = lo.hint;
     EACH_SHOWN_CHILD( wp, it )
-        cr.x = wp->x + wd->marginL;
+        cr.x = wp->area.x + ep->marginL;
         cr.w = MIN( hint->maxW, room );
         cr.h = hint->minH;
         cr.y = dim - cr.h;
 
-        dim -= cr.h + wd->spacing;
+        dim -= cr.h + ep->spacing;
 
 #ifdef REPORT_LAYOUT
         printf( "KR vbox layout  id %d  class %d  %d,%d,%d,%d\n",
-                it.id, it.w->classId, cr.x, cr.y, cr.w, cr.h );
+                it.id, it->classId, cr.x, cr.y, cr.w, cr.h );
 #endif
-        //if( areaUpdate( it.w, &cr ) )
-        areaUpdate( it.w, &cr );        // Always call layout to recompile DL.
-            CLASS( it.w ).layout( ui, it.w );
+        //if( areaUpdate( it, &cr ) )
+        areaUpdate( it, &cr );        // Always call layout to recompile DL.
+            it->wclass->layout( ut, it );
         ++hint;
     EACH_END
 }
@@ -656,92 +651,101 @@ static void vbox_layout( GUI* ui, GWidget* wp /*, GRect* rect*/ )
 //----------------------------------------------------------------------------
 
 
+typedef struct
+{
+    GWidget wid;
+    BOX_MEMBERS
+    UIndex   dp[2];
+    UIndex   titleN;
+    UIndex   eventN;        // Event handler block
+    /*
+    GWidget* keyFocus;
+    GWidget* mouseFocus;
+    char     mouseGrabbed;
+    */
+}
+GWindow;
+
+#undef EX_PTR
+#define EX_PTR  GWindow* ep = (GWindow*) wp
+
 #define WINDOW_HBOX     GW_FLAG_USER1
 
 
-static void window_init( GUI* ui, GWidget* wp, const UCell* arg, int argc )
+GWidgetClass wclass_window;
+
+static GWidget* window_make( UThread* ut, UBlockIter* bi )
 {
-    BoxData* wd = BOX_DATA(wp);
-    //UThread* ut = ui->ut;
+    GWindow* ep;
+    const UCell* arg = bi->it;
 
-    wd->marginL = 8;
-    wd->marginT = 8;
-    wd->marginR = 8;
-    wd->marginB = 8;
-    wd->spacing = 0;
+    ep = (GWindow*) gui_allocWidget( sizeof(GWindow), &wclass_window );
 
-    wd->dp[0]  = gx_makeDrawProg( ui->ut );
+    ep->marginL = 8;
+    ep->marginT = 8;
+    ep->marginR = 8;
+    ep->marginB = 8;
+    ep->spacing = 0;
 
-    if( argc == 4 )
+    ep->dp[0] = ur_makeDrawProg( ut );
+
+
+    /* TODO: Support path?
+    if( ur_sel(arg) == ui->atom_hbox )
+        wp->flags |= WINDOW_HBOX;
+    */
+
+    if( ++arg == bi->end )
+        goto arg_end;
+
+    if( ur_is(arg, UT_STRING) )
     {
-        /* TODO: Support path?
-        if( ur_sel(arg) == ui->atom_hbox )
-            wp->flags |= WINDOW_HBOX;
-        */
-
-        wd->titleN = arg[1].series.buf;
-        glv_setTitle( glEnv.view, boron_cstr( ui->ut, arg + 1, 0 ) );
-
-        wd->eventN = arg[2].series.buf;
+        ep->titleN = arg->series.buf;
+        glv_setTitle( glEnv.view, boron_cstr( ut, arg, 0 ) );
+        if( ++arg == bi->end )
+            goto arg_end;
     }
-    else
+
+    if( ur_is(arg, UT_BLOCK) )
     {
-        wd->titleN = 0;
-        wd->eventN = 0;
+        ep->eventN = arg->series.buf;
+        ++arg;
     }
+
+arg_end:
+
+    bi->it = arg;
+    return (GWidget*) ep;
 }
 
 
-static inline void _markBufN( UThread* ut, UIndex n )
+static void window_free( GWidget* wp )
 {
-    if( n > UR_INVALID_BUF )    // Also acts as (! ur_isShared(n))
-        ur_markBuffer( ut, n );
+    memFree( wp );
 }
 
 
-static inline void _markCell( UThread* ut, UCell* cell )
+static void window_mark( UThread* ut, GWidget* wp )
 {
-    int t = ur_type(cell);
-    if( t >= UT_REFERENCE_BUF )
-        (ut->types[ t ])->mark( ut, cell );
+    EX_PTR;
+
+    ur_markBuffer( ut, ep->dp[0] );
+    if( ep->titleN > UR_INVALID_BUF )   // Also acts as (! ur_isShared(n))
+        ur_markBuffer( ut, ep->titleN );
+    ur_markBlkN( ut, ep->eventN );
+
+    box_mark( ut, wp );
 }
 
 
-void _markBlockN( UThread* ut, UIndex n )
+static void window_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
-    if( n > UR_INVALID_BUF )    // Also acts as (! ur_isShared(n))
+    EX_PTR;
+    UBlockIter bi;
+    UAtom name;
+
+    if( ep->eventN )
     {
-        if( ur_markBuffer( ut, n ) )
-            block_markBuf( ut, ur_buffer(n) );
-    }
-}
-
-
-static void window_mark( GUI* ui, GWidget* wp )
-{
-    BoxData* wd = BOX_DATA(wp);
-    UThread* ut = ui->ut;
-
-    ur_markBuffer( ut, wd->dp[0] );
-    _markBufN( ut, wd->titleN );
-    _markBlockN( ut, wd->eventN );
-
-    box_mark( ui, wp );
-}
-
-
-static void window_event( GUI* ui, GWidget* wp, const GLViewEvent* ev )
-{
-    BoxData* wd = BOX_DATA(wp);
-
-    if( wd->eventN )
-    {
-        UThread* ut = ui->ut;
-        UBuffer* blk;
-        UCell* it;
-        UCell* end;
-        UAtom name;
-
         switch( ev->type )
         {
             case GLV_EVENT_CLOSE:
@@ -754,21 +758,21 @@ static void window_event( GUI* ui, GWidget* wp, const GLViewEvent* ev )
                 return;
         }
 
-        blk = ur_buffer( wd->eventN );
-        it  = blk->ptr.cell;
-        end = it + blk->used;
-        if( blk->used & 1 )
-            --end;
-        while( it != end )
+        bi.buf = ur_buffer( ep->eventN );
+        bi.it  = bi.buf->ptr.cell;
+        bi.end = bi.it + bi.buf->used;
+        if( bi.buf->used & 1 )
+            --bi.end;
+        while( bi.it != bi.end )
         {
-            if( ur_is(it, UT_WORD) )
+            if( ur_is(bi.it, UT_WORD) )
             {
-                if( ur_atom(it) == name )
+                if( ur_atom(bi.it) == name )
                 {
-                    ++it;
-                    if( ur_is(it, UT_BLOCK) )
+                    ++bi.it;
+                    if( ur_is(bi.it, UT_BLOCK) )
                     {
-                        if( ! boron_doVoid( ut, it ) )
+                        if( ! boron_doVoid( ut, bi.it ) )
                         {
                             UR_GUI_THROW;
                         }
@@ -776,134 +780,132 @@ static void window_event( GUI* ui, GWidget* wp, const GLViewEvent* ev )
                     return;
                 }
             }
-            it += 2;
+            bi.it += 2;
         }
     }
 }
 
 
-static void window_sizeHint( GUI* ui, GWidget* wp, GSizeHint* size )
+static void window_sizeHint( GWidget* wp, GSizeHint* size )
 {
     if( wp->flags & WINDOW_HBOX )
-        hbox_sizeHint( ui, wp, size );
+        hbox_sizeHint( wp, size );
     else
-        vbox_sizeHint( ui, wp, size );
+        vbox_sizeHint( wp, size );
 }
 
 
-static void window_layout( GUI* ui, GWidget* wp )
+static void window_layout( UThread* ut, GWidget* wp )
 {
+    EX_PTR;
     DPCompiler* save;
     DPCompiler dpc;
+    UCell* style;
     UCell* rc;
-    UThread* ut = ui->ut;
-    BoxData* wd = BOX_DATA(wp);
 
 
-    save = gx_beginDP( &dpc );
+    save = ur_beginDP( &dpc );
 
-    rc = gui_styleCell( CI_STYLE_START_DL );
+    style = gui_style( ut );
+
+    rc = style + CI_STYLE_START_DL;
     if( ur_is(rc, UT_BLOCK) )
-        gx_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc, 1 );
 
 
-    rc = gui_styleCell( CI_STYLE_WINDOW_MARGIN );
+    rc = style + CI_STYLE_WINDOW_MARGIN;
     if( ur_is(rc, UT_COORD) )
-        setBoxMargins( wd, rc );
+        setBoxMargins( (Box*) ep, rc );
 
     // Set draw list variables.
-    rc = gui_styleCell( CI_STYLE_LABEL );
+    rc = style + CI_STYLE_LABEL;
     ur_setId( rc, UT_STRING );
-    ur_setSeries( rc, wd->titleN, 0 );
+    ur_setSeries( rc, ep->titleN, 0 );
 
-    rc = gui_styleCell( CI_STYLE_AREA );
+    rc = style + CI_STYLE_AREA;
     gui_initRectCoord( rc, wp, UR_ATOM_RECT );
 
     // Compile draw list.
 
-    rc = gui_styleCell( CI_STYLE_WINDOW );
+    rc = style + CI_STYLE_WINDOW;
     if( ur_is(rc, UT_BLOCK) )
-        gx_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc, 1 );
 
     if( wp->flags & WINDOW_HBOX )
-        hbox_layout( ui, wp );
+        hbox_layout( ut, wp );
     else
-        vbox_layout( ui, wp );
+        vbox_layout( ut, wp );
 
-    gx_endDP( ut, ur_buffer(wd->dp[0]), save );
+    ur_endDP( ut, ur_buffer(ep->dp[0]), save );
 }
 
 
 static void window_render( GUI* ui, GWidget* wp )
 {
+    EX_PTR;
     DPState ds;
-    BoxData* wd = BOX_DATA(wp);
-    gx_initDrawState( &ds );
-    gx_runDrawProg( ui->ut, &ds, wd->dp[0] );
+
+    ur_initDrawState( &ds );
+    ur_runDrawProg( ui->ut, &ds, ep->dp[0] );
+
     box_render( ui, wp );
 }
 
 
-/*
-  Return draw-prog resource index or -1 if invalid.
-*/
-UIndex gui_rootDP( const GUI* ui, GWidgetId parent )
+GWidgetClass wclass_hbox =
 {
-#define CLASS_WINDOW    3
-    GWidget* root = gui_root( ui, parent );
-    if( root && (root->classId == CLASS_WINDOW) )
+    "hbox",
+    box_make,        box_free,        box_mark,
+    no_dispatch,     hbox_sizeHint,   hbox_layout,
+    box_render,      gui_areaSelect,
+    0, 0
+};
+
+
+GWidgetClass wclass_vbox =
+{
+    "vbox",
+    box_make,        box_free,        box_mark,
+    no_dispatch,     vbox_sizeHint,   vbox_layout,
+    box_render,      gui_areaSelect,
+    0, 0
+};
+
+
+GWidgetClass wclass_window =
+{
+    "window",
+    window_make,       window_free,       window_mark,
+    window_dispatch,   window_sizeHint,   window_layout,
+    window_render,     gui_areaSelect,
+    0, 0
+};
+
+
+/*
+  Return draw-prog buffer index or UR_INVALID_BUF.
+*/
+UIndex gui_parentDrawProg( GWidget* wp )
+{
+    while( wp->parent )
     {
-        BoxData* wd = BOX_DATA(root);
-        return wd->dp[0];
+        wp = wp->parent;
+        if( wp->wclass == &wclass_window )
+            return ((GWindow*) wp)->dp[0];
     }
-    return -1;
+    return UR_INVALID_BUF;
 }
 
 
+#ifdef KR_TODO
 //----------------------------------------------------------------------------
 
-
-#define _bitIsSet(array,n)    (array[(n)>>3] & 1<<((n)&7))
-
-#include "widget_button.c"
-#include "widget_label.c"
-#include "widget_twidget.c"
-#include "widget_lineedit.c"
-#include "widget_list.c"
-
-
-static int wclassCount = 10;
 
 static GWidgetClass wclass[ WCLASS_MAX ] =
 {
   { "expand",
     expand_init,      no_mark,        no_event,
-    expand_sizeHint,  base_layout,    no_render,      base_select,
-    0, 0, 0 },
-
-  { "hbox",
-    box_init,         box_mark,       no_event,
-    hbox_sizeHint,    hbox_layout,    box_render,     base_select,
-    0, 0, 0 },
-
-  { "vbox",
-    box_init,         box_mark,       no_event,
-    vbox_sizeHint,    vbox_layout,    box_render,     base_select,
-    0, 0, 0 },
-
-  { "window",   // CLASS_WINDOW
-    window_init,      window_mark,    window_event,
-    window_sizeHint,  window_layout,  window_render,  base_select,
-    0, 0, 0 },
-
-  { "button",   // Change ButtonClass in buttonw.c if this moves.
-    button_init,      button_mark,    button_event,
-    button_sizeHint,  button_layout,  button_render,  button_select,
-    0, 0, 0 },
-
-  { "checkbox",  // Change ButtonClass in buttonw.c if this moves.
-    button_init,      button_mark,    checkbox_event,
-    button_sizeHint,  button_layout,  button_render,  button_select,
+    expand_sizeHint,  base_layout,    no_render,      gui_areaSelect,
     0, 0, 0 },
 
   { "label",
@@ -929,15 +931,6 @@ static GWidgetClass wclass[ WCLASS_MAX ] =
     "data-edit",    // spin box, line editor
   */
 };
-
-
-static inline void initClass( UThread* ut, GWidgetClass* cl )
-{
-    const char* name = cl->name;
-
-    cl->id       = cl - wclass;
-    cl->nameAtom = ur_internAtom( ut, name, name + strLen(name) );
-}
 
 
 void gui_init( GUI* ui, UThread* ut )
@@ -1010,7 +1003,7 @@ void gui_ungrabMouse( GUI* ui, GWidget* wp )
 */
 static GWidget* childAt( GUI* ui, GWidget* wp, const GLViewEvent* ev )
 {
-    GWidgetIt it;
+    GWidget* it;
     EACH_SHOWN_CHILD( wp, it )
         if( gui_widgetContains( it.w, ev->x, ev->y ) )
             return childAt( ui, it.w, ev );
@@ -1021,7 +1014,7 @@ static GWidget* childAt( GUI* ui, GWidget* wp, const GLViewEvent* ev )
 
 static GWidgetId widgetAt( GUI* ui, const GLViewEvent* ev )
 {
-    GWidgetIt it;
+    GWidget* it;
     EACH_SHOWN_ROOT( it )
         if( gui_widgetContains( it.w, ev->x, ev->y ) )
         {
@@ -1046,7 +1039,7 @@ void gui_dispatch( GUI* ui, GLViewEvent* ev )
     {
         case GLV_EVENT_CLOSE:
         {
-            GWidgetIt it;
+            GWidget* it;
             EACH_SHOWN_ROOT( it )
                 w = it.w;
                 goto dispatch;
@@ -1132,9 +1125,9 @@ void gui_resizeRootArea( GUI* ui, int width, int height )
 {
     if( (width != ui->rootW) || (height != ui->rootH) )
     {
-        GWidgetIt it;
+        GWidget* it;
         EACH_ROOT( it )
-            it.w->flags |= GW_UPDATE_LAYOUT;
+            it->flags |= GW_UPDATE_LAYOUT;
         EACH_END
 
         ui->rootW = width;
@@ -1174,6 +1167,15 @@ void gui_doBlock( UThread* ut, const UCell* blkC )
         buf = ur_errorBlock(ut);
         buf->used = 0;
 #endif
+    }
+}
+
+
+void gui_doBlockN( UThread* ut, UIndex blkN )
+{
+    if( ! boron_doBlockN( ut, blkN, boron_result(ut) ) )
+    {
+        UR_GUI_THROW;
     }
 }
 
@@ -1282,25 +1284,24 @@ void gui_show( GWidget* wp, int show )
 }
 
 
-#ifdef KR_TODO
-static UCell* setStyleCells( GUI* ui )
+UCell* gui_style( UThread* ut )
 {
-    UThread* ut = ui->ut;
-    UBuffer* ctx = ur_threadContext(ut);
-    int n = ur_ctxLookup( ctx, ui->atom_gui_style );
+    UBuffer* ctx = ur_threadContext( ut );
+    int n = ur_ctxLookup( ctx, UR_ATOM_GUI_STYLE );
     if( n > -1 )
     {
         UCell* cc = ur_ctxCell( ctx, n );
         if( ur_is(cc, UT_CONTEXT) )
         {
             ctx = ur_bufferSerM(cc);
-            return ui->style = ur_ctxCell( ctx, 0 );
+            return ur_ctxCell( ctx, 0 );
         }
     }
     return 0;
 }
 
 
+#ifdef KR_TODO
 /*
   Render a root widget.
 
@@ -1315,7 +1316,7 @@ void gui_render( GUI* ui, GWidgetId id )
 
     if( id >= ur_avail(&ui->widgets) )
         return;
-    if( ! setStyleCells( ui ) )
+    if( ! (ui->style = gui_style( ui->ut )) )
         return;
 
     w = WPTR(id);
@@ -1445,6 +1446,7 @@ void gui_dumpWidget( const GWidget* wp, int indent )
         ++indent;
         EACH_CHILD( wp, it )
             gui_dumpWidget( it, indent );
+        EACH_END
         --indent;
         dumpIndent( indent );
         printf( "]\n" );
@@ -1463,7 +1465,7 @@ void gui_dump( const GUI* ui )
 
     printf( "gui [\n" );
     EACH_ROOT( it )
-        gui_dumpWidget( ui, it.w, 1 );
+        gui_dumpWidget( ui, it, 1 );
     EACH_END
     printf( "]\n" );
 }

@@ -159,11 +159,14 @@ struct GWidget
 };
 
 
+/*
 void gui_init( GUI*, UThread* );
 void gui_cleanup( GUI* );
 void gui_dispatch( GUI*, GLViewEvent* );
 void gui_resizeRootArea( GUI*, int width, int height );
+*/
 void gui_doBlock( UThread*, const UCell* );
+void gui_doBlockN( UThread*, UIndex );
 
 GWidget* gui_allocWidget( int size, GWidgetClass* );
 void     gui_freeWidget( GWidget* );
@@ -171,6 +174,10 @@ void     gui_appendChild( GWidget* parent, GWidget* child );
 void     gui_enable( GWidget*, int active );
 void     gui_show( GWidget*, int show );
 int      gui_widgetContains( const GWidget*, int x, int y );
+UCell*   gui_style( UThread* );
+void     gui_initRectCoord( UCell* cell, GWidget*, UAtom what );
+int      gui_areaSelect( GWidget*, UAtom atom, UCell* result );
+
 /*
 void     gui_render( GUI*, GWidgetId );
 int      gui_selectAtom( GUI*, GWidget*, UAtom atom, UCell* result );
@@ -180,13 +187,7 @@ void     gui_setKeyFocus( GUI*, GWidget* );
 void     gui_setMouseFocus( GUI*, GWidget* );
 void     gui_grabMouse( GUI*, GWidget* );
 void     gui_ungrabMouse( GUI*, GWidget* );
-/*
-UIndex   gui_rootDP( const GUI*, GWidgetId parent );
-*/
-
-
-// gui_styleCell may only be used by sizeHint, layout, & render methods.
-#define gui_styleCell(index)   (ui->style + (index))
+UIndex   gui_parentDrawProg( GWidget* );
 
 
 #endif /*GUI_H*/

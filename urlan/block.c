@@ -160,6 +160,31 @@ UCell* ur_blkPop( UBuffer* buf )
 }
 
 
+#if 0
+/**
+  Set UBlockIter to block cells.
+
+  \param bi    Iterator struct to fill.
+  \param blkN  Index of a valid block.
+
+  \return Initializes bi.  If block is empty then bi->it and bi->end are set
+          to zero.
+*/
+void ur_blkIter( UThread* ut, UBlockIter* bi, UIndex blkN )
+{
+    const UBuffer* buf;
+    bi->buf = buf = ur_bufferE( blkN );
+    if( buf->ptr.cell )
+    {
+        bi->it  = buf->ptr.cell;
+        bi->end = bi->it + buf->used;
+        return;
+    }
+    bi->it = bi->end = 0;
+}
+#endif
+
+
 /**
   Set UBlockIter to block slice.
 
@@ -173,7 +198,7 @@ void ur_blkSlice( UThread* ut, UBlockIter* bi, const UCell* cell )
 {
     const UBuffer* buf;
     bi->buf = buf = ur_bufferSer(cell);
-    if( buf->ptr.b )
+    if( buf->ptr.cell )
     {
         UIndex end = buf->used;
         if( (cell->series.end > -1) && (cell->series.end < end) )
@@ -208,7 +233,7 @@ int ur_blkSliceM( UThread* ut, UBlockIterM* bi, const UCell* cell )
     if( ! buf )
         return UR_THROW;
     bi->buf = buf;
-    if( buf->ptr.b )
+    if( buf->ptr.cell )
     {
         UIndex end = buf->used;
         if( (cell->series.end > -1) && (cell->series.end < end) )

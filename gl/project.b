@@ -73,7 +73,7 @@ lib %boron-gl [
         %TexFont.c
         %port_joystick.c
         %widget_script.c
-       ;%widget_button.c
+        %widget_button.c
     ]
 ]
 
