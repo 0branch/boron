@@ -905,6 +905,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_thread,     "thread body /port" );
 #endif
 #ifdef CONFIG_CHECKSUM
+    addCFunc( cfunc_hash,       "hash val" );
     addCFunc( cfunc_checksum,   "checksum val /sha1 /crc16 /crc32" );
 #endif
 #ifdef CONFIG_COMPRESS

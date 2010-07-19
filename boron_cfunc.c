@@ -3810,6 +3810,46 @@ CFUNC(cfunc_free)
 }
 
 
+#ifdef CONFIG_CHECKSUM
+extern uint32_t ur_hash( const uint8_t* str, const uint8_t* end );
+
+/*-cf-
+    hash
+        string      word!/string!
+    return: int!
+
+    Compute hash value from string (treated as lowercase).
+*/
+CFUNC(cfunc_hash)
+{
+    uint32_t hash = ur_type(a1);
+
+    if( ur_isStringType(hash) )
+    {
+        USeriesIter si;
+        ur_seriesSlice( ut, &si, a1 );
+        if( ur_strIsUcs2( si.buf ) )
+            return errorType( "FIXME: hash does not handle UCS2 strings" );
+        hash = ur_hash( si.buf->ptr.b + si.it, si.buf->ptr.b + si.end );
+    }
+    else if( ur_isWordType(hash) )
+    {
+        const uint8_t* str = (const uint8_t*) ur_wordCStr(a1);
+        hash = ur_hash( str, str + strLen((const char*) str) );
+    }
+    else
+    {
+        return errorType( "hash expected word!/string!" );
+    }
+
+    ur_setId(res, UT_INT);
+    ur_setFlags(res, UR_FLAG_INT_HEX);
+    ur_int(res) = hash;
+    return UR_OK;
+}
+#endif
+
+
 /*-cf-
     datatype?
         value
