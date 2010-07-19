@@ -642,8 +642,8 @@ add_moc_files: func [ct files block! | blk dir file]
 if args [
 	forall args [
 		switch first args [
-			"-t" [template_file: first ++ args]
-			"-o" [m2/makefile:   first ++ args]
+			"-t" [template_file: second ++ args]
+			"-o" [m2/makefile:   second ++ args]
 			[project_file: first args]
 		]
 	]

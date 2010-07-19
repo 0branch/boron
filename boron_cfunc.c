@@ -1267,7 +1267,7 @@ CFUNC(cfunc_last)
 /*-cf-
     ++
         'word word!
-    return: Incremented value
+    return: Value before increment.
 
     Increments series or number bound to word.
 */
@@ -1277,8 +1277,10 @@ CFUNC(cfunc_2plus)
 
     if( ! ur_is(a1, UT_WORD) )
         return ur_error( ut, UR_ERR_TYPE, "++ expected word!" );
+
     if( ! (cell = ur_wordCellM(ut, a1)) )
         return UR_THROW;
+    *res = *cell;
 
     if( ur_isSeriesType( ur_type(cell) ) )
     {
@@ -1292,7 +1294,6 @@ CFUNC(cfunc_2plus)
     else
         return ur_error( ut, UR_ERR_TYPE, "++ only works on series or number" );
 
-    *res = *cell;
     return UR_OK;
 }
 
@@ -1300,7 +1301,7 @@ CFUNC(cfunc_2plus)
 /*-cf-
     --
         'word word!
-    return: Decremented value
+    return: Value before decrement.
 
     Decrements series or number bound to word.
 */
@@ -1310,8 +1311,10 @@ CFUNC(cfunc_2minus)
 
     if( ! ur_is(a1, UT_WORD) )
         return ur_error( ut, UR_ERR_TYPE, "-- expected word!" );
+
     if( ! (cell = ur_wordCellM(ut, a1)) )
         return UR_THROW;
+    *res = *cell;
 
     if( ur_isSeriesType( ur_type(cell) ) )
     {
@@ -1325,7 +1328,6 @@ CFUNC(cfunc_2minus)
     else
         return ur_error( ut, UR_ERR_TYPE, "-- only works on series or number" );
 
-    *res = *cell;
     return UR_OK;
 }
 
