@@ -464,6 +464,7 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 #endif
 
 #include "boron_cfunc.c"
+#include "boron_construct.c"
 #include "boron_serialize.c"
 
 #ifdef CONFIG_THREAD
@@ -900,6 +901,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_free,       "free s" );
     addCFunc( cfunc_serialize,  "serialize b" );
     addCFunc( cfunc_unserialize,"unserialize b" );
+    addCFunc( cfunc_construct,  "construct s b" );
 #ifdef CONFIG_THREAD
     addCFunc( cfunc_sleep,      "sleep n" );
     addCFunc( cfunc_thread,     "thread body /port" );
