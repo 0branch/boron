@@ -171,11 +171,28 @@ static int file_write( UThread* ut, UBuffer* port, const UCell* data )
 }
 
 
-static int file_seek( UThread* ut, UBuffer* port, UCell* pos )
+static int file_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 {
-    if( lseek( port->FD, ur_int(pos), SEEK_SET ) == -1 )
-        return ur_error( ut, UR_ERR_ACCESS, strerror( errno ) );
-    return UR_OK;
+    if( ur_is(pos, UT_INT) )
+    {
+        switch( where )
+        {
+            case UR_PORT_HEAD:
+                where = SEEK_SET;
+                break;
+            case UR_PORT_TAIL:
+                where = SEEK_END;
+                break;
+            case UR_PORT_SKIP:
+            default:
+                where = SEEK_CUR;
+                break;
+        }
+        if( lseek( port->FD, ur_int(pos), where ) == -1 )
+            return ur_error( ut, UR_ERR_ACCESS, strerror( errno ) );
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE, "file seek expected int!" );
 }
 
 

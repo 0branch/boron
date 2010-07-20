@@ -314,10 +314,11 @@ static int thread_write( UThread* ut, UBuffer* port, const UCell* data )
 }
 
 
-static int thread_seek( UThread* ut, UBuffer* port, UCell* pos )
+static int thread_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 {
     (void) port;
     (void) pos;
+    (void) where;
     return ur_error( ut, UR_ERR_SCRIPT, "Cannot seek on thread port" );
 }
 

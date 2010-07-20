@@ -53,6 +53,14 @@ enum PortForm
 };
 
 
+enum PortSeek
+{
+    UR_PORT_HEAD,
+    UR_PORT_TAIL,
+    UR_PORT_SKIP
+};
+
+
 typedef struct UPortDevice  UPortDevice;
 
 struct UPortDevice
@@ -61,7 +69,7 @@ struct UPortDevice
     void (*close)( UBuffer* );
     int  (*read) ( UThread*, UBuffer*, UCell*, int part );
     int  (*write)( UThread*, UBuffer*, const UCell* );
-    int  (*seek) ( UThread*, UBuffer*, UCell* );
+    int  (*seek) ( UThread*, UBuffer*, UCell*, int where );
 };
 
 

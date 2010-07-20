@@ -38,6 +38,13 @@
 #define a3  (a1 + 2)
 #define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
 
+//dev = ((UPortDevice**) ut->env->ports.ptr.v)[ buf->form ]; 
+
+#define PORT_SITE(dev,pbuf,portC) \
+    UBuffer* pbuf = ur_buffer( portC->series.buf ); \
+    UPortDevice* dev = (pbuf->form == UR_PORT_SIMPLE) ? \
+        (UPortDevice*) pbuf->ptr.v : *((UPortDevice**) pbuf->ptr.v)
+
 
 /*
   Undocumented debug function.
@@ -1366,35 +1373,59 @@ CFUNC(cfunc_next)
 }
 
 
+static int positionPort( UThread* ut, const UCell* portC, int where )
+{
+    UCell tmp;
+    PORT_SITE(dev, pbuf, portC);
+    if( ! dev )
+        return errorScript( "port is closed" );
+    ur_setId( &tmp, UT_INT );
+    ur_int( &tmp ) = 0;
+    return dev->seek( ut, pbuf, &tmp, where );
+}
+
+
 /*-cf-
     head
-        series
+        series  Series or port!
     return: Start of series.
 */
 CFUNC(cfunc_head)
 {
     int type = ur_type(a1);
-    if( ! ur_isSeriesType( type ) )
-        return ur_error( ut, UR_ERR_TYPE, "head expected series" );
     *res = *a1;
-    res->series.it = 0;
-    return UR_OK;
+    if( ur_isSeriesType( type ) )
+    {
+        res->series.it = 0;
+        return UR_OK;
+    }
+    else if( type == UT_PORT )
+    {
+        return positionPort( ut, a1, UR_PORT_HEAD );
+    }
+    return errorType( "head expected series or port!" );
 }
 
 
 /*-cf-
     tail
-        series
+        series  Series or port!
     return: End of series.
 */
 CFUNC(cfunc_tail)
 {
     int type = ur_type(a1);
-    if( ! ur_isSeriesType( type ) )
-        return ur_error( ut, UR_ERR_TYPE, "tail expected series" );
     *res = *a1;
-    res->series.it = boron_seriesEnd(ut, res);
-    return UR_OK;
+    if( ur_isSeriesType( type ) )
+    {
+        res->series.it = boron_seriesEnd(ut, res);
+        return UR_OK;
+    }
+    else if( type == UT_PORT )
+    {
+        return positionPort( ut, a1, UR_PORT_TAIL );
+    }
+    return errorType( "tail expected series or port!" );
 }
 
 
@@ -1504,7 +1535,7 @@ CFUNC(cfunc_pop)
 
 /*-cf-
     skip
-        series
+        series  Series or port!
         offset  logic!/int!
     return: Offset series.
 
@@ -1513,32 +1544,42 @@ CFUNC(cfunc_pop)
 */
 CFUNC(cfunc_skip)
 {
-    UIndex n;
-    if( ! ur_isSeriesType( ur_type(a1) ) )
-        return ur_error( ut, UR_ERR_TYPE, "skip expected series" );
-
-    if( ur_is(a2, UT_INT) )
-        n = ur_int(a2);
-    else if( ur_is(a2, UT_LOGIC) )
-        n = ur_int(a2) ? 1 : 0;
-    else
-        return ur_error( ut, UR_ERR_TYPE, "skip expected logic!/int! offset" );
-
-    *res = *a1;
-    if( n )
+    if( ur_isSeriesType( ur_type(a1) ) )
     {
-        n += a1->series.it;
-        if( n < 0 )
-            n = 0;
+        UIndex n;
+
+        if( ur_is(a2, UT_INT) )
+            n = ur_int(a2);
+        else if( ur_is(a2, UT_LOGIC) )
+            n = ur_int(a2) ? 1 : 0;
         else
+            return errorType( "skip expected logic!/int! offset" );
+
+        *res = *a1;
+        if( n )
         {
-            UIndex end = boron_seriesEnd( ut, a1 );
-            if( n > end )
-                n = end;
+            n += a1->series.it;
+            if( n < 0 )
+                n = 0;
+            else
+            {
+                UIndex end = boron_seriesEnd( ut, a1 );
+                if( n > end )
+                    n = end;
+            }
+            res->series.it = n;
         }
-        res->series.it = n;
+        return UR_OK;
     }
-    return UR_OK;
+    else if( ur_is(a1, UT_PORT) )
+    {
+        PORT_SITE(dev, pbuf, a1);
+        if( ! dev )
+            return errorScript( "port is closed" );
+        *res = *a1;
+        return dev->seek( ut, pbuf, a2, UR_PORT_SKIP );
+    }
+    return errorType( "skip expected series/port!" );
 }
 
 
@@ -1921,6 +1962,7 @@ CFUNC(cfunc_indexQ)
         ur_int(res) = a1->series.it + 1;
     else if( ur_isWordType( type ) )
         ur_int(res) = ur_atom(a1);
+    //else if( type == UT_PORT )
     else
         return errorType( "index? expected series or word" );
 
@@ -2835,14 +2877,6 @@ CFUNC(cfunc_close)
     return UR_OK;
 }
 #endif
-
-
-//dev = ((UPortDevice**) ut->env->ports.ptr.v)[ buf->form ]; 
-
-#define PORT_SITE(dev,pbuf,portC) \
-    UBuffer* pbuf = ur_buffer( portC->series.buf ); \
-    UPortDevice* dev = (pbuf->form == UR_PORT_SIMPLE) ? \
-        (UPortDevice*) pbuf->ptr.v : *((UPortDevice**) pbuf->ptr.v)
 
 
 extern int ur_readDir( UThread*, const char* filename, UCell* res );

@@ -163,10 +163,11 @@ static int joy_write( UThread* ut, UBuffer* port, const UCell* data )
 }
 
 
-static int joy_seek( UThread* ut, UBuffer* port, UCell* pos )
+static int joy_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 {
     (void) port;
     (void) pos;
+    (void) where;
     return ur_error( ut, UR_ERR_SCRIPT, "Cannot seek on joystick port" );
 }
 
