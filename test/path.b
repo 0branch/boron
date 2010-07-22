@@ -19,3 +19,10 @@ print [type? lp lp type? first lp type? second lp]
 print "---- block"
 a: [x 33 y: 44]
 print [a/x a/y]
+
+
+print "---- integer"
+a: first [foo/-900/48]
+foreach elem a [
+    print [:elem type? elem]
+]

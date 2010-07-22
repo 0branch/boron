@@ -520,7 +520,7 @@ static UCell* ur_tokenizePath( UThread* ut, UBuffer* blk,
     while( 1 )
     {
         ch = *it;
-        if( isDigit(ch) )
+        if( isDigit(ch) || (ch == '-') )
         {
             pc = ur_blkAppendNew( path, UT_INT );
             ur_int(pc) = (int32_t) str_toInt64( it, ew, 0 );
