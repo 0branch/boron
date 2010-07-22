@@ -76,10 +76,11 @@ void boron_installThreadPort( UThread* ut, const UCell* portC, UThread* utB )
 }
 
 
-static int thread_open( UThread* ut, UBuffer* port, const UCell* from )
+static int thread_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
 {
     ThreadExt* ext;
     (void) from;
+    (void) opt;
 
     ext = (ThreadExt*) memAlloc( sizeof(ThreadExt) );
     if( ! ext )

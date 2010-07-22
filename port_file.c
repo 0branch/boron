@@ -46,7 +46,7 @@
 #define FD  used
 
 
-static int file_open( UThread* ut, UBuffer* port, const UCell* from )
+static int file_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
 {
     int fd = -1;
     int flags;
@@ -69,7 +69,15 @@ static int file_open( UThread* ut, UBuffer* port, const UCell* from )
             return ur_error( ut, UR_ERR_ACCESS, "User denied open" );
 #endif
 
-        flags = O_CREAT | O_RDWR;
+        if( opt & UR_PORT_READ )
+            flags = O_RDONLY;
+        else if( opt & UR_PORT_WRITE )
+            flags = O_CREAT | O_WRONLY;
+        else
+            flags = O_CREAT | O_RDWR;
+
+        if( opt & UR_PORT_NEW )
+            flags |= O_TRUNC;
 
         fd = open( path, flags, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH );
         if( fd == -1 )

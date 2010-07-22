@@ -53,6 +53,14 @@ enum PortForm
 };
 
 
+enum PortOpenOptions
+{
+    UR_PORT_READ  = 0x01,
+    UR_PORT_WRITE = 0x02,
+    UR_PORT_NEW   = 0x04
+};
+
+
 enum PortSeek
 {
     UR_PORT_HEAD,
@@ -65,7 +73,7 @@ typedef struct UPortDevice  UPortDevice;
 
 struct UPortDevice
 {
-    int  (*open) ( UThread*, UBuffer*, const UCell* from );
+    int  (*open) ( UThread*, UBuffer*, const UCell* from, int opt );
     void (*close)( UBuffer* );
     int  (*read) ( UThread*, UBuffer*, UCell*, int part );
     int  (*write)( UThread*, UBuffer*, const UCell* );

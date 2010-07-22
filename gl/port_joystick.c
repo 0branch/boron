@@ -37,10 +37,11 @@
 // STATE
 
 
-static int joy_open( UThread* ut, UBuffer* port, const UCell* from )
+static int joy_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
 {
     const char* osDev = 0;
     int fd;
+    (void) opt;
 
     if( ur_is(from, UT_STRING) )
         osDev = boron_cstr( ut, from, 0 );

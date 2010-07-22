@@ -580,7 +580,8 @@ static UPortDevice* portLookup( UThread* ut, UAtom name )
 }
 
 
-int ur_makePort( UThread* ut, UPortDevice* pdev, const UCell* from, UCell* res )
+int ur_makePort( UThread* ut, UPortDevice* pdev, const UCell* from, UCell* res,
+                 int options )
 {
     UBuffer* buf;
     UIndex bufN;
@@ -592,7 +593,7 @@ int ur_makePort( UThread* ut, UPortDevice* pdev, const UCell* from, UCell* res )
     buf->form  = UR_PORT_SIMPLE;
     buf->ptr.v = pdev;
 
-    if( ! pdev->open( ut, buf, from ) )
+    if( ! pdev->open( ut, buf, from, options ) )
     {
         //buf = ur_buffer( bufN );    // Re-aquire
         buf->ptr.v = 0;
@@ -657,7 +658,7 @@ int port_make( UThread* ut, const UCell* from, UCell* res )
         return ur_error( ut, UR_ERR_SCRIPT, "Port type %s does not exist",
                          ur_atomCStr(ut, name) );
 
-    return ur_makePort( ut, pdev, from, res );
+    return ur_makePort( ut, pdev, from, res, 0 );
 }
 
 

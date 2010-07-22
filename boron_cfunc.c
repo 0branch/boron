@@ -2846,13 +2846,17 @@ CFUNC(cfunc_getenv)
 /*-cf-
     open
         device  string!/file!/block!
+        /read   Read-only mode.
+        /write  Write-only mode.
+        /new    Create empty file.
     return: port!
 
     Create port!.
 */
-//#define cfunc_open  port_make
 CFUNC(cfunc_open)
 {
+    if( ur_is(a1, UT_FILE) )
+        return ur_makePort( ut, &port_file, a1, res, CFUNC_OPTIONS );
     return port_make( ut, a1, res );
 }
 

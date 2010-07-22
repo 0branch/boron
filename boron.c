@@ -873,7 +873,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_make_dir,   "make-dir path /all" );
     addCFunc( cfunc_current_dir,"current-dir" );
     addCFunc( cfunc_getenv,     "getenv val" );
-    addCFunc( cfunc_open,       "open from" );
+    addCFunc( cfunc_open,       "open from /read /write /new" );
     addCFunc( cfunc_set_addr,   "set-addr p host n" );
     addCFunc( cfunc_read,       "read from /text /into b" );
     addCFunc( cfunc_write,      "write to data /append /text" );

@@ -241,7 +241,8 @@ static int _openTcpClient( UThread* ut, struct sockaddr* addr,
   ['udp local-port host host-port 'nowait]
   ['tcp host host-port]
 */
-static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from )
+static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
+                        int opt )
 {
     NodeServ ns;
     int socket;
@@ -250,6 +251,7 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from )
     int blocking = 1;
     UCell* initAddr = 0;
     SocketExt* ext;
+    (void) opt;
 
 
     ext = (SocketExt*) memAlloc( sizeof(SocketExt) );
