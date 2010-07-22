@@ -166,8 +166,13 @@ exe_target: make target_env
         ]
     ]
 
-    clean: does [rejoin ["^--rm -f " output_file ' ' obj_macro eol]]
-    ; TODO: if cfg/qt ["rm -f $(_SRCMOC)"]
+    clean: does [
+        rejoin [
+            "^--rm -f " output_file ' ' obj_macro
+            either empty? srcmoc_files [""] [join ' ' to-text srcmoc_files]
+            eol
+        ]
+    ]
 
     dist: does [
         rejoin [" $(" uc_name "_SOURCES)"]

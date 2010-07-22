@@ -185,7 +185,13 @@ exe_target: make target_env
         ]
     ]
 
-    clean: does [ rejoin ["^--@del " output_file ' ' obj_macro eol] ]
+    clean: does [
+        rejoin [
+            "^--@del " output_file ' ' obj_macro
+            either empty? srcmoc_files [""] [join ' ' to-text srcmoc_files]
+            eol
+        ]
+    ]
 
     dist: does [
         rejoin [" $(" uc_name "_SOURCES) $(" uc_name "_HEADERS)"]
