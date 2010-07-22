@@ -89,6 +89,13 @@ ef:  does []
 ef
 
 
+print "---- compare"
+print equal? :ef :oaf
+print same?  :ef :oaf
+print equal? :ef :ef
+print same?  :ef :ef
+
+
 print "---- bugs fixed"
 ; Found problem in makeVerifyFuncBlock().
 sources_from: func [path files block!] [verify_slash path]

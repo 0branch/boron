@@ -53,6 +53,8 @@ UCellFunc;
 
 #define FUNC_FLAG_GHOST     1
 #define FCELL  ((UCellFunc*) cell)
+#define ur_funcBody(c)  ((UCellFunc*) c)->m.f.bodyN
+#define ur_funcFunc(c)  ((UCellFunc*) c)->m.func
 
 
 enum FuncArgumentOpcodes
@@ -313,13 +315,31 @@ static void _rebindFunc( UThread* ut, UIndex blkN, UIndex new, UIndex old )
 void func_copy( UThread* ut, const UCell* from, UCell* res )
 {
     UIndex newBodN;
-    UIndex fromBodN = ((UCellFunc*) from)->m.f.bodyN;
+    UIndex fromBodN = ur_funcBody(from);
 
     //printf( "KR func_copy\n" );
     *res = *from;
-    ((UCellFunc*) res)->m.f.bodyN = newBodN = ur_blkClone( ut, fromBodN );
+    ur_funcBody(res) = newBodN = ur_blkClone( ut, fromBodN );
 
     _rebindFunc( ut, newBodN, newBodN, fromBodN );
+}
+
+
+int func_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    (void) ut;
+    switch( test )
+    {
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) != ur_type(b) )
+                break;
+            // Fall through...
+
+        case UR_COMPARE_SAME:
+            return ur_funcBody(a) == ur_funcBody(b);
+    }
+    return 0;
 }
 
 
@@ -452,6 +472,24 @@ void func_bind( UThread* ut, UCell* cell, const UBindTarget* bt )
 
 //----------------------------------------------------------------------------
 // UT_CFUNC
+
+
+int cfunc_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    (void) ut;
+    switch( test )
+    {
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) != ur_type(b) )
+                break;
+            // Fall through...
+
+        case UR_COMPARE_SAME:
+            return ur_funcFunc(a) == ur_funcFunc(b);
+    }
+    return 0;
+}
 
 
 /*
@@ -642,7 +680,7 @@ UDatatype boron_types[] =
   {
     "func!",
     unset_make,             unset_make,             func_copy,
-    unset_compare,          unset_operate,          func_select,
+    func_compare,           unset_operate,          func_select,
     func_toString,          func_toString,
     unset_recycle,          func_mark,              func_destroy,
     unset_markBuf,          func_toShared,          func_bind
@@ -650,7 +688,7 @@ UDatatype boron_types[] =
   {
     "cfunc!",
     unset_make,             unset_make,             unset_copy,
-    unset_compare,          unset_operate,          func_select,
+    cfunc_compare,          unset_operate,          func_select,
     unset_toString,         unset_toText,
     unset_recycle,          cfunc_mark,             unset_destroy,
     unset_markBuf,          cfunc_toShared,         unset_bind

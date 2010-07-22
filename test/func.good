@@ -33,6 +33,11 @@ option set
 13
 7
 ---- empty body
+---- compare
+false
+false
+true
+true
 ---- bugs fixed
 4
 opt-b
