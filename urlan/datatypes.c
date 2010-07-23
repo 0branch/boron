@@ -1345,6 +1345,49 @@ void vec3_pick( const UCell* cell, int index, UCell* res )
     }
 }
 
+int vec3_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{                       
+    (void) ut;
+    switch( test )
+    {           
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) != ur_type(b) )
+                break;
+            // Fall through...
+            
+        case UR_COMPARE_SAME:
+        {
+            const float* pa = a->vec3.xyz;
+            const float* pb = b->vec3.xyz;
+            if( (pa[0] != pb[0]) || (pa[1] != pb[1]) || (pa[2] != pb[2]) )
+                return 0;
+            return 1;
+        }
+            break;
+    
+        case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
+            if( ur_type(a) == ur_type(b) )
+            {
+                const float* pa = a->vec3.xyz;
+                const float* aend = pa + 3;
+                const float* pb = b->vec3.xyz;
+                while( pa != aend )
+                {
+                    if( *pa > *pb )
+                        return 1;
+                    if( *pa < *pb )
+                        return -1;
+                    ++pa;
+                    ++pb;
+                }
+            }
+            break;
+    }
+    return 0;
+}
+
 
 #define OPER_V3_V3(OP) \
     res->vec3.xyz[0] = a->vec3.xyz[0] OP b->vec3.xyz[0]; \
@@ -1427,7 +1470,7 @@ UDatatype dt_vec3 =
 {
     "vec3!",
     vec3_make,              vec3_make,              unset_copy,
-    unset_compare,          vec3_operate,           vec3_select,
+    vec3_compare,           vec3_operate,           vec3_select,
     vec3_toString,          vec3_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind

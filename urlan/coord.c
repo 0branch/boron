@@ -82,16 +82,54 @@ static int coord_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
-/*
-int unset_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+int coord_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 {
     (void) ut;
-    (void) a;
-    (void) b;
-    (void) test;
+    switch( test )
+    {
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) != ur_type(b) )
+                break;
+            // Fall through...
+
+        case UR_COMPARE_SAME:
+            if( a->coord.len == b->coord.len )
+            {
+                const int16_t* pa = a->coord.n;
+                const int16_t* aend = pa + a->coord.len;
+                const int16_t* pb = b->coord.n;
+                while( pa != aend )
+                {
+                    if( *pa++ != *pb++ )
+                        return 0;
+                }
+                return 1;
+            }
+            break;
+
+        case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
+            if( ur_type(a) == ur_type(b) )
+            {
+                const int16_t* pa = a->coord.n;
+                const int16_t* pb = b->coord.n;
+                const int16_t* aend = pa +((a->coord.len < b->coord.len) ?
+                                        a->coord.len : b->coord.len);
+                while( pa != aend )
+                {
+                    if( *pa > *pb )
+                        return 1;
+                    if( *pa < *pb )
+                        return -1;
+                    ++pa;
+                    ++pb;
+                }
+            }
+            break;
+    }
     return 0;
 }
-*/
 
 
 /* index is zero-based */
@@ -139,7 +177,7 @@ UDatatype dt_coord =
 {
     "coord!",
     coord_make,             coord_make,             unset_copy,
-    unset_compare,          unset_operate,          coord_select,
+    coord_compare,          unset_operate,          coord_select,
     coord_toString,         coord_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
