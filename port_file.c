@@ -204,9 +204,16 @@ static int file_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 }
 
 
+static int file_waitFD( UBuffer* port )
+{
+    return port->FD;
+}
+
+
 UPortDevice port_file =
 {
-    file_open, file_close, file_read, file_write, file_seek
+    file_open, file_close, file_read, file_write, file_seek,
+    file_waitFD
 };
 
 

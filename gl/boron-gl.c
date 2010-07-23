@@ -1735,12 +1735,12 @@ static void _createFixedAtoms( UThread* ut )
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
-        "add size text close\n"
+        "add size text wait close\n"
         "width height area rect raster texture\n"
         "gui-style elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
         "ambient diffuse specular pos shader vertex normal fragment\n"
-        "default wait dynamic static stream left right center\n"
+        "default dynamic static stream left right center\n"
         "rgb rgba depth clamp repeat nearest linear\n"
         "min mag mipmap gray\n"
         "burn color trans sprite\n"
@@ -1749,7 +1749,7 @@ static void _createFixedAtoms( UThread* ut )
         atoms );
 
 #ifdef DEBUG
-    if( atoms[0] != UR_ATOM_ADD || atoms[4] != UR_ATOM_WIDTH )
+    if( atoms[0] != UR_ATOM_ADD || atoms[5] != UR_ATOM_WIDTH )
     {
         int i;
         for( i = 0; i < FA_COUNT; ++i )
@@ -1760,8 +1760,9 @@ static void _createFixedAtoms( UThread* ut )
     assert( atoms[0] == UR_ATOM_ADD );
     assert( atoms[1] == UR_ATOM_SIZE );
     assert( atoms[2] == UR_ATOM_TEXT );
-    assert( atoms[3] == UR_ATOM_CLOSE );
-    assert( atoms[4] == UR_ATOM_WIDTH );
+    assert( atoms[3] == UR_ATOM_WAIT );
+    assert( atoms[4] == UR_ATOM_CLOSE );
+    assert( atoms[5] == UR_ATOM_WIDTH );
     assert( atoms[FA_COUNT - 1] == UR_ATOM_ACTION );
 }
 

@@ -78,6 +78,7 @@ struct UPortDevice
     int  (*read) ( UThread*, UBuffer*, UCell*, int part );
     int  (*write)( UThread*, UBuffer*, const UCell* );
     int  (*seek) ( UThread*, UBuffer*, UCell*, int where );
+    int  (*waitFD)( UBuffer* );
 };
 
 

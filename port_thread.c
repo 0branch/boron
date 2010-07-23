@@ -21,6 +21,10 @@
 #include "boron.h"
 #include "os.h"
 
+#ifdef __linux
+#include <sys/eventfd.h>
+#endif
+
 
 #define SIDE_A      0
 #define SIDE_B      1
@@ -39,6 +43,10 @@ typedef struct
     UBuffer queueB;     // SIDE_B writes here.
     UIndex  itA;
     UIndex  itB;
+#ifdef __linux
+    int     eventA;
+    int     eventB;
+#endif
 }
 ThreadExt;
 
@@ -105,6 +113,11 @@ fail:
     ext->queueB.END_OPEN = 1;
     ext->itA = ext->itB = 0;
 
+#ifdef __linux
+    ext->eventA = eventfd( 0, EFD_CLOEXEC );
+    ext->eventB = eventfd( 0, EFD_CLOEXEC );
+#endif
+
     port->SIDE = SIDE_A;
     boron_extendPort( port, (UPortDevice**) ext );
     return UR_OK;
@@ -143,12 +156,18 @@ static void thread_close( UBuffer* port )
 
     if( ! endOpen )
     {
+        // TODO: Free buffers in queues.
+
         mutexFree( ext->mutexA );
         mutexFree( ext->mutexB );
         condFree( ext->condA );
         condFree( ext->condB );
         ur_blkFree( &ext->queueA );
         ur_blkFree( &ext->queueB );
+#ifdef __linux
+        close( ext->eventA );
+        close( ext->eventB );
+#endif
         memFree( port->ptr.v );
     }
     port->ptr.v = 0;
@@ -171,6 +190,24 @@ static UIndex thread_dequeue( UBuffer* queue, UIndex it, UCell* dest,
 }
 
 
+#ifdef __linux
+static inline void readEvent( int fd )
+{
+    uint64_t n;
+    read( fd, &n, sizeof(n) );
+}
+
+static inline void writeEvent( int fd )
+{
+    uint64_t n = 1;
+    write( fd, &n, sizeof(n) );
+}
+#else
+#define readEvent(fd)
+#define writeEvent(fd)
+#endif
+
+
 #define ur_unbind(c)    (c)->word.ctx = UR_INVALID_BUF
 
 static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
@@ -183,6 +220,7 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
 
     if( port->SIDE == SIDE_A )
     {
+        readEvent( ext->eventB );
         mutexLock( ext->mutexB );
         while( ext->itB >= ext->queueB.used )
         {
@@ -197,6 +235,7 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
     }
     else
     {
+        readEvent( ext->eventA );
         mutexLock( ext->mutexA );
         while( ext->itA >= ext->queueA.used )
         {
@@ -298,6 +337,7 @@ static int thread_write( UThread* ut, UBuffer* port, const UCell* data )
         {
             thread_queue( &ext->queueA, data, buf );
             condSignal( ext->condA );
+            writeEvent( ext->eventA );
         }
         mutexUnlock( ext->mutexA );
     }
@@ -308,6 +348,7 @@ static int thread_write( UThread* ut, UBuffer* port, const UCell* data )
         {
             thread_queue( &ext->queueB, data, buf );
             condSignal( ext->condB );
+            writeEvent( ext->eventB );
         }
         mutexUnlock( ext->mutexB );
     }
@@ -324,9 +365,21 @@ static int thread_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 }
 
 
+static int thread_waitFD( UBuffer* port )
+{
+#ifdef __linux
+    ThreadExt* ext = (ThreadExt*) port->ptr.v;
+    return (port->SIDE == SIDE_A) ? ext->eventB : ext->eventA;
+#else
+    return -1;
+#endif
+}
+
+
 UPortDevice port_thread =
 {
-    thread_open, thread_close, thread_read, thread_write, thread_seek
+    thread_open, thread_close, thread_read, thread_write, thread_seek,
+    thread_waitFD
 };
 
 

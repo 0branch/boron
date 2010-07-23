@@ -173,9 +173,15 @@ static int joy_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 }
 
 
+static int joy_waitFD( UBuffer* port )
+{
+    return port->FD;
+}
+
+
 UPortDevice port_joystick =
 {
-    joy_open, joy_close, joy_read, joy_write, joy_seek
+    joy_open, joy_close, joy_read, joy_write, joy_seek, joy_waitFD
 };
 
 

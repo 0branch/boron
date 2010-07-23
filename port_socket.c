@@ -508,9 +508,16 @@ static int socket_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 }
 
 
+static int socket_waitFD( UBuffer* port )
+{
+    return port->FD;
+}
+
+
 UPortDevice port_socket =
 {
-    socket_open, socket_close, socket_read, socket_write, socket_seek
+    socket_open, socket_close, socket_read, socket_write, socket_seek,
+    socket_waitFD
 };
 
 
