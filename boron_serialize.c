@@ -326,6 +326,68 @@ static void _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
 }
 
 
+#ifdef __BIG_ENDIAN__
+static void _binAppendSwap2( UBuffer* bin, uint16_t* it, int count )
+{
+    uint8_t* dest;
+    uint16_t* end = it + count;
+    int size = count * 2;
+
+    ur_binReserve( bin, bin->used + size );
+    dest = bin->ptr.b + bin->used;
+    bin->used += size;
+    while( it != end )
+    {
+        *dest++ = *it >> 8;
+        *dest++ = *it++;
+    }
+}
+
+
+static void _binAppendSwap4( UBuffer* bin, uint32_t* it, int count )
+{
+    uint8_t* dest;
+    uint32_t* end = it + count;
+    int size = count * 4;
+
+    ur_binReserve( bin, bin->used + size );
+    dest = bin->ptr.b + bin->used;
+    bin->used += size;
+    while( it != end )
+    {
+        *dest++ = *it >> 24;
+        *dest++ = *it >> 16;
+        *dest++ = *it >> 8;
+        *dest++ = *it++;
+    }
+}
+
+
+static void _memCpySwap2(uint8_t* dest, const uint8_t* src, uint32_t elemCount)
+{
+    while( elemCount-- )
+    {
+        *dest++ = src[1];
+        *dest++ = src[0];
+        src += 2;
+    }
+}
+
+
+static void _memCpySwap4(uint8_t* dest, const uint8_t* src, uint32_t elemCount)
+{
+    while( elemCount-- )
+    {
+        *dest++ = src[3];
+        *dest++ = src[2];
+        *dest++ = src[1];
+        *dest++ = src[0];
+        src += 4;
+    }
+}
+#endif
+
+
 /*-cf-
     serialize
         data    block!
@@ -382,8 +444,26 @@ CFUNC( cfunc_serialize )
                 push8( buf->form );
                 packU32( buf->used );
                 if( buf->used )
+                {
+#ifdef __BIG_ENDIAN__
+                    switch( buf->elemSize )
+                    {
+                        case 2:
+                            _binAppendSwap2( bin, buf->ptr.u16, buf->used );
+                            break;
+                        case 4:
+                            _binAppendSwap4( bin, buf->ptr.u32, buf->used );
+                            break;
+                        default:
+                            ur_binAppendData( bin, buf->ptr.b,
+                                              buf->elemSize * buf->used );
+                            break;
+                    }
+#else
                     ur_binAppendData( bin, buf->ptr.b,
                                       buf->elemSize * buf->used );
+#endif
+                }
                 break;
 
             case UT_BLOCK:
@@ -761,6 +841,38 @@ CFUNC( cfunc_unserialize )
             break;
 
         case UT_VECTOR:
+        {
+            int form = *bi.it++;
+            used = _unpackU32(&bi);
+
+            buf = ur_buffer( ids.ptr.i[ i ] );
+            ur_vecInit( buf, form, 0, used );
+            if( used )
+            {
+                buf->used = used;
+#ifdef __BIG_ENDIAN__
+                switch( buf->elemSize )
+                {
+                    case 2:
+                        _memCpySwap2( buf->ptr.b, bi.it, used );
+                        used *= 2;
+                        break;
+                    case 4:
+                        _memCpySwap4( buf->ptr.b, bi.it, used );
+                        used *= 4;
+                        break;
+                    default:
+                        used *= buf->elemSize;
+                        memCpy( buf->ptr.v, bi.it, used );
+                        break;
+                }
+#else
+                used *= buf->elemSize;
+                memCpy( buf->ptr.v, bi.it, used );
+#endif
+                bi.it += used;
+            }
+        }
             break;
 
         case UT_BLOCK:

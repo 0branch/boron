@@ -7,6 +7,7 @@ input: [
     some words set: words:'lit 'words :get :words 
     [1 (2 "two") [3 "three" words]]
     "Tasty treats." #{00112233AABBCCDD}
+    #[65495810 -3243 0 1 -1] #[67434.403 -1.0 0.0]  ; .403 -> .40625
     ctx1 ctx2 iter slic
 ]
 

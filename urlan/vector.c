@@ -26,40 +26,58 @@
 #include "os.h"
 
 
-UIndex ur_makeVector( UThread* ut, UAtom type, int size )
+static int ur_vecFormElemSize( UAtom form )
 {
-    UBuffer* buf;
-    UIndex bufN;
-    int esize;
-
-    switch( type )
+    switch( form )
     {
         case UR_ATOM_I16:
         case UR_ATOM_U16:
-            esize = 2;
-            break;
+            return 2;
 
         case UR_ATOM_I32:
         case UR_ATOM_U32:
         case UR_ATOM_F32:
-            esize = 4;
-            break;
+            return 4;
 
         case UR_ATOM_F64:
-            esize = 8;
-            break;
+            return 8;
 
         default:
-            return UR_INVALID_BUF;
+            return 0;
     }
+}
+
+
+/**
+  Initialize buffer to type UT_VECTOR.
+
+  \param form       Form.
+  \param elemSize   Byte size of each element.  May be zero if form is a
+                    standard type (UR_ATOM_U32, UR_ATOM_F32, etc.).
+  \param size       Number of elements to reserve.
+*/
+void ur_vecInit( UBuffer* buf, int form, int elemSize, int size )
+{
+    if( ! elemSize )
+        elemSize = ur_vecFormElemSize( form );
+
+    ur_arrInit( buf, elemSize, size );
+    buf->type = UT_VECTOR;
+    buf->form = form;
+}
+
+
+UIndex ur_makeVector( UThread* ut, UAtom type, int size )
+{
+    UIndex bufN;
+    int esize;
+
+    esize = ur_vecFormElemSize( type );
+    if( ! esize )
+        return UR_INVALID_BUF;
 
     ur_genBuffers( ut, 1, &bufN );
-    buf = ur_buffer( bufN );
-
-    ur_arrInit( buf, esize, size );
-    buf->type = UT_VECTOR;
-    buf->form = type;
-
+    ur_vecInit( ur_buffer( bufN ), type, esize, size );
     return bufN;
 }
 
@@ -157,6 +175,58 @@ init:
     }
     return ur_error( ut, UR_ERR_TYPE,
                      "convert vector! expected int!/decimal!" );
+}
+
+
+int vector_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    (void) ut;
+    switch( test )
+    {
+        case UR_COMPARE_SAME:
+            return ((a->series.buf == b->series.buf) &&
+                    (a->series.it == b->series.it) &&
+                    (a->series.end == b->series.end));
+
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) != ur_type(b) )
+                break;
+            if( (a->series.buf == b->series.buf) &&
+                (a->series.it == b->series.it) &&
+                (a->series.end == b->series.end) )
+                return 1;
+#if 0
+            {
+            USeriesIter ai;
+            USeriesIter bi;
+            int t;
+
+            ur_serSlice( ut, &ai, a );
+            ur_serSlice( ut, &bi, b );
+
+            if( (ai.end - ai.it) == (bi.end - bi.it) )
+            {
+                ur_foreach( ai )
+                {
+                    t = ur_type(ai.it);
+                    if( t < ur_type(bi.it) )
+                        t = ur_type(bi.it);
+                    if( ! dt[ t ]->compare( ut, ai.it, bi.it, test ) )
+                        return 0;
+                    ++bi.it;
+                }
+                return 1;
+            }
+            }
+#endif
+            break;
+
+        case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
+            break;
+    }
+    return 0;
 }
 
 
@@ -586,7 +656,7 @@ USeriesType dt_vector =
     {
     "vector!",
     vector_make,            vector_convert,         vector_copy,
-    unset_compare,          unset_operate,          vector_select,
+    vector_compare,         unset_operate,          vector_select,
     vector_toString,        vector_toString,
     unset_recycle,          binary_mark,            ur_arrFree,
     unset_markBuf,          binary_toShared,        unset_bind

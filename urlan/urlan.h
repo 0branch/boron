@@ -522,6 +522,8 @@ char*    ur_cstring( const UBuffer*, UBuffer* bin, UIndex start, UIndex end );
 #define  ur_strFree ur_arrFree
 #define  ur_strIsUcs2(buf)  ((buf)->form == UR_ENC_UCS2)
 
+void     ur_vecInit( UBuffer*, int form, int elemSize, int size );
+
 UIndex   ur_makeBlock( UThread*, int size );
 UBuffer* ur_makeBlockCell( UThread*, int type, int size, UCell* cell );
 UIndex   ur_blkClone( UThread*, UIndex blkN );
