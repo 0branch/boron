@@ -75,9 +75,13 @@ typedef struct
 NodeServ;
 
 
+UPortDevice port_listenSocket;
+UPortDevice port_socket;
+
+
 /*
-   Initialize NodeServ from strings like "myhost.net" and
-   "udp://myhost.net:180".
+   Initialize NodeServ from strings like "myhost.net",
+   "udp://myhost.net:180", "tcp://:4600", etc.
    Pointers are to the Boron temporary thread binary buffer.
 */
 static void stringToNodeServ( UThread* ut, const UCell* strC, NodeServ* ns )
@@ -100,18 +104,22 @@ static void stringToNodeServ( UThread* ut, const UCell* strC, NodeServ* ns )
                 {
                     if( start[0] == 'u' && start[1] == 'd' && start[2] == 'p' )
                         ns->socktype = SOCK_DGRAM;
-                    ns->node = cp + 3;
+                    if( cp[3] == ':' )
+                        ns->node = 0;
+                    else
+                        ns->node = cp + 3;
                     cp += 2;
                 }
                 else
                 {
                     *cp++ = '\0';
                     ns->service = cp;
-                    return;
+                    break;
                 }
             }
         }
     }
+    //printf( "KR node: {%s} service: {%s}\n", ns->node, ns->service );
 }
 
 
@@ -138,8 +146,6 @@ static int makeSockAddr( UThread* ut, SocketExt* ext, const NodeServ* ns )
     return UR_OK;
 }
 
-
-extern UPortDevice port_socket;
 
 /*-cf-
     set-addr
@@ -179,7 +185,7 @@ static int _openUdpSocket( UThread* ut, int port, int block )
     struct sockaddr_in my_addr;
     SOCKET fd;
 
-    fd = socket( PF_INET, SOCK_DGRAM, 0 );
+    fd = socket( AF_INET, SOCK_DGRAM, 0 );
     if( fd < 0 )
     {
         ur_error( ut, UR_ERR_ACCESS, "socket %s", SOCKET_ERR );
@@ -217,7 +223,7 @@ static int _openTcpClient( UThread* ut, struct sockaddr* addr,
 {
     SOCKET fd;
 
-    fd = socket( PF_INET, SOCK_STREAM, 0 );
+    fd = socket( AF_INET, SOCK_STREAM, 0 );
     if( fd < 0 )
     {
         ur_error( ut, UR_ERR_ACCESS, "socket %s", SOCKET_ERR );
@@ -235,8 +241,39 @@ static int _openTcpClient( UThread* ut, struct sockaddr* addr,
 }
 
 
+static int _openTcpServer( UThread* ut, struct sockaddr* addr,
+                           socklen_t addrlen, int backlog )
+{
+    SOCKET fd;
+
+    fd = socket( AF_INET, SOCK_STREAM, 0 );
+    if( fd < 0 )
+    {
+        ur_error( ut, UR_ERR_ACCESS, "socket %s", SOCKET_ERR );
+        return -1;
+    }
+
+    if( bind( fd, addr, addrlen ) < 0 )
+    {
+        closesocket( fd );
+        ur_error( ut, UR_ERR_ACCESS, "bind %s", SOCKET_ERR );
+        return -1;
+    }
+
+    if( listen( fd, backlog ) < 0 )
+    {
+        closesocket( fd );
+        ur_error( ut, UR_ERR_ACCESS, "listen %s", SOCKET_ERR );
+        return -1;
+    }
+
+    return fd;
+}
+
+
 /*
   "tcp://host:port"
+  "tcp://:port"
   ['udp local-port]
   ['udp local-port host host-port 'nowait]
   ['tcp host host-port]
@@ -319,7 +356,7 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
         if( ! ns.service )
         {
             ur_error( ut, UR_ERR_SCRIPT,
-                      "TCP port requires hostname and port" );
+                      "TCP port requires hostname and/or port" );
             goto fail;
         }
 #if 0
@@ -330,7 +367,15 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
             goto fail;
         }
 #endif
-        socket = _openTcpClient( ut, &ext->addr, ext->addrlen );
+        if( ns.node )
+        {
+            socket = _openTcpClient( ut, &ext->addr, ext->addrlen );
+        }
+        else
+        {
+            socket = _openTcpServer( ut, &ext->addr, ext->addrlen, 10 );
+            portBuf->ptr.v = &port_listenSocket;
+        }
     }
 
     if( socket > -1 )
@@ -353,9 +398,10 @@ fail:
 
 static void socket_close( UBuffer* portBuf )
 {
+    //printf( "KR socket_close %d\n", portBuf->FD );
+
     if( portBuf->FD > -1 )
     {
-        //printf( "KR socket_close %d\n", portBuf->FD );
         closesocket( portBuf->FD );
         portBuf->FD = -1;
     }
@@ -394,7 +440,7 @@ static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int part )
 
     if( ur_is(dest, UT_NONE) )
     {
-        // Make invalidates port.
+        // NOTE: Make invalidates port.
         buf = ur_makeBinaryCell( ut, len, dest );
     }
     else if( ur_is(dest, UT_BINARY) )
@@ -453,6 +499,41 @@ static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int part )
             buf->used = count;
         }
     }
+    return UR_OK;
+}
+
+
+static int socket_accept( UThread* ut, UBuffer* port, UCell* dest, int part )
+{
+    SOCKET fd;
+    SocketExt* ext;
+    UBuffer* buf;
+    UIndex bufN;
+    (void) part;
+
+
+    ext = (SocketExt*) memAlloc( sizeof(SocketExt) );
+    ext->dev = &port_socket;
+
+    fd = accept( port->FD, &ext->addr, &ext->addrlen );
+    if( fd < 0 )
+    {
+        memFree( ext );
+        return ur_error( ut, UR_ERR_INTERNAL, SOCKET_ERR );
+    }
+
+    //ur_makePort( ut, dest, );
+    ur_genBuffers( ut, 1, &bufN );
+    buf = ur_buffer( bufN );
+
+    buf->type  = UT_PORT;
+    buf->form  = UR_PORT_EXT;
+    buf->TCP   = 1;
+    buf->FD    = fd;
+    buf->ptr.v = ext;
+
+    ur_setId(dest, UT_PORT);
+    ur_setSeries(dest, bufN, 0);
     return UR_OK;
 }
 
@@ -520,5 +601,11 @@ UPortDevice port_socket =
     socket_waitFD
 };
 
+
+UPortDevice port_listenSocket =
+{
+    socket_open, socket_close, socket_accept, socket_write, socket_seek,
+    socket_waitFD
+};
 
 /*EOF*/
