@@ -114,7 +114,30 @@ static int file_read( UThread* ut, UBuffer* port, UCell* dest, int part )
 
     if( ur_is(dest, UT_NONE) )
     {
+        // NOTE: Make invalidates port.
         buf = ur_makeBinaryCell( ut, len, dest );
+    }
+    else if( ur_is(dest, UT_BINARY) )
+    {
+        buf = ur_bufferSerM( dest );
+        if( ! buf )
+            return UR_THROW;
+        count = ur_testAvail( buf );
+        if( count < len )
+            ur_binReserve( buf, len );
+        else
+            len = count;
+    }
+    else if( ur_is(dest, UT_STRING) )
+    {
+        buf = ur_bufferSerM( dest );
+        if( ! buf )
+            return UR_THROW;
+        count = ur_testAvail( buf );
+        if( count < len )
+            ur_arrReserve( buf, len );
+        else
+            len = count;
     }
 
     if( buf )
