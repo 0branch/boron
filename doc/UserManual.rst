@@ -2,7 +2,7 @@
      Boron User Manual
 ==============================
 
-:Version:   0.1.6
+:Version:   0.1.7
 :Date:      |date|
 
 .. sectnum::
@@ -109,12 +109,13 @@ time!         10:02 -0:0:32.08
 `vector!`_    #[1 2 3]  #[-85.33 2 44.8]
 `block!`_     []  [a b c]
 `paren!`_     ()  (a b c)
-path!         obj/x my-block/2
+`path!`_       obj/x my-block/2
 lit-path!     'obj/x 'my-block/2
 set-path!     obj/x: my-block/2:
 `context!`_   context [area: 4,5 color: red]
 error!
 `func!`_      inc2: func [n] [add n 2]
+`port!`_
 ============  ==========
 
 
@@ -324,6 +325,14 @@ Paren!
 Similar to a block, but automatically evaluated.
 
 
+Path!
+-----
+
+Example paths::
+
+    object/entries/1
+
+
 Context!
 --------
 
@@ -384,6 +393,52 @@ a datatype in the signature block.
         ; ...
     ]
 
+
+Port!
+-----
+
+Ports are a general interface for various input/ouput devices.
+
+The *open* and *close* functions create and destroy ports.
+The *read* and *write* functions are used to recieve and send data.
+
+
+Standard IO Ports
+~~~~~~~~~~~~~~~~~
+
+To use ``stdin``, ``stdout``, and ``stderr`` streams use *open* with the
+integer 0, 1, or 2.
+
+To read commands from stdin::
+
+    t: open 0
+    cmd: ""
+    forever [
+        wait t
+        read/into t cmd
+        if eq? cmd "quit^/" [break]
+        print cmd
+    ]
+
+
+Network Ports
+~~~~~~~~~~~~~
+
+Here is a simple TCP server which sends clients a message::
+
+    s: open "tcp://:6044"
+    forever [
+        con: read wait s [
+            write con "Hello, client.^/"
+            close con
+        ]
+    ]
+
+And the client::
+
+    s: open "tcp://localhost:6044"
+    print to-string read s
+    close s
 
 
 .. |date| date::
