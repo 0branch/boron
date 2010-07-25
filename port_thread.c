@@ -28,25 +28,28 @@
 
 #define SIDE_A      0
 #define SIDE_B      1
-#define SIDE        elemSize    // Port buffer
-#define END_OPEN    form        // Queue buffer
+#define SIDE        elemSize    // Port UBuffer
+#define END_OPEN    buf.form    // ThreadQueue
+
+
+typedef struct
+{
+    OSMutex mutex;
+    OSCond  cond;
+    UBuffer buf;
+    UIndex  it;
+#ifdef __linux
+    int     eventFD;
+#endif
+}
+ThreadQueue;
 
 
 typedef struct
 {
     UPortDevice* dev;
-    OSMutex mutexA;
-    OSMutex mutexB;
-    OSCond  condA;
-    OSCond  condB;
-    UBuffer queueA;     // SIDE_A writes here.
-    UBuffer queueB;     // SIDE_B writes here.
-    UIndex  itA;
-    UIndex  itB;
-#ifdef __linux
-    int     eventA;
-    int     eventB;
-#endif
+    ThreadQueue A;      // SIDE_A writes here.
+    ThreadQueue B;      // SIDE_B writes here.
 }
 ThreadExt;
 
@@ -64,7 +67,7 @@ void boron_installThreadPort( UThread* ut, const UCell* portC, UThread* utB )
 
     port = ur_bufferSer( portC );
     ext = (ThreadExt*) port->ptr.v;
-    ext->queueA.END_OPEN = 1;
+    ext->A.END_OPEN = 1;
 
 
     // Make port for SIDE_B.
@@ -84,6 +87,34 @@ void boron_installThreadPort( UThread* ut, const UCell* portC, UThread* utB )
 }
 
 
+static int _initThreadQueue( ThreadQueue* queue )
+{
+    if( mutexInitF( queue->mutex ) )
+        return 0;
+
+    condInit( queue->cond );
+    ur_blkInit( &queue->buf, UT_BLOCK, 0 );
+    queue->it = 0;
+#ifdef __linux
+    queue->eventFD = eventfd( 0, EFD_CLOEXEC );
+#endif
+    return 1;
+}
+
+
+static void _freeThreadQueue( ThreadQueue* queue )
+{
+    // TODO: Free buffers in queue.
+
+    mutexFree( queue->mutex );
+    condFree( queue->cond );
+    ur_blkFree( &queue->buf );
+#ifdef __linux
+    close( queue->eventFD );
+#endif
+}
+
+
 static int thread_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
 {
     ThreadExt* ext;
@@ -94,29 +125,21 @@ static int thread_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
     if( ! ext )
         return ur_error( ut, UR_ERR_INTERNAL, "Could not alloc thread port" );
 
-    if( mutexInitF( ext->mutexA ) )
+    if( ! _initThreadQueue( &ext->A ) )
     {
 fail:
         memFree( ext );
         return ur_error( ut, UR_ERR_INTERNAL, "Could not create thread mutex" );
     }
-    if( mutexInitF( ext->mutexB ) )
+
+    if( ! _initThreadQueue( &ext->B ) )
     {
-        mutexFree( ext->mutexA );
+        mutexFree( ext->A.mutex );
         goto fail;
     }
-    condInit( ext->condA );
-    condInit( ext->condB );
-    ur_blkInit( &ext->queueA, UT_BLOCK, 0 );
-    ur_blkInit( &ext->queueB, UT_BLOCK, 0 );
-    ext->queueA.END_OPEN = 0;
-    ext->queueB.END_OPEN = 1;
-    ext->itA = ext->itB = 0;
 
-#ifdef __linux
-    ext->eventA = eventfd( 0, EFD_CLOEXEC );
-    ext->eventB = eventfd( 0, EFD_CLOEXEC );
-#endif
+    ext->A.END_OPEN = 0;
+    ext->B.END_OPEN = 1;
 
     port->SIDE = SIDE_A;
     boron_extendPort( port, (UPortDevice**) ext );
@@ -127,47 +150,25 @@ fail:
 static void thread_close( UBuffer* port )
 {
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
+    ThreadQueue* queue;
     uint8_t endOpen;
 
-    if( port->SIDE == SIDE_A )
+    queue = (port->SIDE == SIDE_A) ? &ext->A : &ext->B;
+    mutexLock( queue->mutex );
+    endOpen = queue->END_OPEN;
+    mutexUnlock( queue->mutex );
+
+    if( endOpen )
     {
-        mutexLock( ext->mutexA );
-        endOpen = ext->queueA.END_OPEN;
-        mutexUnlock( ext->mutexA );
-        if( endOpen )
-        {
-            mutexLock( ext->mutexB );
-            ext->queueB.END_OPEN = 0;
-            mutexUnlock( ext->mutexB );
-        }
+        queue = (port->SIDE == SIDE_A) ? &ext->B : &ext->A;
+        mutexLock( queue->mutex );
+        queue->END_OPEN = 0;
+        mutexUnlock( queue->mutex );
     }
     else
     {
-        mutexLock( ext->mutexB );
-        endOpen = ext->queueB.END_OPEN;
-        mutexUnlock( ext->mutexB );
-        if( endOpen )
-        {
-            mutexLock( ext->mutexA );
-            ext->queueA.END_OPEN = 0;
-            mutexUnlock( ext->mutexA );
-        }
-    }
-
-    if( ! endOpen )
-    {
-        // TODO: Free buffers in queues.
-
-        mutexFree( ext->mutexA );
-        mutexFree( ext->mutexB );
-        condFree( ext->condA );
-        condFree( ext->condB );
-        ur_blkFree( &ext->queueA );
-        ur_blkFree( &ext->queueB );
-#ifdef __linux
-        close( ext->eventA );
-        close( ext->eventB );
-#endif
+        _freeThreadQueue( &ext->A );
+        _freeThreadQueue( &ext->B );
         memFree( port->ptr.v );
 
         //printf( "KR thread_close\n" );
@@ -176,18 +177,18 @@ static void thread_close( UBuffer* port )
 }
 
 
-static UIndex thread_dequeue( UBuffer* queue, UIndex it, UCell* dest,
+static UIndex thread_dequeue( UBuffer* qbuf, UIndex it, UCell* dest,
                               UBuffer* transitBuf )
 {
-    *dest = queue->ptr.cell[ it ];
+    *dest = qbuf->ptr.cell[ it ];
     ++it;
     if( ur_isSeriesType(ur_type(dest)) && ! ur_isShared( dest->series.buf ) )
     {
-        memCpy( transitBuf, queue->ptr.cell + it, sizeof(UBuffer) );
+        memCpy( transitBuf, qbuf->ptr.cell + it, sizeof(UBuffer) );
         ++it;
     }
-    if( it == queue->used )
-        it = queue->used = 0;
+    if( it == qbuf->used )
+        it = qbuf->used = 0;
     return it;
 }
 
@@ -216,40 +217,25 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
 {
     UBuffer tbuf;
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
+    ThreadQueue* queue;
     (void) part;
 
     tbuf.type = 0;
 
-    if( port->SIDE == SIDE_A )
+    queue = (port->SIDE == SIDE_A) ? &ext->B : &ext->A;
+
+    readEvent( queue->eventFD );
+    mutexLock( queue->mutex );
+    while( queue->it >= queue->buf.used )
     {
-        readEvent( ext->eventB );
-        mutexLock( ext->mutexB );
-        while( ext->itB >= ext->queueB.used )
+        if( condWaitF( queue->cond, queue->mutex ) )
         {
-            if( condWaitF( ext->condB, ext->mutexB ) )
-            {
-                mutexUnlock( ext->mutexB );
-                goto waitError;
-            }
+            mutexUnlock( queue->mutex );
+            goto waitError;
         }
-        ext->itB = thread_dequeue( &ext->queueB, ext->itB, dest, &tbuf );
-        mutexUnlock( ext->mutexB );
     }
-    else
-    {
-        readEvent( ext->eventA );
-        mutexLock( ext->mutexA );
-        while( ext->itA >= ext->queueA.used )
-        {
-            if( condWaitF( ext->condA, ext->mutexA ) )
-            {
-                mutexUnlock( ext->mutexA );
-                goto waitError;
-            }
-        }
-        ext->itA = thread_dequeue( &ext->queueA, ext->itA, dest, &tbuf );
-        mutexUnlock( ext->mutexA );
-    }
+    queue->it = thread_dequeue( &queue->buf, queue->it, dest, &tbuf );
+    mutexUnlock( queue->mutex );
 
     if( tbuf.type )
     {
@@ -279,19 +265,19 @@ waitError:
 }
 
 
-static void thread_queue( UBuffer* queue, const UCell* data, UBuffer* buf )
+static void thread_queue( UBuffer* qbuf, const UCell* data, UBuffer* dataBuf )
 {
-    ur_arrReserve( queue, queue->used + 2 );
-    queue->ptr.cell[ queue->used ] = *data;
-    ++queue->used;
-    if( buf )
+    ur_arrReserve( qbuf, qbuf->used + 2 );
+    qbuf->ptr.cell[ qbuf->used ] = *data;
+    ++qbuf->used;
+    if( dataBuf )
     {
-        memCpy( queue->ptr.cell + queue->used, buf, sizeof(UBuffer) );
-        ++queue->used;
+        memCpy( qbuf->ptr.cell + qbuf->used, dataBuf, sizeof(UBuffer) );
+        ++qbuf->used;
 
         // Buffer is directly transferred through port to avoid copying.
-        buf->used  = 0;
-        buf->ptr.v = 0;
+        dataBuf->used  = 0;
+        dataBuf->ptr.v = 0;
     }
 }
 
@@ -300,6 +286,7 @@ static int thread_write( UThread* ut, UBuffer* port, const UCell* data )
 {
     UBuffer* buf;
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
+    ThreadQueue* queue;
     int type = ur_type(data);
 
     if( ur_isSeriesType(type) && ! ur_isShared( data->series.buf ) )
@@ -332,28 +319,17 @@ static int thread_write( UThread* ut, UBuffer* port, const UCell* data )
     else
         buf = 0;
 
-    if( port->SIDE == SIDE_A )
+    queue = (port->SIDE == SIDE_A) ? &ext->A : &ext->B;
+
+    mutexLock( queue->mutex );
+    if( queue->END_OPEN )
     {
-        mutexLock( ext->mutexA );
-        if( ext->queueA.END_OPEN )
-        {
-            thread_queue( &ext->queueA, data, buf );
-            condSignal( ext->condA );
-            writeEvent( ext->eventA );
-        }
-        mutexUnlock( ext->mutexA );
+        thread_queue( &queue->buf, data, buf );
+        condSignal( queue->cond );
+        writeEvent( queue->eventFD );
     }
-    else
-    {
-        mutexLock( ext->mutexB );
-        if( ext->queueB.END_OPEN )
-        {
-            thread_queue( &ext->queueB, data, buf );
-            condSignal( ext->condB );
-            writeEvent( ext->eventB );
-        }
-        mutexUnlock( ext->mutexB );
-    }
+    mutexUnlock( queue->mutex );
+
     return UR_OK;
 }
 
@@ -371,7 +347,7 @@ static int thread_waitFD( UBuffer* port )
 {
 #ifdef __linux
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
-    return (port->SIDE == SIDE_A) ? ext->eventB : ext->eventA;
+    return (port->SIDE == SIDE_A) ? ext->B.eventFD : ext->A.eventFD;
 #else
     return -1;
 #endif
