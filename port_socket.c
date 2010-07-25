@@ -125,14 +125,17 @@ static void stringToNodeServ( UThread* ut, const UCell* strC, NodeServ* ns )
 
 static int makeSockAddr( UThread* ut, SocketExt* ext, const NodeServ* ns )
 {
-    //struct addrinfo hints;
+    struct addrinfo hints;
     struct addrinfo* res;
     int err;
 
-    //memset( &hints, 0, sizeof(hints) );
-    //hints.ai_family = AF_INET;
+    memset( &hints, 0, sizeof(hints) );
+    hints.ai_family   = AF_INET;  // AF_UNSPEC
+    hints.ai_socktype = ns->socktype;
+    if( ! ns->node )
+        hints.ai_flags = AI_PASSIVE;
 
-    err = getaddrinfo( ns->node, ns->service, 0 /*&hints*/, &res );
+    err = getaddrinfo( ns->node, ns->service, &hints, &res );
     if( err )
     {
         return ur_error( ut, UR_ERR_SCRIPT, "getaddrinfo (%s)",
@@ -180,9 +183,11 @@ CFUNC_PUB( cfunc_set_addr )
 }
 
 
-static int _openUdpSocket( UThread* ut, int port, int block )
+/*
+   \param ext  If non-zero, then bind socket to ext->addr.
+*/
+static int _openUdpSocket( UThread* ut, SocketExt* ext, int nowait )
 {
-    struct sockaddr_in my_addr;
     SOCKET fd;
 
     fd = socket( AF_INET, SOCK_DGRAM, 0 );
@@ -192,7 +197,7 @@ static int _openUdpSocket( UThread* ut, int port, int block )
         return -1;
     }
 
-    if( ! block )
+    if( nowait )
     {
 #ifdef _WIN32
         u_long flags = 1;
@@ -202,16 +207,14 @@ static int _openUdpSocket( UThread* ut, int port, int block )
 #endif
     }
 
-    memset( &my_addr, 0, sizeof(my_addr) );
-    my_addr.sin_family       = AF_INET;
-    my_addr.sin_port         = htons( port );
-    my_addr.sin_addr.s_addr  = INADDR_ANY;
-
-    if( bind( fd, (struct sockaddr*) &my_addr, sizeof(my_addr) ) < 0 )
+    if( ext )
     {
-        closesocket( fd );
-        ur_error( ut, UR_ERR_ACCESS, "bind %s", SOCKET_ERR );
-        return -1;
+        if( bind( fd, &ext->addr, ext->addrlen ) < 0 )
+        {
+            closesocket( fd );
+            ur_error( ut, UR_ERR_ACCESS, "bind %s", SOCKET_ERR );
+            return -1;
+        }
     }
 
     return fd;
@@ -275,37 +278,41 @@ static int _openTcpServer( UThread* ut, struct sockaddr* addr,
   "tcp://host:port"
   "tcp://:port"
   ['udp local-port]
-  ['udp local-port host host-port 'nowait]
-  ['tcp host host-port]
+  ['udp local-port "host" host-port 'nowait]
+  ['tcp "host" host-port]
 */
 static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
                         int opt )
 {
     NodeServ ns;
-    int socket;
-    int port = 0;
-    int hostPort = 0;
-    int blocking = 1;
-    UCell* initAddr = 0;
     SocketExt* ext;
+    int socket;
+    int nowait = opt & UR_PORT_NOWAIT;
+    //int port = 0;
+    //int hostPort = 0;
+    //UCell* initAddr = 0;
     (void) opt;
 
+
+    if( ! ur_is(from, UT_STRING) )
+        return ur_error( ut, UR_ERR_TYPE, "socket open expected string" );
 
     ext = (SocketExt*) memAlloc( sizeof(SocketExt) );
     ext->addrlen = 0;
 
-    if( ur_is(from, UT_STRING) )
+    //if( ur_is(from, UT_STRING) )
     {
         stringToNodeServ( ut, from, &ns );
         if( ! makeSockAddr( ut, ext, &ns ) )
             goto fail;
     }
+#if 0
     else if( ur_is(from, UT_BLOCK) )
     {
         UBlockIter bi;
         UAtom atoms[3];
 
-        ur_internAtoms( ut, "udp tcp nowait", atoms );
+        ur_internAtoms( ut, "tcp udp nowait", atoms );
 
         ur_blkSlice( ut, &bi, from );
         ur_foreach( bi )
@@ -329,7 +336,7 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
                 else if( atom == atoms[1] )
                     ns.socktype = SOCK_DGRAM;
                 else if( atom == atoms[2] )
-                    blocking = 0;
+                    nowait = 1;
             }
         }
 
@@ -338,6 +345,14 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
             if( ! makeSockAddr( ut, ext, &ns ) )
                 goto fail;
         }
+    }
+#endif
+
+    if( ! ns.service )
+    {
+        ur_error( ut, UR_ERR_SCRIPT,
+                  "Socket port requires hostname and/or port" );
+        goto fail;
     }
 
     if( ns.socktype == SOCK_DGRAM )
@@ -349,16 +364,10 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
             goto fail;
         }
 #endif
-        socket = _openUdpSocket( ut, port, blocking );
+        socket = _openUdpSocket( ut, ns.node ? 0 : ext, nowait );
     }
     else
     {
-        if( ! ns.service )
-        {
-            ur_error( ut, UR_ERR_SCRIPT,
-                      "TCP port requires hostname and/or port" );
-            goto fail;
-        }
 #if 0
         if( ! ur_userAllows( ut, "Open TCP connection to %s:%d",
                              ur_cstring(ut, initAddr), hostPort ) )
@@ -380,8 +389,8 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
 
     if( socket > -1 )
     {
-        portBuf->TCP  = (ns.socktype == SOCK_STREAM) ? 1 : 0;
-        portBuf->FD   = socket;
+        portBuf->TCP = (ns.socktype == SOCK_STREAM) ? 1 : 0;
+        portBuf->FD  = socket;
 
         boron_extendPort( portBuf, (UPortDevice**) ext );
 
@@ -424,26 +433,18 @@ static void socket_close( UBuffer* portBuf )
 static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int part )
 {
     UBuffer* buf = 0;
-    SocketExt* ext;
     ssize_t len;
     ssize_t count;
     SOCKET fd = port->FD; 
 
     //printf( "KR socket_read %d %d\n", fd, port->TCP );
 
-    ext = port->TCP ? 0 : ur_ptr(SocketExt, port);
-
     if( part )
         len = part;
     else
         len = RECV_BUF_SIZE;
 
-    if( ur_is(dest, UT_NONE) )
-    {
-        // NOTE: Make invalidates port.
-        buf = ur_makeBinaryCell( ut, len, dest );
-    }
-    else if( ur_is(dest, UT_BINARY) )
+    if( ur_is(dest, UT_BINARY) )
     {
         buf = ur_bufferSerM( dest );
         if( ! buf )
@@ -465,17 +466,23 @@ static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int part )
         else
             len = count;
     }
+    else
+    {
+        // NOTE: Make invalidates port.
+        buf = ur_makeBinaryCell( ut, len, dest );
+    }
 
     if( buf )
     {
-        if( ext )
+        if( port->TCP )
         {
-            count = recvfrom( fd, buf->ptr.c, len, 0,
-                              &ext->addr, &ext->addrlen );
+            count = recv( fd, buf->ptr.c, len, 0 );
         }
         else
         {
-            count = recv( fd, buf->ptr.c, len, 0 );
+            SocketExt* ext = ur_ptr(SocketExt, port);
+            count = recvfrom( fd, buf->ptr.c, len, 0,
+                              &ext->addr, &ext->addrlen );
         }
         if( count == -1 )
         {
@@ -556,9 +563,7 @@ static int socket_write( UThread* ut, UBuffer* port, const UCell* data )
         else
         {
             SocketExt* ext = ur_ptr(SocketExt, port);
-            n = sendto( port->FD, buf, len, 0,
-                        (struct sockaddr*) &ext->addr,
-                        sizeof(struct sockaddr) );
+            n = sendto( port->FD, buf, len, 0, &ext->addr, ext->addrlen );
         }
 
         if( n == -1 )

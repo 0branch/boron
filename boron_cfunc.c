@@ -2849,6 +2849,7 @@ CFUNC(cfunc_getenv)
         /read   Read-only mode.
         /write  Write-only mode.
         /new    Create empty file.
+        /nowait Non-blocking reads.
     return: port!
 
     Create port!.

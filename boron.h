@@ -55,9 +55,10 @@ enum PortForm
 
 enum PortOpenOptions
 {
-    UR_PORT_READ  = 0x01,
-    UR_PORT_WRITE = 0x02,
-    UR_PORT_NEW   = 0x04
+    UR_PORT_READ    = 0x01,
+    UR_PORT_WRITE   = 0x02,
+    UR_PORT_NEW     = 0x04,
+    UR_PORT_NOWAIT  = 0x08
 };
 
 

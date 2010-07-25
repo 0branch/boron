@@ -673,6 +673,32 @@ void port_destroy( UBuffer* buf )
 }
 
 
+int port_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    (void) ut;
+    switch( test )
+    {
+        case UR_COMPARE_SAME:
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            return a->series.buf == b->series.buf;
+#if 0
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) == ur_type(b) )
+            {
+                const UBuffer* bufA = ur_bufferSer( a );
+                const UBuffer* bufB = ur_bufferSer( b );
+                return (bufA->used == bufB->used) &&
+                       (bufA->ptr.v == bufB->ptr.v);
+            }
+            break;
+#endif
+    }
+    return 0;
+}
+
+
 //----------------------------------------------------------------------------
 
 
@@ -697,7 +723,7 @@ UDatatype boron_types[] =
   {
     "port!",
     port_make,              unset_make,             unset_copy,
-    unset_compare,          unset_operate,          unset_select,
+    port_compare,           unset_operate,          unset_select,
     unset_toString,         unset_toText,
     unset_recycle,          binary_mark,            port_destroy,
     unset_markBuf,          binary_toShared,        unset_bind
