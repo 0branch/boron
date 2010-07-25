@@ -53,7 +53,7 @@ ThreadExt;
 
 void boron_installThreadPort( UThread* ut, const UCell* portC, UThread* utB )
 {
-    static char portStr[] = "port";
+    static char portStr[] = "thread-port";
     UBuffer* ctx;
     const UBuffer* port;
     UBuffer* buf;
@@ -78,7 +78,7 @@ void boron_installThreadPort( UThread* ut, const UCell* portC, UThread* utB )
     buf->ptr.v = ext;
 
     ctx = ur_threadContext( utB );
-    cell = ur_ctxAddWord( ctx, ur_internAtom(ut, portStr, portStr + 4) );
+    cell = ur_ctxAddWord( ctx, ur_internAtom(ut, portStr, portStr + 11) );
     ur_setId(cell, UT_PORT);
     ur_setSeries(cell, bufN, 0);
 }
@@ -169,6 +169,8 @@ static void thread_close( UBuffer* port )
         close( ext->eventB );
 #endif
         memFree( port->ptr.v );
+
+        //printf( "KR thread_close\n" );
     }
     port->ptr.v = 0;
 }

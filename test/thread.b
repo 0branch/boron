@@ -1,6 +1,6 @@
 tp: thread/port [
     while [true] [
-        val: read port
+        val: read thread-port
         prin "read: " probe val
         if block? val [print do val]
         if eq? val 'bye [break]
