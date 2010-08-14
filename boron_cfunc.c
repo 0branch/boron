@@ -2781,6 +2781,31 @@ CFUNC(cfunc_make_dir)
 #include <errno.h>
 
 /*-cf-
+    change-dir
+        dir     string!/file!
+    return: unset!
+
+    Set current working directory.
+*/
+CFUNC(cfunc_change_dir)
+{
+#ifdef _WIN32
+#define chdir   _chdir
+#endif
+    if( ur_isStringType( ur_type(a1) ) )
+    {
+        if( chdir( boron_cstr(ut, a1, 0) ) == 0 )
+        {
+            ur_setId(res, UT_UNSET);
+            return UR_OK;
+        }
+        return ur_error( ut, UR_ERR_ACCESS, strerror(errno) );
+    }
+    return ur_error( ut, UR_ERR_TYPE, "change-dir expected file!/string!" );
+}
+
+
+/*-cf-
     current-dir
     return: File! of current working directory.
 */

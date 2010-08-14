@@ -872,6 +872,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_existsQ,    "exists? file" );
     addCFunc( cfunc_dirQ,       "dir? file" );
     addCFunc( cfunc_make_dir,   "make-dir path /all" );
+    addCFunc( cfunc_change_dir, "change-dir path" );
     addCFunc( cfunc_current_dir,"current-dir" );
     addCFunc( cfunc_getenv,     "getenv val" );
     addCFunc( cfunc_open,       "open from /read /write /new /nowait" );
