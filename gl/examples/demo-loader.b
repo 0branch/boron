@@ -70,14 +70,14 @@ view-cam: make camera [
 
 demo-exec: func [dl | window] [
     window: make widget! demo-window
-    while [true] [
+    forever [
         draw dl
         display-swap
         handle-events/wait window
     ]
 ]
 
-while [true] [
+forever [
     ex: catch load first args
     ifn eq? 'reload ex [
         throw ex
