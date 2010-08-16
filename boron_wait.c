@@ -124,6 +124,7 @@ static int _fillWaitInfo( UThread* ut, WaitInfo* wi,
     wait
         target  int!/decimal!/time!/block!/port!
     return: Port ready for reading or none.
+    group: io
 
     Wait for data on ports.
 */

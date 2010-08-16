@@ -40,6 +40,7 @@ static unsigned long _clockSeed()
         data    logic!/int!/decimal!/coord!/vec3! or series.
         /seed   Use data as generator seed.
     return: Random number, series position, or seed if /seed option used.
+    group: data
 
     If data is a number, then a number from 1 through data will be returned.
 

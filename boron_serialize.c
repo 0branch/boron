@@ -392,6 +392,7 @@ static void _memCpySwap4(uint8_t* dest, const uint8_t* src, uint32_t elemCount)
     serialize
         data    block!
     return: binary!
+    group: data
 
     Pack data into binary image for transport.
     Series positions, slices, and non-global word bindings are retained.
@@ -756,6 +757,7 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
     unserialize
         data    binary!
     return: Re-materialized block!.
+    group: data
 */
 CFUNC( cfunc_unserialize )
 {

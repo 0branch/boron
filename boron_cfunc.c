@@ -66,6 +66,7 @@ CFUNC(cfunc_nop)
 /*-cf-
     quit
     return: NA
+    group: control
 
     Exit interpreter.
 */
@@ -80,6 +81,7 @@ CFUNC(cfunc_quit)
 /*-cf-
     halt
     return: NA
+    group: control
 
     Halt interpreter.
 */
@@ -95,6 +97,7 @@ CFUNC(cfunc_halt)
     return
         result
     return: NA
+    group: control
 
     Exit from function with result.
 */
@@ -108,6 +111,7 @@ CFUNC(cfunc_return)
 /*-cf-
     break
     return: NA
+    group: control
 
     Exit from loop, while, foreach, or forall.
 */
@@ -122,6 +126,7 @@ CFUNC(cfunc_break)
     throw
         value
     return: NA
+    group: control
 */
 CFUNC(cfunc_throw)
 {
@@ -135,6 +140,7 @@ CFUNC(cfunc_throw)
     catch
         body block!
     return: Result of block evaluation or thrown value.
+    group: control
 */
 CFUNC(cfunc_catch)
 {
@@ -158,6 +164,7 @@ CFUNC(cfunc_catch)
     try
         body block!
     return: Result of block evaluation or error.
+    group: control
 
     Do body and catch any errors.
 */
@@ -187,6 +194,8 @@ CFUNC(cfunc_try)
 /*-cf-
     recycle
     return: NA
+    group: storage
+
     Run the garbage collector.
 */
 CFUNC(cfunc_recycle)
@@ -209,6 +218,7 @@ static int cfunc_load( UThread*, UCell*, UCell* );
     do
         value
     return: Result of value.
+    group: eval
 */
 CFUNC(cfunc_do)
 {
@@ -329,6 +339,7 @@ CFUNC(cfunc_do)
         words   word!/lit-word!/block!
         values
     return: unset!
+    group: data
 
     If words and values are both a block! then each word in words is set
     to the corresponding value in values.
@@ -388,6 +399,7 @@ CFUNC(cfunc_set)
     get
         word    word!/context!
     return: Value of word or block of values in context.
+    group: data
 */
 CFUNC(cfunc_get)
 {
@@ -415,6 +427,7 @@ CFUNC(cfunc_get)
         context     context!
         word        word!
     return: Word bound to context or none!.
+    group: data
 */
 CFUNC(cfunc_in)
 {
@@ -450,6 +463,7 @@ CFUNC(cfunc_in)
         words   word!/block!
         context word!/context!
     return: Bound words
+    group: data
 */
 CFUNC(cfunc_bind)
 {
@@ -504,6 +518,7 @@ CFUNC(cfunc_bind)
         block   block!
         context word!/context!
     return: Modified block.
+    group: data
 
     Replace words with their value in context.
 */
@@ -550,24 +565,28 @@ CFUNC(name) { \
         a   int!/decimal!/vec3!
         b   int!/decimal!/vec3!/block!
     return: Sum of two numbers.
+    group: math
 */
 /*-cf-
     sub
         a   int!/decimal!/vec3!
         b   int!/decimal!/vec3!/block!
     return: Difference of two numbers.
+    group: math
 */
 /*-cf-
     mul
         a   int!/decimal!/vec3!
         b   int!/decimal!/vec3!/block!
     return: Product of two numbers.
+    group: math
 */
 /*-cf-
     div
         a   int!/decimal!/vec3!
         b   int!/decimal!/vec3!
     return: Quotient of a divided by b.
+    group: math
 */
 OPER_FUNC( cfunc_add, UR_OP_ADD )
 OPER_FUNC( cfunc_sub, UR_OP_SUB )
@@ -580,18 +599,21 @@ OPER_FUNC( cfunc_div, UR_OP_DIV )
         a   logic!/char!/int!
         b   logic!/char!/int!/block!
     return: Bitwise AND.
+    group: math
 */
 /*-cf-
     or
         a   logic!/char!/int!
         b   logic!/char!/int!/block!
     return: Bitwise OR.
+    group: math
 */
 /*-cf-
     xor
         a   logic!/char!/int!
         b   logic!/char!/int!/block!
     return: Bitwise exclusive OR.
+    group: math
 */
 OPER_FUNC( cfunc_and, UR_OP_AND )
 OPER_FUNC( cfunc_or,  UR_OP_OR )
@@ -603,6 +625,7 @@ OPER_FUNC( cfunc_xor, UR_OP_XOR )
         a
         b
     return: Lesser of two values.
+    group: math
 */
 CFUNC(cfunc_minimum)
 {
@@ -616,6 +639,7 @@ CFUNC(cfunc_minimum)
         a
         b
     return: Greater of two values.
+    group: math
 */
 CFUNC(cfunc_maximum)
 {
@@ -628,6 +652,7 @@ CFUNC(cfunc_maximum)
     abs
         n   int!/decimal!/time!/bignum!
     return: Absolute value of n.
+    group: math
 */
 CFUNC(cfunc_abs)
 {
@@ -677,21 +702,25 @@ static int _mathFunc( UThread* ut, const UCell* a1, UCell* res,
     sqrt
         n   int!/decimal!
     return: Square root of number.
+    group: math
 */
 /*-cf-
     cos
         n   int!/decimal!
     return: Cosine of number.
+    group: math
 */
 /*-cf-
     sin
         n   int!/decimal!
     return: Sine of number.
+    group: math
 */
 /*-cf-
     atan
         n   int!/decimal!
     return: Arc tangent of number.
+    group: math
 */
 CFUNC(cfunc_sqrt) { return _mathFunc( ut, a1, res, sqrt ); }
 CFUNC(cfunc_cos)  { return _mathFunc( ut, a1, res, cos ); }
@@ -717,6 +746,7 @@ static int context_make_override( UThread* ut, const UCell* from, UCell* res )
         prototype   datatype!/context!
         attributes
     return: New value.
+    group: data
 */
 CFUNC(cfunc_make)
 {
@@ -749,6 +779,7 @@ CFUNC(cfunc_make)
         value
         /deep   If value is a block, copy all sub-blocks.
     return: New value.
+    group: data
 */
 CFUNC(cfunc_copy)
 {
@@ -771,6 +802,7 @@ CFUNC(cfunc_copy)
         series
         size    Number of elements to reserve.
     return: Series.
+    group: data
 */
 CFUNC(cfunc_reserve)
 {
@@ -814,6 +846,8 @@ CFUNC(cfunc_reserve)
     does
         body  block!
     return: func!
+    group: eval
+
     Create function which takes no arguments.
 */
 CFUNC(cfunc_does)
@@ -834,6 +868,8 @@ CFUNC(cfunc_does)
         spec  block!
         body  block!
     return:  func!
+    group: eval
+
     Create function.
 */
 CFUNC(cfunc_func)
@@ -896,6 +932,7 @@ CFUNC(cfunc_func)
     not
         value
     return: Inverse logic! of value.
+    group: data
 */
 CFUNC(cfunc_not)
 {
@@ -911,6 +948,7 @@ CFUNC(cfunc_not)
         exp
         body    block!
     return: Result of body if exp is true, or none if it is false.
+    group: control
 */
 CFUNC(cfunc_if)
 {
@@ -932,6 +970,7 @@ CFUNC(cfunc_if)
         exp
         body    block!
     return: Result of body if exp is false, or none if it is true.
+    group: control
 
     This is the same as "if not exp body".
 */
@@ -956,6 +995,7 @@ CFUNC(cfunc_ifn)
         body-t  block!
         body-f  block!
     return: result of body-t if exp is true, or body-f if it is false.
+    group: control
 */
 CFUNC(cfunc_either)
 {
@@ -971,6 +1011,7 @@ CFUNC(cfunc_either)
         exp     block!
         body    block!
     return: false
+    group: control
 
     Repeat body as long as exp is true.
 */
@@ -1004,6 +1045,7 @@ CFUNC(cfunc_while)
     forever
         body    block!
     return: Result of body.
+    group: control
 
     Repeat body until break or exception thrown.
 */
@@ -1029,6 +1071,7 @@ CFUNC(cfunc_forever)
         range   int!/block!
         body    block!
     return: Result of body.
+    group: control
 
     Use 'break to terminate loop.
 */
@@ -1116,6 +1159,7 @@ CFUNC(cfunc_loop)
         options block!
         val
     return: Value after val or none! if val not found.
+    group: data
 */
 CFUNC(cfunc_select)
 {
@@ -1147,6 +1191,7 @@ CFUNC(cfunc_select)
         value
         options block!
     return: Result of selected switch case.
+    group: control
 
     If the size of the options block is odd, then the last value will be
     the default result.
@@ -1195,6 +1240,7 @@ extern void vec3_pick( const UCell* cell, int index, UCell* res );
     first
         series  series/coord!/vec3!
     return: First item in series or none!.
+    group: series
 */
 CFUNC(cfunc_first)
 {
@@ -1215,6 +1261,7 @@ CFUNC(cfunc_first)
     second
         series  series/coord!/vec3!
     return: Second item in series or none!.
+    group: series
 */
 CFUNC(cfunc_second)
 {
@@ -1235,6 +1282,7 @@ CFUNC(cfunc_second)
     third
         series  series/coord!/vec3!
     return: Third item in series or none!.
+    group: series
 */
 CFUNC(cfunc_third)
 {
@@ -1255,6 +1303,7 @@ CFUNC(cfunc_third)
     last
         series
     return: Last item in series or none! if empty.
+    group: series
 */
 CFUNC(cfunc_last)
 {
@@ -1275,6 +1324,7 @@ CFUNC(cfunc_last)
     ++
         'word word!
     return: Value before increment.
+    group: series
 
     Increments series or number bound to word.
 */
@@ -1309,6 +1359,7 @@ CFUNC(cfunc_2plus)
     --
         'word word!
     return: Value before decrement.
+    group: series
 
     Decrements series or number bound to word.
 */
@@ -1343,6 +1394,7 @@ CFUNC(cfunc_2minus)
     prev
         series
     return: Previous element of series or the head.
+    group: series
 */
 CFUNC(cfunc_prev)
 {
@@ -1360,6 +1412,7 @@ CFUNC(cfunc_prev)
     next
         series
     return: Next element of series or the tail.
+    group: series
 */
 CFUNC(cfunc_next)
 {
@@ -1389,6 +1442,7 @@ static int positionPort( UThread* ut, const UCell* portC, int where )
     head
         series  Series or port!
     return: Start of series.
+    group: series
 */
 CFUNC(cfunc_head)
 {
@@ -1411,6 +1465,7 @@ CFUNC(cfunc_head)
     tail
         series  Series or port!
     return: End of series.
+    group: series
 */
 CFUNC(cfunc_tail)
 {
@@ -1434,6 +1489,7 @@ CFUNC(cfunc_tail)
         series
         position    int!
     return: Value at position.
+    group: series
 */
 CFUNC(cfunc_pick)
 {
@@ -1469,6 +1525,7 @@ CFUNC(cfunc_pick)
         position    int!
         value
     return: series.
+    group: series
 */
 CFUNC(cfunc_poke)
 {
@@ -1507,6 +1564,7 @@ CFUNC(cfunc_poke)
     pop
         series
     return: Last item of series or none! if empty.
+    group: series
 
     Removes last item from series and returns it.
 */
@@ -1538,6 +1596,7 @@ CFUNC(cfunc_pop)
         series  Series or port!
         offset  logic!/int!
     return: Offset series.
+    group: series
 
     If offset is a logic! type then the series will move to the next element
     if its value is true.
@@ -1589,6 +1648,7 @@ CFUNC(cfunc_skip)
         value
         /block  If series and value are blocks, push value as a single item.
     return: Modified series or bound word!.
+    group: series
 */
 CFUNC(cfunc_append)
 {
@@ -1646,6 +1706,7 @@ CFUNC(cfunc_append)
         /slice          Remove slice and insert replacement.
         /part limit     Remove to limit and insert replacement.
     return: Series at end of change.
+    group: series
 */
 CFUNC(cfunc_change)
 {
@@ -1693,6 +1754,7 @@ CFUNC(cfunc_change)
         /part
             number  int!
     return: series or none!
+    group: series
 
     Remove element at series position.
 */
@@ -1743,6 +1805,7 @@ CFUNC(cfunc_remove)
         /part
             limit   series/int!
     return: Position of value in series or none!.
+    group: series
 */
 CFUNC(cfunc_find)
 {
@@ -1796,6 +1859,7 @@ set_none:
     clear
         series  series or none!
     return: Empty series or none!.
+    group: series
 
     Erase to end of series.
 */
@@ -1829,6 +1893,7 @@ CFUNC(cfunc_clear)
         series  series
         limit   none!/int!/coord!
     return: Adjusted slice.
+    group: series
 */
 CFUNC(cfunc_slice)
 {
@@ -1893,6 +1958,7 @@ set_end:
     empty?
         series
     return: logic!
+    group: series
 */
 CFUNC(cfunc_emptyQ)
 {
@@ -1912,6 +1978,7 @@ CFUNC(cfunc_emptyQ)
     head?
         series
     return: logic!
+    group: series
 */
 CFUNC(cfunc_headQ)
 {
@@ -1928,6 +1995,7 @@ CFUNC(cfunc_headQ)
     size?
         series
     return: int!
+    group: series
 */
 CFUNC(cfunc_sizeQ)
 {
@@ -1953,6 +2021,7 @@ CFUNC(cfunc_sizeQ)
     index?
         series  Series or word.
     return: int!
+    group: series
 */
 CFUNC(cfunc_indexQ)
 {
@@ -1975,6 +2044,7 @@ CFUNC(cfunc_indexQ)
     series?
         value
     return: True if value is a series type.
+    group: data, series
 */
 CFUNC(cfunc_seriesQ)
 {
@@ -1989,6 +2059,7 @@ CFUNC(cfunc_seriesQ)
     any-block?
         value
     return: True if value is a block type.
+    group: data
 */
 CFUNC(cfunc_any_blockQ)
 {
@@ -2003,6 +2074,7 @@ CFUNC(cfunc_any_blockQ)
     any-word?
         value
     return: True if value is a block type.
+    group: data
 */
 CFUNC(cfunc_any_wordQ)
 {
@@ -2017,6 +2089,7 @@ CFUNC(cfunc_any_wordQ)
     complement
         value   logic!/char!/int!/binary!/bitset!
     return: Complemented value.
+    group: data
 */
 CFUNC(cfunc_complement)
 {
@@ -2057,6 +2130,7 @@ CFUNC(cfunc_complement)
     negate
         value   int!/decimal!/time!/bignum!/coord!/vec3!/bitset!
     return: Negated value.
+    group: data
 */
 CFUNC( cfunc_negate )
 {
@@ -2176,6 +2250,7 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
         setA    series
         setB    series
     return: New value that contains only the elements common to both sets.
+    group: series
 */
 CFUNC(cfunc_intersect)
 {
@@ -2188,6 +2263,7 @@ CFUNC(cfunc_intersect)
         setA    series
         setB    series
     return: New value that contains only the elements unique to each set.
+    group: series
 */
 CFUNC(cfunc_difference)
 {
@@ -2200,6 +2276,7 @@ CFUNC(cfunc_difference)
         set     series
         /case   Use case-sensitive comparison with string types.
     return: New series with sorted elements.
+    group: series
 */
 CFUNC(cfunc_sort)
 {
@@ -2257,6 +2334,7 @@ static inline UIndex _sliceEnd( const UBuffer* buf, const UCell* cell )
         series
         body    block!
     return: Result of body.
+    group: control
 */
 CFUNC(cfunc_foreach)
 {
@@ -2349,6 +2427,7 @@ loop:
         'word   word!
         body    block!
     return: Result of body.
+    group: control
 */
 CFUNC(cfunc_forall)
 {
@@ -2397,6 +2476,7 @@ err:
         series
         body    block!
     return: Modified series
+    group: series
 
     Replace each element of series with result of body.
     Use 'break in body to terminate mapping.
@@ -2444,6 +2524,7 @@ CFUNC(cfunc_map)
     all
         tests block!
     return: logic!
+    group: control
 */
 CFUNC(cfunc_all)
 {
@@ -2476,6 +2557,7 @@ CFUNC(cfunc_all)
     any
         tests block!
     return: Result of first true test or false.
+    group: control
 */
 CFUNC(cfunc_any)
 {
@@ -2508,6 +2590,7 @@ CFUNC(cfunc_any)
     reduce
         value
     return: Reduced value.
+    group: data
 
     If value is a block then a new block is created with values set to the
     evaluated results of the original.
@@ -2558,6 +2641,7 @@ CFUNC(cfunc_reduce)
         value
         /contents   Omit the outer braces from block and context values.
     return: string!
+    group: data
 
     Convert value to its serialized form.
 */
@@ -2584,6 +2668,7 @@ CFUNC(cfunc_mold)
     probe
         value
     return: value
+    group: io
 
     Print value in its serialized form.
 */
@@ -2607,6 +2692,7 @@ CFUNC(cfunc_probe)
     prin
         value
     return: unset!
+    group: io
 
     Print reduced value without a trailing linefeed.
 */
@@ -2633,6 +2719,7 @@ CFUNC(cfunc_prin)
     print
         value
     return: unset!
+    group: io
 
     Print reduced value and a trailing linefeed.
 */
@@ -2651,6 +2738,7 @@ CFUNC(cfunc_print)
     to-text
         value
     return: string!
+    group: data
 */
 CFUNC(cfunc_to_text)
 {
@@ -2672,6 +2760,7 @@ CFUNC(cfunc_to_text)
     exists?
         file file!/string!
     return: True if file or directory exists.
+    group: os
 */
 CFUNC(cfunc_existsQ)
 {
@@ -2692,6 +2781,7 @@ CFUNC(cfunc_existsQ)
     dir?
         path    file!/string!
     return: logic! or none! if path does not exist.
+    group: os
 
     Test if path is a directory.
 */
@@ -2756,6 +2846,7 @@ static int _makeDirParents( UThread* ut, char* path, char* end )
         dir file!/string!
         /all    Make any missing parent directories.
     return: unset!
+    group: os
 */
 CFUNC(cfunc_make_dir)
 {
@@ -2784,6 +2875,7 @@ CFUNC(cfunc_make_dir)
     change-dir
         dir     string!/file!
     return: unset!
+    group: os
 
     Set current working directory.
 */
@@ -2808,6 +2900,7 @@ CFUNC(cfunc_change_dir)
 /*-cf-
     current-dir
     return: File! of current working directory.
+    group: os
 */
 CFUNC(cfunc_current_dir)
 {
@@ -2840,6 +2933,7 @@ CFUNC(cfunc_current_dir)
     getenv
         val string!
     return: string! or none!
+    group: os
 
     Get operating system environment variable.
 ::
@@ -2876,6 +2970,7 @@ CFUNC(cfunc_getenv)
         /new    Create empty file.
         /nowait Non-blocking reads.
     return: port!
+    group: io
 
     Create port!.
 */
@@ -2918,6 +3013,7 @@ extern int ur_readDir( UThread*, const char* filename, UCell* res );
         /into
             buffer  binary!/string!
     return: binary!/string!/block!
+    group: io
 
     Read binary! or UTF-8 string!.
 
@@ -3028,6 +3124,7 @@ CFUNC(cfunc_read)
         /append
         /text   Emit new lines with carriage returns on Windows.
     return: unset!
+    group: io
 */
 CFUNC(cfunc_write)
 {
@@ -3115,6 +3212,7 @@ CFUNC(cfunc_write)
     delete
         file    file!/string!
     return: unset! or error thrown.
+    group: os
 */
 CFUNC(cfunc_delete)
 {
@@ -3136,6 +3234,7 @@ CFUNC(cfunc_delete)
         file        file!/string!
         new-name    file!/string!
     return: unset! or error thrown.
+    group: os
 */
 CFUNC(cfunc_rename)
 {
@@ -3179,6 +3278,7 @@ CFUNC(cfunc_rename)
     load
         file    file!/string!
     return: block! or none! if file is empty.
+    group: io
 */
 CFUNC(cfunc_load)
 {
@@ -3254,6 +3354,7 @@ check_str:
         dest    file!/string!/port!
         data
     return: unset!
+    group: io
 */
 CFUNC(cfunc_save)
 {
@@ -3291,6 +3392,7 @@ extern int ur_parseString( UThread* ut, UBuffer*, UIndex start, UIndex end,
         rules   block!  
         /case   Character case must match when comparing strings.
     return:  True if end of input reached.
+    group: data
 */
 CFUNC(cfunc_parse)
 {
@@ -3357,6 +3459,7 @@ CFUNC(cfunc_parse)
         a
         b
     return: True if two values are identical.
+    group: data
 */
 CFUNC(cfunc_sameQ)
 {
@@ -3371,6 +3474,7 @@ CFUNC(cfunc_sameQ)
         a
         b
     return: True if two values are equivalent.
+    group: data, math
 */
 CFUNC(cfunc_equalQ)
 {
@@ -3385,6 +3489,7 @@ CFUNC(cfunc_equalQ)
         a
         b
     return: True if two values are not equivalent.
+    group: data, math
 */
 CFUNC(cfunc_neQ)
 {
@@ -3399,6 +3504,7 @@ CFUNC(cfunc_neQ)
         a
         b
     return: True if first value is greater than the second.
+    group: math
 */
 CFUNC(cfunc_gtQ)
 {
@@ -3413,6 +3519,7 @@ CFUNC(cfunc_gtQ)
         a
         b
     return: True if first value is less than the second.
+    group: math
 */
 CFUNC(cfunc_ltQ)
 {
@@ -3426,6 +3533,7 @@ CFUNC(cfunc_ltQ)
     type?
         value
     return: Datatype of value.
+    group: data
 */
 CFUNC(cfunc_typeQ)
 {
@@ -3439,6 +3547,7 @@ CFUNC(cfunc_typeQ)
     encoding?
         value
     return: Encoding type word! or none! if val is not a string.
+    group: data
 */
 CFUNC(cfunc_encodingQ)
 {
@@ -3463,6 +3572,7 @@ CFUNC(cfunc_encodingQ)
         data    string!
         /bom    Prepend Unicode BOM for utf8 or ucs2 and return binary.
     return: New string or binary with data converted to encoding type.
+    group: data
 */
 CFUNC(cfunc_encode)
 {
@@ -3548,6 +3658,7 @@ CFUNC(cfunc_encode)
         /group  Specify number of elements to reverse
             size    int!
     return: Modified data.
+    group: series
 
     Swap adjacent elements of a series.
 */
@@ -3601,6 +3712,7 @@ CFUNC(cfunc_swap)
     lowercase
         value   char!/string!/file!
     return: Value converted to lowercase.
+    group: series
 */
 CFUNC(cfunc_lowercase)
 {
@@ -3627,6 +3739,7 @@ CFUNC(cfunc_lowercase)
     uppercase
         value   char!/string!/file!
     return: Value converted to uppercase.
+    group: series
 */
 CFUNC(cfunc_uppercase)
 {
@@ -3670,6 +3783,7 @@ CFUNC(cfunc_uppercase)
         /indent   Remove same amount of whitespace from start of all lines.
         /lines    Remove all newlines and extra whitespace.
     return: Modified string.
+    group: series
 */
 CFUNC(cfunc_trim)
 {
@@ -3758,6 +3872,7 @@ CFUNC(cfunc_trim)
         value
         /dir    Check if end is '/' or '\'.
     return: Modified series.
+    group: series
 
     Append value to series only if it does not already end with it.
 */
@@ -3796,6 +3911,7 @@ done:
     to-hex
         number  char!/int!/bignum!
     return: Number shown as hexidecimal.
+    group: data
 */
 CFUNC(cfunc_to_hex)
 {
@@ -3820,6 +3936,7 @@ CFUNC(cfunc_to_hex)
     to-dec
         number  int!/bignum!
     return: Number shown as decimal.
+    group: data
 */
 CFUNC(cfunc_to_dec)
 {
@@ -3837,6 +3954,7 @@ CFUNC(cfunc_to_dec)
     now
         /date   Return date! rather than time!
     return: time! or date!
+    group: io
 */
 CFUNC(cfunc_now)
 {
@@ -3857,6 +3975,7 @@ CFUNC(cfunc_now)
     free
         resource    series/port!
     return: unset!
+    group: storage
 
     Clear series and free its memory buffer or close port.
 */
@@ -3881,6 +4000,7 @@ extern uint32_t ur_hash( const uint8_t* str, const uint8_t* end );
     hash
         string      word!/string!
     return: int!
+    group: data
 
     Compute hash value from string (treated as lowercase).
 */
@@ -3918,6 +4038,7 @@ CFUNC(cfunc_hash)
     datatype?
         value
     return: True if value is a datatype!.
+    group: data
 
     Each datatype has its own test function which is named the same as the
     type but ending with '?' rather than a '!'.
@@ -3937,6 +4058,7 @@ CFUNC(cfunc_datatypeQ)
     to-datatype
         value
     return: New datatype!.
+    group: data
 
     Convert value to datatype.
 

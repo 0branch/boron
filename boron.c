@@ -600,39 +600,47 @@ static const char setupScript[] =
         a
         b
     return: logic!
+    group: math, data
     Same as equal?
 */
 /*-hf- tail?
         series
     return: logic!
+    group: series
     Same as empty?
 */
 /*-hf- close
         port
     return: unset!
+    group: storage, io
     Same as free.
 */
 /*-hf- context
         spec block!
     return: New context!
+    group: data
 */
 /*-hf- charset
         spec string!
     return: New bitset!
+    group: data
 */
 /*-hf- error 
         message string!
     return: Throws error.
+    group: control
 */
 /*-hf- join
         a
         b
     return: New series.
+    group: series
     Concatenate a and b.
 */
 /*-hf- rejoin
         block
     return: New series.
+    group: series
     Reduce block and concatenate results.
 */
 /*-hf- replace
@@ -641,16 +649,19 @@ static const char setupScript[] =
         rep     Replacement value.
         /all    Replace all occurances of the pattern, not just the first.
     return: Modified series at original position.
+    group: series
 */
 /*-hf- split-path
         path file!/string!
     return: Block with path and filename.
+    group: data
     If no directory separator is found, then path (the first block item)
     will be none!.
 */
 /*-hf- term-dir
         dir file!/string!
     return: Modified dir
+    group: data
     Ensure that the directory has a trailing slash.
 */
 

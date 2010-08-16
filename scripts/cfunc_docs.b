@@ -12,6 +12,7 @@ func-info: context [
     name:   none
     args:   []
     return: none
+    group:  none
     about:  none
 ]
 
@@ -27,6 +28,7 @@ parse-doc: func [txt | fob tok] [
             4 8 ' ' tok: to nl :tok skip (append fob/args tok)
         ]
         thru {return:} tok: to nl :tok (fob/return: trim tok)
+        thru {group:}  tok: to nl :tok (fob/group:  trim tok)
         tok: (fob/about: trim tok)
     ]
     fob
@@ -145,6 +147,44 @@ emit-toc: func [funcs | f it it2 cskip item] [
     emit {</table>^/</ul>^/}
 ]
 
+
+groups: [
+    control  [] "Control Flow"
+    data     [] "Data"
+    eval     [] "Evaluation"
+    math     [] "Math"
+    io       [] "Input/Output"
+    os       [] "Operating System"
+    series   [] "Series"
+    storage  [] "Storage"
+]
+
+emit-groups: func [| add-grp grp tok] [
+    non-term: complement charset " ,^-^/"
+    add-grp: [
+        parse f/group [some [
+            tok: some non-term :tok (
+                grp: select groups to-word tok
+                either grp [
+                    append grp f
+                ][
+                    print ["Unknown group" f/group]
+                ]
+            )
+          | skip
+        ]]
+    ]
+    foreach f cfuncs add-grp
+    foreach f hfuncs add-grp
+
+    foreach [word blk title] groups [
+        emit rejoin [{<li>} title]
+        emit-toc blk
+        emit {</li>^/}
+    ]
+]
+
+
 ;white: charset " ^-^/"
 ;parse f [name: to white :name thru white f:]
 
@@ -187,6 +227,14 @@ emit {</li>
 }
 emit-toc hfuncs
 emit {</li>^/</ul>^/</div>}
+
+
+emit {<p class="topic-title">Function Groups</p>
+<ul class="auto-toc simple">
+}
+emit-groups
+emit {</ul>^/</div>^/}
+
 
 emit {<div class="section" id="cfunc">
 <h1><a class="toc-backref" href="#id_ch1">1&nbsp;&nbsp;&nbsp;C Functions</a></h1>

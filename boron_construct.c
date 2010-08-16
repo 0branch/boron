@@ -146,6 +146,8 @@ con_blk:
     construct
         object  datatype!/binary!
         plan    block!
+    return: New value.
+    group: data
 
     Make or append values with a detailed specification.
 */

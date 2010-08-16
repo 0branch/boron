@@ -29,6 +29,7 @@
     compress
         data    string!/binary!
     return: binary!
+    group: data
 */
 CFUNC(cfunc_compress)
 {
@@ -218,6 +219,7 @@ static const uint8_t* str_match( const uint8_t* it, const uint8_t* end,
     decompress
         data    binary!
     return: string!/binary!
+    group: data
 */
 CFUNC(cfunc_decompress)
 {

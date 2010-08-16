@@ -95,6 +95,7 @@ uint32_t checksum_crc32( uint8_t* data, int byteCount )
         /crc16  IBM Bisync, USB
         /crc32  IEEE 802.3, MPEG-2
     return: int!/binary!
+    group: data
 
     Computes sha1 checksum by default.
 */
