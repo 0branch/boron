@@ -4,6 +4,11 @@ latin1 ucs2
 #{EFBBBF53C3AE6E65206B6CC3A277656E}
 ---- append
 "xabc"
+---- insert
+"0string"
+"_abc_string"
+"_abng"
+"stri_abng"
 ---- trim
 "trim1"
 "aa bb"

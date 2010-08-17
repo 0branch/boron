@@ -21,6 +21,12 @@ false
 [1 2 3 x y z]
 [1 2 3 [x y z]]
 [1 2 3 4 five 1 2 3 4 five]
+---- insert
+["end" 1 2 3]
+[x y z 1 2 3]
+[[x y z] 1 2 3]
+[1 2 3 4 five 1 2 3 4 five]
+[1 x y 2 3]
 ---- select
 1
 2

@@ -15,6 +15,20 @@ probe append copy a 'A'
 probe append copy a 255
 
 
+print "---- insert"
+probe insert copy a "end"
+probe insert copy a #{F00BAD}
+probe insert copy a 'A'
+probe insert copy a 255
+
+
+print "---- insert part"
+in-a: does [skip c: copy a 2]
+probe insert/part in-a "end" 0
+probe insert/part in-a #{F00BAD} 2
+probe c
+
+
 print "---- find"
 probe find b 1
 probe find b #{0c01}

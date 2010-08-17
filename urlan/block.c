@@ -134,6 +134,23 @@ void ur_blkAppendCells( UBuffer* buf, const UCell* cells, int count )
 
 
 /**
+  Insert cells into block.
+
+  This performs a memcpy, so the source cells must not overlap the buf cells.
+
+  \param buf    Initialized block buffer.
+  \param it     Position in buf.
+  \param cells  Cells to copy.
+  \param count  Number of cells to copy.
+*/
+void ur_blkInsert( UBuffer* buf, UIndex it, const UCell* cells, int count )
+{
+    ur_arrExpand( buf, it, count );
+    memCpy( buf->ptr.cell + it, cells, count * sizeof(UCell) );
+}
+
+
+/**
   Copy cell to end of block.
 */
 void ur_blkPush( UBuffer* buf, const UCell* cell )

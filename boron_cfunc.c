@@ -1700,6 +1700,61 @@ CFUNC(cfunc_append)
 
 
 /*-cf-
+    insert
+        series
+        value
+        /block          Insert block value as a single item.
+        /part limit     Insert only a limited number of elements from value.
+    return: Modified series.
+    group: series
+*/
+CFUNC(cfunc_insert)
+{
+#define OPT_INSERT_BLOCK    0x01
+#define OPT_INSERT_PART     0x02
+    UBuffer* buf;
+    uint32_t opt;
+    UIndex part = INT32_MAX;
+    int type = ur_type(a1);
+
+    if( ur_isSeriesType( type ) )
+    {
+        if( ! (buf = ur_bufferSerM(a1)) )
+            return UR_THROW;
+
+        if( (opt = CFUNC_OPTIONS) )
+        {
+            if( (opt & OPT_INSERT_BLOCK) && (type == UT_BLOCK) )
+            {
+                ur_blkInsert( buf, a1->series.it, a2, 1 );
+                goto done;
+            }
+            else if( opt & OPT_INSERT_PART )
+            {
+                UCell* parg = a3;
+                if( ur_is(parg, UT_INT) )
+                    part = ur_int(parg);
+                else if( ur_isSeriesType( ur_type(parg) ) )
+                    part = parg->series.it - a1->series.it;
+                else
+                    return ur_error( ut, UR_ERR_TYPE,
+                                     "insert /part expected series or int!" );
+                if( part < 1 )
+                    goto done;
+            }
+        }
+
+        if( ! SERIES_DT( type )->insert( ut, buf, a1->series.it, a2, part ) )
+            return UR_THROW;
+done:
+        *res = *a1;
+        return UR_OK;
+    }
+    return errorType( "insert expected series" );
+}
+
+
+/*-cf-
     change
         series
         replacement

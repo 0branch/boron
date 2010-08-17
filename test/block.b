@@ -34,6 +34,14 @@ probe append/block [1 2 3] [x y z]
 probe append a: [1 2 3 4 five] a      ; Append to self
 
 
+print "---- insert"
+probe insert [1 2 3] "end"
+probe insert [1 2 3] [x y z]
+probe insert/block [1 2 3] [x y z]
+probe insert a: [1 2 3 4 five] a      ; Insert into self
+probe head insert/part next [1 2 3] [x y z] 2
+
+
 print "---- select"
 opt: ["eh" 1 b 2 c 3]
 probe select opt "eh"

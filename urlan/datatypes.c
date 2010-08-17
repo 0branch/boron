@@ -174,6 +174,18 @@
 
   \return UR_OK/UR_THROW
 */
+/** \fn int  (*USeriesType::insert)( UThread*, UBuffer* buf, UIndex index,
+                                     const UCell* val, UIndex part )
+  Insert a value into the series.
+
+  \param buf    Series buffer to insert into.
+  \param index  Position in buf.
+  \param val    Value to append.
+  \param part   Limit number of val elements.
+                This will be INT32_MAX by default.
+
+  \return UR_OK/UR_THROW
+*/
 /** \fn void (*USeriesType::remove)( UThread*, UBuffer* buf,
                                      UIndex it, UIndex end )
   Remove part of the series.
@@ -1926,7 +1938,6 @@ int binary_append( UThread* ut, UBuffer* buf, const UCell* val )
                 si.it *= 2;
             }
             ur_binAppendData( buf, si.buf->ptr.b + si.it, len );
-
         }
         return UR_OK;
     }
@@ -1938,6 +1949,47 @@ int binary_append( UThread* ut, UBuffer* buf, const UCell* val )
     }
     return ur_error( ut, UR_ERR_TYPE,
                      "append binary! expected char!/int!/binary!/string!" );
+}
+
+
+int binary_insert( UThread* ut, UBuffer* buf, UIndex index,
+                   const UCell* val, UIndex part )
+{
+    int vt = ur_type(val);
+
+    if( (vt == UT_BINARY) || ur_isStringType(vt) )
+    {
+        USeriesIter si;
+        int len;
+
+        ur_seriesSlice( ut, &si, val );
+        len = si.end - si.it;
+        if( len > part )
+            len = part;
+        if( len )
+        {
+            if( (vt != UT_BINARY) && ur_strIsUcs2(si.buf) )
+            {
+                len *= 2;
+                si.it *= 2;
+            }
+
+            ur_binExpand( buf, index, len );
+            if( si.buf == buf )
+                ur_seriesSlice( ut, &si, val );     // Re-aquire si.buf->ptr.
+
+            memCpy( buf->ptr.b + index, si.buf->ptr.b + si.it, len );
+        }
+        return UR_OK;
+    }
+    else if( (vt == UT_CHAR) || (vt == UT_INT) )
+    {
+        ur_binExpand( buf, index, 1 );
+        buf->ptr.b[ index ] = ur_int(val);
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE,
+                     "insert binary! expected char!/int!/binary!/string!" );
 }
 
 
@@ -2064,6 +2116,7 @@ USeriesType dt_binary =
     unset_markBuf,          binary_toShared,        unset_bind
     },
     binary_pick,            binary_poke,            binary_append,
+    binary_insert,
     binary_change,          binary_remove,          binary_find
 };
 
@@ -2152,6 +2205,7 @@ USeriesType dt_bitset =
     unset_markBuf,          binary_toShared,        unset_bind
     },
     binary_pick,            binary_poke,            binary_append,
+    binary_insert,
     binary_change,          binary_remove,          binary_find
 };
 
@@ -2484,7 +2538,45 @@ int string_append( UThread* ut, UBuffer* buf, const UCell* val )
         DT( type )->toText( ut, val, buf, 0 );
         return UR_OK;
     }
-    return ur_error( ut, UR_ERR_TYPE, "append string! expected char!/string!" );
+}
+
+
+int string_insert( UThread* ut, UBuffer* buf, UIndex index,
+                   const UCell* val, UIndex part )
+{
+    int type = ur_type(val);
+
+    if( ur_isStringType(type) )
+    {
+        USeriesIter si;
+        UIndex saveUsed;
+        int len;
+
+        ur_seriesSlice( ut, &si, val );
+        len = si.end - si.it;
+        if( len > part )
+            len = part;
+        if( len )
+        {
+            ur_arrExpand( buf, index, len );
+
+            saveUsed = buf->used;
+            buf->used = index;
+            ur_strAppend( buf, si.buf, si.it, si.it + len );
+            buf->used = saveUsed;
+        }
+        return UR_OK;
+    }
+    else if( type == UT_CHAR )
+    {
+        ur_arrExpand( buf, index, 1 );
+        if( ur_strIsUcs2(buf) )
+            buf->ptr.u16[ index ] = ur_int(val);
+        else
+            buf->ptr.c[ index ] = ur_int(val);
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE, "insert string! expected char!/string!" );
 }
 
 
@@ -2813,6 +2905,7 @@ USeriesType dt_string =
     unset_markBuf,          binary_toShared,        unset_bind
     },
     string_pick,            string_poke,            string_append,
+    string_insert,
     string_change,          string_remove,          string_find
 };
 
@@ -2886,6 +2979,7 @@ USeriesType dt_file =
     unset_markBuf,          binary_toShared,        unset_bind
     },
     string_pick,            string_poke,            string_append,
+    string_insert,
     string_change,          string_remove,          string_find
 };
 
@@ -3232,12 +3326,14 @@ void block_poke( UBuffer* buf, UIndex n, const UCell* val )
 
 int block_append( UThread* ut, UBuffer* buf, const UCell* val )
 {
-    if( ur_is(val, UT_BLOCK) )
+    if( ur_is(val, UT_BLOCK) || ur_is(val, UT_PAREN) )
     {
         UBlockIter bi;
         ur_blkSlice( ut, &bi, val );
         if( bi.buf == buf )
         {
+            // If appending to self then this makes sure the source
+            // cells pointer does not change in ur_blkAppendCells().
             ur_arrReserve( buf, buf->used + (bi.end - bi.it) );
             ur_blkSlice( ut, &bi, val );
         }
@@ -3246,6 +3342,45 @@ int block_append( UThread* ut, UBuffer* buf, const UCell* val )
     else
     {
         ur_blkPush( buf, val );
+    }
+    return UR_OK;
+}
+
+
+int block_insert( UThread* ut, UBuffer* buf, UIndex index,
+                  const UCell* val, UIndex part )
+{
+    if( ur_is(val, UT_BLOCK) || ur_is(val, UT_PAREN) )
+    {
+        UBlockIter bi;
+        int len;
+
+        ur_blkSlice( ut, &bi, val );
+        len = bi.end - bi.it;
+        if( len > part )
+            len = part;
+        if( len > 0 )
+        {
+            if( bi.buf == buf )
+            {
+                // Inserting into self.
+                UIndex it = bi.it - buf->ptr.cell;
+                ur_arrExpand( buf, index, len );
+                if( it != index )
+                {
+                    memCpy( buf->ptr.cell + index, buf->ptr.cell + it,
+                            len * sizeof(UCell) );
+                }
+            }
+            else
+            {
+                ur_blkInsert( buf, index, bi.it, len );
+            }
+        }
+    }
+    else
+    {
+        ur_blkInsert( buf, index, val, 1 );
     }
     return UR_OK;
 }
@@ -3382,6 +3517,7 @@ USeriesType dt_block =
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
+    block_insert,
     block_change,           block_remove,           block_find
 };
 
@@ -3419,6 +3555,7 @@ USeriesType dt_paren =
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
+    block_insert,
     block_change,           block_remove,           block_find
 };
 
@@ -3483,6 +3620,7 @@ USeriesType dt_path =
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
+    block_insert,
     block_change,           block_remove,           block_find
 };
 
@@ -3502,6 +3640,7 @@ USeriesType dt_litpath =
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
+    block_insert,
     block_change,           block_remove,           block_find
 };
 
@@ -3521,6 +3660,7 @@ USeriesType dt_setpath =
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
+    block_insert,
     block_change,           block_remove,           block_find
 };
 

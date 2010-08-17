@@ -129,10 +129,10 @@ syn keyword     boronRepeat			forall foreach loop while
 
 " Series statements
 syn keyword     boronStatement  make does func ++ -- reduce parse
-syn keyword     boronStatement  append change clear copy find first head join
-syn keyword     boronStatement  last next prev pick poke remove second select
-syn keyword     boronStatement  skip sort tail third trim length?
-"free insert match
+syn keyword     boronStatement  append change clear copy find first free head
+syn keyword     boronStatement  insert join last next prev pick poke remove
+syn keyword     boronStatement  second select skip sort tail third trim length?
+"match
 
 " Context
 syn keyword     boronStatement  bind infuse set get in

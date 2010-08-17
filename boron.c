@@ -860,6 +860,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_pop,     "pop ser" );
     addCFunc( cfunc_skip,    "skip ser n" );
     addCFunc( cfunc_append,  "append ser val /block" );
+    addCFunc( cfunc_insert,  "insert ser val /block /part n" );
     addCFunc( cfunc_change,  "change ser val /slice /part limit" );
     addCFunc( cfunc_remove,  "remove ser /slice /part n" );
     addCFunc( cfunc_find,    "find ser val /last /case /part n" );

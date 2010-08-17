@@ -9,6 +9,13 @@ print "---- append"
 probe append "x" [a b c]
 
 
+print "---- insert"
+probe insert "string" '0'
+probe insert "string" {_abc_}
+probe insert/part skip orig: "string" 4 {_abc_} 3
+probe orig
+
+
 print "---- trim"
 probe trim "  trim1  "
 probe trim/lines "aa  bb"

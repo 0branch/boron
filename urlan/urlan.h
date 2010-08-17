@@ -408,6 +408,8 @@ typedef struct
     void (*pick)      ( const UBuffer* buf, UIndex n, UCell* res );
     void (*poke)      ( UBuffer* buf, UIndex n, const UCell* val );
     int  (*append)    ( UThread*, UBuffer* buf, const UCell* val );
+    int  (*insert)    ( UThread*, UBuffer* buf, UIndex index,
+                        const UCell* val, UIndex part );
     int  (*change)    ( UThread*, USeriesIterM* si, const UCell* val,
                         UIndex part );
     void (*remove)    ( UThread*, USeriesIterM* si, UIndex part );
@@ -530,6 +532,7 @@ UIndex   ur_blkClone( UThread*, UIndex blkN );
 void     ur_blkInit( UBuffer*, int type, int size );
 UCell*   ur_blkAppendNew( UBuffer*, int type );
 void     ur_blkAppendCells( UBuffer*, const UCell* cells, int count );
+void     ur_blkInsert( UBuffer*, UIndex it, const UCell* cells, int count );
 void     ur_blkPush( UBuffer*, const UCell* cell );
 UCell*   ur_blkPop( UBuffer* );
 void     ur_blkSlice( UThread*, UBlockIter*, const UCell* cell );
