@@ -1934,7 +1934,7 @@ cleanup:
     }
 
     gstr = glGetString( GL_VERSION );
-    if( gstr[0] < '2' || gstr[0] > '3' )
+    if( gstr[0] < '2' )
     {
         glv_destroy( gView );
         gView = 0;
