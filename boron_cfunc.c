@@ -482,23 +482,18 @@ CFUNC(cfunc_words_of)
 
     if( ur_int(a2) )
     {
-        UBlockIterM bi;
         const UCell* cell;
+        UBuffer* blk;
         int used;
 
         ctx = ur_bufferSer(a1);
+        // Save what we need from ctx before ur_makeBlockCell invalidates it.
         cell = ctx->ptr.cell;
         used = ctx->used;
 
-        bi.buf = ur_makeBlockCell( ut, UT_BLOCK, used, res );
-        bi.buf->used = used;
-        bi.it  = bi.buf->ptr.cell;
-        bi.end = bi.it + used;
-
-        ur_foreach( bi )
-        {
-            *bi.it = *cell++;
-        }
+        blk = ur_makeBlockCell( ut, UT_BLOCK, used, res );
+        memCpy( blk->ptr.cell, cell, used * sizeof(UCell) );
+        blk->used = used;
     }
     else
     {
