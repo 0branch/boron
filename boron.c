@@ -557,7 +557,7 @@ void boron_addCFunc( UThread* ut, int (*func)(UThread*,UCell*,UCell*),
 
 static const char setupScript[] =
     "environs: make context! [\n"
-    "  version: 0,1,7\n"
+    "  version: 0,1,8\n"
     "  os: '" OS_WORD " arch: '" ARCH_WORD " big-endian: " ARCH_BIG
     "]\n"
     "q: :quit  yes: true  no: false\n"
