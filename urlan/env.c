@@ -277,7 +277,7 @@ extern UDatatype dt_timecode;
   Allocate UEnv and initial UThread.
 
   \param atomLimit  Maximum number of atoms.
-                    Memory usage is (20 * atomLimit) bytes.
+                    Memory usage is (24 * atomLimit) bytes.
   \param dtTable    Array of pointers to user defined datatypes.
                     Pass zero if dtCount is zero.
   \param dtCount    Number of datatypes in dtTable.
@@ -313,7 +313,7 @@ UThread* ur_makeEnv( int atomLimit, UDatatype** dtTable, unsigned int dtCount,
 
     ur_arrInit( &env->dataStore, sizeof(UBuffer), 0 );
 
-    ur_binInit( &env->atomNames, 8 * atomLimit );
+    ur_binInit( &env->atomNames, 12 * atomLimit );
     ur_arrInit( &env->atomTable, sizeof(AtomRec), atomLimit );
     _rebuildAtomHash( &env->atomTable );
 
