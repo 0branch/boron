@@ -3700,7 +3700,44 @@ void context_copy( UThread* ut, const UCell* from, UCell* res )
 }
 
 
-extern void ur_ctxWordAtoms( const UBuffer* ctx, UAtom* atoms );
+/*
+   \ctx        Pointer to a valid and sorted context.
+   \ctxN       The buffer of ctx (required for binding the words).
+   \param res  Set to a block of words in the context (bound to the context).
+*/
+void _contextWords( UThread* ut, const UBuffer* ctx, UIndex ctxN, UCell* res )
+{
+    UBlockIterM di;
+    UAtom* ait;
+    UAtom* atoms;
+    int bindType;
+    UIndex used = ctx->used;
+
+    di.buf = ur_makeBlockCell( ut, UT_BLOCK, used, res );
+    di.it  = di.buf->ptr.cell;
+    di.end = di.it + used;
+
+    ctx = ur_bufferE(ctxN);     // Re-aquire.
+    atoms = ait = ((UAtom*) di.end) - used;
+    ur_ctxWordAtoms( ctx, atoms );
+
+    if( ctxN == UR_INVALID_BUF )
+        bindType = UR_BIND_UNBOUND;
+    else
+        bindType = ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD;
+
+    ur_foreach( di )
+    {
+        ur_setId(di.it, UT_WORD);
+        ur_setBinding( di.it, bindType );
+        di.it->word.ctx   = ctxN;
+        di.it->word.index = ait - atoms;
+        di.it->word.atom  = *ait++;
+    }
+
+    di.buf->used = used;
+}
+
 
 int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
 {
@@ -3723,32 +3760,7 @@ int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
     {
         if( ur_atom(bi->it) == UR_ATOM_WORDS )
         {
-            UBlockIterM di;
-            UAtom* ait;
-            UAtom* atoms;
-            int bindType;
-            UIndex ctxN = cell->series.buf;
-            UIndex used = ctx->used;
-
-            di.buf = ur_makeBlockCell( ut, UT_BLOCK, used, res );
-            di.it  = di.buf->ptr.cell;
-            di.end = di.it + used;
-
-            ctx = ur_bufferSer(cell);   // Re-aquire.
-            atoms = ait = ((UAtom*) di.end) - used;
-            ur_ctxWordAtoms( ctx, atoms );
-
-            bindType = ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD;
-            ur_foreach( di )
-            {
-                ur_setId(di.it, UT_WORD);
-                ur_setBinding( di.it, bindType );
-                di.it->word.ctx   = ctxN;
-                di.it->word.index = ait - atoms;
-                di.it->word.atom  = *ait++;
-            }
-
-            di.buf->used = used;
+            _contextWords( ut, ctx, cell->context.buf, res );
             ++bi->it;
             return UR_OK;
         }

@@ -20,14 +20,15 @@ a: context [first: 1 second: 2]
 b: make a [third: 3]
 probe a
 probe b
-probe b/'words
+probe words-of b
+probe values-of b
 
 
 print "---- infuse"
 probe infuse [nest (a b c d)] c
 
 ia: copy a
-blk: ia/'words
+blk: words-of ia
 set blk infuse copy blk context [x: none first: "one" second: "two"]
 probe ia
 

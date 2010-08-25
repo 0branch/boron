@@ -16,6 +16,7 @@ context [
     third: 3
 ]
 [first second third]
+[1 2 3]
 ---- infuse
 [nest (2 "two" c d)]
 context [

@@ -458,6 +458,58 @@ CFUNC(cfunc_in)
 }
 
 
+extern void _contextWords( UThread* ut, const UBuffer* ctx, UIndex ctxN,
+                           UCell* res );
+
+/*-cf-
+    words-of
+        context     context!
+    return: Block of words defined in context.
+    group: data
+*/
+/*-cf-
+    values-of
+        context     context!
+    return: Block of values defined in context.
+    group: data
+*/
+CFUNC(cfunc_words_of)
+{
+    const UBuffer* ctx;
+
+    if( ! ur_is(a1, UT_CONTEXT) )
+        return errorType( "words-of expected context!" );
+
+    if( ur_int(a2) )
+    {
+        UBlockIterM bi;
+        const UCell* cell;
+        int used;
+
+        ctx = ur_bufferSer(a1);
+        cell = ctx->ptr.cell;
+        used = ctx->used;
+
+        bi.buf = ur_makeBlockCell( ut, UT_BLOCK, used, res );
+        bi.buf->used = used;
+        bi.it  = bi.buf->ptr.cell;
+        bi.end = bi.it + used;
+
+        ur_foreach( bi )
+        {
+            *bi.it = *cell++;
+        }
+    }
+    else
+    {
+        if( ! (ctx = ur_sortedContext( ut, a1 )) )
+            return UR_THROW;
+        _contextWords( ut, ctx, a1->context.buf, res );
+    }
+    return UR_OK;
+}
+
+
 /*-cf-
     bind
         words   word!/block!
