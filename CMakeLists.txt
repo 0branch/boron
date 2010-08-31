@@ -64,7 +64,6 @@ add_library(boron-lib SHARED
     boron.c
     port_file.c
     port_socket.c
-    port_thread.c
     ${OS_FILE}
 )
 
