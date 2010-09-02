@@ -594,6 +594,24 @@ int logic_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+int logic_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    (void) ut;
+    switch( test )
+    {
+        case UR_COMPARE_SAME:
+            return ur_int(a) == ur_int(b);
+
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) == ur_type(b) )
+                return ur_int(a) == ur_int(b);
+            break;
+    }
+    return 0;
+}
+
+
 void logic_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) ut;
@@ -608,7 +626,7 @@ UDatatype dt_logic =
 {
     "logic!",
     logic_make,             logic_make,             unset_copy,
-    unset_compare,          int_operate,            unset_select,
+    logic_compare,          int_operate,            unset_select,
     logic_toString,         logic_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind,
