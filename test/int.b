@@ -10,3 +10,7 @@ print "---- format"
 print [to-dec $10  to-dec $ffffffff]
 print [to-dec 0x10 to-dec 0xffffffff]
 print [to-hex 16   to-hex -1]
+
+print "---- convert"
+print to-int "-34 j"        ; Conversion stops at non-digit
+print to-int "0xFF08f201"

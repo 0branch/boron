@@ -730,6 +730,7 @@ UDatatype dt_char =
 
 
 extern int64_t str_toInt64( const char*, const char*, const char** pos );
+extern int64_t str_hexToInt64( const char*, const char*, const char** pos );
 
 int int_make( UThread* ut, const UCell* from, UCell* res )
 {
@@ -757,10 +758,24 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
             USeriesIter si;
             ur_seriesSlice( ut, &si, from );
             if( ur_strIsUcs2(si.buf) )
-                ur_int(res) = 0;
+            {
+                return ur_error( ut, UR_ERR_INTERNAL,
+                        "FIXME: make number does not handle UCS2 strings" );
+                //ur_int(res) = 0;
+            }
             else
-                ur_int(res) = (int32_t) str_toInt64(si.buf->ptr.c + si.it,
-                                                    si.buf->ptr.c + si.end, 0);
+            {
+                const char* cp = si.buf->ptr.c;
+                if( (si.end - si.it) > 2 && (cp[0] == '0') && (cp[1] == 'x') )
+                {
+                    ur_int(res) = (int32_t) str_hexToInt64(cp + si.it + 2,
+                                                           cp + si.end, 0);
+                    ur_setFlags(res, UR_FLAG_INT_HEX);
+                }
+                else
+                    ur_int(res) = (int32_t) str_toInt64(cp + si.it,
+                                                        cp + si.end, 0);
+            }
         }
             break;
         default:
@@ -928,7 +943,9 @@ int decimal_make( UThread* ut, const UCell* from, UCell* res )
             USeriesIter si;
             ur_seriesSlice( ut, &si, from );
             if( ur_strIsUcs2(si.buf) )
-                ur_decimal(res) = 0;
+                return ur_error( ut, UR_ERR_INTERNAL,
+                        "FIXME: make number does not handle UCS2 strings" );
+                //ur_decimal(res) = 0;
             else
                 ur_decimal(res) = str_toDouble( si.buf->ptr.c + si.it,
                                                 si.buf->ptr.c + si.end, 0 );
@@ -1128,10 +1145,24 @@ int bignum_make( UThread* ut, const UCell* from, UCell* res )
             ur_seriesSlice( ut, &si, from );
             ur_setId(res, UT_BIGNUM);
             if( ur_strIsUcs2(si.buf) )
-                bignum_zero( res );
+            {
+                return ur_error( ut, UR_ERR_INTERNAL,
+                        "FIXME: make number does not handle UCS2 strings" );
+                //bignum_zero( res );
+            }
             else
-                bignum_setl(res, str_toInt64( si.buf->ptr.c + si.it,
-                                              si.buf->ptr.c + si.end, 0) );
+            {
+                const char* cp = si.buf->ptr.c;
+                if( (si.end - si.it) > 2 && (cp[0] == '0') && (cp[1] == 'x') )
+                {
+                    bignum_setl(res, str_hexToInt64(cp + si.it + 2,
+                                                    cp + si.end, 0) );
+                    ur_setFlags(res, UR_FLAG_INT_HEX);
+                }
+                else
+                    bignum_setl(res, str_toInt64(cp + si.it,
+                                                 cp + si.end, 0) );
+            }
         }
             break;
         default:
