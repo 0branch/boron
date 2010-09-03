@@ -94,6 +94,21 @@ CFUNC(cfunc_halt)
 
 
 /*-cf-
+    exit
+    return: NA
+    group: control
+
+    Exit from function with result unset.
+*/
+CFUNC(cfunc_exit)
+{
+    (void) a1;
+    ur_setId(res, UT_UNSET);
+    return boron_throwWord( ut, UR_ATOM_RETURN );
+}
+
+
+/*-cf-
     return
         result
     return: NA

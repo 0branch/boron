@@ -797,6 +797,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_nop,     "nop" );
     addCFunc( cfunc_quit,    "quit" );
     addCFunc( cfunc_halt,    "halt" );
+    addCFunc( cfunc_exit,    "exit" );
     addCFunc( cfunc_return,  "return val" );
     addCFunc( cfunc_break,   "break" );
     addCFunc( cfunc_throw,   "throw val /ghost" );
