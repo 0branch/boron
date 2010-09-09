@@ -1218,32 +1218,38 @@ CFUNC(cfunc_loop)
 
 /*-cf-
     select
-        options block!
-        val
-    return: Value after val or none! if val not found.
+        series
+        match
+        /last   Search from end of series.
+        /case   Case of characters in strings must match
+    return: Value after match or none! if match not found.
     group: data
 */
 CFUNC(cfunc_select)
 {
-    UBlockIter bi;
-    const UCell* val = a2;
+#define OPT_SELECT_LAST 0x01
+#define OPT_SELECT_CASE 0x02
+    USeriesIter si;
+    const USeriesType* dt;
+    int type = ur_type(a1);
+    int n = 0;
 
-    if( ! ur_is(a1, UT_BLOCK) )
-        return ur_error( ut, UR_ERR_TYPE, "select expected options block!" );
+    if( ! ur_isSeriesType( type ) )
+        return errorType( "select expected series" );
 
-    ur_blkSlice( ut, &bi, a1 );
-    ur_foreach( bi )
-    {
-        if( ur_equal( ut, val, bi.it ) )
-        {
-            if( ++bi.it == bi.end )
-                break;
-            *res = *bi.it;
-            return UR_OK;
-        }
-    }
+    if( CFUNC_OPTIONS & OPT_SELECT_LAST )
+        n |= UR_FIND_LAST;
+    if( CFUNC_OPTIONS & OPT_SELECT_CASE )
+        n |= UR_FIND_CASE;
 
-    ur_setId(res, UT_NONE);
+    ur_seriesSlice( ut, &si, a1 );
+    dt = SERIES_DT( type );
+    n = dt->find( ut, &si, a2, n );
+    ++n;
+    if( n > 0 && n < si.end )
+        dt->pick( si.buf, n, res );
+    else
+        ur_setId(res, UT_NONE);
     return UR_OK;
 }
 

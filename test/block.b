@@ -43,11 +43,12 @@ probe head insert/part next [1 2 3] [x y z] 2
 
 
 print "---- select"
-opt: ["eh" 1 b 2 c 3]
+opt: ["eh" 1 b 2 b 4 c 3]
 probe select opt "eh"
 probe select opt 'b
 probe select opt 3
 probe select opt 22
+probe select/last opt 'b
 
 
 print "---- set relation"
