@@ -37,6 +37,17 @@ enum BinaryParseException
 };
 
 
+#define PIPE_BITS   32
+
+typedef struct
+{
+    uint32_t pipe;
+    uint32_t bitsFree;
+    //uint32_t byteCount;
+}
+BitPipe;
+
+
 typedef struct
 {
     int (*eval)( UThread*, const UCell* );
@@ -45,6 +56,7 @@ typedef struct
     uint8_t  sliced;
     uint8_t  exception;
     uint8_t  bigEndian;
+    BitPipe  bp;
 }
 BinaryParser;
 
@@ -62,18 +74,43 @@ static const UCell* _parseBin( UThread* ut, BinaryParser* pe,
 {
     const UCell* set = 0;
     const UCell* tval;
+    uint32_t bitCount;
     uint32_t field;
     UBuffer* ibin  = ur_buffer( pe->inputBufN );
     uint8_t* in    = ibin->ptr.b + *spos;
     uint8_t* inEnd = ibin->ptr.b + pe->inputEnd;
 
 
-//match:
+match:
 
     while( rit != rend )
     {
         switch( ur_type(rit) )
         {
+            case UT_INT:
+                bitCount = ur_int(rit);
+                if( bitCount < 1 || bitCount > 24 )
+                {
+                    ur_error( PARSE_ERR, "bit-field size must be 1 to 24" );
+                    goto parse_err;
+                }
+                //if( bitCount < 25 )
+                {
+                    while( (PIPE_BITS - pe->bp.bitsFree) < bitCount )
+                    {
+                        if( in == inEnd )
+                            goto failed;
+                        pe->bp.bitsFree -= 8;
+                        pe->bp.pipe |= ((uint32_t) *in++) << pe->bp.bitsFree;
+                        //++pe->bp.byteCount;
+                    }
+                    field = pe->bp.pipe >> (PIPE_BITS - bitCount);
+                    pe->bp.pipe <<= bitCount;
+                    pe->bp.bitsFree += bitCount;
+                    goto set_field;
+                }
+                break;
+
             case UT_WORD:
                 switch( ur_atom(rit) )
                 {
@@ -81,21 +118,7 @@ static const UCell* _parseBin( UThread* ut, BinaryParser* pe,
                     if( in == inEnd )
                         goto failed;
                     field = *in++;
-set_field:
-                    if( set )
-                    {
-                        UCell* val;
-                        while( set != rit )
-                        {
-                            val = ur_wordCellM( ut, set++ );
-                            CHECK_WORD(val);
-                            ur_setId(val, UT_INT);
-                            ur_int(val) = field;
-                        }
-                        set = 0;
-                    }
-                    ++rit;
-                    break;
+                    goto set_field;
 
                 case UR_ATOM_U16:
                     if( (inEnd - in) < 2 )
@@ -192,16 +215,16 @@ set_field:
                         goto match_char;
                     else if( ur_is(tval, UT_STRING) )
                         goto match_string;
-                    /*
                     else if( ur_is(tval, UT_BLOCK) )
                         goto match_block;
+                    /*
                     else if( ur_is(tval, UT_BITSET) )
                         goto match_bitset;
                     */
                     else
                     {
                         ur_error( PARSE_ERR,
-                                "parse expected char!/string!" );
+                                "parse expected char!/string!/block!" );
                         goto parse_err;
                     }
                     break;
@@ -242,11 +265,11 @@ match_char:
                 ++in;
                 ++rit;
                 break;
-#if 0
+
             case UT_BLOCK:
                 tval = rit;
 match_block:
-                {
+            {
                 UBlockIter bi;
                 UIndex pos = in - ibin->ptr.b;
                 UIndex rblkN = tval->series.buf;
@@ -265,10 +288,12 @@ match_block:
                     else
                         goto failed;
                 }
-                }
+                in    = ibin->ptr.b + pos;
+                inEnd = ibin->ptr.b + pe->inputEnd;
                 ++rit;
+            }
                 break;
-#endif
+
             case UT_PAREN:
             {
                 UIndex pos = in - ibin->ptr.b;
@@ -350,6 +375,23 @@ match_bitset:
     *spos = in - ibin->ptr.b;
     return rit;
 
+set_field:
+
+    if( set )
+    {
+        UCell* val;
+        while( set != rit )
+        {
+            val = ur_wordCellM( ut, set++ );
+            CHECK_WORD(val);
+            ur_setId(val, UT_INT);
+            ur_int(val) = field;
+        }
+        set = 0;
+    }
+    ++rit;
+    goto match;
+
 failed:
 
     *spos = in - ibin->ptr.b;
@@ -396,6 +438,9 @@ int ur_parseBinary( UThread* ut, UBuffer* bin, UIndex start, UIndex end,
     p.sliced    = (end != bin->used);
     p.exception = PARSE_EX_NONE;
     p.bigEndian = 0;
+    p.bp.pipe = 0;
+    p.bp.bitsFree = PIPE_BITS;
+    //p.bp.byteCount = 0;
 
     *parsePos = start;
     _parseBin( ut, &p, ruleBlk->ptr.cell,
