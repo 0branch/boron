@@ -355,27 +355,15 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
         goto fail;
     }
 
+    if( ! boron_requestAccess( ut, "Open socket %s", ns.service ) )
+        goto fail;
+
     if( ns.socktype == SOCK_DGRAM )
     {
-#if 0
-        if( ! ur_userAllows( ut, "Open socket on port %d", port ) )
-        {
-            ur_error( ut, UR_ERR_ACCESS, "User denied open" );
-            goto fail;
-        }
-#endif
         socket = _openUdpSocket( ut, ns.node ? 0 : ext, nowait );
     }
     else
     {
-#if 0
-        if( ! ur_userAllows( ut, "Open TCP connection to %s:%d",
-                             ur_cstring(ut, initAddr), hostPort ) )
-        {
-            ur_error( ut, UR_ERR_ACCESS, "User denied open" );
-            goto fail;
-        }
-#endif
         if( ns.node )
         {
             socket = _openTcpClient( ut, &ext->addr, ext->addrlen );

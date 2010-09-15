@@ -49,8 +49,24 @@ void usage( const char* arg0 )
 #endif
             "  -e exp  Evaluate expression\n"
             "  -h      Show this help and exit\n"
-          //"  -s      Disable security\n"
+            "  -s      Disable security\n"
           );
+}
+
+
+int requestAccess( UThread* ut, const char* msg )
+{
+    char answer[8];
+    (void) ut;
+
+    printf( "%s? (y/n/a) ", msg );
+    fgets( answer, sizeof(answer), stdin );
+
+    if( *answer == 'y' )
+        return UR_ACCESS_ALLOW;
+    if( *answer == 'a' )
+        return UR_ACCESS_ALWAYS;
+    return UR_ACCESS_DENY;
 }
 
 
@@ -71,6 +87,7 @@ int main( int argc, char** argv )
     UBuffer rstr;
     int fileN = 0;
     int ret = 0;
+    int secure = 1;
 
 
     // Parse arguments.
@@ -97,14 +114,14 @@ int main( int argc, char** argv )
                         fileN = -i;
                         i = argc;
                         break;
-#if 0
-                    case 's':
-                        ur_disable( ut, UR_ENV_SECURE );
-                        break;
-#endif
+
                     case 'h':
                         usage( argv[0] );
                         return 0;
+
+                    case 's':
+                        secure = 0;
+                        break;
 
                     default:
 usage_err:
@@ -129,6 +146,8 @@ usage_err:
     }
     ur_freezeEnv( ut );
 
+    if( secure )
+        boron_setAccessFunc( ut, requestAccess );
 
     ur_strInit( &rstr, UR_ENC_UTF8, 0 );
 

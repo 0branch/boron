@@ -115,10 +115,10 @@ CFUNC_PUB( cfunc_save_png )
         ur_is(a2, UT_RASTER) )
     {
         file = boron_cstr( ut, a1, 0 );
-#if 0
-        if( ! ur_userAllows( ut, "Save PNG \"%s\"", file ) )
+
+        if( ! boron_requestAccess( ut, "Save PNG \"%s\"", file ) )
             return UR_THROW;
-#endif
+
         fp = fopen( file, "wb" );
         if( ! fp )
             return ur_error( ut, UR_ERR_ACCESS, "Could not open \"%s\"", file );

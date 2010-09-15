@@ -3284,6 +3284,9 @@ CFUNC(cfunc_write)
 
         filename = boron_cstr( ut, a1, 0 );
 
+        if( ! boron_requestAccess( ut, "Write file \"%s\"", filename ) )
+            return UR_THROW;
+
         ur_seriesSlice( ut, &si, data );
         size = si.end - si.it;
 
@@ -3341,9 +3344,13 @@ CFUNC(cfunc_delete)
 {
     if( ur_isStringType( ur_type(a1) ) )
     {
-        // if( ur_userAllows( ut, "Delete file \"%s\"", cp ) )
-        int ok = remove( boron_cstr(ut, a1, 0) );
-        if( ok != 0 )
+        const char* fn;
+
+        fn = boron_cstr(ut, a1, 0);
+        if( ! boron_requestAccess( ut, "Delete file \"%s\"", fn ) )
+            return UR_THROW;
+
+        if( remove( fn ) != 0 )
             return ur_error( ut, UR_ERR_ACCESS, strerror(errno) );
         ur_setId(res, UT_UNSET);
         return UR_OK;
@@ -3364,7 +3371,6 @@ CFUNC(cfunc_rename)
     if( ur_isStringType( ur_type(a1) ) &&
         ur_isStringType( ur_type(a2) ) )
     {
-        // if( ur_userAllows( ut, "Rename file \"%s\"", cp ) )
         const char* cp1;
         const char* cp2;
         UBuffer* tmp;
@@ -3374,6 +3380,9 @@ CFUNC(cfunc_rename)
 
         cp1 = boron_cstr(ut, a1, 0);
         cp2 = boron_cstr(ut, a2, tmp);
+
+        if( ! boron_requestAccess( ut, "Rename file \"%s\"", cp1 ) )
+            return UR_THROW;
 
 #ifdef _WIN32
         // We want Unix rename overwrite behavior.

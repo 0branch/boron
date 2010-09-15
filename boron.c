@@ -64,6 +64,7 @@ LocalFrame;
 typedef struct BoronThread
 {
     UThread ut;
+    int (*requestAccess)( UThread*, const char* );
     UCell*  evalData;
     UCell*  tos;
     UCell*  eos;
@@ -187,6 +188,7 @@ static void boron_threadInit( UThread* ut )
 
     ut->wordCell  = boron_wordCell;
     ut->wordCellM = boron_wordCellM;
+    BT->requestAccess = 0;
 
     // Create evalData block.  This never changes size so we can safely
     // keep a pointer to the cells.
@@ -1521,6 +1523,52 @@ UBuffer* boron_tempBinary( UThread* ut )
     return ur_buffer( BT->tempN );
 }
 */
+
+
+void boron_setAccessFunc( UThread* ut, int (*func)( UThread*, const char* ) )
+{
+    BT->requestAccess = func;
+}
+
+
+/**
+  Request user permission to access a resource.
+
+  \return UR_OK/UR_THROW.
+*/
+int boron_requestAccess( UThread* ut, const char* msg, ... )
+{
+    if( BT->requestAccess )
+    {
+        const int bufSize = 256;
+        va_list arg;
+        UBuffer bin;
+        int access;
+
+        ur_binInit( &bin, bufSize );
+
+        va_start( arg, msg );
+        vsnprintf( bin.ptr.c, bufSize, msg, arg );
+        va_end( arg );
+
+        bin.ptr.c[ bufSize - 1 ] = '\0';
+        access = BT->requestAccess( ut, bin.ptr.c );
+
+        ur_binFree( &bin );
+
+        switch( access )
+        {
+            case UR_ACCESS_ALLOW:
+                return UR_OK;
+
+            case UR_ACCESS_ALWAYS:
+                BT->requestAccess = 0;
+                return UR_OK;
+        }
+        return ur_error( ut, UR_ERR_ACCESS, "User denied access" );
+    }
+    return UR_OK;
+}
 
 
 /** @} */

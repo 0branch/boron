@@ -46,6 +46,14 @@ enum BoronWordBindings
 #define CFUNC_OPTIONS   a1[-1].series.end
 
 
+enum UserAccess
+{
+    UR_ACCESS_DENY,
+    UR_ACCESS_ALLOW,
+    UR_ACCESS_ALWAYS
+};
+
+
 enum PortForm
 {
     UR_PORT_SIMPLE,     // buf->ptr.v is UPortDevice*.
@@ -93,6 +101,8 @@ void     boron_addCFunc( UThread*, int (*func)(UThread*,UCell*,UCell*),
                          const char* sig );
 void     boron_addPortDevice( UThread*, UPortDevice*, UAtom name );
 void     boron_extendPort( UBuffer* port, UPortDevice** ext );
+void     boron_setAccessFunc( UThread*, int (*func)( UThread*, const char* ) );
+int      boron_requestAccess( UThread*, const char* msg, ... );
 void     boron_bindDefault( UThread*, UIndex blkN );
 int      boron_doBlock( UThread*, const UCell* blkC, UCell* res );
 int      boron_doBlockN( UThread*, UIndex blkN, UCell* res );

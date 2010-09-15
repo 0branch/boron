@@ -64,10 +64,8 @@ static int file_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
     {
         path = boron_cstr( ut, from, 0 );
 
-#if 0
-        if( ! ur_userAllows( ut, "Open file \"%s\"", path ) )
-            return ur_error( ut, UR_ERR_ACCESS, "User denied open" );
-#endif
+        if( ! boron_requestAccess( ut, "Open file \"%s\"", path ) )
+            return UR_THROW;
 
         if( opt & UR_PORT_READ )
             flags = O_RDONLY;
