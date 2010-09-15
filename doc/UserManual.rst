@@ -211,9 +211,9 @@ If none of the numbers has a decimal point then the value will be a coord!.
 Word!
 -----
 
-A word is a series of characters which does not contain white space.  The first
-character must not be a digit.  All other characters may be alpha-numeric,
-mathematical symbols, or punctuation.  Case is ignored in words.
+A word is a series of ASCII characters which does not contain white space.
+The first character must not be a digit.  All other characters may be
+alpha-numeric, mathematical symbols, or punctuation.  Case is ignored in words.
 
 Example words::
 
