@@ -67,8 +67,26 @@ The first line of a script may be a UNIX shell sha-bang (``#!``) command.
     #!/usr/bin/boron
 
 
+Command Line Usage
+------------------
+
+Usage::
+
+    boron [options] [script] [arguments]
+
+
+Command Line Options
+~~~~~~~~~~~~~~~~~~~~
+
+==========  ========================
+-e "*exp*"  Evaluate expression
+-h          Show help and exit
+-s          Disable security
+==========  ========================
+
+
 Command Line Arguments
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 If the interpreter is invoked with a script then the *args* word will be set
 to either a block of strings, or *none* if no script arguments were given.
@@ -288,7 +306,7 @@ String examples:
 File!
 -----
 
-A file value is a string which references a file or directory on the local
+A file value is a string which names a file or directory on the local
 filesystem.  They begin with a percent (%) character.  If any spaces are
 present in the path then it must be enclosed in double quotes.
 
@@ -355,7 +373,7 @@ context a new farmer could be created using *make* again.
 The *context* word is normally used to make a new context instead of
 *make context!*::
 
-    entry: context [type: hybrid level: 2]
+    unit: context [type: 'hybrid level: 2]
 
 
 Func!
