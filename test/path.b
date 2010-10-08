@@ -16,6 +16,13 @@ lp: 'a/'b
 print [type? lp lp type? first lp type? second lp]
 
 
+print "---- set-path"
+blk: [a [0 (0)]]
+blk/2/1: 5
+blk/2/2/1: 'pword
+probe blk
+
+
 print "---- block"
 a: [x 33 y: 44]
 print [a/x a/y]
