@@ -132,7 +132,8 @@ CFUNC(cfunc_return)
 */
 CFUNC(cfunc_break)
 {
-    *res = *a1;
+    (void) a1;
+    ur_setId(res, UT_UNSET);
     return boron_throwWord( ut, UR_ATOM_BREAK );
 }
 
