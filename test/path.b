@@ -21,6 +21,9 @@ blk: [a [0 (0)]]
 blk/2/1: 5
 blk/2/2/1: 'pword
 probe blk
+n: skip p: [1 2 3] 2
+n/1: 'new
+probe p
 
 
 print "---- block"

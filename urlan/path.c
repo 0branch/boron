@@ -123,7 +123,7 @@ int ur_setPath( UThread* ut, const UCell* path, const UCell* src )
                     {
                         if( ! (buf = ur_bufferSerM(node)) )
                             return UR_THROW;
-                        t = ur_int(bi.it) - 1;
+                        t = node->series.it + ur_int(bi.it) - 1;
                         if( t > -1 && t < buf->used )
                         {
                             node = buf->ptr.cell + t;
