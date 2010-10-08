@@ -116,22 +116,33 @@ int ur_setPath( UThread* ut, const UCell* path, const UCell* src )
         switch( ur_type(bi.it) )
         {
             case UT_INT:
-            {
-                int t;
-
-                if( ! node )
-                    goto err;
-                t = ur_type(node);
-                if( ! ur_isSeriesType(t) )
-                    goto err;
-                // TODO: Handle int! in middle of path.
-                if( ! (buf = ur_bufferSerM(node)) )
-                    return UR_THROW;
-                ((USeriesType*) ut->types[ t ])->poke( buf,
-                                node->series.it + ur_int(bi.it) - 1, src );
-                return UR_OK;
-            }
-                break;
+                if( node )
+                {
+                    int t = ur_type(node);
+                    if( ur_isBlockType(t) )
+                    {
+                        if( ! (buf = ur_bufferSerM(node)) )
+                            return UR_THROW;
+                        t = ur_int(bi.it) - 1;
+                        if( t > -1 && t < buf->used )
+                        {
+                            node = buf->ptr.cell + t;
+                            break;
+                        }
+                    }
+                    else if( ur_isSeriesType(t) )
+                    {
+                        if( ! (buf = ur_bufferSerM(node)) )
+                            return UR_THROW;
+                        if( bi.it + 1 == bi.end )
+                        {
+                            ((USeriesType*) ut->types[ t ])->poke( buf,
+                                    node->series.it + ur_int(bi.it) - 1, src );
+                            return UR_OK;
+                        }
+                    }
+                }
+                goto err;
 
             case UT_WORD:
                 if( node )
@@ -169,7 +180,7 @@ int ur_setPath( UThread* ut, const UCell* path, const UCell* src )
                 break;
 
             case UT_GETWORD:
-                break;
+                //break;
 
             default:
                 goto err;

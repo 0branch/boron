@@ -6,6 +6,8 @@ none
 ---- lit-path
 path! some/path
 path! a/'b word! lit-word!
+---- set-path
+[a [5 (pword)]]
 ---- block
 33 44
 ---- integer
