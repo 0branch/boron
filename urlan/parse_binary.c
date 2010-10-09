@@ -61,6 +61,28 @@ typedef struct
 BinaryParser;
 
 
+/*
+  bitCount must be 1 to 24.
+  Returns zero if end of input reached.
+*/
+static uint8_t* pullBits( BinaryParser* pe, uint32_t bitCount,
+                          uint8_t* in, uint8_t* inEnd, uint32_t* field )
+{
+    while( (PIPE_BITS - pe->bp.bitsFree) < bitCount )
+    {
+        if( in == inEnd )
+            return 0;
+        pe->bp.bitsFree -= 8;
+        pe->bp.pipe |= ((uint32_t) *in++) << pe->bp.bitsFree;
+        //++pe->bp.byteCount;
+    }
+    *field = pe->bp.pipe >> (PIPE_BITS - bitCount);
+    pe->bp.pipe <<= bitCount;
+    pe->bp.bitsFree += bitCount;
+    return in;
+}
+
+
 #define CHECK_WORD(cell) \
     if( ! cell ) \
         goto parse_err;
@@ -89,27 +111,29 @@ match:
         {
             case UT_INT:
                 bitCount = ur_int(rit);
-                if( bitCount < 1 || bitCount > 24 )
+                if( bitCount < 1 || bitCount > 32 )
                 {
-                    ur_error( PARSE_ERR, "bit-field size must be 1 to 24" );
+                    ur_error( PARSE_ERR, "bit-field size must be 1 to 32" );
                     goto parse_err;
                 }
-                //if( bitCount < 25 )
+                if( bitCount > 24 )
                 {
-                    while( (PIPE_BITS - pe->bp.bitsFree) < bitCount )
-                    {
-                        if( in == inEnd )
-                            goto failed;
-                        pe->bp.bitsFree -= 8;
-                        pe->bp.pipe |= ((uint32_t) *in++) << pe->bp.bitsFree;
-                        //++pe->bp.byteCount;
-                    }
-                    field = pe->bp.pipe >> (PIPE_BITS - bitCount);
-                    pe->bp.pipe <<= bitCount;
-                    pe->bp.bitsFree += bitCount;
-                    goto set_field;
+                    uint32_t high;
+                    in = pullBits( pe, bitCount - 16, in, inEnd, &high );
+                    if( ! in )
+                        goto failed;
+                    in = pullBits( pe, 16, in, inEnd, &field );
+                    if( ! in )
+                        goto failed;
+                    field |= high << 16;
                 }
-                break;
+                else
+                {
+                    in = pullBits( pe, bitCount, in, inEnd, &field );
+                    if( ! in )
+                        goto failed;
+                }
+                goto set_field;
 
             case UT_WORD:
                 switch( ur_atom(rit) )
