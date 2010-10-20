@@ -381,10 +381,10 @@ static void setWID( const UCell*& prev, int id )
 static char layoutRules[] =
   "  'hbox block!\n"
   "| 'vbox block!\n"
-  "| 'spacer\n"
   "| 'label word!/string!\n"
   "| 'button string! block!\n"
   "| 'checkbox string!\n"
+  "| 'spin-box int! int!\n"
   "| 'combo get-word!/string!/block!\n"
   "| 'tip string!\n"
   "| 'title get-word!/string!\n"
@@ -397,6 +397,8 @@ static char layoutRules[] =
   "| 'group string! block!\n"
   "| 'read-only\n"
   "| 'on-event block!\n"
+  "| 'spacer\n"
+  "| 'space int!\n"
   "| 'tab block!\n"
   "|  string!\n"
   "|  block!\n"
@@ -411,10 +413,10 @@ enum LayoutRules
 {
     LD_HBOX,
     LD_VBOX,
-    LD_SPACER,
     LD_LABEL,
     LD_BUTTON,
     LD_CHECKBOX,
+    LD_SPIN_BOX,
     LD_COMBO,
     LD_TIP,
     LD_TITLE,
@@ -427,6 +429,8 @@ enum LayoutRules
     LD_GROUP,
     LD_READ_ONLY,
     LD_ON_EVENT,
+    LD_SPACER,
+    LD_SPACE,
     LD_TAB,
     LD_STRING,
     LD_BLOCK,
@@ -486,13 +490,6 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
             }
                 break;
 
-            case LD_SPACER:
-                if( ! parent.box )
-                    goto no_layout;
-
-                parent.box->addStretch( 1 );
-                break;
-
             case LD_LABEL:
             {
                 QString txt;
@@ -516,6 +513,14 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
             {
                 MAKE_WIDGET( SCheck )
                 pw->setText( qstring( cbp.values + 1 ) );
+            }
+                break;
+
+            case LD_SPIN_BOX:
+            {
+                MAKE_WIDGET( SSpinBox )
+                pw->setRange( ur_int( cbp.values + 1 ),
+                              ur_int( cbp.values + 2 ) );
             }
                 break;
 
@@ -545,6 +550,21 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                     pw->addItem( qstring( val ) );
                 }
             }
+                break;
+
+            case LD_SPACER:
+                if( ! parent.box )
+                    goto no_layout;
+
+                parent.box->addStretch( 1 );
+                break;
+
+            case LD_SPACE:
+                if( ! parent.box )
+                    goto no_layout;
+
+                val = cbp.values + 1;
+                parent.box->addSpacing( ur_int(val) );
                 break;
 
             case LD_TAB:
@@ -1122,6 +1142,11 @@ CFUNC( cfunc_widgetValue )
             }
                 return UR_OK;
 
+            case WT_SpinBox:
+                ur_setId(res, UT_INT);
+                ur_int(res) = ((QSpinBox*) rec->widget)->value();
+                return UR_OK;
+
             case WT_Combo:
                 ur_setId(res, UT_INT);
                 ur_int(res) = ((QComboBox*) rec->widget)->currentIndex() + 1;
@@ -1186,6 +1211,13 @@ CFUNC( cfunc_setWidgetValue )
 
                 ((QCheckBox*) rec->widget)->setCheckState( state );
             }
+                break;
+
+            case WT_SpinBox:
+                if( ur_is(a2, UT_INT) )
+                {
+                    ((QSpinBox*)rec->widget)->setValue( ur_int(a2) );
+                }
                 break;
 
             case WT_Combo:
@@ -1672,6 +1704,7 @@ void STreeView::slotDo( const QModelIndex& mi )
 
 
 WIDGET_CODE(SCheck,WT_CheckBox)
+WIDGET_CODE(SSpinBox,WT_SpinBox)
 WIDGET_CODE(SGroup,WT_Group)
 WIDGET_CODE(SLabel,WT_Label)
 WIDGET_CODE(SLineEdit,WT_LineEdit)
