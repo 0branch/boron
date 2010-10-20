@@ -31,6 +31,7 @@
 #include <QGroupBox>
 #include <QPushButton>
 #include <QProgressBar>
+#include <QSpinBox>
 #include <QTabWidget>
 #include <QTreeView>
 #include <QTextEdit>
@@ -44,6 +45,7 @@ enum eWidgetType
     WT_Label,
     WT_LineEdit,
     WT_CheckBox,
+    WT_SpinBox,
     WT_Combo,
     WT_Tab,
     WT_TextEdit,
@@ -238,6 +240,7 @@ private:
 
 
 DEF_WIDGET(SCheck,QCheckBox);
+DEF_WIDGET(SSpinBox,QSpinBox);
 DEF_WIDGET(SDialog,QDialog);
 DEF_WIDGET(SGroup,QGroupBox);
 DEF_WIDGET(SLabel,QLabel);
