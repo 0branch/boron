@@ -439,6 +439,29 @@ CFUNC(cfunc_get)
 
 
 /*-cf-
+    value?
+        value
+    return: True unless value is an unset word.
+    group: data
+*/
+CFUNC(cfunc_valueQ)
+{
+    int logic = 1;
+    if( ur_isWordType( ur_type(a1) ) )
+    {
+        const UCell* cell;
+        if( ! (cell = ur_wordCell( ut, a1 )) )
+            return UR_THROW;
+        if( ur_is(cell, UT_UNSET) )
+           logic = 0;
+    }
+    ur_setId(res, UT_LOGIC);
+    ur_int(res) = logic;
+    return UR_OK;
+}
+
+
+/*-cf-
     in
         context     context!
         word        word!

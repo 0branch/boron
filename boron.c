@@ -809,6 +809,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_do,      "do" );            // val (eval-control)
     addCFunc( cfunc_set,     "set w val" );
     addCFunc( cfunc_get,     "get w" );
+    addCFunc( cfunc_valueQ,  "value? w" );
     addCFunc( cfunc_in,      "in c w" );
     addCFunc( cfunc_words_of,"words-of c 0" );
     addCFunc( cfunc_words_of,"values-of c 1" );
