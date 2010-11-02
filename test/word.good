@@ -13,3 +13,14 @@ a a
 b 'b
 c c:
 d :d
+---- tokenize
++ word!
+1 int!
++a+ word!
+- word!
+-1 int!
+-a- word!
+* word!
+& word!
+/ word!
+/a option!

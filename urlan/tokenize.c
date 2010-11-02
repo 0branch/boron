@@ -319,10 +319,18 @@ static uint8_t charset_hex[32] = {
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
-/* Word: !&'*+-./ 0-9 a-z A-Z ?|=^_~ and all ascii >= 127 */
+/* Word: !&*+-. 0-9 a-z A-Z ?|=^_~ and all ascii >= 127 */
+static uint8_t charset_word[32] = {
+    0x00,0x00,0x00,0x00,0x42,0x6C,0xFF,0xA3,
+    0xFE,0xFF,0xFF,0xD7,0xFF,0xFF,0xFF,0x57,
+    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
+};
+
+/* Word: !&'*+-./: 0-9 a-z A-Z ?|=^_~ and all ascii >= 127 */
 static uint8_t charset_path[32] = {
   //0x00,0x00,0x00,0x00,0xC2,0x6C,0xFF,0xF3,
-    0x00,0x00,0x00,0x00,0xC2,0xEC,0xFF,0xF3,    // With '/'
+    0x00,0x00,0x00,0x00,0xC2,0xEC,0xFF,0xF7,    // With '/' & ':'
     0xFE,0xFF,0xFF,0xD7,0xFF,0xFF,0xFF,0x57,
     0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
     0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
@@ -332,6 +340,7 @@ static uint8_t charset_path[32] = {
 #define IS_HEX(v)       ur_bitIsSet(charset_hex,v)
 #define IS_WHITE(v)     ur_bitIsSet(charset_white,v)
 #define IS_DELIM(v)     ur_bitIsSet(charset_delimiter,v)
+#define IS_WORD(v)      ur_bitIsSet(charset_word,v)
 #define IS_PATH(v)      ur_bitIsSet(charset_path,v)
 #define isAlpha(v)      ((v >= 'a' && v <= 'z') || (v >= 'A' && v <= 'Z'))
 
@@ -465,30 +474,17 @@ const char* ur_binAppendHex( UBuffer* buf, const char* it, const char* end )
 
   Returns cell added to blk.
 */
-static UCell* ur_tokenizePath( UThread* ut, UBuffer* blk,
-                               const char* it, const char* end )
+static UCell* _tokenizePath( UThread* ut, UBuffer* blk,
+                             const char* it, const char* ew, const char* end,
+                             int wtype )
 {
 #define find_char(a,b,ch)   (char*) find_uint8_t((uint8_t*)a, (uint8_t*)b, ch)
     int ch;
-    const char* ew;
     UBuffer* path;
     UCell* cell;
     UCell* pc;
     UAtom atom;
 
-    ew = find_char( it, end, '/' );
-    if( ! ew || ew == it )
-    {
-        int type = UT_WORD;
-        if( (ew == it) && ((end - it) > 1) )
-        {
-            type = UT_OPTION;
-            ++it;
-        }
-        cell = ur_blkAppendNew( blk, type );
-        ur_setWordUnbound( cell, ur_internAtom( ut, it, end ) );
-        return cell;
-    }
 
     cell = ur_blkAppendNew( blk, UT_UNSET );       // Unset in case of GC.
 
@@ -515,7 +511,16 @@ static UCell* ur_tokenizePath( UThread* ut, UBuffer* blk,
         return cell;
     }
 
-    path = ur_makeBlockCell( ut, UT_PATH, 2, cell );
+    if( end[-1] == ':' )
+    {
+        --end;
+        wtype = UT_SETPATH;
+    }
+    else if( wtype == UT_LITWORD )
+        wtype = UT_LITPATH;
+    else
+        wtype = UT_PATH;
+    path = ur_makeBlockCell( ut, wtype, 2, cell );
 
     while( 1 )
     {
@@ -530,6 +535,11 @@ static UCell* ur_tokenizePath( UThread* ut, UBuffer* blk,
             if( ch == '\'' )
             {
                 atom = UT_LITWORD;
+                ++it;
+            }
+            else if( ch == ':' )
+            {
+                atom = UT_GETWORD;
                 ++it;
             }
             else
@@ -729,6 +739,7 @@ UIndex ur_tokenize( UThread* ut, const char* it, const char* end, UCell* res )
     UCell* cell;
     const char* token;
     int ch;
+    int mode;
     int sol = 0;
     int lines = 0;
 
@@ -764,13 +775,26 @@ newline:
                 goto finish;
 
             case COM_B:
-                token = it++;
-                if( it == end || *it != '*' )
-                    goto alpha;
-                it = blockComment( ++it, end, &lines );
-                if( it )
-                    goto start;
-                goto finish;
+                token = ++it;
+                if( it == end || IS_DELIM(*it) )
+                {
+                    --token;
+                    mode = UT_WORD;
+                    goto word;
+                }
+                if( *it == '*' )
+                {
+                    it = blockComment( ++it, end, &lines );
+                    if( it )
+                        goto start;
+                    goto finish;
+                }
+                SCAN_LOOP
+                    if( ! IS_WORD( ch ) )
+                        break;
+                SCAN_END
+                mode = UT_OPTION;
+                goto word;
 
             case BIN:
 binary:
@@ -986,24 +1010,16 @@ string_end:
                     goto set_sol;
                 }
                 }
-
-                SCAN_LOOP
-                    if( ! IS_PATH( ch ) )
-                        break;
-                SCAN_END
-                if( ch == ':' )
-                {
-                    syntaxError( "Extra colon in word/path" );
-                }
-                cell = ur_tokenizePath( ut, BLOCK, token, it );
-                ur_type(cell) = ur_is(cell, UT_PATH) ?
-                                    UT_LITPATH : UT_LITWORD;
-                goto set_sol;
+                mode = UT_LITWORD;
+                goto alpha;
 
             case SIGN:
                 token = it++;
                 if( it == end || ! isDigit(*it) )
+                {
+                    mode = UT_WORD;
                     goto alpha;
+                }
                 goto number;
 
             case ZERO:
@@ -1114,32 +1130,41 @@ hex_number:
 
             case COLON:
                 token = ++it;
-                SCAN_LOOP
-                    if( ! IS_PATH( ch ) )
-                        break;
-                SCAN_END
-                if( ch == ':' )
-                {
-                    syntaxError( "Extra colon in word/path" );
-                }
-                cell = ur_tokenizePath( ut, BLOCK, token, it );
-                if( ur_is(cell, UT_WORD) )
-                    ur_type(cell) = COLON_WORD;
-                goto set_sol;
+                mode = UT_GETWORD;
+                goto alpha;
 
             case ALPHA:
                 token = it++;
+                mode = UT_WORD;
 alpha:
                 SCAN_LOOP
-                    if( ! IS_PATH( ch ) )
+                    if( ! IS_WORD( ch ) )
                         break;
                 SCAN_END
-                cell = ur_tokenizePath( ut, BLOCK, token, it );
-                if( ch == ':' )
+                if( ch == '/' )
                 {
-                    ur_type(cell) = ur_is(cell, UT_PATH) ?
-                                        UT_SETPATH : WORD_COLON;
+                    const char* endw = it;
+                    SCAN_LOOP
+                        if( ! IS_PATH( ch ) )
+                            break;
+                    SCAN_END
+                    cell = _tokenizePath( ut, BLOCK, token, endw, it, mode );
+                }
+                else if( ch == ':' )
+                {
+                    if( mode != UT_WORD )
+                    {
+                        syntaxError( "Unexpected colon in word" );
+                    }
+                    cell = ur_blkAppendNew( BLOCK, UT_SETWORD );
+                    ur_setWordUnbound( cell, ur_internAtom( ut, token, it ) );
                     ++it;
+                }
+                else
+                {
+word:
+                    cell = ur_blkAppendNew( BLOCK, mode );
+                    ur_setWordUnbound( cell, ur_internAtom( ut, token, it ) );
                 }
                 goto set_sol;
 

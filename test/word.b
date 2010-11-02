@@ -26,3 +26,8 @@ probe to-word int!
 print "---- toText"
 words: [a 'b c: :d]
 foreach w words [prin w prin ' '  probe w]
+
+
+print "---- tokenize"
+words: [+ +1 +a+ - -1 -a- * & / /a]  ; '/ /:
+foreach w words [print [w type? w]]
