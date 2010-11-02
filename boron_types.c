@@ -343,39 +343,43 @@ int func_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 }
 
 
-int func_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+const UCell* func_select( UThread* ut, const UCell* cell, const UCell* sel,
+                          UCell* tmp )
 {
     const UBuffer* buf;
     const FuncOption* opt;
     const FuncOption* it;
     const FuncOption* end;
     UAtom atom;
+    (void) tmp;
 
-    if( ! FCELL->argBufN )
-        return ur_error( ut, UR_ERR_SCRIPT,
-                         "function has no options to select" );
-
-    buf = ur_bufferE( FCELL->argBufN );
-    opt = func_optTable(buf);
-    end = opt + buf->elemSize;
-    BT->funcOptions = 0;
-
-    for( ; bi->it != bi->end; ++bi->it )
+    if( ur_is(sel, UT_WORD) )
     {
-        if( ur_is(bi->it, UT_WORD) )
+        if( FCELL->argBufN )
         {
-            atom = ur_atom(bi->it);
+            buf = ur_bufferE( FCELL->argBufN );
+            opt = func_optTable(buf);
+            end = opt + buf->elemSize;
+            atom = ur_atom(sel);
+
             for( it = opt; it != end; ++it )
             {
                 if( atom == it->atom )
+                {
                     BT->funcOptions |= 1 << (it - opt);
+                    return cell;
+                }
             }
         }
+        ur_error( ut, UR_ERR_SCRIPT, "function has no option /%s",
+                  ur_wordCStr(sel) );
     }
-
-    *res = *cell;
-    bi->it = bi->end;
-    return UR_OK;
+    else
+    {
+        ur_error( ut, UR_ERR_SCRIPT, "function select expected word!" );
+    }
+    BT->funcOptions = 0;
+    return 0;
 }
 
 

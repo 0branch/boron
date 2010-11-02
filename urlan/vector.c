@@ -503,16 +503,17 @@ void vector_poke( UBuffer* buf, UIndex n, const UCell* val )
 
 
 static
-int vector_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+const UCell* vector_select( UThread* ut, const UCell* cell, const UCell* sel,
+                            UCell* tmp )
 {
-    if( ur_is(bi->it, UT_INT) )
+    if( ur_is(sel, UT_INT) )
     {
         const UBuffer* buf = ur_bufferSer(cell);
-        vector_pick( buf, cell->series.it + ur_int(bi->it) - 1, res );
-        ++bi->it;
-        return UR_OK;
+        vector_pick( buf, cell->series.it + ur_int(sel) - 1, tmp );
+        return tmp;
     }
-    return ur_error( ut, UR_ERR_SCRIPT, "vector select expected int!" );
+    ur_error( ut, UR_ERR_SCRIPT, "vector select expected int!" );
+    return 0;
 }
 
 
@@ -554,6 +555,9 @@ int vector_insert( UThread* ut, UBuffer* buf, UIndex index,
                    const UCell* val, UIndex part )
 {
     int vt = ur_type(val);
+    (void) index;
+    (void) part;
+
     if( (vt == UT_CHAR) || (vt == UT_INT) )
     {
         ur_arrReserve( buf, buf->used + 1 );

@@ -154,12 +154,12 @@ int raster_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
-static
-int raster_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+static const UCell*
+raster_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
 {
     const RasterHead* rh;
 
-    switch( ur_atom(bi->it) )
+    switch( ur_atom(sel) )
     {
         case UR_ATOM_X:
         case UR_ATOM_WIDTH:
@@ -215,10 +215,11 @@ int raster_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
             break;
 
         default:
-            return ur_error( ut, UR_ERR_SCRIPT, "Invalid raster select" );
+            ur_error( ut, UR_ERR_SCRIPT,
+                      "raster select expected x/y/width/height/size/elem" );
+            return 0;
     }
-    ++bi->it;
-    return UR_OK;
+    return res;
 }
 
 
@@ -529,29 +530,27 @@ static void textureToRaster( UThread* ut, GLenum target, GLuint name,
 }
 
 
-static
-int texture_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+static const UCell*
+texture_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* tmp )
 {
-    if( ur_is(bi->it, UT_WORD) )
+    if( ur_is(sel, UT_WORD) )
     {
-        if( ur_atom(bi->it) == UR_ATOM_RASTER )
+        if( ur_atom(sel) == UR_ATOM_RASTER )
         {
             UIndex ri = ur_texRast(cell);
             if( ri )
             {
-                ur_setId(res, UT_RASTER);
-                ur_setSeries(res, ri, 0);
+                ur_setId(tmp, UT_RASTER);
+                ur_setSeries(tmp, ri, 0);
             }
             else
             {
-                textureToRaster( ut, GL_TEXTURE_2D, ur_texId(cell), res );
+                textureToRaster( ut, GL_TEXTURE_2D, ur_texId(cell), tmp );
             }
-            ++bi->it;
-            return UR_OK;
+            return tmp;
         }
-        return raster_select( ut, cell, bi, res );
     }
-    return ur_error( ut, UR_ERR_SCRIPT, "Texture select expected word!" );
+    return raster_select( ut, cell, sel, tmp );
 }
 
 
@@ -702,40 +701,33 @@ UR_CALL( to_rfont )
 #endif
 
 
-static
-int rfont_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+static const UCell*
+rfont_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
 {
-    if( ur_is(bi->it, UT_WORD) )
+    if( ur_is(sel, UT_WORD) )
     {
-        switch( ur_atom(bi->it) )
+        switch( ur_atom(sel) )
         {
             case UR_ATOM_BINARY:
                 ur_setId(res, UT_BINARY);
                 ur_setSeries(res, ur_fontTF(cell), 0);
-                break;
+                return res;
 
             case UR_ATOM_RASTER:
                 ur_setId(res, UT_RASTER);
                 ur_setSeries(res, ur_fontRast(cell), 0);
-                break;
+                return res;
 
             case UR_ATOM_TEXTURE:
                 ur_setId(res, UT_TEXTURE);
                 ur_texId(res)   = ur_fontTexId(cell);
                 ur_texRast(res) = ur_fontRast(cell);
-                break;
-
-            default:
-                goto error;
+                return res;
         }
-        ++bi->it;
-        return UR_OK;
     }
-
-error:
-
-    return ur_error( ut, UR_ERR_SCRIPT,
-                     "Font select expected binary, raster, or texture" );
+    ur_error( ut, UR_ERR_SCRIPT,
+              "font select expected binary/raster/texture" );
+    return 0;
 }
 
 
@@ -1002,30 +994,26 @@ int fbo_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
-static
-int fbo_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+static const UCell*
+fbo_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
 {
-    if( ur_is(bi->it, UT_WORD) )
+    if( ur_is(sel, UT_WORD) )
     {
-        switch( ur_atom(bi->it) )
+        switch( ur_atom(sel) )
         {
         case UR_ATOM_RASTER:
             textureToRaster( ut, GL_TEXTURE_2D, ur_fboTexId(cell), res );
-            break;
+            return res;
 
         case UR_ATOM_TEXTURE:
             ur_setId(res, UT_TEXTURE);
             ur_texId(res)   = ur_fboTexId(cell);
             ur_texRast(res) = 0;
-            break;
-
-        default:
-            return ur_error( ut, UR_ERR_SCRIPT, "Invalid fbo select" );
+            return res;
         }
-        ++bi->it;
-        return UR_OK;
     }
-    return ur_error( ut, UR_ERR_SCRIPT, "fbo select expected word!" );
+    ur_error( ut, UR_ERR_SCRIPT, "fbo select expected raster/texture" );
+    return 0;
 }
 
 
@@ -1232,17 +1220,17 @@ static int widget_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
-static
-int widget_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+static const UCell*
+widget_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
 {
-    if( ur_is(bi->it, UT_WORD) )
+    if( ur_is(sel, UT_WORD) )
     {
         GWidget* wp = ur_widgetPtr(cell);
-        UAtom atom = ur_atom(bi->it);
-        ++bi->it;
-        return wp->wclass->select( wp, atom, res );
+        UAtom atom = ur_atom(sel);
+        return wp->wclass->select( wp, atom, res ) ? res : 0;
     }
-    return ur_error( ut, UR_ERR_SCRIPT, "widget select expected word!" );
+    ur_error( ut, UR_ERR_SCRIPT, "widget select expected word!" );
+    return 0;
 }
 
 

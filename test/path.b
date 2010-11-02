@@ -29,6 +29,10 @@ probe p
 print "---- block"
 a: [x 33 y: 44]
 print [a/x a/y]
+blk: [a 1 b [x 11 y (aa bb cc)]]
+probe blk/b/y/3
+blk/b/y/3: 44
+probe blk
 
 
 print "---- integer"
@@ -36,3 +40,13 @@ a: first [foo/-900/48]
 foreach elem a [
     print [:elem type? elem]
 ]
+
+
+print "---- get-word"
+ctx: context [a: 1 b: 2]
+val: 'b
+probe ctx/:val
+blk: [foo [bar sol] b cog]
+probe blk/:val
+val: 2
+probe blk/:val/2

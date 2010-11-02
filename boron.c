@@ -1005,7 +1005,10 @@ static int boron_call( UThread* ut, const UCellFunc* fcell, UCell* blkC,
                         nc = *pc++;
 
                         if( ! (args = boron_stackPushN( ut, nc )) )
+                        {
+                            BT->funcOptions = 0;
                             goto traceError;
+                        }
                         end = args + nc;
                         if( ok == FO_clearLocalOpt )
                         {

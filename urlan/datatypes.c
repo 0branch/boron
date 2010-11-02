@@ -94,17 +94,15 @@
 
   \return UR_OK/UR_THROW
 */
-/** \fn int  (*UDatatype::select)( UThread*, const UCell* cell, UBlockIter* bi, UCell* res)
-  Get value which path references.
-  If the path is valid, this method must set the result, advance bi->it, and
-  return UR_OK.
-  If the path is invalid, call ur_error() and return UR_THROW.
+/** \fn const UCell* (*UDatatype::select)( UThread*, const UCell* cell, const UCell* sel, UCell* tmp)
+  Get the value which a path node references.
+  If the selector is invalid, call ur_error() and return 0.
 
   \param cell   Cell of this datatype.
-  \param bi     Path block with bi->it set to the node following cell.
-  \param res    Result of path selection.
+  \param sel    Selector value.
+  \param tmp    Storage for result (if needed).  If used, then return tmp.
 
-  \return UR_OK/UR_THROW
+  \return Pointer to result cell or 0 if an error is thrown.
 */
 /** \fn void (*UDatatype::toString)( UThread*, const UCell* cell, UBuffer* str, int depth )
   Convert cell to its string data representation.
@@ -264,13 +262,15 @@ int  unset_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
                      ur_atomCStr(ut, ur_type(b)) );
 }
 
-int unset_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+const UCell* unset_select( UThread* ut, const UCell* cell, const UCell* sel,
+                           UCell* tmp )
 {
     (void) cell;
-    (void) bi;
-    (void) res;
-    return ur_error( ut, UR_ERR_SCRIPT, "path select is unset for type %s",
-                     ur_atomCStr(ut, ur_type(cell)) );
+    (void) sel;
+    (void) tmp;
+    ur_error( ut, UR_ERR_SCRIPT, "path select is unset for type %s",
+              ur_atomCStr(ut, ur_type(cell)) );
+    return 0;
 }
 
 void unset_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
@@ -1515,15 +1515,16 @@ int vec3_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
 
 
 static
-int vec3_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+const UCell* vec3_select( UThread* ut, const UCell* cell, const UCell* sel,
+                          UCell* tmp )
 {
-    if( ur_is(bi->it, UT_INT) )
+    if( ur_is(sel, UT_INT) )
     {
-        vec3_pick( cell, ur_int(bi->it) - 1, res );
-        ++bi->it;
-        return UR_OK;
+        vec3_pick( cell, ur_int(sel) - 1, tmp );
+        return tmp;
     }
-    return ur_error( ut, UR_ERR_SCRIPT, "vec3 select expected int!" );
+    ur_error( ut, UR_ERR_SCRIPT, "vec3 select expected int!" );
+    return 0;
 }
 
 
@@ -2141,16 +2142,17 @@ int binary_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 }
 
 
-int binary_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+const UCell* binary_select( UThread* ut, const UCell* cell, const UCell* sel,
+                            UCell* tmp )
 {
-    if( ur_is(bi->it, UT_INT) )
+    if( ur_is(sel, UT_INT) )
     {
         const UBuffer* buf = ur_bufferSer(cell);
-        binary_pick( buf, cell->series.it + ur_int(bi->it) - 1, res );
-        ++bi->it;
-        return UR_OK;
+        binary_pick( buf, cell->series.it + ur_int(sel) - 1, tmp );
+        return tmp;
     }
-    return ur_error( ut, UR_ERR_SCRIPT, "binary select expected int!" );
+    ur_error( ut, UR_ERR_SCRIPT, "binary select expected int!" );
+    return 0;
 }
 
 
@@ -2930,16 +2932,17 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 }
 
 
-int string_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+const UCell* string_select( UThread* ut, const UCell* cell, const UCell* sel,
+                            UCell* tmp )
 {
-    if( ur_is(bi->it, UT_INT) )
+    if( ur_is(sel, UT_INT) )
     {
         const UBuffer* buf = ur_bufferSer(cell);
-        string_pick( buf, cell->series.it + ur_int(bi->it) - 1, res );
-        ++bi->it;
-        return UR_OK;
+        string_pick( buf, cell->series.it + ur_int(sel) - 1, tmp );
+        return tmp;
     }
-    return ur_error( ut, UR_ERR_SCRIPT, "string select expected int!" );
+    ur_error( ut, UR_ERR_SCRIPT, "string select expected int!" );
+    return 0;
 }
 
 
@@ -3522,20 +3525,25 @@ int block_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 }
 
 
-int block_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+const UCell* block_select( UThread* ut, const UCell* cell, const UCell* sel,
+                           UCell* tmp )
 {
     const UBuffer* buf = ur_bufferSer(cell);
 
-    if( ur_is(bi->it, UT_INT) )
+    if( ur_is(sel, UT_INT) )
     {
-        block_pick( buf, cell->series.it + ur_int(bi->it) - 1, res );
-        ++bi->it;
-        return UR_OK;
+        //block_pick( buf, cell->series.it + ur_int(sel) - 1, tmp );
+        int n = cell->series.it + ur_int(sel) - 1;
+        if( n > -1 && n < buf->used )
+            return buf->ptr.cell + n;
+none:
+        ur_setId(tmp, UT_NONE);
+        return tmp;
     }
-    else if( ur_is(bi->it, UT_WORD) )
+    else if( ur_is(sel, UT_WORD) )
     {
         UBlockIter wi;
-        UAtom atom = ur_atom(bi->it);
+        UAtom atom = ur_atom(sel);
         ur_blkSlice( ut, &wi, cell );
         ur_foreach( wi )
         {
@@ -3544,14 +3552,14 @@ int block_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
             // intialized memory so memory checkers will report an error.
             if( ur_isWordType( ur_type(wi.it) ) && (ur_atom(wi.it) == atom) )
             {
-                if( ++wi.it != wi.end )
-                    *res = *wi.it;
-                ++bi->it;
-                return UR_OK;
+                if( ++wi.it == wi.end )
+                    goto none;
+                return wi.it;
             }
         }
     }
-    return ur_error( ut, UR_ERR_SCRIPT, "block select expected int!/word!" );
+    ur_error( ut, UR_ERR_SCRIPT, "block select expected int!/word!" );
+    return 0;
 }
 
 
@@ -3788,34 +3796,36 @@ void _contextWords( UThread* ut, const UBuffer* ctx, UIndex ctxN, UCell* res )
 }
 
 
-int context_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+const UCell* context_select( UThread* ut, const UCell* cell, const UCell* sel,
+                             UCell* tmp )
 {
     const UBuffer* ctx;
 
-    if( ! (ctx = ur_sortedContext( ut, cell )) )
-        return UR_THROW;
-
-    if( ur_is(bi->it, UT_WORD) )
+    if( (ctx = ur_sortedContext( ut, cell )) )
     {
-        int i = ur_ctxLookup( ctx, ur_atom(bi->it) );
-        if( i < 0 )
-            return ur_error( ut, UR_ERR_SCRIPT, "context has no word '%s",
-                             ur_wordCStr( bi->it ) );
-        *res = *ur_ctxCell(ctx, i);
-        ++bi->it;
-        return UR_OK;
-    }
-    else if( ur_is(bi->it, UT_LITWORD) )
-    {
-        if( ur_atom(bi->it) == UR_ATOM_WORDS )
+        if( ur_is(sel, UT_WORD) )
         {
-            _contextWords( ut, ctx, cell->context.buf, res );
-            ++bi->it;
-            return UR_OK;
+            int i = ur_ctxLookup( ctx, ur_atom(sel) );
+            if( i >= 0 )
+                return ur_ctxCell(ctx, i);
+            ur_error( ut, UR_ERR_SCRIPT, "context has no word '%s",
+                      ur_wordCStr(sel) );
+        }
+        else if( ur_is(sel, UT_LITWORD) )   // Deprecated
+        {
+            if( ur_atom(sel) == UR_ATOM_WORDS )
+            {
+                _contextWords( ut, ctx, sel->context.buf, tmp );
+                return tmp;
+            }
+        }
+        else
+        {
+            ur_error( ut, UR_ERR_SCRIPT,
+                      "context select expected word!/lit-word!" );
         }
     }
-    return ur_error( ut, UR_ERR_SCRIPT,
-                     "context select expected word!/lit-word!" );
+    return 0;
 }
 
 

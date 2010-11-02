@@ -148,15 +148,16 @@ void coord_pick( const UCell* cell, int index, UCell* res )
 
 
 static
-int coord_select( UThread* ut, const UCell* cell, UBlockIter* bi, UCell* res )
+const UCell* coord_select( UThread* ut, const UCell* cell, const UCell* sel,
+                           UCell* tmp )
 {
-    if( ur_is(bi->it, UT_INT) )
+    if( ur_is(sel, UT_INT) )
     {
-        coord_pick( cell, ur_int(bi->it) - 1, res );
-        ++bi->it;
-        return UR_OK;
+        coord_pick( cell, ur_int(sel) - 1, tmp );
+        return tmp;
     }
-    return ur_error( ut, UR_ERR_SCRIPT, "coord select expected int!" );
+    ur_error( ut, UR_ERR_SCRIPT, "coord select expected int!" );
+    return 0;
 }
 
 

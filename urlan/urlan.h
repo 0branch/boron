@@ -382,7 +382,8 @@ struct UDatatype
     void (*copy)      ( UThread*, const UCell* from, UCell* res );
     int  (*compare)   ( UThread*, const UCell* a, const UCell* b, int test );
     int  (*operate)   ( UThread*, const UCell*, const UCell*, UCell* res, int );
-    int  (*select)    ( UThread*, const UCell* cell, UBlockIter* bi,UCell* res);
+    const UCell*
+         (*select)    ( UThread*, const UCell*, const UCell* sel, UCell* tmp );
     void (*toString)  ( UThread*, const UCell* cell, UBuffer* str, int depth );
     void (*toText)    ( UThread*, const UCell* cell, UBuffer* str, int depth );
 

@@ -39,6 +39,7 @@ int ur_pathCell( UThread* ut, const UCell* pc, UCell* res )
 {
     UBlockIter bi;
     const UCell* node = 0;
+    const UCell* selector;
 
     ur_blkSlice( ut, &bi, pc );
 
@@ -53,13 +54,21 @@ int ur_pathCell( UThread* ut, const UCell* pc, UCell* res )
                          ur_wordCStr( bi.it ) );
     }
 
-    ++bi.it;
-    while( bi.it != bi.end )
+    while( ++bi.it != bi.end )
     {
-        if( ! ut->types[ ur_type(node) ]->select( ut, node,
-                                                  (UBlockIter*) &bi, res ) )
+        if( ur_is(bi.it, UT_GETWORD) )
+        {
+            if( ! (selector = ur_wordCell( ut, bi.it )) )
+                return UR_THROW;
+        }
+        else
+        {
+            selector = bi.it;
+        }
+
+        node = ut->types[ ur_type(node) ]->select( ut, node, selector, res );
+        if( ! node )
             return UR_THROW;
-        node = res;
     }
     if( node != res )
         *res = *node;
