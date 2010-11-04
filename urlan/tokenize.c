@@ -247,9 +247,7 @@ const char* str_toCoord( UCell* cell, const char* it, const char* end )
         else
         {
             *nit++ = (int16_t) str_toInt64( it, end, &it );
-            if( nit == nend )
-                break;
-            if( (it != end) && *it != ',' )
+            if( nit == nend || it == end || *it != ',' )
                 break;
             ++it;
         }
