@@ -6,16 +6,17 @@
 extern "C" {
 #endif
 
-const uint8_t* find_uint8_t( const uint8_t* it, const uint8_t* end, int val );
+const uint8_t* find_uint8_t( const uint8_t* it, const uint8_t* end,
+                             uint8_t val );
 const uint16_t* find_uint16_t( const uint16_t* it, const uint16_t* end,
-                               int val );
+                               uint16_t val );
 const uint32_t* find_uint32_t( const uint32_t* it, const uint32_t* end,
-                               int val );
+                               uint32_t val );
 
 const uint8_t* find_last_uint8_t( const uint8_t* it, const uint8_t* end,
-                                  int val );
+                                  uint8_t val );
 const uint16_t* find_last_uint16_t( const uint16_t* it, const uint16_t* end,
-                                    int val );
+                                    uint16_t val );
 
 const uint8_t* find_charset_uint8_t( const uint8_t* it, const uint8_t* end,
                                      const uint8_t* cset, int csetLen );

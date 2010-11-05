@@ -1,5 +1,7 @@
+#ifndef ENV_H
+#define ENV_H
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2010 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -38,4 +40,4 @@ struct UEnv
 };
 
 
-//EOF
+#endif  /*EOF*/
