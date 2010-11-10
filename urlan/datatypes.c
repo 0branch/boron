@@ -3815,7 +3815,7 @@ const UCell* context_select( UThread* ut, const UCell* cell, const UCell* sel,
         {
             if( ur_atom(sel) == UR_ATOM_WORDS )
             {
-                _contextWords( ut, ctx, sel->context.buf, tmp );
+                _contextWords( ut, ctx, cell->context.buf, tmp );
                 return tmp;
             }
         }
