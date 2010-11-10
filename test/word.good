@@ -24,3 +24,5 @@ d :d
 & word!
 / word!
 /a option!
+---- lit-words
+['= '== '!= '> '< '<= '>=]
