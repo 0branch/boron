@@ -63,10 +63,10 @@ probe sort [1 50.0 20.0 5]
 probe sort b: ["then" "hello" "goodbye" "NOW" "now"]
 probe sort/case b
 probe sort [zulu alpha gamma beta]
+probe sort/group [0 Apple  3 Dog  1 Box  2 Cat] 2
 
 ; Caught bug in qsortIndex.
 probe sort [6 2 1 9 3 7 5 8 15 4 0 16 14 10 12 11 13 17]
-
 
 
 print "---- change"
