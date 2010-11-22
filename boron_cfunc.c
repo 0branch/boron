@@ -2442,8 +2442,7 @@ CFUNC(cfunc_sort)
         uint32_t* iend;
         int group;
         int len;
-
-        group = (CFUNC_OPTIONS & OPT_SORT_GROUP) ? ur_int(a2) : 1;
+        int indexLen;
 
         ur_blkSlice( ut, &bi, a1 );
         len = bi.end - bi.it;
@@ -2451,7 +2450,20 @@ CFUNC(cfunc_sort)
         // Make invalidates bi.buf.
         blk = ur_makeBlockCell( ut, type, len, res );
 
-        qs.index    = ((uint32_t*) (blk->ptr.cell + len)) - len;
+        if( CFUNC_OPTIONS & OPT_SORT_GROUP )
+        {
+            group = ur_int(a2);
+            if( group < 1 )
+                group = 1;
+            indexLen = len / group;
+        }
+        else
+        {
+            group = 1;
+            indexLen = len;
+        }
+
+        qs.index    = ((uint32_t*) (blk->ptr.cell + len)) - indexLen;
         qs.user     = (void*) ut;
         qs.data     = (uint8_t*) bi.it;
         qs.elemSize = sizeof(UCell);
