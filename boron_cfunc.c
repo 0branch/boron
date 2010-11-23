@@ -2422,12 +2422,15 @@ CFUNC(cfunc_difference)
     sort
         set     series
         /case   Use case-sensitive comparison with string types.
+        /group  Compare groups of elements by first value in group.
+            size    int!
     return: New series with sorted elements.
     group: series
 */
 CFUNC(cfunc_sort)
 {
 #define OPT_SORT_CASE   0x01
+#define OPT_SORT_GROUP  0x02
     int type = ur_type(a1);
 
     if( ur_isBlockType(type) )
@@ -2435,9 +2438,11 @@ CFUNC(cfunc_sort)
         QuickSortIndex qs;
         UBlockIter bi;
         UBuffer* blk;
-        const UCell* cells;
         uint32_t* ip;
+        uint32_t* iend;
+        int group;
         int len;
+        int indexLen;
 
         ur_blkSlice( ut, &bi, a1 );
         len = bi.end - bi.it;
@@ -2445,20 +2450,34 @@ CFUNC(cfunc_sort)
         // Make invalidates bi.buf.
         blk = ur_makeBlockCell( ut, type, len, res );
 
-        qs.index    = ((uint32_t*) (blk->ptr.cell + len)) - len;
+        if( CFUNC_OPTIONS & OPT_SORT_GROUP )
+        {
+            group = ur_int(a2);
+            if( group < 1 )
+                group = 1;
+            indexLen = len / group;
+        }
+        else
+        {
+            group = 1;
+            indexLen = len;
+        }
+
+        qs.index    = ((uint32_t*) (blk->ptr.cell + len)) - indexLen;
         qs.user     = (void*) ut;
         qs.data     = (uint8_t*) bi.it;
         qs.elemSize = sizeof(UCell);
         qs.compare  = (QuickSortFunc)
                 ((CFUNC_OPTIONS & OPT_SORT_CASE) ? ur_compareCase : ur_compare);
 
-        quickSortIndex( &qs, 0, len, 1 );
-
-        cells = bi.it;
         ip = qs.index;
-        ur_foreach( bi )
+        iend = ip + quickSortIndex( &qs, 0, len, group );
+
+        len = qs.elemSize * group;
+        while( ip != iend )
         {
-            ur_blkPush( blk, cells + *ip );
+            memCpy( blk->ptr.cell + blk->used, bi.it + *ip, len );
+            blk->used += group;
             ++ip;
         }
         return UR_OK;

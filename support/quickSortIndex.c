@@ -120,9 +120,7 @@ static void qsortIndex( const QuickSortIndex* qs, uint32_t l, uint32_t r )
   \param end     Ending index (not included in the sort).
   \param stride  Index increment.
 
-  \return  Non-zero if there is more than one indexed element and the sort was
-  actually performed.  If there are one or more indexed elements then the
-  index will contain the sorted index.
+  \return  Number of indicies set and sorted in qs->index.
 */
 int quickSortIndex( const QuickSortIndex* qs, uint32_t begin, uint32_t end,
                     uint32_t stride )
@@ -135,14 +133,16 @@ int quickSortIndex( const QuickSortIndex* qs, uint32_t begin, uint32_t end,
     {
         if( icount == 1 )
             *ip = begin;
-        return 0;
+        else
+            icount = 0;
     }
-
-    for( ; begin < end; begin += stride )
-        *ip++ = begin;
-
-    qsortIndex( qs, 0, icount - 1 ); 
-    return 1;
+    else
+    {
+        for( ; begin < end; begin += stride )
+            *ip++ = begin;
+        qsortIndex( qs, 0, icount - 1 ); 
+    }
+    return icount;
 }
 
 
