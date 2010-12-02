@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2010 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -88,9 +88,55 @@ uint32_t checksum_crc32( uint8_t* data, int byteCount )
 }
 
 
+#define CHECKSUM_BUF_SIZE    4*1024
+
+
+static void file_crc32( FILE* fp, UBuffer* buf, UCell* res )
+{
+    uint8_t* data;
+    size_t n;
+    uint32_t crc = 0xffffffff;
+
+    while( 1 )
+    {
+        n = fread( buf->ptr.b, 1, CHECKSUM_BUF_SIZE, fp );
+        if( n < 1 )
+            break;
+        data = buf->ptr.b;
+        do {
+            crc = crc32_next( crc, *data++ );
+        } while( --n );
+    }
+
+    ur_setId(res, UT_INT);
+    ur_int(res) = crc;
+}
+
+
+static void file_sha1( UThread* ut, FILE* fp, UBuffer* buf, UCell* res )
+{
+    SHA1_CTX context;
+    UBuffer* sum;
+    size_t n;
+
+    sum = ur_makeBinaryCell( ut, 20, res );
+    sum->used = 20;
+
+    SHA1_Init( &context );
+    while( 1 )
+    {
+        n = fread( buf->ptr.b, 1, CHECKSUM_BUF_SIZE, fp );
+        if( n < 1 )
+            break;
+        SHA1_Update( &context, buf->ptr.b, n );
+    }
+    SHA1_Final( &context, sum->ptr.b );
+}
+
+
 /*-cf-
     checksum
-        data    binary!/string!
+        data    binary!/string!/file!
         /sha1
         /crc16  IBM Bisync, USB
         /crc32  IEEE 802.3, MPEG-2
@@ -104,13 +150,14 @@ CFUNC(cfunc_checksum)
 #define OPT_CHECKSUM_SHA1   1
 #define OPT_CHECKSUM_CRC16  2
 #define OPT_CHECKSUM_CRC32  4
-    USeriesIter si;
-    uint8_t* it;
-    uint8_t* end;
     int type = ur_type(a1);
 
     if( (type == UT_BINARY) || (type == UT_STRING) )
     {
+        USeriesIter si;
+        uint8_t* it;
+        uint8_t* end;
+
         ur_seriesSlice( ut, &si, a1 );
 
         if( (type == UT_STRING) && ur_strIsUcs2(si.buf) )
@@ -128,7 +175,6 @@ CFUNC(cfunc_checksum)
             else
                 ur_int(res) = checksum_crc16( it, end - it );
             ur_setId(res, UT_INT);
-            return UR_OK;
         }
         else
         {
@@ -141,10 +187,36 @@ CFUNC(cfunc_checksum)
             SHA1_Init( &context );
             SHA1_Update( &context, it, end - it );
             SHA1_Final( &context, bin->ptr.b );
-            return UR_OK;
         }
+        return UR_OK;
     }
-    return ur_error( ut, UR_ERR_TYPE, "checksum expected binary!/string!" );
+    else if( type == UT_FILE )
+    {
+        const char* filename;
+        FILE* fp;
+        UBuffer* tmp;
+
+        filename = boron_cpath( ut, a1, 0 );
+        fp = fopen( filename, "rb" );
+        if( ! fp )
+        {
+            return ur_error( ut, UR_ERR_ACCESS,
+                             "could not open file %s", filename );
+        }
+
+        tmp = ur_buffer( BT->tempN );   // Same buffer as filename.
+        ur_binReserve( tmp, CHECKSUM_BUF_SIZE );
+
+        if( CFUNC_OPTIONS & OPT_CHECKSUM_CRC32 )
+            file_crc32( fp, tmp, res );
+        else
+            file_sha1( ut, fp, tmp, res );
+
+        fclose( fp );
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE,
+                     "checksum expected binary!/string!/file!" );
 }
 
 
