@@ -3087,6 +3087,7 @@ int block_make( UThread* ut, const UCell* from, UCell* res )
     else if( ur_isBlockType( ur_type(from) )  )
     {
         block_copy( ut, from, res );
+        ur_type(res) = UT_BLOCK;
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE,
@@ -3105,6 +3106,7 @@ int block_convert( UThread* ut, const UCell* from, UCell* res )
     else if( ur_isBlockType( type )  )
     {
         block_copy( ut, from, res );
+        ur_type(res) = UT_BLOCK;
     }
     else
     {

@@ -13,6 +13,13 @@ probe [ stuff2: [
 ]
 
 
+print "---- make"
+probe make block! 'a/b/c
+probe make block! first [(1 2)]
+probe to-block 'a/b/c
+probe to-block first [(1 2)]
+
+
 print "---- paren eval"
 print [[mul 3 4]]
 print [(mul 3 4)]

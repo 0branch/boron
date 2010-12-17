@@ -8,6 +8,11 @@
         1 2 3 some [] (a
             b)
     ]]
+---- make
+[a b c]
+[1 2]
+[a b c]
+[1 2]
 ---- paren eval
 mul 3 4
 12
