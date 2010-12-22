@@ -567,7 +567,7 @@ static const char setupScript[] =
     "tail?: :empty?\n"
     "close: :free\n"
     "context: func [b block!] [make context! b]\n"
-    "charset: func [s string!] [make bitset! s]\n"
+    "charset: func [s char!/string!] [make bitset! s]\n"
     "error: func [s string! /ghost] [throw make error! s]\n"
     "join: func [a b] [\n"
     "  a: either series? a [copy a][to-text a]\n"

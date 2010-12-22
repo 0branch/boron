@@ -2200,6 +2200,13 @@ int bitset_make( UThread* ut, const UCell* from, UCell* res )
         ur_makeBitsetCell( ut, ur_int(from), res );
         return UR_OK;
     }
+    else if( ur_is(from, UT_CHAR) )
+    {
+        int n = ur_int(from);
+        UBuffer* buf = ur_makeBitsetCell( ut, n + 1, res );
+        setBit( buf->ptr.b, n );
+        return UR_OK;
+    }
     else if( ur_is(from, UT_BINARY) )
     {
         binary_copy( ut, from, res );
@@ -2208,32 +2215,28 @@ int bitset_make( UThread* ut, const UCell* from, UCell* res )
     }
     else if( ur_is(from, UT_STRING) )
     {
-        UBuffer* buf;
+        uint8_t* bits;
         UBinaryIter si;
-       
-        buf = ur_makeBitsetCell( ut, 256, res );
+        int n;
+
+        bits = ur_makeBitsetCell( ut, 256, res )->ptr.b;
 
         ur_binSlice( ut, &si, from );
-        if( ur_strIsUcs2(si.buf) )
+        if( si.buf->form != UR_ENC_LATIN1 )
         {
             return ur_error( ut, UR_ERR_INTERNAL,
-                    "FIXME: make bitset! does not handle UCS2 strings" );
-        }
-        else
-        {
-            uint8_t* bits = buf->ptr.b;
-            int n;
-            ur_foreach( si )
-            {
-                n = *si.it;
-                setBit( bits, n );
-            }
+                    "FIXME: make bitset! only handles Latin-1 strings" );
         }
 
+        ur_foreach( si )
+        {
+            n = *si.it;
+            setBit( bits, n );
+        }
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE,
-                     "make bitset! expected int!/binary!/string!" );
+                     "make bitset! expected int!/char!/binary!/string!" );
 }
 
 
