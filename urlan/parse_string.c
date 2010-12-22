@@ -607,7 +607,7 @@ failed:
 
 bad_enc:
 
-    ur_error( ut, UR_ERR_INTERNAL, "ur_strParse() does not handle UCS2" );
+    ur_error( ut, UR_ERR_INTERNAL, "string parse does not handle UCS2" );
 
 parse_err:
 
@@ -648,8 +648,8 @@ int ur_parseString( UThread* ut, UBuffer* str, UIndex start, UIndex end,
 
     if( str->form == UR_ENC_UCS2 )
     {
-        ur_error( ut, UR_ERR_INTERNAL, "ur_strParse() does not handle UCS2" );
-        return start;
+        return ur_error( ut, UR_ERR_INTERNAL,
+                         "string parse does not handle UCS2" );
     }
 
     p.eval = eval;
