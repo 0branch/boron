@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2011 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -19,7 +19,7 @@
 
 
 #define KEEP_CASE   1
-#define MAX_WORD_LEN    42
+#define MAX_WORD_LEN    64
 #define LOWERCASE(c)    if(c >= 'A' && c <= 'Z') c -= 'A' - 'a'
 
 
