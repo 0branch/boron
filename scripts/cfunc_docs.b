@@ -27,8 +27,8 @@ parse-doc: func [txt | fob tok] [
         any [
             4 8 ' ' tok: to nl :tok skip (append fob/args tok)
         ]
-        thru {return:} tok: to nl :tok (fob/return: trim tok)
-        thru {group:}  tok: to nl :tok (fob/group:  trim tok)
+        thru {return:}         tok: to nl :tok (fob/return: trim tok)
+        opt [some ws {group:}  tok: to nl :tok (fob/group:  trim tok)]
         tok: (fob/about: trim tok)
     ]
     fob
@@ -149,11 +149,13 @@ emit-toc: func [funcs | f it it2 cskip item] [
 
 
 groups: [
+    audio    [] "Audio"
     control  [] "Control Flow"
     data     [] "Data"
     eval     [] "Evaluation"
     math     [] "Math"
     io       [] "Input/Output"
+    gl       [] "OpenGL"
     os       [] "Operating System"
     series   [] "Series"
     storage  [] "Storage"
@@ -162,25 +164,29 @@ groups: [
 emit-groups: func [| add-grp grp tok] [
     non-term: complement charset " ,^-^/"
     add-grp: [
-        parse f/group [some [
-            tok: some non-term :tok (
-                grp: select groups to-word tok
-                either grp [
-                    append grp f
-                ][
-                    print ["Unknown group" f/group]
-                ]
-            )
-          | skip
-        ]]
+        if f/group [
+            parse f/group [some [
+                tok: some non-term :tok (
+                    grp: select groups to-word tok
+                    either grp [
+                        append grp f
+                    ][
+                        print ["Unknown group" f/group]
+                    ]
+                )
+              | skip
+            ]]
+        ]
     ]
     foreach f cfuncs add-grp
     foreach f hfuncs add-grp
 
     foreach [word blk title] groups [
-        emit rejoin [{<li>} title]
-        emit-toc blk
-        emit {</li>^/}
+        ifn empty? blk [
+            emit rejoin [{<li>} title]
+            emit-toc blk
+            emit {</li>^/}
+        ]
     ]
 ]
 

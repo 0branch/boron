@@ -97,10 +97,11 @@ error:
 
 
 /*-cf-
-   save-png
+    save-png
         file    string!/file!
         raster  raster!
-   return: unset!
+    return: unset!
+    group: io
 */
 CFUNC_PUB( cfunc_save_png )
 {

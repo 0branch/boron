@@ -339,6 +339,8 @@ CFUNC( uc_handle_events )
     clear-color 
         color       decimal!/coord!/vec3!
     return: unset!
+    group: gl
+    Calls glClearColor().
 */
 CFUNC( uc_clear_color )
 {
@@ -373,6 +375,7 @@ CFUNC( uc_clear_color )
 /*-cf-
     display-swap
     return: unset!
+    group: gl
 */
 CFUNC( uc_display_swap )
 {
@@ -394,7 +397,8 @@ CFUNC( uc_display_swap )
 
 /*-cf-
     display-area
-    return: coord!
+    return: coord! or none
+    Get display rectangle (0, 0, width, height).
 */
 CFUNC( uc_display_area )
 {
@@ -420,6 +424,7 @@ CFUNC( uc_display_area )
 /*-cf-
     display-snapshot
     return: raster!
+    Create raster from current display pixels.
 */
 CFUNC( uc_display_snap )
 {
@@ -766,6 +771,7 @@ CFUNC( execNative )
     play
         sound   int!/string!/file!
     return: unset!
+    group: audio
 */
 CFUNC( uc_play )
 {
@@ -786,6 +792,7 @@ CFUNC( uc_play )
     stop
         sound   word!
     return: unset!
+    group: audio
 */
 CFUNC( uc_stop )
 {
@@ -882,6 +889,7 @@ static int _convertUnits( UThread* ut, const UCell* a1, UCell* res,
     to-degrees
         rad    int!/decimal!
     return: degrees
+    group: math
 */
 CFUNC( cfunc_to_degrees )
 {
@@ -893,6 +901,7 @@ CFUNC( cfunc_to_degrees )
     to-radians
         deg    int!/decimal!
     return: radians
+    group: math
 */
 CFUNC( cfunc_to_radians )
 {
@@ -906,6 +915,7 @@ CFUNC( cfunc_to_radians )
         min    int!/decimal!
         max    int!/decimal!
     return: Number clamped to min and max.
+    group: math
 */
 CFUNC( cfunc_limit )
 {
@@ -963,6 +973,7 @@ CFUNC( cfunc_limit )
         matrix vector!
         dir    vec3!
     return: Transformed matrix.
+    group: math
 */
 CFUNC( cfunc_look_at )
 {
@@ -1065,6 +1076,7 @@ static int _lerpCells( const UCell* v1, const UCell* v2, double frac,
         value2      decimal!/coord!/vec3!
         fraction    decimal!
     return: Interpolated value.
+    group: math
 */
 CFUNC( cfunc_lerp )
 {
@@ -1309,6 +1321,7 @@ CFUNC( uc_animate )
         src     raster!
         pos     coord!  Desitination position
     return: dest
+    group: data
 */
 CFUNC( cfunc_blit )
 {
@@ -1346,6 +1359,7 @@ CFUNC( cfunc_blit )
         font    font!
         offset  coord!
     return: Modified font.
+    group: data
 */
 CFUNC( cfunc_move_glyphs )
 {
@@ -1397,6 +1411,7 @@ CFUNC( uc_point_in )
         data    vector!
         length  int!/coord! (stride,offset,npv)
     return: unset!
+    group: data
 */
 CFUNC( uc_change_vbo )
 {
@@ -1519,6 +1534,7 @@ bad_dt:
 /*-cf-
     gl-extensions
     return: string!
+    group: gl
 */
 CFUNC( uc_gl_extensions )
 {
@@ -1532,6 +1548,7 @@ CFUNC( uc_gl_extensions )
 /*-cf-
     gl-max-textures
     return: GL_MAX_TEXTURE_UNITS int!
+    group: gl
 */
 CFUNC( uc_gl_max_textures )
 {
@@ -1636,6 +1653,7 @@ extern const char* _framebufferStatus();
     shadowmap
         size    coord!
     return: framebuffer
+    group: gl
 */
 CFUNC( cfunc_shadowmap )
 {
@@ -1720,6 +1738,34 @@ CFUNC( cfunc_draw )
 static char _bootScript[] =
 #include "boot.c"
     ;
+
+/*-hf- draw-list
+        blk
+   return: draw-prog!
+   Same as make draw-prog! blk.
+*/
+/*-hf- load-shader
+        file
+    return: shader!
+    group: io
+*/
+/*-hf- load-texture
+        file    PNG filename
+        /mipmap
+        /clamp
+    return: texture!
+    group: io
+*/
+/*-hf- load-wav
+        file
+    return: Audio sample context.
+    group: audio, io
+*/
+/*-hf- make-matrix
+        pos     vec3!
+    return: vector!
+    Create matrix with position initialized.
+*/
 
 
 extern CFUNC_PUB( cfunc_buffer_audio );

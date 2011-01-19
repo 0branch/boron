@@ -383,6 +383,7 @@ static const float* _cellToVec( const UCell* cell, float* tmp )
         a   coord!/vec3!
         b   coord!/vec3!
     return: Dot product of vectors.
+    group: math
 */
 CFUNC( cfunc_dot )
 {
@@ -406,6 +407,7 @@ CFUNC( cfunc_dot )
         a   coord!/vec3!
         b   coord!/vec3!
     return: Cross product of vectors.
+    group: math
 */
 CFUNC( cfunc_cross )
 {
@@ -428,6 +430,7 @@ CFUNC( cfunc_cross )
     normalize
         vec coord!/vec3!
     return: Normalized vector.
+    group: math
 */
 CFUNC( cfunc_normalize )
 {
@@ -451,6 +454,7 @@ CFUNC( cfunc_normalize )
         b   vec3!
         pnt vec3!
     return: Point projected onto line a-b.
+    group: math
 */
 CFUNC( cfunc_project_point )
 {
@@ -473,7 +477,7 @@ CFUNC( cfunc_project_point )
 
 
 #if 0
-/*-cf-
+/*_cf-
     set-stride
         vector  vector!
         n       int!
@@ -491,7 +495,7 @@ CFUNC( cfunc_set_stride )
 }
 
 
-/*-cf-
+/*_cf-
     set-stride
         vector  vector!
         map     vector!

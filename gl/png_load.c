@@ -210,6 +210,7 @@ static int load_png( UThread* ut, const void* fpBuf, unsigned int bufLen,
     load-png
         filename    string!/file!
     return: raster!
+    group: io
 */
 CFUNC_PUB( cfunc_load_png )
 {
