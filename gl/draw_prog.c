@@ -1361,8 +1361,9 @@ int dp_compile( DPCompiler* emit, UThread* ut, UIndex blkN )
     const UCell* val;
     const UCell* pc;
     const UCell* pend;
-    UBuffer* blk;
+    const UBuffer* blk;
     int opcode;
+    UAtom option;
 
     blk  = ur_buffer( blkN );
     pc   = blk->ptr.cell;
@@ -1372,7 +1373,9 @@ int dp_compile( DPCompiler* emit, UThread* ut, UIndex blkN )
     {
         if( ur_is(pc, UT_WORD) )
         {
+            option = 0;
             opcode = ur_atomsSearch(glEnv.drawOpTable, DOP_COUNT, ur_atom(pc));
+comp_op:
             switch( opcode )
             {
             case DOP_NOP:
@@ -1602,14 +1605,13 @@ bad_sphere:
             case DOP_BOX:                    // box min max
             {
                 float box[6];
-                //KR_TODO UAtom select = ur_sel(pc); 
 
                 INC_PC
                 cellToVec3( pc, box );
                 INC_PC
                 cellToVec3( pc, box + 3 );
 
-                _box( emit, box, box + 3, "ntv", 0 /*select*/ );
+                _box( emit, box, box + 3, "ntv", option );
             }
                 break;
 
@@ -1742,13 +1744,13 @@ bad_quad:
                 }
                 break;
 
-            case DOP_TEXT:
+            case DOP_TEXT:          // text [x,y] string!
+                                    // text/center/right rect [x,y] string!
             {
-                int sel = 0;    //KR_TODO ur_sel(pc);
                 const UCell* area = 0;
 
                 INC_PC_VALUE(val)
-                if( sel )
+                if( option )
                 {
                     if( ! ur_is(val, UT_COORD) || (val->coord.len < 4) )
                     {
@@ -1780,7 +1782,7 @@ bad_quad:
                     dp_tgeoInit( emit );
                     dp_drawTextCell( emit, ut,
                             (TexFont*) ur_buffer(emit->fontN)->ptr.v, val,
-                            sel, area ); 
+                            option, area ); 
                 }
             }
                 break;
@@ -1824,7 +1826,7 @@ bad_quad:
             case DOP_UNIFORM:       // uniform/name value
             {
                 GLint loc;
-                UAtom name = 0; //KR_TODO ur_sel(pc);
+                UAtom name = option;
 
                 INC_PC_VALUE(val)
                 if( ur_is(val, UT_TEXTURE) && emit->shaderProg )
@@ -1926,7 +1928,6 @@ samples_err:
             {
                 DPBuffer* vbuf;
                 UIndex keyN;
-                UAtom sel = 0;  //KR_TODO ur_sel(pc);
 
                 INC_PC
                 PC_VALUE(val)
@@ -1950,7 +1951,7 @@ samples_err:
                     }
 
                     vbuf = emit->vbuf + emit->vbufCount;
-                    switch( sel )
+                    switch( option )
                     {
                         case UR_ATOM_STREAM:
                             vbuf->usage = GL_STREAM_DRAW;
@@ -2047,6 +2048,18 @@ samples_err:
             default:
                 goto bad_inst;
             }
+        }
+        else if( ur_is(pc, UT_PATH) )
+        {
+            const UBuffer* blk = ur_bufferSer(pc);
+            const UCell* pit = blk->ptr.cell;
+
+            if( blk->used != 2 )
+                goto bad_inst;
+
+            option = ur_atom(pit + 1);
+            opcode = ur_atomsSearch(glEnv.drawOpTable, DOP_COUNT, ur_atom(pit));
+            goto comp_op;
         }
         else if( ur_is(pc, UT_PAREN) )
         {
