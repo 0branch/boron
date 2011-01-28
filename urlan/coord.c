@@ -132,6 +132,76 @@ int coord_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 }
 
 
+int coord_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
+                   int op )
+{
+    if( ur_is( a, UT_COORD ) && ur_is( b, UT_COORD ) )
+    {
+        int i;
+        int len = a->coord.len;
+        if( len > b->coord.len )
+            len = b->coord.len;
+
+        ur_setId(res, UT_COORD);
+        res->coord.len = len;
+
+#define operate(OP) res->coord.n[i] = a->coord.n[i] OP b->coord.n[i]
+
+        switch( op )
+        {
+            case UR_OP_ADD:
+                for( i = 0; i < len; ++i )
+                    operate( + );
+                break;
+            case UR_OP_SUB:
+                for( i = 0; i < len; ++i )
+                    operate( - );
+                break;
+            case UR_OP_MUL:
+                for( i = 0; i < len; ++i )
+                    operate( * );
+                break;
+            case UR_OP_DIV:
+                for( i = 0; i < len; ++i )
+                {
+                    if( b->coord.n[i] == 0 )
+                        goto div_by_zero;
+                    operate( / );
+                }
+                break;
+            case UR_OP_MOD:
+                for( i = 0; i < len; ++i )
+                {
+                    if( b->coord.n[i] == 0 )
+                        goto div_by_zero;
+                    operate( % );
+                }
+                break;
+            case UR_OP_AND:
+                for( i = 0; i < len; ++i )
+                    operate( & );
+                break;
+            case UR_OP_OR:
+                for( i = 0; i < len; ++i )
+                    operate( | );
+                break;
+            case UR_OP_XOR:
+                for( i = 0; i < len; ++i )
+                    operate( ^ );
+                break;
+            default:
+                return unset_operate( ut, a, b, res, op );
+        }
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE, "coord! operator exepected coord!" );
+
+div_by_zero:
+
+    return ur_error( ut, UR_ERR_SCRIPT, "coord! divide by zero" );
+}
+
+
 /* index is zero-based */
 void coord_pick( const UCell* cell, int index, UCell* res )
 {
@@ -178,7 +248,7 @@ UDatatype dt_coord =
 {
     "coord!",
     coord_make,             coord_make,             unset_copy,
-    coord_compare,          unset_operate,          coord_select,
+    coord_compare,          coord_operate,          coord_select,
     coord_toString,         coord_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
