@@ -1382,7 +1382,7 @@ CFUNC( cfunc_move_glyphs )
         point   coord!
     return: logic!
 */
-CFUNC( uc_point_in )
+CFUNC( cfunc_point_in )
 {
     UCell* a2 = a1 + 1;
     if( ur_is(a1, UT_COORD) && ur_is(a2, UT_COORD) )
@@ -1401,7 +1401,7 @@ CFUNC( uc_point_in )
         ur_int(res) = inside;
         return UR_OK;
     }
-    return ur_error( ut, UR_ERR_TYPE, "point-in expected 2 coord! values" );
+    return ur_error( ut, UR_ERR_TYPE, "point-in expected two coord! values" );
 }
 
 
@@ -1941,7 +1941,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     */
     addCFunc( cfunc_blit,        "blit a b pos" );
     addCFunc( cfunc_move_glyphs, "move-glyphs f pos" );
-    addCFunc( uc_point_in,       "point-in" );
+    addCFunc( cfunc_point_in,    "point-in a pnt" );
     addCFunc( uc_change_vbo,     "change-vbo a b n" );
     addCFunc( uc_gl_extensions,  "gl-extensions" );
     addCFunc( uc_gl_max_textures,"gl-max-textures" );
