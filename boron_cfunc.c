@@ -1482,6 +1482,100 @@ CFUNC(cfunc_2minus)
 }
 
 
+#if 0
+/*- cf -
+    rot
+        value   int!/coord!/vec3! or series
+        step    int!
+    return: Rotated value.
+    group: series
+
+    Rotate components of value.
+    If step is positive then components are moved up and those at the end
+    are moved to the start.
+    If step is negative then components are moved dowan and those at the start
+    are moved to the end.
+    For integers this does a bitwise shift (positive step is left).
+*/
+/*
+    rot cycle shift
+*/
+CFUNC(cfunc_rot)
+{
+    static const uint8_t _coordRotOff[] = { 0,0,2,5,9,14,20 };
+    static const uint8_t _coordRot[] = {
+        0,1,
+        0,1,2,
+        0,1,2,3,
+        0,1,2,3,4,
+        0,1,2,3,4,5,0,1,2,3,4,5
+    };
+    int rot;
+    int type = ur_type(a1);
+
+    if( ! ur_is(a2, UT_INT) )
+        return ur_error( ut, UR_ERR_TYPE, "rot expected int! step" );
+    rot = ur_int(a2);
+
+    if( ur_isSeriesType( type ) )
+    {
+        UIndex size;
+
+        *res = *a1;
+        size = boron_seriesEnd(ut, res);
+        if( rot > 0 )
+            res->series.it = (res->series.it + rot) % size;
+        else
+            res->series.it = (res->series.it + rot) % size;
+    }
+    else if( type == UT_INT )
+    {
+        //ur_setId(res, UT_INT);
+        res->id = a1->id;   // Preserve hex flag.
+        if( rot >= 0 )
+            ur_int(res) = ur_int(a1) << rot;
+        else
+            ur_int(res) = ur_int(a1) >> -rot;
+    }
+    else if( type == UT_COORD )
+    {
+        int len = a1->coord.len;
+        const uint8_t* index;
+        int i;
+
+        rot %= len;
+        if( rot < 0 )
+            rot += len;
+        index = _coordRot + _coordRotOff[len] - rot;
+
+        ur_setId(res, UT_COORD);
+        res->coord.len = len;
+        for( i = 0; i < len; ++i )
+            res->coord.n[i] = a1->coord.n[ *index++ ];
+    }
+    else if( type == UT_VEC3 )
+    {
+        int i;
+        const uint8_t* index;
+
+        rot %= 3;
+        if( rot < 0 )
+            rot += 3;
+        index = _coordRot + 5 - rot;
+
+        ur_setId(res, UT_VEC3);
+        for( i = 0; i < 3; ++i )
+            res->vec3.xyz[i] = a1->vec3.xyz[ *index++ ];
+    }
+    else
+        return ur_error( ut, UR_ERR_TYPE,
+                         "rotd expected int!/coord!/vec3! or series" );
+
+    return UR_OK;
+}
+#endif
+
+
 /*-cf-
     prev
         series
@@ -2035,9 +2129,11 @@ CFUNC(cfunc_clear)
 }
 
 
+extern void coord_slice( const UCell* cell, int index, int count, UCell* res );
+
 /*-cf-
     slice
-        series  series
+        series  series or coord!
         limit   none!/int!/coord!
     return: Adjusted slice.
     group: series
@@ -2049,7 +2145,26 @@ CFUNC(cfunc_slice)
     int end;
 
     if( ! ur_isSeriesType( ur_type(a1) ) )
-        return ur_error( ut, UR_ERR_TYPE, "slice expected series" );
+    {
+        if( ur_is(a1, UT_COORD) )
+        {
+            if( ur_is(limit, UT_INT) )
+            {
+                end = ur_int(limit);
+                if( end < 0 )
+                    end += a1->coord.len;
+                coord_slice( a1, 0, end, res );
+            }
+            else if( ur_is(limit, UT_COORD) )
+                coord_slice( a1, limit->coord.n[0], limit->coord.n[1], res );
+            else if( ur_is(limit, UT_NONE) )
+                *res = *a1;
+            else
+                goto bad_limit;
+            return UR_OK;
+        }
+        return ur_error( ut, UR_ERR_TYPE, "slice expected series or coord!" );
+    }
 
     buf = ur_bufferSer(a1);
     *res = *a1;
@@ -2094,6 +2209,7 @@ set_end:
     }
     else
     {
+bad_limit:
         return ur_error( ut, UR_ERR_TYPE,
                          "slice expected none!/int!/coord! limit" );
     }

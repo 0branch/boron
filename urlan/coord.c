@@ -22,6 +22,7 @@
 
 #include "urlan.h"
 #include "unset.h"
+#include "os.h"
 
 
 static int coord_make( UThread* ut, const UCell* from, UCell* res )
@@ -199,6 +200,26 @@ int coord_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
 div_by_zero:
 
     return ur_error( ut, UR_ERR_SCRIPT, "coord! divide by zero" );
+}
+
+
+/* index is zero-based */
+void coord_slice( const UCell* cell, int index, int count, UCell* res )
+{
+    if( (index < 0) || (index >= cell->coord.len - 1) )
+    {
+        ur_setId(res, UT_NONE);
+    }
+    else
+    {
+        ur_setId(res, UT_COORD);
+        if( count < 2 )
+            count = 2;
+        else if( (index + count) > UR_COORD_MAX )
+            count = UR_COORD_MAX - index;
+        res->coord.len = count;
+        memCpy( res->coord.n, cell->coord.n + index, sizeof(int16_t) * count );
+    }
 }
 
 

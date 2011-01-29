@@ -14,3 +14,9 @@ probe sub 1,2 3,4,5
 probe mul 1,2 3,4,5
 probe div 5,2 2,1
 probe and 5,2 2,2
+
+print "---- slice"
+x: 0,1,2,3,4
+probe slice x 2
+probe slice x -2
+probe slice x 2,2

@@ -1317,6 +1317,12 @@ int vec3_make( UThread* ut, const UCell* from, UCell* res )
         case UT_DECIMAL:
             vec3_setf( res, (float) ur_decimal(from) );
             break;
+        case UT_COORD:
+            res->vec3.xyz[0] = (float) from->coord.n[0];
+            res->vec3.xyz[1] = (float) from->coord.n[1];
+            res->vec3.xyz[2] = (from->coord.len > 2) ?
+                               (float) from->coord.n[2] : 0.0;
+            break;
         case UT_VEC3:
             memCpy( res->vec3.xyz, from->vec3.xyz, 3 * sizeof(float) );
             break;
