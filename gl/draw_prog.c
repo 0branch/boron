@@ -1784,6 +1784,11 @@ bad_quad:
                             (TexFont*) ur_buffer(emit->fontN)->ptr.v, val,
                             option, area ); 
                 }
+                else
+                {
+                    ur_error( ut, UR_ERR_SCRIPT, "font is unset for text" );
+                    goto error;
+                }
             }
                 break;
 

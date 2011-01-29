@@ -456,6 +456,7 @@ enum AudioSampleContext
     buffer-audio
         audio-sample    context!
     return: al_buf_num int!.
+    group: audio
 */
 CFUNC_PUB( cfunc_buffer_audio )
 {

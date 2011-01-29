@@ -1098,7 +1098,7 @@ CFUNC( cfunc_lerp )
 
   Return UR_OK/UR_THROW.
 */
-static int _curveValue( UThread* ut, UCell* cv, UCell* res, double t )
+static int _curveValue( UThread* ut, const UCell* cv, UCell* res, double t )
 {
     UBlockIter bi;
     const UCell* v1;
@@ -1177,7 +1177,6 @@ CFUNC( cfunc_curve_at )
 }
 
 
-#ifdef KR_TODO
 enum ContextIndexAnimation
 {
     CI_ANIM_VALUE = 0,
@@ -1192,18 +1191,22 @@ enum ContextIndexAnimation
 /*
   Return UR_OK/UR_THROW.
 */
-static int _animate( UThread* ut, UCell* acell, double dt )
+static int _animate( UThread* ut, const UCell* acell, double dt )
 {
     double period;
     UCell* behav;
     UCell* curve;
     UCell* value;
     UCell* timec;
-    UBlock* vblk = ur_blockPtr( acell->ctx.valBlk );
-    UCell* vc = vblk->ptr.cells;
+    UBuffer* ctx;
+    UCell* vc;
 
-    if( vblk->used < CI_ANIM_CELLS )
+
+    if( ! (ctx = ur_bufferSerM( acell )) )
+        return UR_THROW;
+    if( ctx->used < CI_ANIM_CELLS )
         return ur_error( ut, UR_ERR_SCRIPT, "Invalid animation context" );
+    vc = ctx->ptr.cell;
 
     behav = vc + CI_ANIM_BEHAVIOR;
     if( ur_is(behav, UT_NONE) )     // Return early if inactive
@@ -1216,14 +1219,12 @@ static int _animate( UThread* ut, UCell* acell, double dt )
     value = vc + CI_ANIM_VALUE;
     if( ur_is(value, UT_WORD) )
     {
-        value = ur_wordCell( ut, value );
-        if( ! value )
+        if( ! (value = ur_wordCellM( ut, value )) )
             return UR_THROW;
     }
     else if( ur_is(value, UT_BLOCK) )
     {
-        vblk = ur_block(value);
-        value = vblk->ptr.cells + value->series.it;
+        value = ur_bufferSer(value)->ptr.cell + value->series.it;
     }
 
     period = ur_decimal(vc + CI_ANIM_PERIOD);
@@ -1237,7 +1238,7 @@ static int _animate( UThread* ut, UCell* acell, double dt )
             int repeat = ur_int(behav) - 1;
             if( repeat < 1 ) 
             {
-                ur_setNone(behav);
+                ur_setId(behav, UT_NONE);
             }
             else
             {
@@ -1273,46 +1274,45 @@ cval:
 }
 
 
-// (anims time -- )
-CFUNC( uc_animate )
+/*-cf-
+    animate
+        anims   block!/context!   Animation or block of animations
+        time    decimal!          Delta time
+    return: unset!
+*/
+CFUNC( cfunc_animate )
 {
-    UCell* prev;
     double dt;
 
-    if( ! ur_is(tos, UT_DECIMAL) )
+    if( ! ur_is(a1 + 1, UT_DECIMAL) )
         return ur_error( ut, UR_ERR_TYPE, "animate expected decimal! time" );
-    dt = ur_decimal(tos);
+    dt = ur_decimal(a1 + 1);
 
-    prev = ur_s_prev(tos);
-    if( ur_is(prev, UT_CONTEXT) )
+    if( ur_is(a1, UT_CONTEXT) )
     {
-        if( ! _animate( ut, prev, dt ) )
+        if( ! _animate( ut, a1, dt ) )
             return UR_THROW;
     }
-    else if( ur_is(prev, UT_BLOCK) )
+    else if( ur_is(a1, UT_BLOCK) )
     {
-        UBlock* blk;
-        UCell* it;
-        UCell* end;
-        blk = ur_block(prev);
-        UR_ITER_BLOCK( it, end, blk, prev )
-        while( it != end )
+        UBlockIter bi;
+        ur_blkSlice( ut, &bi, a1 );
+        ur_foreach( bi )
         {
-            if( ur_is(it, UT_CONTEXT) )
+            if( ur_is(bi.it, UT_CONTEXT) )
             {
-                if( ! _animate( ut, it, dt ) )
+                if( ! _animate( ut, bi.it, dt ) )
                     return UR_THROW;
             }
-            ++it;
         }
     }
     else
     {
         return ur_error( ut, UR_ERR_TYPE, "animate expected block!/context!" );
     }
+    ur_setId(res, UT_UNSET);
     return UR_OK;
 }
-#endif
 
 
 /*-cf-
@@ -1421,7 +1421,6 @@ CFUNC( uc_change_vbo )
     int loops;
     UCell* vec = a1 + 1;
     UCell* len = a1 + 2;
-    (void) res;
 
     if( ur_is(len, UT_COORD) )
     {
@@ -1441,17 +1440,18 @@ CFUNC( uc_change_vbo )
     if( ur_is(vec, UT_VECTOR) && //(ur_vectorDT(vec) == UT_DECIMAL) &&
         ur_is(a1, UT_VBO) )
     {
-        const UBuffer* arr = ur_bufferSer(vec);
+        USeriesIter si;
         UBuffer* vbo = ur_buffer( ur_vboResN(a1) );
         GLuint* buf = vbo_bufIds(vbo);
 
+        ur_seriesSlice( ut, &si, vec );
 
         // TODO: Need way to check if buf[0] is an GL_ARRAY_BUFFER.
 
-        if( vbo_count(vbo) && arr->used && copyLen )
+        if( vbo_count(vbo) && (si.it < si.end) && copyLen )
         {
             GLfloat* dst;
-            float* src = arr->ptr.f;
+            float* src = si.buf->ptr.f + si.it;
 
             glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
             dst = (GLfloat*) glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY );
@@ -1460,10 +1460,10 @@ CFUNC( uc_change_vbo )
                 dst += offset;
                 if( stride )
                 {
+                    loops = si.end - si.it;
                     switch( copyLen )
                     {
                         case 1:
-                            loops = arr->used;
                             while( loops-- )
                             {
                                 dst[0] = *src++; 
@@ -1472,7 +1472,7 @@ CFUNC( uc_change_vbo )
                             break;
 
                         case 2:
-                            loops = arr->used / 2;
+                            loops /= 2;
                             while( loops-- )
                             {
                                 dst[0] = *src++; 
@@ -1482,7 +1482,7 @@ CFUNC( uc_change_vbo )
                             break;
 
                         case 3:
-                            loops = arr->used / 3;
+                            loops /= 3;
                             while( loops-- )
                             {
                                 dst[0] = *src++; 
@@ -1497,7 +1497,7 @@ CFUNC( uc_change_vbo )
                             GLfloat* it;
                             GLfloat* end;
 
-                            loops = arr->used / copyLen;
+                            loops /= copyLen;
                             while( loops-- )
                             {
                                 it  = dst;
@@ -1518,6 +1518,7 @@ CFUNC( uc_change_vbo )
                 glUnmapBuffer( GL_ARRAY_BUFFER );
             }
         }
+        ur_setId(res, UT_UNSET);
         return UR_OK;
     }
 
@@ -1758,7 +1759,7 @@ static char _bootScript[] =
 */
 /*-hf- load-wav
         file
-    return: Audio sample context.
+    return: Audio-sample context.
     group: audio, io
 */
 /*-hf- make-matrix
@@ -1771,7 +1772,7 @@ static char _bootScript[] =
 extern CFUNC_PUB( cfunc_buffer_audio );
 extern CFUNC_PUB( cfunc_load_png );
 extern CFUNC_PUB( cfunc_save_png );
-//extern CFUNC_PUB( uc_particle_sim );
+//extern CFUNC_PUB( cfunc_particle_sim );
 
 
 // Intern commonly used atoms.
@@ -1795,7 +1796,8 @@ static void _createFixedAtoms( UThread* ut )
         atoms );
 
 #ifdef DEBUG
-    if( atoms[0] != UR_ATOM_ADD || atoms[5] != UR_ATOM_WIDTH )
+    if( atoms[0] != UR_ATOM_ADD || atoms[5] != UR_ATOM_WIDTH ||
+        atoms[FA_COUNT - 1] != UR_ATOM_ACTION )
     {
         int i;
         for( i = 0; i < FA_COUNT; ++i )
@@ -1929,8 +1931,8 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_look_at,     "look-at a b" );
     addCFunc( cfunc_lerp,        "lerp a b f" );
     addCFunc( cfunc_curve_at,    "curve-at a b" );
+    addCFunc( cfunc_animate,     "animate a time" );
     /*
-    addCFunc( uc_animate,        "animate" );
 #ifdef TIMER_GROUP
     addCFunc( uc_timer_group,    "timer-group" );
     addCFunc( uc_add_timer,      "add-timer" );
@@ -1944,7 +1946,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( uc_gl_extensions,  "gl-extensions" );
     addCFunc( uc_gl_max_textures,"gl-max-textures" );
     /*
-    addCFunc( uc_particle_sim,   "particle-sim" );
+    addCFunc( cfunc_particle_sim,"particle-sim vec prog n" );
     //addCFunc( uc_perlin,         "perlin" );
     */
     addCFunc( cfunc_shadowmap,   "shadowmap size" );
