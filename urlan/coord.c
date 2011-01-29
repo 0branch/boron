@@ -79,7 +79,17 @@ static int coord_make( UThread* ut, const UCell* from, UCell* res )
         *res = *from;
         return UR_OK;
     }
-    return ur_error( ut, UR_ERR_SCRIPT, "make coord! expected block!/coord!" );
+    else if( ur_is(from, UT_VEC3) )
+    {
+        int i;
+        ur_setId(res, UT_COORD);
+        res->coord.len = 3;
+        for( i = 0; i < 3; ++i )
+            res->coord.n[i] = (int16_t) from->vec3.xyz[i];
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE,
+                     "make coord! expected block!/coord!/vec3!" );
 }
 
 
