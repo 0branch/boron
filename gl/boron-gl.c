@@ -1191,7 +1191,7 @@ enum ContextIndexAnimation
 /*
   Return UR_OK/UR_THROW.
 */
-static int _animate( UThread* ut, const UCell* acell, double dt )
+static int _animate( UThread* ut, const UCell* acell, double dt, int* playing )
 {
     double period;
     UCell* behav;
@@ -1251,6 +1251,7 @@ cval:
         if( (period != 1.0) && (period > 0.0) )
             dt /= period;
 
+        *playing = 1;
         return _curveValue( ut, curve, value, dt );
     }
     else if( ur_is(behav, UT_WORD) )
@@ -1278,11 +1279,12 @@ cval:
     animate
         anims   block!/context!   Animation or block of animations
         time    decimal!          Delta time
-    return: unset!
+    return: True if any animations are playing.
 */
 CFUNC( cfunc_animate )
 {
     double dt;
+    int playing = 0;
 
     if( ! ur_is(a1 + 1, UT_DECIMAL) )
         return ur_error( ut, UR_ERR_TYPE, "animate expected decimal! time" );
@@ -1290,7 +1292,7 @@ CFUNC( cfunc_animate )
 
     if( ur_is(a1, UT_CONTEXT) )
     {
-        if( ! _animate( ut, a1, dt ) )
+        if( ! _animate( ut, a1, dt, &playing ) )
             return UR_THROW;
     }
     else if( ur_is(a1, UT_BLOCK) )
@@ -1301,7 +1303,7 @@ CFUNC( cfunc_animate )
         {
             if( ur_is(bi.it, UT_CONTEXT) )
             {
-                if( ! _animate( ut, bi.it, dt ) )
+                if( ! _animate( ut, bi.it, dt, &playing ) )
                     return UR_THROW;
             }
         }
@@ -1310,7 +1312,8 @@ CFUNC( cfunc_animate )
     {
         return ur_error( ut, UR_ERR_TYPE, "animate expected block!/context!" );
     }
-    ur_setId(res, UT_UNSET);
+    ur_setId(res, UT_LOGIC);
+    ur_int(res) = playing;
     return UR_OK;
 }
 
