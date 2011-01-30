@@ -1478,6 +1478,13 @@ image_next:
                     int cop;
 
                     PC_VALUE(val)
+#if 0
+                    if( ur_is(val, UT_VEC3) )
+                    {
+                        emitOp1( DP_COLOR3F, color );
+                    }
+                    else
+#endif
                     cop = cellToColor( val, cp );
                     if( cop == 3 )
                         cop = DP_COLOR3;
@@ -2867,12 +2874,19 @@ dispatch:
         case DP_COLOR4:
             glColor4ubv( (GLubyte*) pc++ );
             break;
-
+#if 0
+        case DP_COLOR3F:
+            glColor3fv( (GLfloat*) pc );
+            pc += 3;
+            break;
+#endif
         case DP_COLOR_WORD:
         {
             uint8_t color[ 4 ];
             PC_WORD( blk, val );
-            if( cellToColor( val, color ) == 4 )
+            if( ur_is(val, UT_VEC3) )
+                glColor3fv( val->vec3.xyz );
+            else if( cellToColor( val, color ) == 4 )
                 glColor4ubv( color );
             else
                 glColor3ubv( color );
