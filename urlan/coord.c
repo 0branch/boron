@@ -148,13 +148,19 @@ int coord_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
 {
     if( ur_is( a, UT_COORD ) && ur_is( b, UT_COORD ) )
     {
+        const UCell* big;
         int i;
         int len = a->coord.len;
         if( len > b->coord.len )
+        {
             len = b->coord.len;
+            big = a;
+        }
+        else
+            big = b;
 
         ur_setId(res, UT_COORD);
-        res->coord.len = len;
+        res->coord.len = big->coord.len;
 
 #define operate(OP) res->coord.n[i] = a->coord.n[i] OP b->coord.n[i]
 
@@ -203,6 +209,9 @@ int coord_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
             default:
                 return unset_operate( ut, a, b, res, op );
         }
+
+        for( ; i < big->coord.len; ++i )
+            res->coord.n[i] = big->coord.n[i];
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "coord! operator exepected coord!" );
