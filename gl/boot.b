@@ -51,6 +51,7 @@ gui-style-proto: context [
         none
 ]
 
+
 animation: context [
     value: none
     curve: none
@@ -78,6 +79,16 @@ ease-out: [
     0.85 0.996625
     1.00 1.0
 ]
+
+recal-curve: func [orig a b | nc] [
+    nc: copy orig
+    forall nc [
+        poke nc 2 lerp a b second nc
+        ++ nc
+    ]
+    head nc
+]
+
 
 draw-list: func [blk] [make draw-prog! blk]
 
