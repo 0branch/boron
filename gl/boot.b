@@ -59,7 +59,6 @@ animation: context [
     behavior: 1
 ]
 
-/*
 ease-in: [
     0.00 0.0
     0.15 0.003375
@@ -79,7 +78,6 @@ ease-out: [
     0.85 0.996625
     1.00 1.0
 ]
-*/
 
 draw-list: func [blk] [make draw-prog! blk]
 
