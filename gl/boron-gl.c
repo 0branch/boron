@@ -278,32 +278,32 @@ CFUNC( cfunc_display )
 }
 
 
-#ifdef KR_TODO
-// (font text -- coord)
-CFUNC( uc_text_size )
+/*-cf-
+    text-size
+        font    font!
+        text    string!
+    return: coord! width,height.
+*/
+CFUNC( cfunc_text_size )
 {
-    uint8_t* cpA;
-    uint8_t* cpB;
-    TexFont* tf;
-    UCell* res = ur_s_prev( tos );
-
-    if( ur_stringSlice( ut, tos, &cpA, &cpB ) )
+    if( ur_is(a1, UT_FONT) && ur_is(a1+1, UT_STRING) )
     {
-        tf = ur_texFontV( ut, res );
+        USeriesIter si;
+        TexFont* tf = ur_texFontV( ut, a1 );
         if( tf )
         {
-            UR_S_DROP;
-            ur_setId( res, UT_COORD );
-            res->coord.len     = 2;
-            res->coord.elem[0] = txf_width( tf, (uint8_t*) cpA,
-                                                (uint8_t*) cpB );
-            res->coord.elem[1] = txf_lineSpacing( tf );
+            ur_seriesSlice( ut, &si, a1+1 );
+
+            ur_setId(res, UT_COORD);
+            res->coord.len = 2;
+            res->coord.n[0] = txf_width( tf, si.buf->ptr.b + si.it,
+                                             si.buf->ptr.b + si.end );
+            res->coord.n[1] = txf_lineSpacing( tf );
             return UR_OK;
         }
     }
     return ur_error( ut, UR_ERR_TYPE, "text-size expected font! string!" );
 }
-#endif
 
 
 /*-cf-
@@ -1912,7 +1912,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( uc_stop,           "stop n" );
     addCFunc( uc_show,           "show wid" );
     addCFunc( uc_hide,           "hide wid" );
-    //addCFunc( uc_text_size,      "text-size" );
+    addCFunc( cfunc_text_size,   "text-size f text" );
     addCFunc( uc_handle_events,  "handle-events wid /wait" );
     addCFunc( uc_clear_color,    "clear-color color" );
     addCFunc( uc_display_swap,   "display-swap" );
