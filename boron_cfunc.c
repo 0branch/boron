@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -4259,6 +4259,64 @@ CFUNC(cfunc_now)
         ur_setId(res, UT_TIME);
     ur_decimal(res) = ur_now();
     return UR_OK;
+}
+
+
+void ur_setCellU64( UCell* res, uint64_t n )
+{
+    if( n > 0x7fffffff )
+    {
+        ur_setId(res, UT_BIGNUM);
+        bignum_setl(res, n);
+    }
+    else
+    {
+        ur_setId(res, UT_INT);
+        ur_int(res) = (int32_t) n;
+    }
+}
+
+
+#include "cpuCounter.h"
+
+/*-cf-
+    cpu-cycles
+        loop    int!  Number of times to evaluate block.
+        block   block!
+    return: int!/bignum!
+    group: io
+
+    Get the number of CPU cycles used to evaluate a block.
+*/
+CFUNC(cfunc_cpu_cycles)
+{
+#ifdef HAVE_CPU_COUNTER
+    uint64_t cycles = 0;
+    uint64_t low = ~0L;
+    int loop = ur_int(a1);
+
+    // Signature verifies args.
+
+    if( loop < 0 )
+        loop = 1;
+    while( loop-- )
+    {
+        cycles = cpuCounter();
+        if( ! boron_doBlock( ut, a2, res ) )
+            return UR_THROW;
+        cycles = cpuCounter() - cycles;
+        if( cycles < low )
+            low = cycles;
+    }
+
+    ur_setCellU64( res, cycles );
+    return UR_OK;
+#else
+    (void) a1;
+    (void) res;
+    return ur_error( ut, UR_ERR_INTERNAL,
+                     "FIXME: cpu-cycles is not implemented on this system" );
+#endif
 }
 
 

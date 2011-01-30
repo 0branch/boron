@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009-2011 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -28,15 +28,7 @@
 
 //#define GC_TIME     1
 #ifdef GC_TIME
-//#include <time.h>
-
-__inline__ uint64_t rdtsc()
-{
-    uint32_t lo, hi;
-    /* We cannot use "=A", since this would use %rax on x86_64 */
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    return (uint64_t) hi << 32 | lo;
-}
+#include "cpuCounter.h"
 #endif
 
 
@@ -134,7 +126,7 @@ void ur_recycle( UThread* ut )
 
 #ifdef GC_TIME
     //t1 = clock();
-    t1 = rdtsc();
+    t1 = cpuCounter();
 #endif
 
 
@@ -253,7 +245,7 @@ void ur_recycle( UThread* ut )
     //t1e = clock() - t1;
     //printf( "gc seconds: %g\n", ((double) t1e) / CLOCKS_PER_SEC );
 
-    t1e = rdtsc() - t1;
+    t1e = cpuCounter() - t1;
     printf( "gc ticks: %ld\n", t1e );
 #endif
 

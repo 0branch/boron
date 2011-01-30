@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2010 Karl Robillard
+  Copyright 2009-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -918,6 +918,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_to_hex,     "to-hex n" );
     addCFunc( cfunc_to_dec,     "to-dec n" );
     addCFunc( cfunc_now,        "now /date" );
+    addCFunc( cfunc_cpu_cycles, "cpu-cycles n int! b block!" );
     addCFunc( cfunc_free,       "free s" );
     addCFunc( cfunc_serialize,  "serialize b" );
     addCFunc( cfunc_unserialize,"unserialize b" );
