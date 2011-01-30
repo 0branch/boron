@@ -1743,34 +1743,6 @@ static char _bootScript[] =
 #include "boot.c"
     ;
 
-/*-hf- draw-list
-        blk
-   return: draw-prog!
-   Same as make draw-prog! blk.
-*/
-/*-hf- load-shader
-        file
-    return: shader!
-    group: io
-*/
-/*-hf- load-texture
-        file    PNG filename
-        /mipmap
-        /clamp
-    return: texture!
-    group: io
-*/
-/*-hf- load-wav
-        file
-    return: Audio-sample context.
-    group: audio, io
-*/
-/*-hf- make-matrix
-        pos     vec3!
-    return: vector!
-    Create matrix with position initialized.
-*/
-
 
 extern CFUNC_PUB( cfunc_buffer_audio );
 extern CFUNC_PUB( cfunc_load_png );

@@ -80,6 +80,14 @@ ease-out: [
     1.00 1.0
 ]
 
+/*-hf- recal-curve
+        curve   block!
+        a       decimal!/coord!/vec3!
+        b       decimal!/coord!/vec3!
+   return: Recalibrated copy of curve.
+
+   A and B must be of the same type.
+*/
 recal-curve: func [orig a b | nc] [
     nc: copy orig
     forall nc [
@@ -90,6 +98,11 @@ recal-curve: func [orig a b | nc] [
 ]
 
 
+/*-hf- draw-list
+        blk
+   return: draw-prog!
+   Same as make draw-prog! blk.
+*/
 draw-list: func [blk] [make draw-prog! blk]
 
 
@@ -178,8 +191,20 @@ load: func [file string!] [
 */
 
 
+/*-hf- load-shader
+        file
+    return: shader!
+    group: io
+*/
 load-shader: func [file] [make shader! load file]
 
+/*-hf- load-texture
+        file    PNG filename
+        /mipmap
+        /clamp
+    return: texture!
+    group: io
+*/
 load-texture: func [file /mipmap /clamp | spec] [
     spec: file: load-png file
     if mipmap [spec: [file 'mipmap]]
@@ -197,7 +222,11 @@ audio-sample: context [
     data: none
 ]
 
-; Returns audio-sample context.
+/*-hf- load-wav
+        file
+    return: Audio-sample context.
+    group: audio, io
+*/
 load-wav: func [file | csize format channels srate bps sdata] [
     parse read file [
         little-endian
@@ -239,6 +268,11 @@ unit-matrix:
   0 0 1.0 0
   0 0 0 1.0]
 
+/*-hf- make-matrix
+        pos     vec3!
+    return: vector!
+    Create matrix with position initialized.
+*/
 make-matrix: func [pos] [poke copy unit-matrix 13 pos]
 
 
