@@ -2197,7 +2197,8 @@ UBuffer* ur_makeBitsetCell( UThread* ut, int bitCount, UCell* res )
 }
 
 
-#define setBit(array,n)      (array[(n)>>3] |= 1<<((n)&7))
+#define setBit(mem,n)       (mem[(n)>>3] |= 1<<((n)&7))
+#define bitIsSet(mem,n)     (mem[(n)>>3] & 1<<((n)&7))
 
 int bitset_make( UThread* ut, const UCell* from, UCell* res )
 {
@@ -2254,6 +2255,39 @@ void bitset_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 }
 
 
+int bitset_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
+{
+    const UBuffer* buf = si->buf;
+    int vt = ur_type(val);
+    int n;
+    (void) opt;
+
+    if( (vt == UT_CHAR) || (vt == UT_INT) )
+    {
+        n = ur_int(val);
+        if( ((n >> 3) < buf->used) && bitIsSet( buf->ptr.b, n ) )
+            return n;
+    }
+    else if( vt == UT_BLOCK )       // Succeeds if all bits are found.
+    {
+        UBlockIter bi;
+        n = -1;
+        ur_blkSlice( ut, &bi, val );
+        ur_foreach( bi )
+        {
+            if( ur_is(bi.it, UT_CHAR) || ur_is(bi.it, UT_INT) )
+            {
+                n = ur_int(bi.it);
+                if( ((n >> 3) >= buf->used) || ! bitIsSet( buf->ptr.b, n ) )
+                    return -1;
+            }
+        }
+        return n;
+    }
+    return -1;
+}
+
+
 USeriesType dt_bitset =
 {
     {
@@ -2266,7 +2300,7 @@ USeriesType dt_bitset =
     },
     binary_pick,            binary_poke,            binary_append,
     binary_insert,
-    binary_change,          binary_remove,          binary_find
+    binary_change,          binary_remove,          bitset_find
 };
 
 
