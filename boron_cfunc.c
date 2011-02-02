@@ -545,6 +545,42 @@ CFUNC(cfunc_words_of)
 
 
 /*-cf-
+    binding?
+        word    word!
+    return: context!/datatype!
+    group: data
+*/
+CFUNC(cfunc_bindingQ)
+{
+    if( ! ur_isWordType( ur_type(a1) ) )
+        return errorType( "binding? expected word!" );
+    switch( ur_binding(a1) )
+    {
+        case UR_BIND_THREAD:
+        case UR_BIND_ENV:
+            ur_setId( res, UT_CONTEXT );
+            ur_setSeries( res, a1->word.ctx, 0 );
+            break;
+
+        case UR_BIND_FUNC:
+            ur_setId( res, UT_WORD );
+            ur_setWordUnbound( res, UT_FUNC );
+            break;
+
+        case UR_BIND_OPTION:
+            ur_setId( res, UT_WORD );
+            ur_setWordUnbound( res, UT_OPTION );
+            break;
+
+        default:
+            ur_setId( res, UT_NONE );
+            break;
+    }
+    return UR_OK;
+}
+
+
+/*-cf-
     bind
         words   word!/block!
         context word!/context!

@@ -3,13 +3,13 @@
 
 enum GLFixedAtoms
 {
-    UR_ATOM_ADD   = 221,
-    UR_ATOM_SIZE  = 242,
-    UR_ATOM_LOOP  = 261,
-    UR_ATOM_TEXT  = 322,
-    UR_ATOM_WAIT  = 357,
-    UR_ATOM_CLOSE = 378,
-    UR_ATOM_WIDTH = 392,
+    UR_ATOM_ADD   = 222,
+    UR_ATOM_SIZE  = 243,
+    UR_ATOM_LOOP  = 262,
+    UR_ATOM_TEXT  = 323,
+    UR_ATOM_WAIT  = 358,
+    UR_ATOM_CLOSE = 379,
+    UR_ATOM_WIDTH = 393,
     UR_ATOM_HEIGHT,
     UR_ATOM_AREA,
     UR_ATOM_RECT,
