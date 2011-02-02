@@ -1849,6 +1849,24 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     UThread* ut;
     const GLubyte* gstr;
 
+
+#if 0
+    printf( "sizeof(UCellRasterFont) %ld\n", sizeof(UCellRasterFont) );
+    printf( "sizeof(GLuint) %ld\n", sizeof(GLuint) );
+#endif
+    assert( sizeof(GLuint) == 4 );
+
+
+    // Initialize glEnv before boron_makeEnv() since the datatype recycle
+    // methods will get called.
+
+    glEnv.maxTextureUnits = 0;
+    glEnv.view = 0;
+    glEnv.guiUT = 0;
+    glEnv.prevMouseX = MOUSE_UNSET;
+    glEnv.prevMouseY = MOUSE_UNSET;
+    glEnv.guiThrow = 0;
+
     {
     UDatatype* table[ UT_MAX - UT_GL_COUNT ];
     unsigned int i;
@@ -1863,18 +1881,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     if( ! ut )
         return 0;
 
-#if 0
-    printf( "sizeof(UCellRasterFont) %ld\n", sizeof(UCellRasterFont) );
-    printf( "sizeof(GLuint) %ld\n", sizeof(GLuint) );
-#endif
-    assert( sizeof(GLuint) == 4 );
-
-    glEnv.maxTextureUnits = 0;
-    glEnv.view = 0;
     glEnv.guiUT = ut;
-    glEnv.prevMouseX = MOUSE_UNSET;
-    glEnv.prevMouseY = MOUSE_UNSET;
-    glEnv.guiThrow = 0;
 
     _createFixedAtoms( ut );
     _createDrawOpTable( ut );

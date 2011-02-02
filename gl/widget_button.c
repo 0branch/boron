@@ -42,9 +42,11 @@ typedef struct
     uint8_t  held;
     uint8_t  checked;
 }
-Button;
+GButton;        
 
-#define EX_PTR  Button* ep = (Button*) wp
+// Named GButton since Button conflicts with symbol on Mac OS.
+
+#define EX_PTR  GButton* ep = (GButton*) wp
 
 
 GWidgetClass wclass_button;
@@ -55,7 +57,7 @@ static GWidget* button_make( UThread* ut, UBlockIter* bi )
 {
     if( (bi->end - bi->it) > 2 )
     {
-        Button* ep;
+        GButton* ep;
         const UCell* arg = ++bi->it;
 
         if( ! ur_is(arg, UT_STRING) )
@@ -69,7 +71,7 @@ static GWidget* button_make( UThread* ut, UBlockIter* bi )
             return 0;
         }
 
-        ep = (Button*) gui_allocWidget( sizeof(Button), &wclass_button );
+        ep = (GButton*) gui_allocWidget( sizeof(GButton), &wclass_button );
         ep->state   = BTN_STATE_UP;
         ep->labelN  = arg[0].series.buf;
         ep->actionN = arg[1].series.buf;
@@ -96,7 +98,7 @@ static void button_mark( UThread* ut, GWidget* wp )
 }
 
 
-static void button_setState( UThread* ut, Button* ep, int state )
+static void button_setState( UThread* ut, GButton* ep, int state )
 {
     if( state != ep->state )
     {

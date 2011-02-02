@@ -555,6 +555,11 @@ texture_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* tmp )
 static void texture_recycle( UThread* ut, int phase )
 {
     (void) ut;
+
+    // Cannot call glGetError() on Mac OS until view is created.
+    if( ! glEnv.view )
+        return; 
+
     switch( phase )
     {
         case UR_RECYCLE_MARK:
