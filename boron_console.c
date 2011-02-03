@@ -304,7 +304,7 @@ prompt:
                                 break;
 
                             default:
-                                printf( "**unhandled excepetion %s\n",
+                                printf( "**unhandled exception %s\n",
                                         ur_wordCStr( ex ) );
                                 break;
                         }
