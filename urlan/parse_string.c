@@ -282,11 +282,12 @@ match:
                     break;
 
                 case UR_ATOM_SKIP:
-                    // TODO - int! skip
-                    if( pos >= pe->inputEnd )
+                    repMin = 1;
+skip:
+                    if( (pos + repMin) > pe->inputEnd )
                         goto failed;
+                    pos += repMin;
                     ++rit;
-                    ++pos;
                     break;
 
                 case UR_ATOM_PLACE:
@@ -360,6 +361,10 @@ match:
                 {
                     repMax = ur_int(rit);
                     ++rit;
+                }
+                else if( ur_is(rit, UT_WORD) && ur_atom(rit) == UR_ATOM_SKIP )
+                {
+                    goto skip;
                 }
                 else
                 {
