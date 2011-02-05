@@ -1817,6 +1817,7 @@ CFUNC(cfunc_pop)
     skip
         series  Series or port!
         offset  logic!/int!
+        /wrap   Cycle around to other end when new position is out of range.
     return: Offset series.
     group: series
 
@@ -1825,9 +1826,11 @@ CFUNC(cfunc_pop)
 */
 CFUNC(cfunc_skip)
 {
+#define OPT_SKIP_WRAP   0x01
     if( ur_isSeriesType( ur_type(a1) ) )
     {
         UIndex n;
+        UIndex end;
 
         if( ur_is(a2, UT_INT) )
             n = ur_int(a2);
@@ -1841,11 +1844,26 @@ CFUNC(cfunc_skip)
         {
             n += a1->series.it;
             if( n < 0 )
-                n = 0;
+            {
+                if( (CFUNC_OPTIONS & OPT_SKIP_WRAP) &&
+                    (end = boron_seriesEnd( ut, a1 )) )
+                {
+                    do
+                        n += end;
+                    while( n < 0 );
+                }
+                else
+                    n = 0;
+            }
             else
             {
-                UIndex end = boron_seriesEnd( ut, a1 );
-                if( n > end )
+                end = boron_seriesEnd( ut, a1 );
+                if( (CFUNC_OPTIONS & OPT_SKIP_WRAP) && end )
+                {
+                    while( n >= end )
+                        n -= end;
+                }
+                else if( n > end )
                     n = end;
             }
             res->series.it = n;

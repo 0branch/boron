@@ -92,3 +92,12 @@ b: [1 2 3]
 probe skip b 2
 probe skip b false
 probe skip b true
+
+
+print "---- skip/wrap"
+b: [1 2 3]
+probe skip/wrap b 7
+probe skip/wrap b 0
+probe skip/wrap b -1
+b: []
+probe skip/wrap b 2
