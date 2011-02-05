@@ -624,15 +624,15 @@ void ur_genBuffers( UThread* ut, int count, UIndex* index )
 
     if( ut->freeBufCount < count )
     {
-        ur_recycle( ut );
-        if( ut->freeBufCount < count )
-        {
 #define GEN_FREE    64
 #ifdef GEN_FREE
-            int newCount = count + GEN_FREE;
+        int newCount = count + GEN_FREE;
 #else
 #define newCount    count
 #endif
+        ur_recycle( ut );
+        if( ut->freeBufCount < newCount )
+        {
             int id;
             int end;
 
