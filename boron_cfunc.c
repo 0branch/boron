@@ -141,13 +141,18 @@ CFUNC(cfunc_break)
 /*-cf-
     throw
         value
+        /name word
     return: NA
     group: control
 */
 CFUNC(cfunc_throw)
 {
+    UBuffer* blk = ur_errorBlock(ut);
     (void) res;
-    ur_blkPush( ur_errorBlock(ut), a1 );
+
+    ur_blkPush( blk, a1 );
+    if( CFUNC_OPTIONS & 1 )
+        ur_blkPush( blk, a2 );
     return UR_THROW;
 }
 
@@ -155,24 +160,57 @@ CFUNC(cfunc_throw)
 /*-cf-
     catch
         body block!
+        /name word word!/block!
     return: Result of block evaluation or thrown value.
     group: control
 */
 CFUNC(cfunc_catch)
 {
-    int ok;
-
     if( ! ur_is(a1, UT_BLOCK) )
         return ur_error( ut, UR_ERR_TYPE, "catch expected block!" );
 
-    if( ! (ok = boron_doBlock( ut, a1, res )) )
+    if( ! boron_doBlock( ut, a1, res ) )
     {
-        UCell* cell = ur_blkPop( ur_errorBlock(ut) );
-        assert(cell);
+        UBuffer* blk = ur_errorBlock(ut);
+        UCell* cell = blk->ptr.cell + (blk->used - 1);
+        assert(blk->used);
+
+        if( CFUNC_OPTIONS & 1 )
+        {
+            if( ! ur_is(cell, UT_WORD) )
+                return UR_THROW;
+            if( ur_is(a2, UT_WORD) )
+            {
+                if( ur_atom(a2) == ur_atom(cell) )
+                {
+caught_word:
+                    --cell;
+                    blk->used -= 2;
+                    goto set_result;
+                }
+            }
+            else if( ur_is(a2, UT_BLOCK) )
+            {
+                UBlockIter bi;
+                ur_blkSlice( ut, &bi, a2 );
+                ur_foreach( bi )
+                {
+                    if( ur_is(bi.it, UT_WORD) &&
+                        ur_atom(bi.it) == ur_atom(cell) )
+                        goto caught_word;
+                }
+            }
+            return UR_THROW;
+        }
+        else
+        {
+            --blk->used;
+        }
+
+set_result:
         *res = *cell;
-        ok = UR_OK;
     }
-    return ok;
+    return UR_OK;
 }
 
 

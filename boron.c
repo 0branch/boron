@@ -802,8 +802,8 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_exit,    "exit" );
     addCFunc( cfunc_return,  "return val" );
     addCFunc( cfunc_break,   "break" );
-    addCFunc( cfunc_throw,   "throw val /ghost" );
-    addCFunc( cfunc_catch,   "catch val" );
+    addCFunc( cfunc_throw,   "throw val /name w word! /ghost" );
+    addCFunc( cfunc_catch,   "catch val /name w" );
     addCFunc( cfunc_try,     "try val" );
     addCFunc( cfunc_recycle, "recycle" );
     addCFunc( cfunc_do,      "do" );            // val (eval-control)
