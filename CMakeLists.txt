@@ -101,9 +101,9 @@ target_link_libraries(boron-bin boron-lib)
 
 
 if (UNIX)
-install(TARGETS boron-bin DESTINATION /usr/local/bin)
-install(TARGETS boron-lib DESTINATION /usr/local/lib)
-install(FILES boron.h urlan/urlan.h urlan/urlan_atoms.h urlan/bignum.h DESTINATION /usr/local/include/boron)
+install(TARGETS boron-bin DESTINATION bin)
+install(TARGETS boron-lib DESTINATION lib)
+install(FILES boron.h urlan/urlan.h urlan/urlan_atoms.h urlan/bignum.h DESTINATION include/boron)
 endif ()
 
 # eof
