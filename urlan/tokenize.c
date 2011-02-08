@@ -515,9 +515,15 @@ static UCell* _tokenizePath( UThread* ut, UBuffer* blk,
         wtype = UT_SETPATH;
     }
     else if( wtype == UT_LITWORD )
+    {
         wtype = UT_LITPATH;
+    }
     else
+    {
+        if( wtype == UT_GETWORD )
+            --it;   // Back-up to ':'
         wtype = UT_PATH;
+    }
     path = ur_makeBlockCell( ut, wtype, 2, cell );
 
     while( 1 )

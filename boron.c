@@ -1245,13 +1245,17 @@ int boron_eval1( UThread* ut, UCell* blkC, UCell* res )
             break;
 
         case UT_PATH:
-            if( ! ur_pathCell( ut, cell, res ) )
+        {
+            int headType = ur_pathCell( ut, cell, res );
+            if( ! headType )
                 goto traceError;
-            if( ur_is(res, UT_CFUNC) || ur_is(res, UT_FUNC) )
+            if( (ur_is(res, UT_CFUNC) || ur_is(res, UT_FUNC)) &&
+                headType == UT_WORD )
             {
                 cell = res;
                 goto call_func;
             }
+        }
             ++blkC->series.it;
             break;
 

@@ -50,3 +50,12 @@ blk: [foo [bar sol] b cog]
 probe blk/:val
 val: 2
 probe blk/:val/2
+
+
+print "---- get-path"
+obj: context [f: does [1]]
+blk: infuse [what f] obj
+probe obj/f
+probe blk/what
+probe :obj/f
+probe :blk/what

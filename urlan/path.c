@@ -33,18 +33,27 @@
   \param pc     Valid UT_PATH cell.
   \param res    Set to value at end of path.
 
-  \return UR_OK/UR_THROW
+  \return UT_WORD/UT_GETWORD/UR_THROW
 */
 int ur_pathCell( UThread* ut, const UCell* pc, UCell* res )
 {
     UBlockIter bi;
     const UCell* node = 0;
     const UCell* selector;
+    int type;
 
     ur_blkSlice( ut, &bi, pc );
 
-    if( (bi.it == bi.end) || ! ur_is(bi.it, UT_WORD) )
-        return ur_error(ut, UR_ERR_SCRIPT, "First path node must be a word!");
+    if( bi.it == bi.end )
+    {
+bad_word:
+        return ur_error( ut, UR_ERR_SCRIPT,
+                         "First path node must be a word!/get-word!");
+    }
+
+    type = ur_type(bi.it);
+    if( type != UT_WORD && type != UT_GETWORD )
+        goto bad_word;
 
     if( ! (node = ur_wordCell( ut, bi.it )) )
         return UR_THROW;
@@ -72,7 +81,7 @@ int ur_pathCell( UThread* ut, const UCell* pc, UCell* res )
     }
     if( node != res )
         *res = *node;
-    return UR_OK;
+    return type;
 }
 
 
