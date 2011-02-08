@@ -404,13 +404,13 @@ UThread* ur_makeEnv( int atomLimit, UDatatype** dtTable, unsigned int dtCount,
     {
     UAtom atoms[ 53 ];
     ur_internAtoms( ut,
+                    "i8 u8 i16 u16 i32 u32 f32 f64\n"
                     "none true false on off yes no\n"
                     "quit halt return break ghost words\n"
                     "latin1 utf8 ucs2\n"
                     "+ - / * = < > <= >=\n"
                     "x y z r g b a\n"
                     "| opt some any skip set copy to thru place mark\n"
-                    "i8 u8 i16 u16 i32 u32 f32 f64\n"
                     "big-endian little-endian",
                     atoms );
     assert( atoms[0] == UT_MAX );

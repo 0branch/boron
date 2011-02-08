@@ -3,7 +3,16 @@
 
 enum UrlanFixedAtoms
 {
-    UR_ATOM_NONE = 64,
+    UR_ATOM_I8 = 64,
+    UR_ATOM_U8,
+    UR_ATOM_I16,
+    UR_ATOM_U16,
+    UR_ATOM_I32,
+    UR_ATOM_U32,
+    UR_ATOM_F32,
+    UR_ATOM_F64,
+
+    UR_ATOM_NONE,
     UR_ATOM_TRUE,
     UR_ATOM_FALSE,
     UR_ATOM_ON,
@@ -51,15 +60,6 @@ enum UrlanFixedAtoms
     UR_ATOM_THRU,
     UR_ATOM_PLACE,
     UR_ATOM_MARK,
-
-    UR_ATOM_I8,
-    UR_ATOM_U8,
-    UR_ATOM_I16,
-    UR_ATOM_U16,
-    UR_ATOM_I32,
-    UR_ATOM_U32,
-    UR_ATOM_F32,
-    UR_ATOM_F64,
 
     UR_ATOM_BIG_ENDIAN,
     UR_ATOM_LITTLE_ENDIAN
