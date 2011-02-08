@@ -68,14 +68,25 @@ view-cam: make camera [
     turntable 0 0
 ]
 
-demo-exec: func [dl | window] [
+demo-exec: func [dl /update | window] [
     window: make widget! demo-window
-    forever [
+    forever pick [[
+        rclock-delta: to-decimal sub tmp: now rclock
+        rclock: tmp
+
+        draw dl
+        display-swap
+        handle-events window
+        sleep 0.002
+    ][
         draw dl
         display-swap
         handle-events/wait window
-    ]
+    ]] update
 ]
+
+rclock-delta: 0.0
+rclock: now
 
 forever [
     ex: catch load first args
