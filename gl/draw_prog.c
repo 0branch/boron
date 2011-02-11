@@ -1230,7 +1230,7 @@ static void dp_tgeoFlushPrims( DPCompiler* emit )
 }
 
 
-static int cellToColor( const UCell* pc, uint8_t* col )
+static int cellToColorUB( const UCell* pc, uint8_t* col )
 {
     if( ur_is(pc, UT_INT) )
     {
@@ -1249,6 +1249,13 @@ static int cellToColor( const UCell* pc, uint8_t* col )
             col[3] = pc->coord.n[3];
             return 4;
         }
+        return 3;
+    }
+    else if( ur_is(pc, UT_VEC3) )
+    {
+        col[0] = (uint8_t) (pc->vec3.xyz[0] * 255.0);
+        col[1] = (uint8_t) (pc->vec3.xyz[1] * 255.0);
+        col[2] = (uint8_t) (pc->vec3.xyz[2] * 255.0);
         return 3;
     }
     return 0;
@@ -1478,14 +1485,7 @@ image_next:
                     int cop;
 
                     PC_VALUE(val)
-#if 0
-                    if( ur_is(val, UT_VEC3) )
-                    {
-                        emitOp1( DP_COLOR3F, color );
-                    }
-                    else
-#endif
-                    cop = cellToColor( val, cp );
+                    cop = cellToColorUB( val, cp );
                     if( cop == 3 )
                         cop = DP_COLOR3;
                     else if( cop == 4 )
@@ -1493,7 +1493,7 @@ image_next:
                     else
                     {
                         ur_error( ut, UR_ERR_SCRIPT,
-                                  "color expected int!/coord!" );
+                                  "color expected int!/coord!/vec3!" );
                         goto error;
                     }
                     emitOp1( cop, color );
@@ -2886,7 +2886,7 @@ dispatch:
             PC_WORD( blk, val );
             if( ur_is(val, UT_VEC3) )
                 glColor3fv( val->vec3.xyz );
-            else if( cellToColor( val, color ) == 4 )
+            else if( cellToColorUB( val, color ) == 4 )
                 glColor4ubv( color );
             else
                 glColor3ubv( color );
