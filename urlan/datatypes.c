@@ -3802,6 +3802,31 @@ void context_copy( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+int context_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    (void) ut;
+    switch( test )
+    {
+        case UR_COMPARE_SAME:
+            return (a->series.buf == b->series.buf);
+
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) != ur_type(b) )
+                break;
+            if( a->series.buf == b->series.buf )
+                return 1;
+            // TODO: Compare words and values.
+            break;
+
+        case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
+            break;
+    }
+    return 0;
+}
+
+
 /*
    \ctx        Pointer to a valid and sorted context.
    \ctxN       The buffer of ctx (required for binding the words).
@@ -3944,7 +3969,7 @@ UDatatype dt_context =
 {
     "context!",
     context_make,           context_make,           context_copy,
-    unset_compare,          unset_operate,          context_select,
+    context_compare,        unset_operate,          context_select,
     context_toString,       context_toText,
     unset_recycle,          block_mark,             context_destroy,
     context_markBuf,        block_toShared,         unset_bind
