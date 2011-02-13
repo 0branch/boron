@@ -47,7 +47,7 @@ view-cam: make camera [
     viewport: display-area ;20,20,200,200
     orient: make-matrix 0.0, 0.0, 15.0
 
-    azimuth: 0.0
+    azimuth: to-radians 90.0
     elev:    0.0
     dist:   15.0
     focal-pnt: 0.0, 0.0, 0.0

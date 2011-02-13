@@ -67,6 +67,7 @@ lib %boron-gl [
        ;%particles.c
         %png_load.c
         %png_save.c
+        %quat.c
         %raster.c
         %rfont.c
         %shader.c

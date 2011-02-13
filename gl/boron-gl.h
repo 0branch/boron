@@ -2,7 +2,7 @@
 #define BORON_GL_H
 /*
   Boron OpenGL Module
-  Copyright 2005-2010 Karl Robillard
+  Copyright 2005-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -36,6 +36,7 @@ enum BoronGLDataType
     UT_SHADER,
     UT_FBO,
     UT_VBO,
+    UT_QUAT,
     UT_WIDGET,
 
     UT_GL_COUNT

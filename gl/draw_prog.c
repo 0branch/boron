@@ -1,6 +1,6 @@
 /*
   Boron OpenGL Draw Program
-  Copyright 2008-2010 Karl Robillard
+  Copyright 2008-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -30,6 +30,7 @@
 #include "draw_prog.h"
 #include "shader.h"
 #include "geo.h"
+#include "quat.h"
 
 extern int boron_doBlock( UThread* ut, const UCell* ec, UCell* res );
 
@@ -104,6 +105,7 @@ enum DPOpcode
     DP_ROTATE_X_WORD,       // blkN index
     DP_ROTATE_Y_WORD,       // blkN index
     DP_ROTATE_Z_WORD,       // blkN index
+    DP_ROTATE_WORD,         // blkN index
     DP_SCALE_WORD,          // blkN index
     DP_SCALE_1,             // float
     DP_FRAMEBUFFER,         // fbo
@@ -113,7 +115,6 @@ enum DPOpcode
     DP_SAMPLES_BEGIN,
     DP_SAMPLES_END,         // blkN index
     DP_LIGHT,               // blkN
-    DP_74,
     DP_75,
     DP_76,
     DP_77,
@@ -633,7 +634,7 @@ static void bufferReset( DPCompiler* emit )
 
 static void genIndices( UThread* ut, DPCompiler* emit )
 {
-    if( emit->indexBuf && emit->indexBuf )
+    if( emit->indexCount && emit->indexBuf )
     {
         uint16_t* dst;
         uint32_t* it;
@@ -1697,9 +1698,14 @@ bad_quad:
                 emitWordOp( emit, pc, DP_TRANSLATE_WORD );
                 break;
 
-            case DOP_ROTATE:    // rotate axis angle decimal!/int!
-            {
+            case DOP_ROTATE:    // rotate axis word! angle decimal!/int!
+                                // rotate :quat
                 INC_PC
+                if( ur_is(pc, UT_GETWORD) )
+                {
+                    emitWordOp( emit, pc, DP_ROTATE_WORD );
+                    break;
+                }
                 opcode = ur_atom(pc);
                 if( opcode == UR_ATOM_Y )
                     opcode = DP_ROTATE_Y;
@@ -1720,7 +1726,6 @@ bad_quad:
                     emitWordOp( emit, pc,
                                 opcode + (DP_ROTATE_X_WORD - DP_ROTATE_X) );
                 }
-            }
                 break;
 
             case DOP_SCALE:
@@ -2955,6 +2960,18 @@ dispatch:
         {
             PC_WORD( blk, val );
             glRotatef( (GLfloat) ur_decimal( val ), 0.0, 0.0, 1.0 );
+        }
+            break;
+
+        case DP_ROTATE_WORD:
+        {
+            PC_WORD( blk, val );
+            if( ur_is(val, UT_QUAT) )
+            {
+                float mat[16];
+                quat_toMatrix( val, mat );
+                glMultMatrixf( mat );
+            }
         }
             break;
 

@@ -1,5 +1,5 @@
 /*
-  Copyright 2010 Karl Robillard
+  Copyright 2010-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -22,6 +22,7 @@
 #include "boron-gl.h"
 #include "rfont.h"
 #include "shader.h"
+#include "quat.h"
 
 
 extern void binary_copy( UThread*, const UCell* from, UCell* res );
@@ -1176,6 +1177,128 @@ static void vbo_destroy( UBuffer* buf )
 
 
 //----------------------------------------------------------------------------
+// UT_QUAT
+
+
+static int quat_make( UThread* ut, const UCell* from, UCell* res )
+{
+    switch( ur_type(from) )
+    {
+        case UT_NONE:
+            ur_setId(res, UT_QUAT);
+            quat_setIdentity( res );
+            break;
+
+        case UT_COORD:
+            ur_setId(res, UT_QUAT);
+            quat_fromEuler( res,
+            //quat_fromSpherical( res,
+                    degToRad( from->coord.n[0] ),
+                    degToRad( from->coord.n[1] ),
+                    degToRad( from->coord.n[2] ) );
+            break;
+
+        case UT_VEC3:
+            ur_setId(res, UT_QUAT);
+            quat_fromXYZ( res, from->vec3.xyz );
+            break;
+
+        case UT_QUAT:
+            *res = *from;
+            break;
+
+        //case UT_VECTOR:
+        //    break;
+
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                    "make quat! expected none!/coord!/vec3!/quat!" );
+    }
+    return UR_OK;
+}
+
+
+static int quat_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    (void) ut;
+    switch( test )
+    {
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) != ur_type(b) )
+                break;
+            // Fall through...
+
+        case UR_COMPARE_SAME:
+        {
+            const float* pa = a->vec3.xyz;
+            const float* pb = b->vec3.xyz;
+            if( (pa[0] != pb[0]) || (pa[1] != pb[1]) || (pa[2] != pb[2]) )
+                return 0;
+            if( (ur_quatW(a) != ur_quatW(b)) ||
+                (ur_flags(a, UR_FLAGS_QUAT) !=
+                 ur_flags(b, UR_FLAGS_QUAT)) )
+                return 0;
+            return 1;
+        }
+            break;
+
+        case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
+            break;
+    }
+    return 0;
+}
+
+
+static int quat_operate( UThread* ut, const UCell* a, const UCell* b,
+                         UCell* res, int op )
+{
+    if( ur_is( a, UT_QUAT ) && ur_is( b, UT_QUAT ) )
+    {
+        ur_setId(res, UT_QUAT);
+        switch( op )
+        {
+            case UR_OP_MUL:
+                quat_mul( a, b, res );
+                break;
+
+            case UR_OP_ADD:
+            case UR_OP_SUB:
+            case UR_OP_DIV:
+            case UR_OP_MOD:
+            case UR_OP_AND:
+            case UR_OP_OR:
+            case UR_OP_XOR:
+            default:
+                return unset_operate( ut, a, b, res, op );
+        }
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE, "quat! operator exepected quat!" );
+}
+
+
+extern void vec3_toString( UThread*, const UCell*, UBuffer*, int );
+
+static
+void quat_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
+{
+    ur_strAppendCStr( str, "make quat! " );
+    vec3_toString( ut, cell, str, depth );
+}
+
+
+static
+void quat_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
+{
+    vec3_toString( ut, cell, str, depth );
+    ur_strAppendChar( str, ',' );
+    ur_strAppendDouble( str, quat_w(cell) ); 
+}
+
+
+//----------------------------------------------------------------------------
 // UT_WIDGET
 
 
@@ -1353,6 +1476,14 @@ UDatatype gl_types[] =
     unset_compare,          unset_operate,          unset_select,
     unset_toString,         unset_toText,
     unset_recycle,          vbo_mark,               vbo_destroy,
+    unset_markBuf,          unset_toShared,         unset_bind
+  },
+  {
+    "quat!",
+    quat_make,              quat_make,              unset_copy,
+    quat_compare,           quat_operate,           unset_select,
+    quat_toString,          quat_toText,
+    unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
   },
   {

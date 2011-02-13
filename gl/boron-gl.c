@@ -1,6 +1,6 @@
 /*
   Boron OpenGL Module
-  Copyright 2005-2010 Karl Robillard
+  Copyright 2005-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -33,6 +33,7 @@
 #include "glid.h"
 #include "math3d.h"
 #include "draw_prog.h"
+#include "quat.h"
 
 #if 0
 #include <time.h>
@@ -1027,21 +1028,22 @@ static int _lerpCells( const UCell* v1, const UCell* v2, double frac,
 {
 #define INTERP(R,A,B)   R = A + (B - A) * frac;
 #define V3(cell,n)      cell->vec3.xyz[n]
+    int type1 = ur_type(v1);
 
-    if( ur_type(v1) == ur_type(v2) )
+    if( type1 == ur_type(v2) )
     {
         if( frac < 0.0 )
             frac = 0.0;
         else if( frac > 1.0 )
             frac = 1.0;
 
-        if( ur_is(v1, UT_DECIMAL) )
+        if( type1 == UT_DECIMAL )
         {
             ur_setId(res, UT_DECIMAL);
             INTERP( ur_decimal(res), ur_decimal(v1), ur_decimal(v2) );
             return 1;
         }
-        else if( ur_is(v1, UT_VEC3) )
+        else if( type1 == UT_VEC3 )
         {
             ur_setId(res, UT_VEC3);
             INTERP( V3(res,0), V3(v1,0), V3(v2,0) );
@@ -1049,7 +1051,7 @@ static int _lerpCells( const UCell* v1, const UCell* v2, double frac,
             INTERP( V3(res,2), V3(v1,2), V3(v2,2) );
             return 1;
         }
-        else if( ur_is(v1, UT_COORD) )
+        else if( type1 == UT_COORD )
         {
             int i;
             int len = v1->coord.len;
@@ -1063,17 +1065,23 @@ static int _lerpCells( const UCell* v1, const UCell* v2, double frac,
             res->coord.len = len;
             return 1;
         }
+        else if( type1 == UT_QUAT )
+        {
+            ur_setId(res, UT_QUAT);
+            quat_slerp( v1, v2, frac, res );
+            return 1;
+        }
     }
     return 0;
 }
 
 
-#define LERP_MSG    "lerp expected two similar decimal!/coord!/vec3! values"
+#define LERP_MSG "lerp expected two similar decimal!/coord!/vec3!/quat! values"
 
 /*-cf-
     lerp
-        value1      decimal!/coord!/vec3!
-        value2      decimal!/coord!/vec3!
+        value1      decimal!/coord!/vec3!/quat!
+        value2      decimal!/coord!/vec3!/quat!
         fraction    decimal!
     return: Interpolated value.
     group: math
@@ -1232,19 +1240,43 @@ static int _animate( UThread* ut, const UCell* acell, double dt, int* playing )
 
     if( ur_is(behav, UT_INT) )
     {
-        dt += ur_decimal(timec);
-        if( dt > period )
+        int repeat = ur_int(behav);
+        if( repeat > 0 )
         {
-            int repeat = ur_int(behav) - 1;
-            if( repeat < 1 ) 
+            dt += ur_decimal(timec);
+            if( dt > period )
             {
-                ur_setId(behav, UT_NONE);
+                if( repeat <= 1 ) 
+                {
+                    ur_setId(behav, UT_NONE);
+                }
+                else
+                {
+                    dt -= period;
+                    ur_int(behav) = repeat - 1;
+                }
             }
-            else
+        }
+        else if( repeat < 0 )
+        {
+            dt = ur_decimal(timec) - dt;
+            if( dt < 0.0 )
             {
-                dt -= period;
-                ur_int(behav) = repeat;
+                if( repeat >= -1 ) 
+                {
+                    ur_setId(behav, UT_NONE);
+                }
+                else
+                {
+                    dt += period;
+                    ur_int(behav) = repeat + 1;
+                }
             }
+        }
+        else
+        {
+            ur_setId(behav, UT_NONE);
+            return UR_OK;
         }
 cval:
         ur_decimal(timec) = dt;
