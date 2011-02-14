@@ -9,3 +9,6 @@ Script Error: Test error
 Script Error: number (22) is bigger than 5
 Trace:
  -> fe 22
+---- error compare
+true
+false

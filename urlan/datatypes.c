@@ -2323,6 +2323,13 @@ void string_copy( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+static void setStringCell( UCell* cell, UIndex bufN )
+{
+    ur_setId( cell, UT_STRING );
+    ur_setSeries( cell, bufN, 0 );
+}
+
+
 int string_convert( UThread* ut, const UCell* from, UCell* res )
 {
     int type = ur_type(from);
@@ -2338,8 +2345,7 @@ int string_convert( UThread* ut, const UCell* from, UCell* res )
         ur_binSlice( ut, &bi, from );
         n = ur_makeStringUtf8( ut, bi.it, bi.end );
 
-        ur_setId( res, UT_STRING );
-        ur_setSeries( res, n, 0 );
+        setStringCell( res, n );
     }
     else
     {
@@ -3994,6 +4000,47 @@ int error_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+int error_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    (void) ut;
+    switch( test )
+    {
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) != ur_type(b) )
+                break;
+            // Fall through...
+
+        case UR_COMPARE_SAME:
+            if( a->error.exType == b->error.exType &&
+                a->error.messageStr == b->error.messageStr &&
+                a->error.traceBlk == b->error.traceBlk )
+                return 1;
+            break;
+
+        case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
+            if( ur_type(a) == ur_type(b) )
+            {
+                if( a->error.exType > b->error.exType )
+                    return 1;
+                if( a->error.exType < b->error.exType )
+                    return -1;
+                {
+                UCell strA, strB;
+
+                setStringCell( &strA, a->error.messageStr );
+                setStringCell( &strB, b->error.messageStr );
+
+                return string_compare( ut, &strA, &strB, test );
+                }
+            }
+            break;
+    }
+    return 0;
+}
+
+
 static const char* errorTypeStr[] =
 {
     "Datatype",
@@ -4142,7 +4189,7 @@ UDatatype dt_error =
 {
     "error!",
     error_make,             error_make,             unset_copy,
-    unset_compare,          unset_operate,          unset_select,
+    error_compare,          unset_operate,          unset_select,
     error_toString,         error_toString,
     unset_recycle,          error_mark,             unset_destroy,
     unset_markBuf,          error_toShared,         unset_bind

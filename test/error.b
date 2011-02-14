@@ -16,3 +16,10 @@ fe: func [a] [
     ]
 ]
 print try [fe 22]
+
+
+print "---- error compare"
+a: try [div 1 0]
+b: try [div 1 0]
+print eq? a a
+print eq? a b
