@@ -32,6 +32,12 @@ option set
 1 none none
 13
 7
+---- multiple options
+false false none false
+true false none false
+false true 66 false
+false false none true
+true false none true
 ---- empty body
 ---- compare
 false

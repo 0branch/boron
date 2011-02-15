@@ -82,6 +82,15 @@ oaf/op 10 add 3
 oaf/op 10 sub 3
 
 
+print "---- multiple options"
+mo: func [/opt /some n /any]  [print [opt some n any]]
+mo
+mo/opt
+mo/some 66
+mo/any
+mo/opt/any
+
+
 print "---- empty body"
 ef:  func [blk block!] []
 ef [1 2]

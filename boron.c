@@ -130,7 +130,7 @@ static const UCell* boron_wordCell( UThread* ut, const UCell* cell )
                 {
                     // Return option logic! value.
                     UCell* opt = top->args - 1;
-                    ur_int(opt) = (OPT_BITS(opt) && (1 << cell->word.index))
+                    ur_int(opt) = (OPT_BITS(opt) & (1 << cell->word.index))
                                   ? 1 : 0;
                     return opt;
                 }
