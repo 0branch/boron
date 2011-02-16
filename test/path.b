@@ -59,3 +59,14 @@ probe obj/f
 probe blk/what
 probe :obj/f
 probe :blk/what
+
+
+print "---- do path"
+dpc: context [
+    f: does [print 'hi]
+    f1: func [a] [print a]
+]
+do first [dpc/f]
+do 'dpc/f
+do first [dpc/f1] 'done-with-arg
+do 'dpc/f1 'done-with-arg

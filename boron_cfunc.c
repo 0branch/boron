@@ -361,6 +361,30 @@ CFUNC(cfunc_do)
                 return ok;
             }
 
+        case UT_PATH:
+        {
+            int ok;
+            UCell* tmp;
+            if( ! (tmp = boron_stackPush(ut)) )
+                return UR_THROW;
+            ok = ur_pathCell( ut, res, tmp );
+            if( ok != UR_THROW )
+            {
+                if( (ur_is(tmp, UT_CFUNC) || ur_is(tmp, UT_FUNC)) &&
+                    ok == UT_WORD )
+                {
+                    ok = boron_call( ut, (const UCellFunc*) tmp, a1, res );
+                }
+                else
+                {
+                    *res = *tmp;
+                    ok = UR_OK;
+                }
+            }
+            boron_stackPop(ut);
+            return ok;
+        }
+
         case UT_LITPATH:
             res->id.type = UT_PATH;
             break;
