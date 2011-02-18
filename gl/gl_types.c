@@ -1180,6 +1180,8 @@ static void vbo_destroy( UBuffer* buf )
 // UT_QUAT
 
 
+//extern int vector_pickFloatV( const UBuffer*, UIndex n, float*, int count );
+
 static int quat_make( UThread* ut, const UCell* from, UCell* res )
 {
     switch( ur_type(from) )
@@ -1206,10 +1208,23 @@ static int quat_make( UThread* ut, const UCell* from, UCell* res )
         case UT_QUAT:
             *res = *from;
             break;
-
-        //case UT_VECTOR:
-        //    break;
-
+#if 0
+        case UT_VECTOR:
+        {
+            float n[4];
+            int len;
+            len = vector_pickFloatV(ur_bufferSer(from), from->series.it, n, 4);
+            if( len != 4 )
+                return ur_error( ut, UR_ERR_SCRIPT,
+                             "make quat! expected vector! with 4 elements" );
+            ur_setId(res, UT_QUAT);
+            res->vec3.xyz[0] = n[0];
+            res->vec3.xyz[1] = n[1];
+            res->vec3.xyz[2] = n[2];
+            quat_setW( res, n[3] );
+        }
+            break;
+#endif
         default:
             return ur_error( ut, UR_ERR_TYPE,
                     "make quat! expected none!/coord!/vec3!/quat!" );
@@ -1254,28 +1269,50 @@ static int quat_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 static int quat_operate( UThread* ut, const UCell* a, const UCell* b,
                          UCell* res, int op )
 {
-    if( ur_is( a, UT_QUAT ) && ur_is( b, UT_QUAT ) )
+    if( ur_is( a, UT_QUAT ) )
     {
-        ur_setId(res, UT_QUAT);
-        switch( op )
-        {
-            case UR_OP_MUL:
-                quat_mul( a, b, res );
-                break;
+        if( op != UR_OP_MUL )
+            return unset_operate( ut, a, b, res, op );
 
-            case UR_OP_ADD:
-            case UR_OP_SUB:
-            case UR_OP_DIV:
-            case UR_OP_MOD:
-            case UR_OP_AND:
-            case UR_OP_OR:
-            case UR_OP_XOR:
-            default:
-                return unset_operate( ut, a, b, res, op );
+        if( ur_is( b, UT_QUAT ) )
+        {
+            ur_setId( res, UT_QUAT );
+            quat_mul( a, b, res );
+            return UR_OK;
         }
-        return UR_OK;
+        else if( ur_is( b, UT_VEC3 ) )
+        {
+            // Rotate vector.
+            UCell conj;
+
+            ur_setId( res, UT_VEC3 );   // w = 0
+            res->vec3.xyz[0] = b->vec3.xyz[0];
+            res->vec3.xyz[1] = b->vec3.xyz[1];
+            res->vec3.xyz[2] = b->vec3.xyz[2];
+            ur_normalize( res->vec3.xyz );
+
+            conj.id = a->id;
+            conj.vec3.xyz[0] = - a->vec3.xyz[0];
+            conj.vec3.xyz[1] = - a->vec3.xyz[1];
+            conj.vec3.xyz[2] = - a->vec3.xyz[2];
+
+            quat_mul( res, &conj, res );
+            quat_mul( a, res, res );
+            return UR_OK;
+        }
+        else if( ur_is( b, UT_DECIMAL ) )
+        {
+            double d = ur_decimal(b);
+            // Multiply by -1.0 to conjugate (invert) the quaternion.
+            res->id = a->id;    // Keep w.
+            res->vec3.xyz[0] = a->vec3.xyz[0] * d;
+            res->vec3.xyz[1] = a->vec3.xyz[1] * d;
+            res->vec3.xyz[2] = a->vec3.xyz[2] * d;
+            return UR_OK;
+        }
     }
-    return ur_error( ut, UR_ERR_TYPE, "quat! operator exepected quat!" );
+    return ur_error( ut, UR_ERR_TYPE,
+            "quat! operator exepected quat! and decimal!/vec3!/quat!" );
 }
 
 

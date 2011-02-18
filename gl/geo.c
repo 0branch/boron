@@ -507,8 +507,8 @@ void geo_sphere( Geometry* geo, float radius, int slices, int stacks,
     if( inside )
         geo->flags |= GEOM_INSIDE;
 
-    sphereVertex( geo, M_PI, M_PI, 0.0, 0.0,  radius );
-    sphereVertex( geo,  0.0, M_PI, 0.0, 0.0, -radius );
+    sphereVertex( geo,  0.0, M_PI, 0.0, 0.0,  radius );
+    sphereVertex( geo, M_PI, M_PI, 0.0, 0.0, -radius );
 
     for( n = 1, lat = latInc; n < stacks; ++n, lat += latInc )
     {
