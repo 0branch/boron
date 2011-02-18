@@ -460,6 +460,7 @@ TexFont* txf_build( const char* file, const uint8_t* codes,
         tgi->xoffset = FT_PIXELS(glyph->metrics.horiBearingX);
         tgi->yoffset = FT_PIXELS(glyph->metrics.horiBearingY) - tgi->height;
         tgi->advance = FT_PIXELS(glyph->metrics.horiAdvance);
+        tgi->_pad    = 0;  // Initialize entire struct in case it gets saved.
         tgi->x       = x /*+ tgi->xoffset*/;
 #if 0
         tgi->y       = img->height - y + tgi->yoffset;
