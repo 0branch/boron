@@ -806,8 +806,11 @@ static const uint8_t* drawTextReturn( DrawTextState* ds, const uint8_t* it,
     {
         TexFontGlyph* tgi = txf_glyph( ds->tf, ' ' );
         if( tgi )
-            ds->x += (GLfloat) (tgi->advance * 4);
-        ds->prev = tgi;
+        {
+            float tabWidth = (float) (tgi->advance * 4);
+            ds->x += tabWidth - fmodf(ds->x - ds->marginL, tabWidth);
+        }
+        ds->prev = 0;
     }
     return it + 1;
 }
