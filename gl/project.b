@@ -24,7 +24,7 @@ lib %boron-gl [
        ;sources [%joystick.c]
 
         ;libs [%X11 %Xxf86vm]
-        ;libs [%freetype %bz2 %png %glv %GL %GLU
+        ;libs [%freetype %png %glv %GL %GLU
         ;      %openal %vorbis %vorbisfile]
     ]
     macx [
@@ -87,11 +87,11 @@ exe %boron-gl [
     linux [
         ;libs_from %/usr/X11R6/lib [%X11 %Xxf86vm]
         libs [%X11 %Xxf86vm]
-        libs [%freetype %bz2 %png %glv %m]
+        libs [%freetype %png %glv %m]
         libs [%openal %vorbis %vorbisfile %pthread]
     ]
     macx [
-        libs [%freetype %bz2 %png]
+        libs [%freetype %png]
         libs [%vorbis %vorbisfile]
 
        ;lflags {-framework ALUT}
