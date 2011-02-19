@@ -455,6 +455,18 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 }
 
 
+#define a2  (a1 + 1)
+#define a3  (a1 + 2)
+#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
+
+//dev = ((UPortDevice**) ut->env->ports.ptr.v)[ buf->form ]; 
+
+#define PORT_SITE(dev,pbuf,portC) \
+    UBuffer* pbuf = ur_buffer( portC->series.buf ); \
+    UPortDevice* dev = (pbuf->form == UR_PORT_SIMPLE) ? \
+        (UPortDevice*) pbuf->ptr.v : *((UPortDevice**) pbuf->ptr.v)
+
+
 #ifdef CONFIG_CHECKSUM
 #include "boron_checksum.c"
 #endif
@@ -465,10 +477,10 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 #include "boron_random.c"
 #endif
 
-#include "boron_cfunc.c"
 #include "boron_construct.c"
 #include "boron_serialize.c"
 #include "boron_wait.c"
+#include "boron_cfunc.c"
 
 #ifdef CONFIG_THREAD
 #include "boron_thread.c"

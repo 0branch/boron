@@ -34,18 +34,6 @@
 */
 
 
-#define a2  (a1 + 1)
-#define a3  (a1 + 2)
-#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
-
-//dev = ((UPortDevice**) ut->env->ports.ptr.v)[ buf->form ]; 
-
-#define PORT_SITE(dev,pbuf,portC) \
-    UBuffer* pbuf = ur_buffer( portC->series.buf ); \
-    UPortDevice* dev = (pbuf->form == UR_PORT_SIMPLE) ? \
-        (UPortDevice*) pbuf->ptr.v : *((UPortDevice**) pbuf->ptr.v)
-
-
 /*
   Undocumented debug function.
 */
@@ -3683,73 +3671,86 @@ CFUNC(cfunc_rename)
 
 /*-cf-
     load
-        file    file!/string!
+        file    file!/string!/binary!
     return: block! or none! if file is empty.
     group: io
+
+    Load file or serialized data with default bindings.
 */
 CFUNC(cfunc_load)
 {
-    UCell args[3];
-
-    ur_setId(args, UT_LOGIC);
-    OPT_BITS(args) = 0;             // Clear options.
-
-    args[1] = *a1;
-
-    ur_setId(args + 2, UT_NONE);
-
-    if( cfunc_read( ut, args + 1, res ) )
+    if( ur_is(a1, UT_BINARY) )
     {
-        const uint8_t* cp;
-        UBuffer* bin;
-        UIndex hold;
-        UIndex blkN;
-
-check_str:
-
-        bin = ur_buffer( res->series.buf );
-        if( ! bin->used )
+        if( cfunc_unserialize( ut, a1, res ) )
         {
-            ur_setId(res, UT_NONE);
+            boron_bindDefault( ut, res->series.buf );
             return UR_OK;
         }
+    }
+    else
+    {
+        UCell args[3];
 
-        // Skip any Unix shell interpreter line.
-        cp = bin->ptr.b;
-        if( cp[0] == '#' && cp[1] == '!' ) 
+        ur_setId(args, UT_LOGIC);
+        OPT_BITS(args) = 0;             // Clear options.
+
+        args[1] = *a1;
+
+        ur_setId(args + 2, UT_NONE);
+
+        if( cfunc_read( ut, args + 1, res ) )
         {
-            cp = find_uint8_t( cp, cp + bin->used, '\n' );
-            if( ! cp )
-                cp = bin->ptr.b;
-        }
-#ifdef CONFIG_COMPRESS
-        else if( bin->used > (12 + 8) )
-        {
-            const uint8_t* pat = (const uint8_t*) "BZh";
-            cp = find_pattern_uint8_t( cp, cp + 12, pat, pat + 3 );
-            if( cp && (cp[3] >= '1') && (cp[3] <= '9') )
+            const uint8_t* cp;
+            UBuffer* bin;
+            UIndex hold;
+            UIndex blkN;
+#if CONFIG_COMPRESS == 2
+check_str:
+#endif
+            bin = ur_buffer( res->series.buf );
+            if( ! bin->used )
             {
-                *args = *res;
-                hold = ur_hold( res->series.buf );
-                blkN = cfunc_decompress( ut, args, res );
-                ur_release( hold );
-                if( ! blkN )
-                    return UR_THROW;
-                goto check_str;
+                ur_setId(res, UT_NONE);
+                return UR_OK;
             }
-            else
-                cp = bin->ptr.b;
-        }
+
+            // Skip any Unix shell interpreter line.
+            cp = bin->ptr.b;
+            if( cp[0] == '#' && cp[1] == '!' ) 
+            {
+                cp = find_uint8_t( cp, cp + bin->used, '\n' );
+                if( ! cp )
+                    cp = bin->ptr.b;
+            }
+#if CONFIG_COMPRESS == 2
+            else if( bin->used > (12 + 8) )
+            {
+                const uint8_t* pat = (const uint8_t*) "BZh";
+                cp = find_pattern_uint8_t( cp, cp + 12, pat, pat + 3 );
+                if( cp && (cp[3] >= '1') && (cp[3] <= '9') )
+                {
+                    *args = *res;
+                    hold = ur_hold( res->series.buf );
+                    blkN = cfunc_decompress( ut, args, res );
+                    ur_release( hold );
+                    if( ! blkN )
+                        return UR_THROW;
+                    goto check_str;
+                }
+                else
+                    cp = bin->ptr.b;
+            }
 #endif
 
-        hold = ur_hold( res->series.buf );
-        blkN = ur_tokenize( ut, (char*) cp, bin->ptr.c + bin->used, res );
-        ur_release( hold );
+            hold = ur_hold( res->series.buf );
+            blkN = ur_tokenize( ut, (char*) cp, bin->ptr.c + bin->used, res );
+            ur_release( hold );
 
-        if( blkN )
-        {
-            boron_bindDefault( ut, blkN );
-            return UR_OK;
+            if( blkN )
+            {
+                boron_bindDefault( ut, blkN );
+                return UR_OK;
+            }
         }
     }
     return UR_THROW;
