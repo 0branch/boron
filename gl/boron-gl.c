@@ -1106,53 +1106,98 @@ CFUNC( cfunc_lerp )
 
   Return UR_OK/UR_THROW.
 */
-static int _curveValue( UThread* ut, const UCell* cv, UCell* res, double t )
+static int _curveValue( UThread* ut, const UCell* cv, UCell* res, double t,
+                        double* period )
 {
     UBlockIter bi;
     const UCell* v1;
-    int len;
-    double t1, d;
+    int high, mid, low, last;
+    double d;
+    double interval;
 
     ur_blkSlice( ut, &bi, cv );
-    len = bi.end - bi.it;
-    if( len & 1 )
+    high = bi.end - bi.it;
+    if( high & 1 )
     {
-        --len;
+        --high;
         --bi.end;
     }
-    if( len )
+    if( high < 4 )
     {
-        v1 = 0;
-        while( bi.it != bi.end )
+        if( high )
         {
-            // Assume decimal! for speed.
-            if( t <= ur_decimal(bi.it) )
-            {
-                if( ! v1 )
-                {
-                    *res = bi.it[1];
-                    return UR_OK;
-                }
-
-                t1 = ur_decimal(v1);
-                d  = ur_decimal(bi.it) - t1;
-                if( ! d )
-                    goto copy;
-
-                if( _lerpCells( v1 + 1, bi.it + 1, (t - t1) / d, res ) )
-                    return UR_OK;
-                return ur_error( ut, UR_ERR_TYPE, LERP_MSG );
-            }
-            v1 = bi.it;
-            bi.it += 2;
+            *res = bi.it[1];
+            *period = ur_decimal( bi.end - 2 );
         }
-copy:
-        *res = v1[1];
+        else
+        {
+            ur_setId( res, UT_NONE );
+            *period = 0.0;
+        }
+        //*atEnd = ANIM_END_LOW | ANIM_END_HIGH;
+        return UR_OK;
     }
-    else
+    *period = ur_decimal( bi.end - 2 );
+
+    // Binary search for t in the time/value pairs.
+
+    low = 0;
+    high = last = (high >> 1) - 1;
+    while( low < high )
     {
-        ur_setId( res, UT_NONE );
+        mid = (low + high) >> 1;
+        v1 = bi.it + (mid << 1);
+
+        d = ur_decimal(v1);
+        if( d < t )
+            low = mid + 1;
+        else if( d > t )
+            high = mid - 1;
+        else
+            goto set_res;
     }
+
+    v1 = bi.it + (low << 1);
+    d = ur_decimal(v1);
+    if( t >= d )
+    {
+        if( low == last )
+            goto set_res;
+        interval = ur_decimal(v1 + 2);
+do_lerp:
+        interval -= d;
+        t -= d;
+        if( interval < 0.0001 || t >= interval )
+        {
+            v1 += 2;
+            goto set_res;
+        }
+        if( _lerpCells( v1 + 1, v1 + 3, t / interval, res ) )
+        {
+            //*atEnd = 0;
+            return UR_OK;
+        }
+        return ur_error( ut, UR_ERR_TYPE, LERP_MSG );
+    }
+    else if( low )
+    {
+        interval = d;
+        v1 -= 2;
+        d = ur_decimal(v1);
+        goto do_lerp;
+    }
+
+set_res:
+
+    *res = v1[1];
+    /*
+    if( v1 == bi.it )
+        *atEnd = ANIM_END_LOW;
+    else if( v1 == (bi.end - 2) )
+        *atEnd = ANIM_END_HIGH;
+    else
+        *atEnd = 0;
+    */
     return UR_OK;
 }
 
@@ -1181,7 +1226,7 @@ CFUNC( cfunc_curve_at )
         return ur_error( ut, UR_ERR_TYPE,
                          "curve-value expected int!/decimal! time" );
 
-    return _curveValue( ut, a1, res, t );
+    return _curveValue( ut, a1, res, t, &t );
 }
 
 
@@ -1189,7 +1234,7 @@ enum ContextIndexAnimation
 {
     CI_ANIM_VALUE = 0,
     CI_ANIM_CURVE,
-    CI_ANIM_PERIOD,
+    CI_ANIM_SCALE,
     CI_ANIM_TIME,
     CI_ANIM_BEHAVIOR,
     CI_ANIM_CELLS
@@ -1235,15 +1280,21 @@ static int _animate( UThread* ut, const UCell* acell, double dt, int* playing )
         value = ur_bufferSer(value)->ptr.cell + value->series.it;
     }
 
-    period = ur_decimal(vc + CI_ANIM_PERIOD);
+    period = ur_decimal(vc + CI_ANIM_SCALE);
+    if( (period != 1.0) && (period > 0.0) )
+        dt /= period;
+
     timec = vc + CI_ANIM_TIME;
 
     if( ur_is(behav, UT_INT) )
     {
         int repeat = ur_int(behav);
+
         if( repeat > 0 )
         {
-            dt += ur_decimal(timec);
+            dt = ur_decimal(timec) + dt;
+            if( ! _curveValue( ut, curve, value, dt, &period ) )
+                return UR_THROW;
             if( dt > period )
             {
                 if( repeat <= 1 ) 
@@ -1260,6 +1311,8 @@ static int _animate( UThread* ut, const UCell* acell, double dt, int* playing )
         else if( repeat < 0 )
         {
             dt = ur_decimal(timec) - dt;
+            if( ! _curveValue( ut, curve, value, dt, &period ) )
+                return UR_THROW;
             if( dt < 0.0 )
             {
                 if( repeat >= -1 ) 
@@ -1278,14 +1331,11 @@ static int _animate( UThread* ut, const UCell* acell, double dt, int* playing )
             ur_setId(behav, UT_NONE);
             return UR_OK;
         }
-cval:
-        ur_decimal(timec) = dt;
-        if( (period != 1.0) && (period > 0.0) )
-            dt /= period;
 
-        *playing = 1;
-        return _curveValue( ut, curve, value, dt );
+        ur_decimal(timec) = dt;
+        *playing = 1;   // Set as playing even at end so final frame is shown.
     }
+    /*
     else if( ur_is(behav, UT_WORD) )
     {
         switch( ur_atom(behav) )
@@ -1296,13 +1346,12 @@ cval:
                     dt -= period;
                 goto cval;
 
-            /*
             case UR_ATOM_PING_PONG:
             case UR_ATOM_PONG:
                 break;
-            */
         }
     }
+    */
     return UR_OK;
 }
 

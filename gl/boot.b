@@ -55,8 +55,8 @@ gui-style-proto: context [
 animation: context [
     value: none
     curve: none
-    period: 1.0
-    time:   0.0
+    scale: 1.0
+    time:  0.0
     behavior: 1
 ]
 

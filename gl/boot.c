@@ -42,7 +42,7 @@
   "animation: context [\n"
   "    value: none\n"
   "    curve: none\n"
-  "    period: 1.0\n"
+  "    scale: 1.0\n"
   "    time: 0.0\n"
   "    behavior: 1\n"
   "]\n"
