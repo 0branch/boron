@@ -1631,6 +1631,20 @@ CFUNC( uc_gl_extensions )
 
 
 /*-cf-
+    gl-version
+    return: string!
+    group: gl
+*/
+CFUNC( uc_gl_version )
+{
+    UBuffer* buf = ur_makeStringCell( ut, UR_ENC_LATIN1, 0, res );
+    (void) a1;
+    ur_strAppendCStr( buf, (char*) glGetString( GL_VERSION ) );
+    return UR_OK;
+}
+
+
+/*-cf-
     gl-max-textures
     return: GL_MAX_TEXTURE_UNITS int!
     group: gl
@@ -2007,6 +2021,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_point_in,    "point-in a pnt" );
     addCFunc( uc_change_vbo,     "change-vbo a b n" );
     addCFunc( uc_gl_extensions,  "gl-extensions" );
+    addCFunc( uc_gl_version,     "gl-version" );
     addCFunc( uc_gl_max_textures,"gl-max-textures" );
     /*
     addCFunc( cfunc_particle_sim,"particle-sim vec prog n" );
