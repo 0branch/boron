@@ -2,7 +2,7 @@
 #define AUDIO_H
 /*
   Boron OpenAL Module
-  Copyright 2005-2010 Karl Robillard
+  Copyright 2005-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -30,7 +30,8 @@ extern void aud_shutdown();
 extern int  aud_playSound( const UCell* );
 extern void aud_playMusic( const char* file );
 extern void aud_stopMusic();
-extern void aud_setMusicVolume( int v );
+extern void aud_setSoundVolume( float );
+extern void aud_setMusicVolume( float );
 
 #ifdef __cplusplus
 }

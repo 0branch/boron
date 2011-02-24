@@ -1,6 +1,6 @@
 /*
   Boron OpenAL Module
-  Copyright 2005-2010 Karl Robillard
+  Copyright 2005-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -681,27 +681,27 @@ void aud_stopMusic()
 
 
 /*
-  \param vol    0-255
+  \param vol    0.0 to 1.0
 */
-void aud_setSoundVolume( int vol )
+void aud_setSoundVolume( float vol )
 {
     if( _audioUp )
     {
-        alListenerf( AL_GAIN, ((ALfloat) vol) / 256.0f );
+        alListenerf( AL_GAIN, vol );
     }
 }
 
 
 /*
-  \param vol    0-255
+  \param vol    0.0 to 1.0
 */
-void aud_setMusicVolume( int vol )
+void aud_setMusicVolume( float vol )
 {
     //ALfloat gain;
     //alGetListenerfv( AL_GAIN, &gain );
     if( _audioUp )
     {
-        _musicGain = ((ALfloat) vol) / 256.0f;
+        _musicGain = vol;
 
         mutexLock( _musicMutex );
         if( _musicSource )

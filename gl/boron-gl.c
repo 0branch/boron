@@ -774,7 +774,7 @@ CFUNC( execNative )
     return: unset!
     group: audio
 */
-CFUNC( uc_play )
+CFUNC( cfunc_play )
 {
     if( ur_is(a1, UT_INT) )
     {
@@ -795,7 +795,7 @@ CFUNC( uc_play )
     return: unset!
     group: audio
 */
-CFUNC( uc_stop )
+CFUNC( cfunc_stop )
 {
     (void) ut;
 
@@ -809,6 +809,32 @@ CFUNC( uc_stop )
     if( ur_is(a1, UT_WORD) )
     {
         aud_stopMusic();
+    }
+    ur_setId(res, UT_UNSET);
+    return UR_OK;
+}
+
+
+/*-cf-
+    set-volume
+        what    int!/word!
+        vol     decimal!
+    return: unset!
+    group: audio
+*/
+CFUNC( cfunc_set_volume )
+{
+    float vol;
+    const UCell* a2 = a1 + 1;
+    (void) ut;
+
+    if( ur_is(a2, UT_DECIMAL) )
+    {
+        vol = ur_decimal(a2);
+        if( ur_is(a1, UT_INT) )
+            aud_setSoundVolume( vol );
+        else if( ur_is(a1, UT_WORD) )
+            aud_setMusicVolume( vol );
     }
     ur_setId(res, UT_UNSET);
     return UR_OK;
@@ -2036,8 +2062,9 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
 #define addCFunc(func,spec)    boron_addCFunc(ut, func, spec)
 
     addCFunc( cfunc_draw,        "draw prog" );
-    addCFunc( uc_play,           "play n" );
-    addCFunc( uc_stop,           "stop n" );
+    addCFunc( cfunc_play,        "play n" );
+    addCFunc( cfunc_stop,        "stop n" );
+    addCFunc( cfunc_set_volume,  "set-volume n b" );
     addCFunc( uc_show,           "show wid" );
     addCFunc( uc_hide,           "hide wid" );
     addCFunc( cfunc_text_size,   "text-size f text" );
