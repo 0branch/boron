@@ -16,7 +16,7 @@ void quat_fromXYZ( UCell*, const float* xyz );
 void quat_fromEuler( UCell* q, float ax, float ay, float az );
 //void quat_fromEuler2( UCell* q, float roll, float pitch, float yaw );
 //void quat_fromSpherical( UCell*, float lat, float lon, float angle );
-void quat_toMatrix( const UCell*, float* m );
+void quat_toMatrix( const UCell* q, float* m, int initialize );
 void quat_mul( const UCell* A, const UCell* B, UCell* res );
 void quat_slerp( const UCell* from, const UCell* to, float t, UCell* res );
 

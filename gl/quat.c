@@ -281,7 +281,7 @@ void quat_fromSpherical( UCell* q, float lat, float lon, float angle )
 #endif
 
 
-void quat_toMatrix( const UCell* q, float* m )
+void quat_toMatrix( const UCell* q, float* m, int initialize )
 {
     float txy, txz, tyz, twx, twy, twz;
     float txx, tyy, tzz;
@@ -289,18 +289,18 @@ void quat_toMatrix( const UCell* q, float* m )
     float w = quat_w( q );
 
 
-    t2  = ur_z(q) * 2;
+    t2  = ur_z(q) * 2.0f;
     txz = ur_x(q) * t2;
     tyz = ur_y(q) * t2;
     twz = w * t2;
     tzz = ur_z(q) * t2;
 
-    t2  = ur_y(q) * 2;
+    t2  = ur_y(q) * 2.0f;
     txy = ur_x(q) * t2;
     tyy = ur_y(q) * t2;
     twy = w * t2;
 
-    t2  = ur_x(q) * 2;
+    t2  = ur_x(q) * 2.0f;
     txx = ur_x(q) * t2;
     twx = w * t2;
 
@@ -318,8 +318,11 @@ void quat_toMatrix( const UCell* q, float* m )
     m[10] = 1.0f - (txx + tyy);
 
 
-    m[3] = m[7] = m[11] = m[12] = m[13] = m[14] = 0.0f;
-    m[15] = 1.0f;
+    if( initialize )
+    {
+        m[3] = m[7] = m[11] = m[12] = m[13] = m[14] = 0.0f;
+        m[15] = 1.0f;
+    }
 }
 
 

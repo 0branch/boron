@@ -1497,7 +1497,7 @@ CFUNC( cfunc_point_in )
     return: unset!
     group: data
 */
-CFUNC( uc_change_vbo )
+CFUNC( cfunc_change_vbo )
 {
     int stride;
     int offset;
@@ -1660,6 +1660,57 @@ CFUNC( uc_gl_max_textures )
     ur_setId(res, UT_INT);
     ur_int(res) = count;
     return UR_OK;
+}
+
+
+/*
+  Returns zero and throws error if matrix is invalid.
+*/
+float* ur_matrixM( UThread* ut, const UCell* cell )
+{
+    if( ur_is(cell, UT_VECTOR) )
+    {
+        UBuffer* mat = ur_bufferSerM( cell );
+        if( ! mat )
+            return 0;
+        if( (mat->form == UR_ATOM_F32) && (mat->used >= 16) )
+            return mat->ptr.f;
+    }
+    ur_error( ut, UR_ERR_TYPE, "Expected matrix vector!" );
+    return 0;
+}
+
+
+/*-cf-
+    set-matrix
+        matrix  vector!
+        value   quat!
+    return: Modified matrix
+    group: gl
+*/
+CFUNC( cfunc_set_matrix )
+{
+    const UCell* a2 = a1 + 1;
+    float* matf = ur_matrixM( ut, a1 );
+    if( ! matf )
+        return UR_THROW;
+    if( ur_is(a2, UT_QUAT) )
+    {
+        quat_toMatrix( a2, matf, 0 );
+set_res:
+        *res = *a1;
+        return UR_OK;
+    }
+    else
+    {
+        float* src = ur_matrixM( ut, a2 );  // Should be const ur_matrix().
+        if( src )
+        {
+            memCpy( matf, src, sizeof(float) * 16 );
+            goto set_res;
+        }
+    }
+    return ur_error( ut, UR_ERR_TYPE, "set-matrix expected vector!/quat!" );
 }
 
 
@@ -2019,7 +2070,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_blit,        "blit a b pos" );
     addCFunc( cfunc_move_glyphs, "move-glyphs f pos" );
     addCFunc( cfunc_point_in,    "point-in a pnt" );
-    addCFunc( uc_change_vbo,     "change-vbo a b n" );
+    addCFunc( cfunc_change_vbo,  "change-vbo a b n" );
     addCFunc( uc_gl_extensions,  "gl-extensions" );
     addCFunc( uc_gl_version,     "gl-version" );
     addCFunc( uc_gl_max_textures,"gl-max-textures" );
@@ -2032,6 +2083,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_cross,       "cross a b" );
     addCFunc( cfunc_normalize,   "normalize vec" );
     addCFunc( cfunc_project_point, "project-point a b pnt" );
+    addCFunc( cfunc_set_matrix,  "set-matrix m q" );
 
 
     if( ! boron_doCStr( ut, _bootScript, sizeof(_bootScript) - 1 ) )

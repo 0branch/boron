@@ -2977,7 +2977,7 @@ dispatch:
             if( ur_is(val, UT_QUAT) )
             {
                 float mat[16];
-                quat_toMatrix( val, mat );
+                quat_toMatrix( val, mat, 1 );
                 glMultMatrixf( mat );
             }
         }
