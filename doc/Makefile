@@ -5,9 +5,9 @@ dox:
 	doxygen
 	cp boron_logo2.jpg ./html
 
-html: UserManual.html
+html: UserManual.html UserManualGL.html
 
-pdf: UserManual.pdf
+pdf: UserManual.pdf UserManualGL.pdf
 
 
 %.html: %.rst
