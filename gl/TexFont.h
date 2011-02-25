@@ -53,7 +53,7 @@ TexFont;
 extern "C" {
 #endif
 
-extern TexFont* txf_build( const char* file, const uint8_t* codes,
+extern TexFont* txf_build( const char* file, int index, const uint8_t* codes,
                            TexFontImage* img, int psize,
                            int gap, int antialias );
 extern TexFontGlyph* txf_glyph( const TexFont*, int c );

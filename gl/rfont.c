@@ -176,7 +176,8 @@ int ur_makeRFont( UThread* ut, UCell* res, RFontConfig* cfg )
     fbm.height = cfg->texH;
     fbm.pitch  = fbm.width;
 
-    tf = txf_build( cfg->fontFile, cfg->glyphs ? cfg->glyphs : _defaultCodes,
+    tf = txf_build( cfg->fontFile, cfg->faceIndex,
+                    cfg->glyphs ? cfg->glyphs : _defaultCodes,
                     &fbm, cfg->pointSize, 1, 1 );
     if( tf )
     {

@@ -139,7 +139,7 @@ A texture-based font.
 ::
 
     make font! [%font-file.ttf 20]
-    make font! [%font-file.ttf 20 "characters" 256,128]
+    make font! [%font-file.ttf face 1 20 "characters" 256,128]
     make font! [raster! binary!]
     make font! [texture! binary!]
 

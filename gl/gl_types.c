@@ -613,6 +613,7 @@ int rfont_make( UThread* ut, const UCell* from, UCell* res )
 
         cfg.fontFile  = 0;
         cfg.glyphs    = 0;
+        cfg.faceIndex = 0;
         cfg.pointSize = 20;
         cfg.texW      = 256;
         cfg.texH      = 256;
@@ -629,6 +630,17 @@ int rfont_make( UThread* ut, const UCell* from, UCell* res )
                 case UT_COORD:
                     cfg.texW = bi.it->coord.n[0];
                     cfg.texH = bi.it->coord.n[1];
+                    break;
+
+                case UT_WORD:
+                    if( ur_atom(bi.it) == UR_ATOM_FACE )
+                    {
+                        ++bi.it;
+                        if( (bi.it != bi.end) && ur_is(bi.it, UT_INT) )
+                        {
+                            cfg.faceIndex = ur_int(bi.it);
+                        }
+                    }
                     break;
 
                 case UT_BINARY:

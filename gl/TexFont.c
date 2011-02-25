@@ -293,6 +293,7 @@ static int _loadKerning( TexFont* tf, int space,
 
 /**
   \param file       Filename of TrueType font to load.
+  \param index      File face index.
   \param codes      Null terminated Latin-1 string of character glyphs to
                     generate.
   \param img        Destination image for rendered glyphs.
@@ -302,7 +303,7 @@ static int _loadKerning( TexFont* tf, int space,
 
   \return TexFont pointer or zero if fails.
 */
-TexFont* txf_build( const char* file, const uint8_t* codes,
+TexFont* txf_build( const char* file, int index, const uint8_t* codes,
                     TexFontImage* img, int psize, int gap, int antialias )
 {
     FT_Library library;
@@ -330,7 +331,7 @@ TexFont* txf_build( const char* file, const uint8_t* codes,
     if( error )
         return 0;
 
-    error = FT_New_Face( library, file, 0, &face );
+    error = FT_New_Face( library, file, index, &face );
     if( error )
         goto cleanup_lib;
 

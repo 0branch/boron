@@ -4,6 +4,7 @@ typedef struct
 {
     const char* fontFile;
     const uint8_t* glyphs;
+    int faceIndex;
     int pointSize;
     int texW;
     int texH;

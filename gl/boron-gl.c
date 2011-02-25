@@ -1925,7 +1925,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    61
+#define FA_COUNT    62
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -1939,12 +1939,12 @@ static void _createFixedAtoms( UThread* ut )
         "min mag mipmap gray\n"
         "burn color trans sprite\n"
         "once ping-pong pong\n"
-        "collide fall integrate attach anchor binary action",
+        "collide fall integrate attach anchor binary action face",
         atoms );
 
 #ifdef DEBUG
     if( atoms[0] != UR_ATOM_ADD || atoms[5] != UR_ATOM_WIDTH ||
-        atoms[FA_COUNT - 1] != UR_ATOM_ACTION )
+        atoms[FA_COUNT - 1] != UR_ATOM_FACE )
     {
         int i;
         for( i = 0; i < FA_COUNT; ++i )
@@ -1958,7 +1958,7 @@ static void _createFixedAtoms( UThread* ut )
     assert( atoms[3] == UR_ATOM_WAIT );
     assert( atoms[4] == UR_ATOM_CLOSE );
     assert( atoms[5] == UR_ATOM_WIDTH );
-    assert( atoms[FA_COUNT - 1] == UR_ATOM_ACTION );
+    assert( atoms[FA_COUNT - 1] == UR_ATOM_FACE );
 }
 
 
