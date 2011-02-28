@@ -301,18 +301,20 @@ static void _texCoord( TextureDef* tex, const UCell* cell )
 
 
 /*
-  (texture! raster -- tex)
-  (texture! coord  -- tex)    ; 2D Texture
-  (texture! int    -- tex)    ; 1D Texture
-  (texture! [raster!/coord!/int!
-             binary!
-             'mipmap 'nearest 'linear 'repeat 'clamp
-             'gray 'rgb' 'rgba ] -- tex)
+  texture! raster
+  texture! coord   ; 2D Texture
+  texture! int     ; 1D Texture
+  texture! [
+    raster!/coord!/int!/binary!/vector!
+    'mipmap 'nearest 'linear 'repeat 'clamp
+    'gray 'rgb' 'rgba 'f32
+  ]
 */
 int texture_make( UThread* ut, const UCell* from, UCell* res )
 {
     TextureDef def;
     GLuint name;
+    GLenum type = GL_UNSIGNED_BYTE;
     int mipmap = 0;
     UIndex rastN = 0;
     GLenum target = GL_TEXTURE_2D;
@@ -373,6 +375,20 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
                         target = GL_TEXTURE_1D;
                         _texCoord( &def, val );
                     }
+                    else if( ur_is(val, UT_VECTOR) )
+                    {
+                        const UBuffer* buf = ur_bufferSer(val);
+                        if( buf->form == UR_ATOM_F32 )
+                        {
+                            type = GL_FLOAT;
+                            def.pixels = ur_bufferSer(val)->ptr.f;
+                        }
+                        else
+                        {
+                            return ur_error( ut, UR_ERR_TYPE,
+                                    "texture! make only accepts f32 vector!" );
+                        }
+                    }
                     break;
 
                 case UT_LITWORD:
@@ -414,6 +430,23 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
                             def.comp   = 4;
                             def.format = GL_RGBA;
                             break;
+
+                        case UR_ATOM_F32:
+                            switch( def.comp )
+                            {
+                                case 1:
+                                    def.comp = GL_LUMINANCE32F_ARB;
+                                    break;
+                                case 3:
+                                    def.comp = GL_RGB32F_ARB;
+                                    //def.comp = GL_RGB16F_ARB;
+                                    break;
+                                case 4:
+                                    def.comp = GL_RGBA32F_ARB;
+                                    //def.comp = GL_RGBA16F_ARB;
+                                    break;
+                            }
+                            break;
                     }
                     break;
 
@@ -442,14 +475,12 @@ build:
     name = glid_genTexture();
     glBindTexture( target, name );
 
-    // TODO: Support texture type of GL_FLOAT.
-
     if( target == GL_TEXTURE_2D )
     {
         if( mipmap )
         {
             gluBuild2DMipmaps( GL_TEXTURE_2D, def.comp, def.width, def.height,
-                               def.format, GL_UNSIGNED_BYTE, def.pixels );
+                               def.format, type, def.pixels );
         }
         else
         {
@@ -460,7 +491,7 @@ build:
                 def.min_filter = GL_LINEAR;
 
             glTexImage2D( GL_TEXTURE_2D, 0, def.comp, def.width, def.height,
-                          0, def.format, GL_UNSIGNED_BYTE, def.pixels );
+                          0, def.format, type, def.pixels );
         }
     }
     else
@@ -468,7 +499,7 @@ build:
         if( mipmap )
         {
             gluBuild1DMipmaps( GL_TEXTURE_1D, def.comp, def.width,
-                               def.format, GL_UNSIGNED_BYTE, def.pixels );
+                               def.format, type, def.pixels );
         }
         else
         {
@@ -476,7 +507,7 @@ build:
                 def.min_filter = GL_LINEAR;
 
             glTexImage1D( GL_TEXTURE_1D, 0, def.comp, def.width,
-                          0, def.format, GL_UNSIGNED_BYTE, def.pixels );
+                          0, def.format, type, def.pixels );
         }
     }
 
