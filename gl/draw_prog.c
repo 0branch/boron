@@ -60,8 +60,10 @@ enum DPOpcode
     DP_BIND_ARRAY,          // glbuffer
     DP_BIND_ELEMENTS,       // glbuffer
     DP_VERTEX_OFFSET,       // stof
+    DP_VERTEX_OFFSET_4,     // stof
     DP_NORMAL_OFFSET,       // stof
     DP_COLOR_OFFSET,        // stof
+    DP_COLOR_OFFSET_4,      // stof
     DP_UV_OFFSET,           // stof
     DP_ATTR_OFFSET,         // loc/size stof
     DP_DRAW_POINTS,         // count
@@ -115,9 +117,7 @@ enum DPOpcode
     DP_SAMPLES_BEGIN,
     DP_SAMPLES_END,         // blkN index
     DP_LIGHT,               // blkN
-    DP_75,
-    DP_76,
-    DP_77,
+    DP_READ_PIXELS,         // blkN index pos dim
     DP_78,
     DP_79,
     DP_80,
@@ -364,6 +364,19 @@ static void emitDPInst( DPCompiler* emit, int opcode, int argc, ... )
 }
 
 
+/*
+  Add extra arguments following emitDPInst().
+  Caller must not exceed DP_MAX_ARGS.
+*/
+static void emitDPArg( DPCompiler* emit, uint32_t arg )
+{
+    if( emit->opCount )
+        emit->args[ emit->argCount++ ] = arg;
+    else
+        *dp_addArgs( emit, 1 ) = arg;
+}
+
+
 static void refBlock( DPCompiler* emit, UIndex n )
 {
     UBuffer* arr = &emit->blocks;
@@ -485,7 +498,8 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk )
 
             case UR_ATOM_COLOR:
                 //glColorPointer( 3, GL_FLOAT, stride, offset );
-                emitOp1( DP_COLOR_OFFSET, B_STRIDE_OFFSET );
+                emitOp1( (size == 4) ? DP_COLOR_OFFSET_4 : DP_COLOR_OFFSET,
+                         B_STRIDE_OFFSET );
                 break;
 
             case UR_ATOM_NORMAL:
@@ -500,7 +514,8 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk )
 
             case UR_ATOM_VERTEX:
                 //glVertexPointer( 3, GL_FLOAT, stride, offset );
-                emitOp1( DP_VERTEX_OFFSET, B_STRIDE_OFFSET );
+                emitOp1( (size == 4) ? DP_VERTEX_OFFSET_4 : DP_VERTEX_OFFSET,
+                         B_STRIDE_OFFSET );
                 break;
 
             default:
@@ -1169,6 +1184,7 @@ void dp_setSwitch( DPHeader* dp, DPSwitch sid, uint16_t caseN )
 }
 
 
+// Allow only normal, block-bound words so we can emit just 2 numbers.
 static UIndex _wordBlock( const UCell* cell )
 {
     int bind = ur_binding( cell );
@@ -1182,7 +1198,6 @@ static int emitWordOp( DPCompiler* emit, const UCell* cell, int opcode )
 {
     if( ur_is(cell, UT_WORD) || ur_is(cell, COLON_WORD) )
     {
-        // Allow only "normal" words so we can emit just 2 numbers.
         UIndex blkN = _wordBlock( cell );
         if( blkN != UR_INVALID_BUF )
         {
@@ -1843,11 +1858,18 @@ bad_quad:
             }
                 break;
 
-            case DOP_UNIFORM:       // uniform/name value
+            case DOP_UNIFORM:       // uniform name value
             {
                 GLint loc;
-                UAtom name = option;
+                UAtom name;
 
+                INC_PC
+                if( ! ur_is(pc, UT_WORD) )
+                {
+                    ur_error( ut, UR_ERR_TYPE, "uniform expected word! name" );
+                    goto error;
+                }
+                name = ur_atom(pc);
                 INC_PC_VALUE(val)
                 if( ur_is(val, UT_TEXTURE) && emit->shaderProg )
                 {
@@ -2063,6 +2085,27 @@ samples_err:
                 INC_PC
                 emitOp( (ur_atom(pc) == UR_ATOM_OFF) ?
                         DP_POINT_SPRITE_OFF : DP_POINT_SPRITE_ON );
+                break;
+
+            case DOP_READ_PIXELS:
+            {
+                const UCell* rect;
+                INC_PC
+                if( ! ur_is(pc, UT_COORD) )
+                {
+                    ur_error( ut, UR_ERR_SCRIPT, "read-pixels expected rect" );
+                    goto error;
+                }
+                rect = pc;
+                INC_PC
+                if( ! emitWordOp( emit, pc, DP_READ_PIXELS ) )
+                {
+                    ur_error( ut, UR_ERR_SCRIPT, "read-pixels expected word!" );
+                    goto error;
+                }
+                emitDPArg( emit, *((uint32_t*)  rect->coord.n) );
+                emitDPArg( emit, *((uint32_t*) (rect->coord.n + 2)) );
+            }
                 break;
 
             default:
@@ -2686,6 +2729,14 @@ dispatch:
         }
             break;
 
+        case DP_VERTEX_OFFSET_4:
+        {
+            uint32_t stof = *pc++;
+            REPORT_1( " VERTEX_OFFSET_4 %08x\n", stof );
+            glVertexPointer( 4, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
+        }
+            break;
+
         case DP_NORMAL_OFFSET:
         {
             uint32_t stof = *pc++;
@@ -2703,6 +2754,16 @@ dispatch:
             glEnableClientState( GL_COLOR_ARRAY );
             state.flags |= CSA_COLOR;
             glColorPointer( 3, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
+        }
+            break;
+
+        case DP_COLOR_OFFSET_4:
+        {
+            uint32_t stof = *pc++;
+            REPORT_1( " COLOR_OFFSET_4 %08x\n", stof );
+            glEnableClientState( GL_COLOR_ARRAY );
+            state.flags |= CSA_COLOR;
+            glColorPointer( 4, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
         }
             break;
 
@@ -3092,6 +3153,28 @@ dispatch:
             ur_setSeries( &cell, *pc++, 0 );
 
             dop_light( ut, &cell, GL_LIGHT0 );
+        }
+            break;
+
+        case DP_READ_PIXELS:
+        {
+            uint16_t* rect;
+            PC_WORD( blk, val );
+            if( ur_is(val, UT_VBO) )
+            {
+                UBuffer* res = ur_buffer( ur_vboResN(val) );
+                GLuint* buf = vbo_bufIds(res);
+                if( vbo_count(res) )
+                {
+                    rect = (uint16_t*) pc;
+                    glBindBuffer( GL_PIXEL_PACK_BUFFER_ARB, buf[0] );
+                    //glReadBuffer( GL_BACK );
+                    glReadPixels( rect[0], rect[1], rect[2], rect[3],
+                                  GL_RGBA, GL_FLOAT, NULL );
+                    glBindBuffer( GL_PIXEL_PACK_BUFFER_ARB, 0 );
+                }
+            }
+            pc += 2;
         }
             break;
 

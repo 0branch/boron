@@ -24,7 +24,7 @@
 #include "geo.h"
 
 
-#define DP_MAX_ARGS    3    // Maximum arguments per instruction.
+#define DP_MAX_ARGS    4    // Maximum arguments per instruction.
 #define DP_MAX_VBUF    3
 
 typedef struct

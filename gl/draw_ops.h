@@ -51,4 +51,5 @@
 #define DOP_DEPTH_MASK      50
 #define DOP_POINT_SIZE      51
 #define DOP_POINT_SPRITE    52
-#define DOP_COUNT           53
+#define DOP_READ_PIXELS     53
+#define DOP_COUNT           54
