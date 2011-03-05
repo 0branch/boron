@@ -1964,7 +1964,7 @@ static void _createFixedAtoms( UThread* ut )
 
 static void _createDrawOpTable( UThread* ut )
 {
-#define DA_COUNT    54
+#define DA_COUNT    55
     UAtom atoms[ DA_COUNT ];
     UAtomEntry* ent;
     UBuffer* buf;
@@ -1980,7 +1980,8 @@ static void _createDrawOpTable( UThread* ut )
         "sphere box quad camera light\n"
         "lighting push pop translate rotate\n"
         "scale font text shader uniform\n"
-        "framebuffer shadow-begin shadow-end samples-query samples-begin\n"
+        "framebuffer framebuffer-tex\n"
+        "shadow-begin shadow-end samples-query samples-begin\n"
         "buffer depth-test blend cull color-mask\n"
         "depth-mask point-size point-sprite read-pixels",
         atoms );

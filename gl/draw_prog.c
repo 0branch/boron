@@ -111,6 +111,7 @@ enum DPOpcode
     DP_SCALE_WORD,          // blkN index
     DP_SCALE_1,             // float
     DP_FRAMEBUFFER,         // fbo
+    DP_FRAMEBUFFER_TEX_WORD,// blkN index attach
     DP_SHADOW_BEGIN,        // fbo
     DP_SHADOW_END,
     DP_SAMPLES_QUERY,
@@ -118,7 +119,6 @@ enum DPOpcode
     DP_SAMPLES_END,         // blkN index
     DP_LIGHT,               // blkN
     DP_READ_PIXELS,         // blkN index pos dim
-    DP_78,
     DP_79,
     DP_80,
     DP_81, //--
@@ -1922,6 +1922,38 @@ bad_quad:
                                             ur_fboId(val) : 0 );
                 break;
 
+            case DOP_FRAMEBUFFER_TEX:   // attach int!/word!  name get-word!
+            {
+                GLenum attach = 0;
+                INC_PC
+                if( ur_is(pc, UT_INT) )
+                {
+                    attach = GL_COLOR_ATTACHMENT0 + ur_int(pc);
+                }
+                else if( ur_is(pc, UT_WORD ) )
+                {
+                    if( ur_atom(pc) == UR_ATOM_COLOR )
+                        attach = GL_COLOR_ATTACHMENT0;
+                    else if( ur_atom(pc) == UR_ATOM_DEPTH )
+                        attach = GL_DEPTH_ATTACHMENT;
+                }
+                if( ! attach )
+                {
+                    ur_error( ut, UR_ERR_SCRIPT,
+                    "framebuffer-tex expected int!/color/depth attachment" );
+                    goto error;
+                }
+                INC_PC
+                if( ! emitWordOp( emit, pc, DP_FRAMEBUFFER_TEX_WORD ) )
+                {
+                    ur_error( ut, UR_ERR_SCRIPT,
+                              "framebuffer-tex expected texture word!" );
+                    goto error;
+                }
+                emitDPArg( emit, attach );
+            }
+                break;
+
             case DOP_SHADOW_BEGIN:
                 INC_PC
                 PC_VALUE(val)
@@ -3073,6 +3105,18 @@ dispatch:
 
         case DP_FRAMEBUFFER:
             glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, *pc++ );
+            break;
+
+        case DP_FRAMEBUFFER_TEX_WORD:
+        {
+            PC_WORD( blk, val );
+            GLenum attach = *pc++;
+            if( ur_is(val, UT_TEXTURE) )
+            {
+                glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, attach,
+                                           GL_TEXTURE_2D, ur_texId(val), 0 );
+            }
+        }
             break;
 
         case DP_SHADOW_BEGIN:
