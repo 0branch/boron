@@ -207,10 +207,11 @@ static void swidget_dispatch( UThread* ut, GWidget* wp,
             break;
 */
         case GLV_EVENT_RESIZE:
+            // coord elements: x, y, width, height
             ur_setId(val, UT_COORD);
             val->coord.len  = 4;
-            val->coord.n[0] = 0;
-            val->coord.n[1] = 0;
+            val->coord.n[0] = wp->area.x;
+            val->coord.n[1] = wp->area.y;
             val->coord.n[2] = event->x;
             val->coord.n[3] = event->y;
 
@@ -224,25 +225,29 @@ static void swidget_dispatch( UThread* ut, GWidget* wp,
             break;
 
         case GLV_EVENT_BUTTON_DOWN:
-            ur_setId(val, UT_INT);
-            ur_int(val) = mapButton( event->code );
+            // coord elements: x, y, button
+            ur_setId(val, UT_COORD);
+            val->coord.len  = 3;
+            val->coord.n[0] = event->x - wp->area.x;
+            val->coord.n[1] = event->y - wp->area.y;
+            val->coord.n[2] = mapButton( event->code );
 
             cell = CCELL( CI_MOUSE_DOWN );
             break;
 
         case GLV_EVENT_BUTTON_UP:
-            ur_setId(val, UT_INT);
-            ur_int(val) = mapButton( event->code );
-/*
-            iv[ INPUT_CODE ].integer = mapButton( event->code );
-            iv[ INPUT_MX ].integer   = event->x;
-            iv[ INPUT_MY ].integer   = gView->height - event->y - 1;
-*/
+            // coord elements: x, y, button
+            ur_setId(val, UT_COORD);
+            val->coord.len  = 3;
+            val->coord.n[0] = event->x - wp->area.x;
+            val->coord.n[1] = event->y - wp->area.y;
+            val->coord.n[2] = mapButton( event->code );
+
             cell = CCELL( CI_MOUSE_UP );
             break;
 
         case GLV_EVENT_MOTION:
-            // coord elements: x, y, dx, dy
+            // coord elements: x, y, dx, dy, btn-mask
             ur_setId(val, UT_COORD);
             val->coord.len  = 5;
             val->coord.n[0] = event->x - wp->area.x;
