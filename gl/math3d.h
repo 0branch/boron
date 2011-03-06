@@ -1,7 +1,7 @@
 #ifndef MATH3D_H
 #define MATH3D_H
 /*
-  Copyright 2005-2010 Karl Robillard
+  Copyright 2005-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -34,6 +34,8 @@ extern "C" {
 
 void ur_loadIdentity( float* );
 void ur_loadRotation( float* mat, const float* axis, float radians );
+void ur_perspective( float* mat, float fovYDegrees, float aspect,
+                     float near, float far );
 void ur_matrixMult( const float* a, const float* b, float* result );
 void ur_transLocal( float* mat, float x, float y, float z );
 void ur_matrixTranspose( float* mat, const float* a );

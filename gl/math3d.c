@@ -1,5 +1,5 @@
 /*
-  Copyright 2005-2010 Karl Robillard
+  Copyright 2005-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -18,11 +18,6 @@
 */
 
 
-/*
-#include "boron.h"
-#include "math3d.h"
-#include "os.h"
-*/
 #include "os_math.h"
 
 
@@ -98,6 +93,26 @@ void ur_loadRotation( float* mat, const float* axis, float radians )
     mat[ 13 ] = 0.0f;
     mat[ 14 ] = 0.0f;
     mat[ 15 ] = 1.0f;
+}
+
+
+void ur_perspective( float* mat, float fovYDegrees, float aspect,
+                     float near, float far )
+{
+    float xmax, ymax, depth; 
+
+    ymax = near * tanf(fovYDegrees * UR_PI / 360.0f);
+    xmax = ymax * aspect;
+    depth = far - near;
+
+    mat[0] = near / xmax;
+    mat[1] = mat[2] = mat[3] = mat[4] = 0.0f;
+    mat[5] = near / ymax;
+    mat[6] = mat[7] = mat[8] = mat[9] = 0.0f;
+    mat[10] = (-far - near) / depth;
+    mat[11] = -1.0f;
+    mat[14] = (-2.0f * near * far) / depth;
+    mat[12] = mat[13] = mat[15] = 0.0f;
 }
 
 

@@ -114,6 +114,19 @@ UCellFramebuffer;
 //----------------------------------------------------------------------------
 
 
+enum CameraContext
+{
+    CAM_CTX_ORIENT = 0,
+    CAM_CTX_POS,
+    CAM_CTX_VIEWPORT,
+    CAM_CTX_FOV,
+    CAM_CTX_NEAR,
+    CAM_CTX_FAR,
+
+    CAM_CTX_COUNT
+};
+
+
 struct GLEnv
 {
     GLView* view;

@@ -2346,18 +2346,7 @@ void ur_initDrawState( DPState* state )
 /*--------------------------------------------------------------------------*/
 
 
-enum CameraContext
-{
-    CAM_CTX_ORIENT = 0,
-    CAM_CTX_POS,
-    CAM_CTX_VIEWPORT,
-    CAM_CTX_FOV,
-    CAM_CTX_NEAR,
-    CAM_CTX_FAR
-};
-
-
-static GLdouble number_d( const UCell* cell )
+GLdouble number_d( const UCell* cell )
 {
     if( ur_is(cell, UT_DECIMAL) )
         return ur_decimal(cell);
@@ -2367,11 +2356,11 @@ static GLdouble number_d( const UCell* cell )
 }
 
 
-static GLfloat* _cameraMatrix = 0;
-
+//static GLfloat* _cameraMatrix = 0;
 
 void dop_camera( UThread* ut, UIndex ctxValBlk )
 {
+    GLfloat mat[16];
     GLdouble w, h;
     GLdouble fov;
     GLdouble near, far;
@@ -2393,15 +2382,20 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
         h = (GLdouble) val->coord.n[3];
 
         glMatrixMode( GL_PROJECTION );
-        glLoadIdentity();
 
         near = number_d( ctxCells + CAM_CTX_NEAR );
         far  = number_d( ctxCells + CAM_CTX_FAR );
         fov  = number_d( ctxCells + CAM_CTX_FOV );
         if( fov > 0.0 )
-            gluPerspective( fov, w / h, near, far );
+        {
+            ur_perspective( mat, fov, w / h, near, far );
+            glLoadMatrixf( mat );
+        }
         else
+        {
+            glLoadIdentity();
             glOrtho( 0, w, 0, h, near, far );
+        }
 
         glMatrixMode( GL_MODELVIEW );
 
@@ -2412,10 +2406,9 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
             if( (arr->form == UR_ATOM_F32) && (arr->used == 16) )
             {
                 // glLoadTransposeMatrixf() could be used in GL 2.0?
-                GLfloat eye[16];
-                _cameraMatrix = arr->ptr.f;
-                ur_matrixInverse( eye, arr->ptr.f );
-                glLoadMatrixf( eye );
+                //_cameraMatrix = arr->ptr.f;
+                ur_matrixInverse( mat, arr->ptr.f );
+                glLoadMatrixf( mat );
                 return;
             }
         }

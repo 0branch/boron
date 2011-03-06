@@ -1515,6 +1515,205 @@ CFUNC( cfunc_point_in )
 }
 
 
+typedef struct
+{
+    float proj[ 16 ];
+    float orient[ 16 ];
+    float near;
+    float far;
+    float view[4];
+}
+Camera;
+
+
+extern GLdouble number_d( const UCell* cell );
+
+/*
+  Returns non-zero if ctx is a valid camera with a perspective projection.
+*/
+static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
+{
+    const UCell* cell;
+    float fov;
+    float w, h;
+    int i;
+
+    if( ctx->used < CAM_CTX_COUNT )
+        return 0;
+
+    cell = ur_ctxCell( ctx, CAM_CTX_VIEWPORT );
+    if( ur_is(cell, UT_COORD) && (cell->coord.len > 3) )
+    {
+        for( i = 0; i < 4; ++i )
+            cam->view[ i ] = (float) cell->coord.n[ i ];
+
+        cam->near = number_d( ur_ctxCell( ctx, CAM_CTX_NEAR ) );
+        cam->far  = number_d( ur_ctxCell( ctx, CAM_CTX_FAR ) );
+        fov       = number_d( ur_ctxCell( ctx, CAM_CTX_FOV ) );
+        if( fov > 0.0 )
+        {
+            w = (float) cell->coord.n[2];
+            h = (float) cell->coord.n[3];
+            ur_perspective( cam->proj, fov, w / h, cam->near, cam->far );
+
+            cell = ur_ctxCell( ctx, CAM_CTX_ORIENT );
+            if( ur_is(cell, UT_VECTOR) )
+            {
+                const UBuffer* arr = ur_bufferSer( cell );
+                if( (arr->form == UR_ATOM_F32) && (arr->used == 16) )
+                {
+                    ur_matrixInverse( cam->orient, arr->ptr.f );
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+
+/*
+  http://www.opengl.org/wiki/GluProject_and_gluUnProject_code
+*/
+static int projectPoint( const float* pnt, const Camera* cam, float* windowPos )
+{
+    float tmp[7];
+    float w;
+    const float* mat;
+
+    // Modelview transform (pnt w is always 1)
+    mat = cam->orient;
+    tmp[0] = mat[0]*pnt[0] + mat[4]*pnt[1] + mat[8] *pnt[2] + mat[12];
+    tmp[1] = mat[1]*pnt[0] + mat[5]*pnt[1] + mat[9] *pnt[2] + mat[13];
+    tmp[2] = mat[2]*pnt[0] + mat[6]*pnt[1] + mat[10]*pnt[2] + mat[14];
+    tmp[3] = mat[3]*pnt[0] + mat[7]*pnt[1] + mat[11]*pnt[2] + mat[15];
+
+    // Projection transform.
+    mat = cam->proj;
+    tmp[4] = mat[0]*tmp[0] + mat[4]*tmp[1] + mat[8] *tmp[2] + mat[12]*tmp[3];
+    tmp[5] = mat[1]*tmp[0] + mat[5]*tmp[1] + mat[9] *tmp[2] + mat[13]*tmp[3];
+#ifdef PROJECT_Z
+    tmp[6] = mat[2]*tmp[0] + mat[6]*tmp[1] + mat[10]*tmp[2] + mat[14]*tmp[3];
+#endif
+    w = -tmp[2];    // Last row of projection matrix is always [0 0 -1 0].
+
+    // Do perspective division to normalize between -1 and 1.
+    //if( w == 0.0 )
+    if( w < cam->near )
+        return 0;
+    w = 1.0 / w;
+    tmp[4] *= w;
+    tmp[5] *= w;
+#ifdef PROJECT_Z
+    tmp[6] *= w;
+#endif
+
+    // Map to window coordinates.
+    windowPos[0] = (tmp[4] * 0.5 + 0.5) * cam->view[2] + cam->view[0];
+    windowPos[1] = (tmp[5] * 0.5 + 0.5) * cam->view[3] + cam->view[1];
+#ifdef PROJECT_Z
+    // This is only correct when glDepthRange(0.0, 1.0)
+    windowPos[2] = (1.0 + tmp[6]) * 0.5;  // Between 0 and 1
+#endif
+    return 1;
+}
+
+
+/*-cf-
+    pick-point
+        screen-point    coord!    (x,y)
+        camera          context!
+        points          vector!
+        pos-offset      int!/coord!   (stride,offset)
+    return: int!/none!
+*/
+CFUNC( cfunc_pick_point )
+{
+    Camera cam;
+    float sx, sy;
+    float pnt[ 3 ];
+    float d;
+    float dist = 9999999.0;
+    UIndex closest = -1;
+    int stride = 3;
+
+    if( ! ur_is(a1, UT_COORD) )
+    {
+        return ur_error( ut, UR_ERR_TYPE,
+                         "pick-point expected screen-point coord!" );
+    }
+    sx = (float) a1->coord.n[0];
+    sy = (float) a1->coord.n[1];
+
+    if( ! ur_is(a1 + 1, UT_CONTEXT) )
+    {
+bad_camera:
+        return ur_error( ut, UR_ERR_TYPE,
+                         "pick-point expected camera context!" );
+    }
+    if( ! cameraData( ut, ur_bufferSer( a1 + 1 ), &cam ) )
+        goto bad_camera;
+    sy = cam.view[3] - sy;
+
+    if( ur_is(a1 + 2, UT_VECTOR) )
+    {
+        USeriesIter si;
+        float* vpnt;
+
+        ur_seriesSlice( ut, &si, a1 + 2 );
+        if( si.buf->form != UR_ATOM_F32 )
+            goto bad_vector;
+
+        vpnt = si.buf->ptr.f;
+        {
+            const UCell* size = a1 + 3;
+            if( ur_is(size, UT_INT) )
+            {
+                stride = ur_int(size);
+            }
+            else if( ur_is(size, UT_COORD) )
+            {
+                stride  = size->coord.n[0];
+                vpnt   += size->coord.n[1];
+            }
+        }
+
+        for( si.end -= 2; si.it < si.end; si.it += stride )
+        {
+            if( ! projectPoint( vpnt + si.it, &cam, pnt ) )
+                continue;
+            //printf( "KR point %d %f,%f\n", si.it, pnt[0], pnt[1] );
+
+            pnt[0] -= sx;
+            pnt[1] -= sy;
+            d = pnt[0] * pnt[0] + pnt[1] * pnt[1];
+            if( d < dist )
+            {
+                dist = d;
+                closest = si.it;
+            }
+        }
+    }
+    else
+    {
+bad_vector:
+        return ur_error( ut, UR_ERR_TYPE,
+                         "pick-point expected points f32 vector!" );
+    }
+
+    if( closest > -1 )
+    {
+        ur_setId(res, UT_INT);
+        ur_int(res) = closest / stride;
+    }
+    else
+    {
+        ur_setId(res, UT_NONE);
+    }
+    return UR_OK;
+}
+
+
 /*-cf-
     change-vbo
         buffer  vbo!
@@ -2098,6 +2297,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_blit,        "blit a b pos" );
     addCFunc( cfunc_move_glyphs, "move-glyphs f pos" );
     addCFunc( cfunc_point_in,    "point-in a pnt" );
+    addCFunc( cfunc_pick_point,  "pick-point a c pnt pos" );
     addCFunc( cfunc_change_vbo,  "change-vbo a b n" );
     addCFunc( uc_gl_extensions,  "gl-extensions" );
     addCFunc( uc_gl_version,     "gl-version" );
