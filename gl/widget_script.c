@@ -79,7 +79,7 @@ static void remapKeys( UThread* ut, const UCell* cell )
 
 
 GWidgetClass wclass_script;
-extern int boron_doBlock( UThread* ut, const UCell* ec, UCell* res );
+extern int boron_doVoid( UThread* ut, const UCell* blkC );
 
 static GWidget* swidget_make( UThread* ut, UBlockIter* bi )
 {
@@ -118,7 +118,7 @@ cleanup:
             }
             ur_bind( ut, blk, ctx, UR_BIND_THREAD );
 
-            if( boron_doBlock( ut, bi->it, boron_result(ut) ) != UR_OK )
+            if( boron_doVoid( ut, bi->it ) != UR_OK )
                 goto cleanup;
 
             ctx = ur_buffer( wp->ctxN );    // Re-aquire
