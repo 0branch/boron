@@ -2253,8 +2253,6 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     if( ! ut )
         return 0;
 
-    glEnv.guiUT = ut;
-
     _createFixedAtoms( ut );
     _createDrawOpTable( ut );
 
@@ -2350,7 +2348,10 @@ cleanup:
 
     glGetIntegerv( GL_MAX_TEXTURE_UNITS, &glEnv.maxTextureUnits );
 
+    // A non-zero guiUT is our indicator that the GL context has been created.
+    glEnv.guiUT = ut;
     gView->user = &glEnv;
+
     glv_setTitle( gView, "Boron-GL" );
     glv_setEventHandler( gView, eventHandler );
     //glv_showCursor( gView, 0 );

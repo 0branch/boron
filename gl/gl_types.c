@@ -586,10 +586,11 @@ texture_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* tmp )
 
 static void texture_recycle( UThread* ut, int phase )
 {
-    (void) ut;
+    // The comparison with guiUT makes sure that we are in the GL thread
+    // and that the GL context exists.  OpenGL calls made without a valid
+    // context may segfault.
 
-    // Cannot call glGetError() on Mac OS until view is created.
-    if( ! glEnv.view )
+    if( ut != glEnv.guiUT )
         return; 
 
     switch( phase )
