@@ -3,6 +3,7 @@ project: "boron"
 checksum: true
 compress: 'zlib
 random:   true
+socket:   true
 timecode: true
 thread:   true
 
@@ -51,6 +52,10 @@ shlib %boron [
         cflags {-DCONFIG_RANDOM}
         sources [%support/well512.c]
     ]
+    if socket [
+        cflags {-DCONFIG_SOCKET}
+        sources [%port_socket.c]
+    ]
     if timecode [
         cflags {-DCONFIG_TIMECODE}
     ]
@@ -88,7 +93,6 @@ shlib %boron [
 
         %boron.c
         %port_file.c
-        %port_socket.c
     ]
 
     macx  [sources [%unix/os.c]]

@@ -93,7 +93,9 @@ enum BoronEvalCells
 
 
 extern UPortDevice port_file;
+#ifdef CONFIG_SOCKET
 extern UPortDevice port_socket;
+#endif
 #ifdef CONFIG_THREAD
 extern UPortDevice port_thread;
 #endif
@@ -772,8 +774,10 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     // Register ports.
     ur_ctxInit( &ut->env->ports, 4 );
     boron_addPortDevice( ut, &port_file,   atoms[3] );
+#ifdef CONFIG_SOCKET
     boron_addPortDevice( ut, &port_socket, atoms[4] );
     boron_addPortDevice( ut, &port_socket, atoms[5] );
+#endif
 #ifdef CONFIG_THREAD
     boron_addPortDevice( ut, &port_thread, atoms[6] );
 
@@ -907,7 +911,9 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_current_dir,"current-dir" );
     addCFunc( cfunc_getenv,     "getenv val" );
     addCFunc( cfunc_open,       "open from /read /write /new /nowait" );
+#ifdef CONFIG_SOCKET
     addCFunc( cfunc_set_addr,   "set-addr p host n" );
+#endif
     addCFunc( cfunc_read,       "read from /text /into b" );
     addCFunc( cfunc_write,      "write to data /append /text" );
     addCFunc( cfunc_delete,     "delete file" );
