@@ -248,11 +248,19 @@ static int _openTcpServer( UThread* ut, struct sockaddr* addr,
                            socklen_t addrlen, int backlog )
 {
     SOCKET fd;
+    int yes = 1;
 
     fd = socket( AF_INET, SOCK_STREAM, 0 );
     if( fd < 0 )
     {
         ur_error( ut, UR_ERR_ACCESS, "socket %s", SOCKET_ERR );
+        return -1;
+    }
+
+    if( setsockopt( fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int) ) < 0 )
+    {
+        closesocket( fd );
+        ur_error( ut, UR_ERR_ACCESS, "setsockopt %s", SOCKET_ERR );
         return -1;
     }
 
