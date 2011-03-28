@@ -2654,6 +2654,12 @@ dispatch:
                 if( ! ur_runDrawProg( ut, ds, val->series.buf ) )
                     return UR_THROW;
             }
+            else if( ur_is(val, UT_WIDGET) )
+            {
+                GWidget* wp = ur_widgetPtr(val);
+                // NOTE: Draw programs may be compiled in GWidget render.
+                wp->wclass->render( wp );
+            }
         }
             break;
 

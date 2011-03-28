@@ -49,11 +49,8 @@ GButton;
 #define EX_PTR  GButton* ep = (GButton*) wp
 
 
-GWidgetClass wclass_button;
-GWidgetClass wclass_checkbox;
-
-
-static GWidget* button_make( UThread* ut, UBlockIter* bi )
+static GWidget* button_make( UThread* ut, UBlockIter* bi,
+                             const GWidgetClass* wclass )
 {
     if( (bi->end - bi->it) > 2 )
     {
@@ -61,17 +58,15 @@ static GWidget* button_make( UThread* ut, UBlockIter* bi )
         const UCell* arg = ++bi->it;
 
         if( ! ur_is(arg, UT_STRING) )
-        {
-            ur_error( ut, UR_ERR_SCRIPT, "button expected string! text" );
-            return 0;
-        }
+            goto bad_string;
+
         if( ! ur_is(arg + 1, UT_BLOCK) )
         {
             ur_error( ut, UR_ERR_SCRIPT, "button expected block! action" );
             return 0;
         }
 
-        ep = (GButton*) gui_allocWidget( sizeof(GButton), &wclass_button );
+        ep = (GButton*) gui_allocWidget( sizeof(GButton), wclass );
         ep->state   = BTN_STATE_UP;
         ep->labelN  = arg[0].series.buf;
         ep->actionN = arg[1].series.buf;
@@ -79,14 +74,10 @@ static GWidget* button_make( UThread* ut, UBlockIter* bi )
         bi->it = arg + 2;
         return (GWidget*) ep;
     }
+
+bad_string:
     ur_error( ut, UR_ERR_SCRIPT, "button expected string! text" );
     return 0;
-}
-
-
-static void button_free( GWidget* wp )
-{
-    memFree( wp );
 }
 
 
@@ -126,8 +117,7 @@ static void button_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             {
                 button_setState( ut, ep, BTN_STATE_DOWN );
                 ep->held = 1;
-                //gui_grabMouse( ui, wp );
-                //gui_setKeyFocus( ui, wp );
+                gui_grabMouse( wp, 1 );
             }
             break;
 
@@ -135,7 +125,7 @@ static void button_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             if( ev->code == GLV_BUTTON_LEFT )
             {
                 int pressed = (ep->state == BTN_STATE_DOWN);
-                //gui_ungrabMouse( ui, wp );
+                gui_ungrabMouse( wp );
                 button_setState( ut, ep, BTN_STATE_UP );
                 ep->held = 0;
                 if( pressed && gui_widgetContains( wp, ev->x, ev->y ) )
@@ -187,8 +177,7 @@ static void check_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             {
                 button_setState( ut, ep, ep->checked ^ 1 );
                 ep->held = 1;
-                //gui_grabMouse( ui, wp );
-                //gui_setKeyFocus( ui, wp );
+                gui_grabMouse( wp, 1 );
             }
             break;
 
@@ -196,7 +185,7 @@ static void check_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             if( ev->code == GLV_BUTTON_LEFT )
             {
                 int pressed = (ep->state != ep->checked);
-                //gui_ungrabMouse( ui, wp );
+                gui_ungrabMouse( wp );
                 ep->held = 0;
                 if( pressed && gui_widgetContains( wp, ev->x, ev->y ) )
                     goto activate;
@@ -230,16 +219,12 @@ activate:
         ep->checked ^= 1;
         button_setState( ut, ep, ep->checked );
 
-        /*
-        UR_S_GROW;
-        ur_initType(UR_TOS, UT_LOGIC);
-        ur_logic(UR_TOS) = ep->checked;
-        */
-
         gui_doBlockN( ut, ep->actionN );
     }
 }
 
+
+GWidgetClass wclass_checkbox;
 
 static void button_sizeHint( GWidget* wp, GSizeHint* size )
 {
@@ -251,7 +236,7 @@ static void button_sizeHint( GWidget* wp, GSizeHint* size )
     UThread* ut = glEnv.guiUT;
     int width;
 
-    style = gui_style( ut );
+    style = glEnv.guiStyle;
     rc = style + ((wp->wclass == &wclass_checkbox) ?
                         CI_STYLE_CHECKBOX_SIZE : CI_STYLE_BUTTON_SIZE);
     if( ur_is(rc, UT_COORD) )
@@ -289,17 +274,16 @@ static void button_sizeHint( GWidget* wp, GSizeHint* size )
 }
 
 
-static void button_layout( UThread* ut, GWidget* wp )
+static void button_layout( GWidget* wp )
 {
     UCell* rc;
-    UCell* style;
+    UCell* style = glEnv.guiStyle;
     EX_PTR;
+    UThread* ut = glEnv.guiUT;
     int check = (wp->wclass == &wclass_checkbox);
 
     if( ! gDPC )
         return;
-
-    style = gui_style( ut );
 
     // Set draw list variables.
 
@@ -329,23 +313,22 @@ static void button_layout( UThread* ut, GWidget* wp )
 }
 
 
-static void button_render( GUI* ui, GWidget* wp )
-{
-    (void) ui;
-    (void) wp;
-}
-
-
 static int button_select( GWidget* wp, UAtom atom, UCell* res )
 {
     EX_PTR;
-    if( atom == UR_ATOM_TEXT )
+    if( atom == UR_ATOM_VALUE )
+    {
+        ur_setId(res, UT_LOGIC);
+        ur_int(res) = ep->checked;
+        return 1;
+    }
+    else if( atom == UR_ATOM_TEXT )
     {
         ur_setId(res, UT_STRING);
         ur_setSeries(res, ep->labelN, 0);
         return 1;
     }
-    if( atom == UR_ATOM_ACTION )
+    else if( atom == UR_ATOM_ACTION )
     {
         ur_setId(res, UT_BLOCK);
         ur_setSeries(res, ep->actionN, 0);
@@ -358,9 +341,9 @@ static int button_select( GWidget* wp, UAtom atom, UCell* res )
 GWidgetClass wclass_button =
 {
     "button",
-    button_make,       button_free,       button_mark,
+    button_make,       widget_free,       button_mark,
     button_dispatch,   button_sizeHint,   button_layout,
-    button_render,     button_select,
+    widget_render,     button_select,
     0, 0
 };
 
@@ -368,9 +351,9 @@ GWidgetClass wclass_button =
 GWidgetClass wclass_checkbox =
 {
     "checkbox",
-    button_make,       button_free,       button_mark,
+    button_make,       widget_free,       button_mark,
     check_dispatch,    button_sizeHint,   button_layout,
-    button_render,     button_select,
+    widget_render,     button_select,
     0, 0
 };
 

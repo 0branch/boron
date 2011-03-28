@@ -2,7 +2,7 @@
 #define GUI_H
 /*
   Boron OpenGL GUI
-  Copyright 2010 Karl Robillard
+  Copyright 2010-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -76,24 +76,6 @@ typedef struct
 UCellWidget;
 
 
-typedef struct
-{
-    UThread*  ut;
-    GWidget*  keyFocus;
-    GWidget*  mouseFocus;
-    UCell*    style;
-    UAtom     atom_gui_style;
-    UAtom     atom_hbox;
-    UAtom     atom_action;
-    UAtom     atom_text;
-    UAtom     atom_selection;
-    int16_t   rootW;
-    int16_t   rootH;
-    char      mouseGrabbed;
-}
-GUI;
-
-
 #define GW_FIXED        0
 #define GW_WEIGHTED     1
 #define GW_EXPANDING    2
@@ -119,38 +101,38 @@ typedef struct
 GRect;
 
 
-typedef void (*GRenderFunc)( GUI*, GWidget* );
+typedef void (*GRenderFunc)( GWidget* );
 typedef void (*GMarkFunc)  ( UThread*, GWidget* );
+typedef struct GWidgetClass GWidgetClass;
 
-typedef struct
+struct GWidgetClass
 {
     const char* name;
-    GWidget* (*make)    ( UThread*, UBlockIter* );
+    GWidget* (*make)    ( UThread*, UBlockIter*, const GWidgetClass* );
     void     (*free)    ( GWidget* );
     void     (*mark)    ( UThread*, GWidget* );
     void     (*dispatch)( UThread*, GWidget*, const GLViewEvent* );
     void     (*sizeHint)( GWidget*, GSizeHint* );
-    void     (*layout)  ( UThread*, GWidget* );
-    void     (*render)  ( GUI*, GWidget* );
+    void     (*layout)  ( GWidget* );
+    void     (*render)  ( GWidget* );
     int      (*select)  ( GWidget*, UAtom, UCell* );
     UAtom       nameAtom;
     uint16_t    flags;
-}
-GWidgetClass;
+};
 
 
 #define GW_HIDDEN        0x0001
 #define GW_DISABLED      0x0002
 #define GW_UPDATE_LAYOUT 0x0004
 #define GW_RECYCLE       0x0008
-//#define GW_PARENT        0x0010
+#define GW_SPACER        0x0010
 #define GW_FLAG_USER1    0x0100
 #define GW_FLAG_USER2    0x0200
 
 
 struct GWidget
 {
-    GWidgetClass* wclass;
+    const GWidgetClass* wclass;
     GWidget*  parent;
     GWidget*  child;
     GWidget*  next;
@@ -159,16 +141,19 @@ struct GWidget
 };
 
 
-/*
-void gui_init( GUI*, UThread* );
-void gui_cleanup( GUI* );
-void gui_dispatch( GUI*, GLViewEvent* );
-void gui_resizeRootArea( GUI*, int width, int height );
-*/
+#define GW_FOCUS_KEY     0x0001
+#define GW_FOCUS_MOUSE   0x0002
+#define GW_FOCUS_GRAB    0x0004
+
+
+void gui_addWidgetClasses( GWidgetClass** classTable, int count );
+GWidgetClass* gui_widgetClass( UAtom name );
+int  gui_makeWidgets( UThread*, const UCell* blkC, GWidget* parent );
+
 void gui_doBlock( UThread*, const UCell* );
 void gui_doBlockN( UThread*, UIndex );
 
-GWidget* gui_allocWidget( int size, GWidgetClass* );
+GWidget* gui_allocWidget( int size, const GWidgetClass* );
 void     gui_freeWidget( GWidget* );
 void     gui_appendChild( GWidget* parent, GWidget* child );
 void     gui_enable( GWidget*, int active );
@@ -178,16 +163,20 @@ UCell*   gui_style( UThread* );
 void     gui_initRectCoord( UCell* cell, GWidget*, UAtom what );
 int      gui_areaSelect( GWidget*, UAtom atom, UCell* result );
 
-/*
-void     gui_render( GUI*, GWidgetId );
-int      gui_selectAtom( GUI*, GWidget*, UAtom atom, UCell* result );
-*/
+void     gui_render( UThread*, GWidget* );
 GWidget* gui_root( GWidget* );
-void     gui_setKeyFocus( GUI*, GWidget* );
-void     gui_setMouseFocus( GUI*, GWidget* );
-void     gui_grabMouse( GUI*, GWidget* );
-void     gui_ungrabMouse( GUI*, GWidget* );
+void     gui_setKeyFocus( GWidget* );
+/*
+void     gui_setMouseFocus( GWidget* );
+*/
+void     gui_grabMouse( GWidget*, int keyFocus );
+void     gui_ungrabMouse( GWidget* );
+int      gui_hasFocus( GWidget* );
 UIndex   gui_parentDrawProg( GWidget* );
+
+void widget_free( GWidget* );
+void widget_dispatch( UThread*, GWidget*, const GLViewEvent* );
+void widget_render( GWidget* );
 
 
 #endif /*GUI_H*/

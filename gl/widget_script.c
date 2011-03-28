@@ -78,10 +78,10 @@ static void remapKeys( UThread* ut, const UCell* cell )
 }
 
 
-GWidgetClass wclass_script;
 extern int boron_doVoid( UThread* ut, const UCell* blkC );
 
-static GWidget* swidget_make( UThread* ut, UBlockIter* bi )
+static GWidget* swidget_make( UThread* ut, UBlockIter* bi,
+                              const GWidgetClass* wclass )
 {
     if( (bi->end - bi->it) > 1 )
     {
@@ -100,8 +100,7 @@ static GWidget* swidget_make( UThread* ut, UBlockIter* bi )
                             "draw",
                             atoms );
 
-            wp = (ScriptWidget*)
-                    gui_allocWidget( sizeof(ScriptWidget), &wclass_script );
+            wp = (ScriptWidget*) gui_allocWidget(sizeof(ScriptWidget), wclass);
             wp->ctxN = ur_makeContext( ut, CI_COUNT );
 
             ctx = ur_buffer( wp->ctxN );
@@ -308,12 +307,13 @@ static void swidget_sizeHint( GWidget* wp, GSizeHint* size )
 }
 
 
-static void swidget_layout( UThread* ut, GWidget* wp )
+static void swidget_layout( GWidget* wp )
 {
     EX_PTR;
     UBuffer* ctx;
     UCell* cell;
     UCell* val;
+    UThread* ut = glEnv.guiUT;
 
     ctx = ur_buffer( ep->ctxN );
     cell = ur_ctxCell( ctx, CI_RESIZE );
@@ -335,12 +335,12 @@ static void swidget_layout( UThread* ut, GWidget* wp )
 }
 
 
-static void swidget_render( GUI* ui, GWidget* wp )
+static void swidget_render( GWidget* wp )
 {
     EX_PTR;
     UBuffer* ctx;
     UCell* cell;
-    UThread* ut = ui->ut;
+    UThread* ut = glEnv.guiUT;
 
     ctx = ur_buffer( ep->ctxN );
     cell = ur_ctxCell( ctx, CI_DRAW );

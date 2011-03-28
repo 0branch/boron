@@ -28,7 +28,8 @@ demo-window: [
             ]
         ]
         mouse-move: [
-            ifn eq? 0 event/5 [
+            ;probe event
+            ifn eq? 0 and event/5 mouse-lb [
                 view-cam/turntable event/3 event/4
             ]
         ]

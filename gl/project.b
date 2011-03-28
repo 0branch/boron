@@ -75,6 +75,9 @@ lib %boron-gl [
         %port_joystick.c
         %widget_script.c
         %widget_button.c
+        %widget_label.c
+        %widget_lineedit.c
+        %widget_list.c
     ]
 ]
 

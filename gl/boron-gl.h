@@ -133,6 +133,7 @@ struct GLEnv
     UAtomEntry* drawOpTable;
     GWidget* eventWidget;
     UThread* guiUT;
+    UCell*   guiStyle;          // For GWidget layout & render.
     UBuffer tmpStr;
     UBuffer widgetClasses;
     UBuffer rootWidgets;
@@ -151,9 +152,6 @@ extern UThread* boron_makeEnvGL( UDatatype**, unsigned int dtCount );
 extern void boron_freeEnvGL( UThread* );
 
 void ur_markBlkN( UThread* ut, UIndex blkN );
-
-extern void ur_addWidgetClasses( GWidgetClass** classTable, int count );
-extern GWidgetClass* ur_widgetClass( UAtom name );
 
 UBuffer* ur_makeRaster( UThread*, int format, int w, int h, UCell* res );
 int      ur_rasterElementSize( const RasterHead* );

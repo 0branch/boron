@@ -132,64 +132,6 @@ switch environs/os [
 
 
 ;-----------------------------------------------------------------------------
-; gx_init() calls layout to install the user layout rules.
-
-
-/*
-layout: func [custom] [
-    layout: custom
-
-    [spec | tok firstw assign parent stack make-widget box widget rules]
-    [
-        [] clear :stack
-
-        [
-            widget! parent tok make
-                assign ift (dup assign set none :assign)
-                firstw iff (dup :firstw)
-        ]
-        proc :make-widget   ; ( -- widget)
-
-        [tok: (stack tok last append make-widget push)] :box
-        [tok: (make-widget drop)] :widget
-
-        spec
-        [
-            [
-                :tok
-                'hbox      block!                 box
-              | 'vbox      block!                 box
-              | 'window    string! block! block!  box
-              | 'expand                           widget
-              | 'button    string! block!         widget
-              | 'checkbox  string! block!         widget
-              | 'label     string!                widget
-              | 'line-edit word!/string!          widget
-              | 'list      block!  block!         widget
-              | 't-widget  block!                 widget
-              | get-word!  (tok/1 word! to :assign)
-              ; >> Custom widget parse rules go here <<
-            ]
-            parse.some
-
-            stack empty? ift break
-            stack pop :parent
-            stack pop
-        ] forever
-
-        firstw
-    ]
-
-    ; Append user rules.
-    layout if-some (over tail -3 skip first swap append.cat drop)
-
-    ; Make the function with the new rules in place and replace this installer.
-    func :layout    ; (block -- widget)
-]
-*/
-
-
-;-----------------------------------------------------------------------------
 ; Load functions
 
 

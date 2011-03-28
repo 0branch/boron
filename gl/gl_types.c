@@ -1383,45 +1383,19 @@ void quat_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 // UT_WIDGET
 
 
-void ur_arrAppendPtr( UBuffer* arr, void* ptr )
-{
-    ur_arrReserve( arr, arr->used + 1 );
-    ((void**) arr->ptr.v)[ arr->used ] = ptr;
-    ++arr->used;
-}
-
-
 static int widget_make( UThread* ut, const UCell* from, UCell* res )
 {
     if( ur_is(from, UT_BLOCK) )
     {
-        UBlockIter bi;
-        GWidgetClass* wclass;
-        GWidget* wp = 0;
-
-        ur_blkSlice( ut, &bi, from );
-        //ur_foreach( bi )
-        while( bi.it != bi.end )
+        int rcount = glEnv.rootWidgets.used;
+        if( ! gui_makeWidgets( ut, from, 0 ) )
+            return UR_THROW;
+        if( rcount < glEnv.rootWidgets.used )
         {
-            if( ! ur_is(bi.it, UT_WORD) )
-                return ur_error( ut, UR_ERR_TYPE,
-                                 "widget make expected widget name" );
-            wclass = ur_widgetClass( ur_atom(bi.it) );
-            if( ! wclass )
-            {
-                return ur_error( ut, UR_ERR_SCRIPT, "unknown widget class '%s",
-                                 ur_wordCStr( bi.it ) );
-            }
-            wp = wclass->make( ut, &bi );
-            if( ! wp )
-                return UR_THROW;
+            ur_setId(res, UT_WIDGET);
+            ur_widgetPtr(res) = ((GWidget**) glEnv.rootWidgets.ptr.v)[rcount];
+            return UR_OK;
         }
-
-        ur_arrAppendPtr( &glEnv.rootWidgets, wp );
-
-        ur_setId(res, UT_WIDGET);
-        ur_widgetPtr(res) = wp;
-        return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "widget make expected block" );
 }

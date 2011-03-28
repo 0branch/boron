@@ -91,7 +91,16 @@ static void eventHandler( GLView* view, GLViewEvent* event )
         case GLV_EVENT_FOCUS_OUT:
             break;
         */
+        case GLV_EVENT_BUTTON_DOWN:
+        case GLV_EVENT_BUTTON_UP:
+            // Convert window system origin from top of window to the bottom.
+            event->y = view->height - event->y;
+            break;
+
         case GLV_EVENT_MOTION:
+            // Convert window system origin from top of window to the bottom.
+            event->y = view->height - event->y;
+
             // Set mouse deltas here so no one else needs to calculate them.
             if( env->prevMouseX == MOUSE_UNSET )
             {
@@ -101,14 +110,12 @@ static void eventHandler( GLView* view, GLViewEvent* event )
             else
             {
                 env->mouseDeltaX = event->x - env->prevMouseX;
-                env->mouseDeltaY = env->prevMouseY - event->y;
+                env->mouseDeltaY = event->y - env->prevMouseY;
             }
             env->prevMouseX = event->x;
             env->prevMouseY = event->y;
             break;
         /*
-        case GLV_EVENT_BUTTON_DOWN:
-        case GLV_EVENT_BUTTON_UP:
         case GLV_EVENT_WHEEL:
         case GLV_EVENT_KEY_DOWN:
         case GLV_EVENT_KEY_UP:
@@ -2124,13 +2131,13 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    62
+#define FA_COUNT    63
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
         "add size text wait close\n"
         "width height area rect raster texture\n"
-        "gui-style elem focus resize key-down key-up\n"
+        "gui-style value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
         "ambient diffuse specular pos shader vertex normal fragment\n"
         "default dynamic static stream left right center\n"
@@ -2204,13 +2211,7 @@ static void _createDrawOpTable( UThread* ut )
 #include "gl_types.c"
 #include "math3d.c"
 
-
-extern GWidgetClass wclass_script;
-extern GWidgetClass wclass_hbox;
-extern GWidgetClass wclass_vbox;
-extern GWidgetClass wclass_window;
-extern GWidgetClass wclass_button;
-extern GWidgetClass wclass_checkbox;
+extern void gui_addStdClasses();
 
 
 UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
@@ -2363,18 +2364,7 @@ cleanup:
     ur_ctxInit( &glEnv.widgetClasses, 0 );
     ur_arrInit( &glEnv.rootWidgets, sizeof(GWidget*), 0 );
 
-    {
-    GWidgetClass* classes[ 6 ];
-
-    classes[0] = &wclass_script;
-    classes[1] = &wclass_hbox;
-    classes[2] = &wclass_vbox;
-    classes[3] = &wclass_window;
-    classes[4] = &wclass_button;
-    classes[5] = &wclass_checkbox;
-
-    ur_addWidgetClasses( classes, 6 );
-    }
+    gui_addStdClasses();
 
     return ut;
 }
@@ -2402,50 +2392,6 @@ void boron_freeEnvGL( UThread* ut )
         glv_destroy( gView );
         boron_freeEnv( ut );
     }
-}
-
-
-void ur_addWidgetClasses( GWidgetClass** classTable, int count )
-{
-    UBuffer* ctx = &glEnv.widgetClasses;
-    UBuffer atoms;
-    int i;
-    int index;
-
-    {
-    UBuffer* str = &glEnv.tmpStr;
-    str->used = 0;
-    ur_arrInit( &atoms, sizeof(UAtom), count );
-    for( i = 0; i < count; ++i )
-    {
-        if( i )
-            ur_strAppendChar( str, ' ' );
-        ur_strAppendCStr( str, classTable[ i ]->name );
-    }
-    ur_strTermNull( str );
-    ur_internAtoms( glEnv.guiUT, str->ptr.c, atoms.ptr.u16 );
-    }
-
-    ur_ctxReserve( ctx, ctx->used + count );
-    for( i = 0; i < count; ++i )
-    {
-        GWidgetClass* wc = *classTable++;
-        wc->nameAtom = atoms.ptr.u16[ i ];
-        index = ur_ctxAddWordI( ctx, wc->nameAtom );
-        ((GWidgetClass**) ctx->ptr.v)[ index ] = wc;
-    }
-    ur_ctxSort( ctx );
-
-    ur_arrFree( &atoms );
-}
-
-
-GWidgetClass* ur_widgetClass( UAtom name )
-{
-    int i = ur_ctxLookup( &glEnv.widgetClasses, name );
-    if( i < 0 )
-        return 0;
-    return ((GWidgetClass**) glEnv.widgetClasses.ptr.v)[ i ];
 }
 
 
