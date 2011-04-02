@@ -3938,6 +3938,30 @@ CFUNC(cfunc_ltQ)
 
 
 /*-cf-
+    zero?
+        value
+    return: logic!
+    group: math
+*/
+CFUNC(cfunc_zeroQ)
+{
+    int logic;
+    (void) ut;
+
+    if( ur_is(a1, UT_INT) || ur_is(a1, UT_CHAR) )
+        logic = ur_int(a1) ? 0 : 1; 
+    else if( ur_is(a1, UT_DECIMAL) )
+        logic = ur_decimal(a1) ? 0 : 1; 
+    else
+        logic = 0;
+
+    ur_setId(res, UT_LOGIC);
+    ur_int(res) = logic;
+    return UR_OK;
+}
+
+
+/*-cf-
     type?
         value
     return: Datatype of value.

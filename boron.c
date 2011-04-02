@@ -926,6 +926,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_neQ,        "ne? a b" );
     addCFunc( cfunc_gtQ,        "gt? a b" );
     addCFunc( cfunc_ltQ,        "lt? a b" );
+    addCFunc( cfunc_zeroQ,      "zero? a" );
     addCFunc( cfunc_typeQ,      "type? a" );
     addCFunc( cfunc_encodingQ,  "encoding? s" );
     addCFunc( cfunc_encode,     "encode type s /bom" );
