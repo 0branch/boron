@@ -1048,7 +1048,7 @@ static int boron_call( UThread* ut, const UCellFunc* fcell, UCell* blkC,
                         if( blkC->series.it >= blkC->series.end ) 
                             goto func_short;
                         if( ! (ok = boron_eval1( ut, blkC, it++ )) )
-                            goto cleanup_trace;
+                            goto cleanup;
                         break;
 
                     case FO_litArg:
@@ -1135,6 +1135,8 @@ bad_arg:
                 }
             }
         }
+
+cleanup:
 
         boron_stackPopN( ut, nc );
         return ok;
@@ -1234,7 +1236,7 @@ int boron_eval1( UThread* ut, UCell* blkC, UCell* res )
 
             blkC->series.it = sit;
             if( ! boron_eval1( ut, blkC, res ) )
-                goto traceError;
+                return UR_THROW;
 
             for( ; scell != cell; ++scell )
             {
@@ -1259,7 +1261,7 @@ int boron_eval1( UThread* ut, UCell* blkC, UCell* res )
 
         case UT_PAREN:
             if( ! boron_doBlock( ut, cell, res ) )
-                goto traceError;
+                return UR_THROW;
             ++blkC->series.it;
             break;
 
@@ -1308,6 +1310,8 @@ end_of_block:
 
 traceError:
 
+    // NOTE: This slows down throw of non-error values.
+    ur_appendTrace( ut, blkC->series.buf, blkC->series.it );
     return UR_THROW;
 }
 
