@@ -4,7 +4,7 @@ Version: 0.1.10
 Release: 1
 License: LGPLv3+
 # Vendor:
-URL: http://urlan.sf.net/
+URL: http://urlan.sf.net/boron
 Packager: <wickedsmoke@users.sf.net>
 Group: Development/Languages
 Source: boron-%{version}.tar.gz
