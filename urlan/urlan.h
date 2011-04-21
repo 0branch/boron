@@ -1,7 +1,7 @@
 #ifndef URLAN_H
 #define URLAN_H
 /*
-  Copyright 2009,2010 Karl Robillard
+  Copyright 2009,2010,2011 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -457,6 +457,9 @@ UBuffer* ur_threadContext( UThread* );
 UBuffer* ur_envContext( UThread* );
 void     ur_appendTrace( UThread*, UIndex blkN, UIndex it );
 UIndex   ur_tokenize( UThread*, const char* it, const char* end, UCell* res );
+int      ur_serialize( UThread*, UIndex blkN, UCell* res );
+int      ur_unserialize( UThread*, const uint8_t* start, const uint8_t* end,
+                         UCell* res );
 void     ur_toStr( UThread*, const UCell* cell, UBuffer* str, int depth );
 void     ur_toText( UThread*, const UCell* cell, UBuffer* str );
 const UCell* ur_wordCell( UThread*, const UCell* cell );
@@ -525,8 +528,6 @@ char*    ur_cstring( const UBuffer*, UBuffer* bin, UIndex start, UIndex end );
 #define  ur_strFree ur_arrFree
 #define  ur_strIsUcs2(buf)  ((buf)->form == UR_ENC_UCS2)
 
-void     ur_vecInit( UBuffer*, int form, int elemSize, int size );
-
 UIndex   ur_makeBlock( UThread*, int size );
 UBuffer* ur_makeBlockCell( UThread*, int type, int size, UCell* cell );
 UIndex   ur_blkClone( UThread*, UIndex blkN );
@@ -560,6 +561,8 @@ int      ur_ctxLookupNoSort( const UBuffer*, UAtom atom );
 int      ur_ctxLookup( const UBuffer*, UAtom atom );
 const UBuffer* ur_sortedContext( UThread*, const UCell* );
 #define  ur_ctxCell(c,n)    ((c)->ptr.cell + n)
+
+void     ur_vecInit( UBuffer*, int form, int elemSize, int size );
 
 void     ur_arrInit( UBuffer*, int size, int count );
 void     ur_arrReserve( UBuffer*, int count );

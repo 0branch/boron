@@ -56,6 +56,7 @@ add_library(boron-lib SHARED
     urlan/parse_string.c
     urlan/path.c
     urlan/string.c
+    urlan/serialize.c
     urlan/tokenize.c
     urlan/vector.c
     support/mem_util.c

@@ -1,9 +1,25 @@
-
-
 /*
+  Copyright 2010,2011 Karl Robillard
+
+  This file is part of the Urlan datatype system.
+
+  Urlan is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Lesser General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Urlan is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with Urlan.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
 #include "urlan.h"
 #include "os.h"
-*/
 
 
 typedef struct
@@ -388,23 +404,19 @@ static void _memCpySwap4(uint8_t* dest, const uint8_t* src, uint32_t elemCount)
 #endif
 
 
-/*-cf-
-    serialize
-        data    block!
-    return: binary!
-    group: data
+/**
+  Serialize block.
 
-    Pack data into binary image for transport.
-    Series positions, slices, and non-global word bindings are retained.
+  \param  blkN  Index to valid block buffer.
+  \param  res   Cell to be set to new output binary.
+
+  \return UR_OK/UR_THROW
 */
-CFUNC( cfunc_serialize )
+int ur_serialize( UThread* ut, UIndex blkN, UCell* res )
 {
     Serializer ser;
     UBuffer* bin;
     int ok = UR_OK;
-
-    if( ! ur_is(a1, UT_BLOCK) )
-        return ur_error( ut, UR_ERR_TYPE, "serialize expected block!" );
 
     ur_arrInit( &ser.atomMap, sizeof(UAtom), 0 );
     ur_arrInit( &ser.bufMap, sizeof(BufferIndex), 0 );
@@ -414,7 +426,7 @@ CFUNC( cfunc_serialize )
     ur_binAppendData( bin, (const uint8_t*) "BOR1", 4 );
     _pushU32( bin, 0 );     // Reserve atoms offset.
     _pushU32( bin, 0 );     // Reserve buffer count.
-    _mapBuffer( &ser, a1->series.buf );
+    _mapBuffer( &ser, blkN );
 
     {
         const BufferIndex* it;
@@ -535,7 +547,15 @@ cleanup:
 /*--------------------------------------------------------------------------*/
 
 
-static uint32_t _pullU32( UBinaryIter* bi )
+typedef struct
+{
+    const uint8_t* it;
+    const uint8_t* end;
+}
+BinaryIter;
+
+
+static uint32_t _pullU32( BinaryIter* bi )
 {
     uint32_t n;
     n = (bi->it[0] << 24) | (bi->it[1] << 16) | (bi->it[2] << 8) | bi->it[3];
@@ -544,7 +564,7 @@ static uint32_t _pullU32( UBinaryIter* bi )
 }
 
 
-static void _pullU64( UBinaryIter* bi, uint64_t* dest )
+static void _pullU64( BinaryIter* bi, uint64_t* dest )
 {
 #ifdef __BIG_ENDIAN__
     const uint8_t* bp = bi->it;
@@ -564,7 +584,7 @@ static void _pullU64( UBinaryIter* bi, uint64_t* dest )
 }
 
 
-static uint32_t _unpackU32( UBinaryIter* bi )
+static uint32_t _unpackU32( BinaryIter* bi )
 {
     uint32_t n = bi->it[0];
     int pack = n & PACK_ANY;
@@ -604,7 +624,7 @@ static uint32_t _unpackU32( UBinaryIter* bi )
   Returns non-zero if successful
 */
 static int _unserializeBlock( UAtom* atoms, UIndex* ids,
-                              UBinaryIter* bi, UBuffer* blk )
+                              BinaryIter* bi, UBuffer* blk )
 {
     UCell* cell = blk->ptr.cell;
     int n;
@@ -753,30 +773,30 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
 }
 
 
-/*-cf-
-    unserialize
-        data    binary!
-    return: Re-materialized block!.
-    group: data
+/*
+  Unserialize binary.
+
+  \param  start     Pointer to serialized binary.
+  \param  end       Pointer to end of binary.
+  \param  res       Cell to be set to new output block.
+
+  \return UR_OK/UR_THROW
 */
-CFUNC( cfunc_unserialize )
+int ur_unserialize( UThread* ut, const uint8_t* start, const uint8_t* end,
+                    UCell* res )
 {
-    UBinaryIter bi;
+    BinaryIter bi;
     UBuffer atoms;
     UBuffer ids;
     UBuffer* buf;
-    const uint8_t* start;
     int i;
     int n;
     int type;
     int used;
     int ok = UR_OK;
 
-    if( ! ur_is(a1, UT_BINARY) )
-        return ur_error( ut, UR_ERR_TYPE, "serialize expected binary!" );
-
-    ur_binSlice( ut, &bi, a1 );
-    start = bi.it;
+    bi.it  = start;
+    bi.end = end;
 
     if( bi.it[0] != 'B' || bi.it[1] != 'O' ||
         bi.it[2] != 'R' || bi.it[3] != '1' ||

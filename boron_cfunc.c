@@ -3670,6 +3670,39 @@ CFUNC(cfunc_rename)
 
 
 /*-cf-
+    serialize
+        data    block!
+    return: binary!
+    group: data
+
+    Pack data into binary image for transport.
+    Series positions, slices, and non-global word bindings are retained.
+*/
+CFUNC( cfunc_serialize )
+{
+    if( ! ur_is(a1, UT_BLOCK) )
+        return ur_error( ut, UR_ERR_TYPE, "serialize expected block!" );
+    return ur_serialize( ut, a1->series.buf, res );
+}
+
+
+/*-cf-
+    unserialize
+        data    binary!
+    return: Re-materialized block!.
+    group: data
+*/
+CFUNC( cfunc_unserialize )
+{
+    UBinaryIter bi;
+    if( ! ur_is(a1, UT_BINARY) )
+        return ur_error( ut, UR_ERR_TYPE, "unserialize expected binary!" );
+    ur_binSlice( ut, &bi, a1 );
+    return ur_unserialize( ut, bi.it, bi.end, res );
+}
+
+
+/*-cf-
     load
         file    file!/string!/binary!
     return: block! or none! if file is empty.

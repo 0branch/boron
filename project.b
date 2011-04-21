@@ -77,6 +77,7 @@ shlib %boron [
         %string.c
         %context.c
         %gc.c
+        %serialize.c
         %tokenize.c
         %bignum.c
         %vector.c

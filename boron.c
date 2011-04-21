@@ -480,7 +480,6 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 #endif
 
 #include "boron_construct.c"
-#include "boron_serialize.c"
 #include "boron_wait.c"
 #include "boron_cfunc.c"
 
