@@ -475,9 +475,14 @@ static T* hex_to_ ## T( T* cp, uint32_t n, uint32_t hi ) { \
     do { \
         *cp++ = _hexDigits[ n & 15 ]; \
     } while( (n >>= 4) > 0 ); \
-    while( hi ) { \
-        *cp++ = _hexDigits[ hi & 15 ]; \
-        hi >>= 4; } \
+    if( hi ) { \
+        while( cp != (start + 8) ) \
+            *cp++ = '0'; \
+        do { \
+            *cp++ = _hexDigits[ hi & 15 ]; \
+            hi >>= 4; \
+        } while( hi ); \
+    } \
     reverse_ ## T( start, cp ); \
     return cp; \
 }

@@ -2,6 +2,7 @@ print "---- bignum hex"
 big: $7FFFFFFFFFFFFFFF
 print [type? big big]
 print to-dec big
+probe 0x18f00000123     ; Leading zeros on low half.
 
 /*
 print "---- bignum sub"
