@@ -209,12 +209,17 @@ void ur_deepCopyCells( UThread* ut, UCell* dest, const UCell* src, int count )
 */
 UBuffer* ur_ctxClone( UThread* ut, const UBuffer* src, UCell* cell )
 {
-    UBuffer* nc = ur_makeContextCell( ut, src->used, cell );
+    // Save src members; src will be invalid after ur_makeContextCell.
+    UCell* srcCells = src->ptr.cell;
+    UAtomEntry* srcEntries = ENTRIES(src);
+    int size = src->used;
+
+    UBuffer* nc = ur_makeContextCell( ut, size, cell );
     UIndex hold = ur_hold( cell->context.buf );
 
-    memCpy( ENTRIES(nc), ENTRIES(src), src->used * sizeof(UAtomEntry) );
-    nc->used = src->used;
-    ur_deepCopyCells( ut, nc->ptr.cell, src->ptr.cell, src->used );
+    memCpy( ENTRIES(nc), srcEntries, size * sizeof(UAtomEntry) );
+    nc->used = size;
+    ur_deepCopyCells( ut, nc->ptr.cell, srcCells, size );
 
     nc = ur_buffer( cell->series.buf );     // Re-aquire
     ur_ctxSort( nc );
