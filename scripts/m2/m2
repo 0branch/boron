@@ -1,4 +1,4 @@
-#!/usr/bin/boron
+#!/usr/bin/boron -s
 /*
 	M2 - A meta-make tool
 	Copyright 2001-2010 Karl Robillard
