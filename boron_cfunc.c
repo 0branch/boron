@@ -2095,7 +2095,7 @@ CFUNC(cfunc_change)
 /*-cf-
     remove
         series      series or none!
-        /slice      Remove to end of series.
+        /slice      Remove to end of slice.
         /part
             number  int!
     return: series or none!
@@ -2136,6 +2136,46 @@ CFUNC(cfunc_remove)
     }
 
     SERIES_DT( type )->remove( ut, &si, part );
+    *res = *a1;
+    return UR_OK;
+}
+
+
+/*-cf-
+    reverse
+        series
+        /part
+            number  int!
+    return: series
+    group: series
+
+    Reverse the order of elements in a series.
+*/
+CFUNC(cfunc_reverse)
+{
+#define OPT_REVERSE_PART     0x01
+    USeriesIterM si;
+    int part;
+    int type = ur_type(a1);
+
+    if( ! ur_isSeriesType( type ) )
+        return ur_error( ut, UR_ERR_TYPE, "reverse expected series" );
+    if( ! ur_seriesSliceM( ut, &si, a1 ) )
+        return UR_THROW;
+
+    if( CFUNC_OPTIONS & OPT_REVERSE_PART )
+    {
+        if( ! ur_is(a2, UT_INT) )
+            return ur_error( ut, UR_ERR_TYPE, "reverse expected int! part" );
+        part = ur_int(a2);
+        if( part < 1 )
+            goto done;
+        if( part < (si.end - si.it) )
+            si.end = si.it + part;
+    }
+
+    SERIES_DT( type )->reverse( &si );
+done:
     *res = *a1;
     return UR_OK;
 }

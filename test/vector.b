@@ -23,3 +23,8 @@ probe append copy a 9.0,-8.7,7.0
 print "---- poke"
 a: #[1.0 2 3 4 5 6]
 probe poke a 3 8.0,9.2,10
+
+
+print "---- reverse"
+probe reverse #[1 2 3 4]
+probe reverse/part #[1 2 3 4 5] 3

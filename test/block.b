@@ -99,3 +99,8 @@ probe change next a "new"
 probe a
 probe change tail a "new"
 probe a
+
+
+print "---- reverse"
+probe reverse [1 2 3 4]
+probe reverse/part [1 2 3 4 5] 3

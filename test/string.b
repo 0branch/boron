@@ -87,6 +87,11 @@ probe remove/part next a 3
 probe a
 
 
+print "---- reverse"
+probe reverse "vwxy"
+probe reverse/part "vwxyz" 3
+
+
 print "---- find"
 sq: "A squirrel in winter rests"
 u2: "Rests ЃԐ"

@@ -184,13 +184,25 @@
 
   \return UR_OK/UR_THROW
 */
-/** \fn void (*USeriesType::remove)( UThread*, UBuffer* buf,
-                                     UIndex it, UIndex end )
+/** \fn void (*USeriesType::change)( UThread*, USeriesIterM* si,
+                                     const UCell* val, UIndex part )
+  Change part of the series.
+
+  \param si     Series buffer and change position.  Si.end is ignored.
+  \param val    Replacement value.
+  \param part   Remove this number of elements and insert replacement.
+                If zero then simply overwrite with val.
+*/
+/** \fn void (*USeriesType::remove)( UThread*, USeriesIterM* si, UIndex part )
   Remove part of the series.
 
-  \param buf    Series buffer.
-  \param it     Start of part to remove.
-  \param end    End of part to remove.
+  \param si     Series buffer and position.  Si.end is ignored.
+  \param part   Number of element to remove.
+*/
+/** \fn void (*USeriesType::reverse)( const USeriesIterM* si )
+  Reverse series elements.
+
+  \param si     Series buffer and slice to reverse.
 */
 /** \fn int (*USeriesType::find)( UThread*, const UCell* ser, const UCell* val,
                                   int opt )
@@ -2111,6 +2123,13 @@ void binary_remove( UThread* ut, USeriesIterM* si, UIndex part )
 }
 
 
+void binary_reverse( const USeriesIterM* si )
+{
+    uint8_t* it = si->buf->ptr.b;
+    reverse_uint8_t( it + si->it, it + si->end );
+}
+
+
 int binary_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
     const uint8_t* it;
@@ -2173,8 +2192,8 @@ USeriesType dt_binary =
     unset_markBuf,          binary_toShared,        unset_bind
     },
     binary_pick,            binary_poke,            binary_append,
-    binary_insert,
-    binary_change,          binary_remove,          binary_find
+    binary_insert,          binary_change,          binary_remove,
+    binary_reverse,         binary_find
 };
 
 
@@ -2255,6 +2274,12 @@ void bitset_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 }
 
 
+void bitset_reverse( const USeriesIterM* si )
+{
+    (void) si;
+}
+
+
 int bitset_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
     const UBuffer* buf = si->buf;
@@ -2299,8 +2324,8 @@ USeriesType dt_bitset =
     unset_markBuf,          binary_toShared,        unset_bind
     },
     binary_pick,            binary_poke,            binary_append,
-    binary_insert,
-    binary_change,          binary_remove,          bitset_find
+    binary_insert,          binary_change,          binary_remove,
+    bitset_reverse,         bitset_find
 };
 
 
@@ -2772,6 +2797,17 @@ void string_remove( UThread* ut, USeriesIterM* si, UIndex part )
 }
 
 
+void string_reverse( const USeriesIterM* si )
+{
+    const UBuffer* buf = si->buf;
+    assert( buf->form != UR_ENC_UTF8 );
+    if( ur_strIsUcs2(buf) )
+        reverse_uint16_t( buf->ptr.u16 + si->it, buf->ptr.u16 + si->end );
+    else
+        reverse_uint8_t( buf->ptr.b + si->it, buf->ptr.b + si->end );
+}
+
+
 /*
   Returns pointer to val or zero if val not found.
 */
@@ -3006,8 +3042,8 @@ USeriesType dt_string =
     unset_markBuf,          binary_toShared,        unset_bind
     },
     string_pick,            string_poke,            string_append,
-    string_insert,
-    string_change,          string_remove,          string_find
+    string_insert,          string_change,          string_remove,
+    string_reverse,         string_find
 };
 
 
@@ -3080,8 +3116,8 @@ USeriesType dt_file =
     unset_markBuf,          binary_toShared,        unset_bind
     },
     string_pick,            string_poke,            string_append,
-    string_insert,
-    string_change,          string_remove,          string_find
+    string_insert,          string_change,          string_remove,
+    string_reverse,         string_find
 };
 
 
@@ -3547,6 +3583,24 @@ void block_remove( UThread* ut, USeriesIterM* si, UIndex part )
 }
 
 
+void block_reverse( const USeriesIterM* si )
+{
+    if( si->end > si->it )
+    {
+        UCell tmp;
+        UCell* it  = si->buf->ptr.cell + si->it;
+        UCell* end = si->buf->ptr.cell + si->end;
+
+        while( it < --end )
+        {
+            tmp = *it;
+            *it++ = *end;
+            *end = tmp;
+        }
+    }
+}
+
+
 int block_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
     UBlockIter bi;
@@ -3625,8 +3679,8 @@ USeriesType dt_block =
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
-    block_insert,
-    block_change,           block_remove,           block_find
+    block_insert,           block_change,           block_remove,
+    block_reverse,          block_find
 };
 
 
@@ -3663,8 +3717,8 @@ USeriesType dt_paren =
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
-    block_insert,
-    block_change,           block_remove,           block_find
+    block_insert,           block_change,           block_remove,
+    block_reverse,          block_find
 };
 
 
@@ -3728,8 +3782,8 @@ USeriesType dt_path =
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
-    block_insert,
-    block_change,           block_remove,           block_find
+    block_insert,           block_change,           block_remove,
+    block_reverse,          block_find
 };
 
 
@@ -3748,8 +3802,8 @@ USeriesType dt_litpath =
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
-    block_insert,
-    block_change,           block_remove,           block_find
+    block_insert,           block_change,           block_remove,
+    block_reverse,          block_find
 };
 
 
@@ -3768,8 +3822,8 @@ USeriesType dt_setpath =
     block_markBuf,          block_toShared,         unset_bind
     },
     block_pick,             block_poke,             block_append,
-    block_insert,
-    block_change,           block_remove,           block_find
+    block_insert,           block_change,           block_remove,
+    block_reverse,          block_find
 };
 
 

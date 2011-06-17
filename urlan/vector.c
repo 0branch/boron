@@ -24,6 +24,7 @@
 #include "urlan_atoms.h"
 #include "unset.h"
 #include "os.h"
+#include "mem_util.h"
 
 
 static int ur_vecFormElemSize( UAtom form )
@@ -657,6 +658,24 @@ void vector_remove( UThread* ut, USeriesIterM* si, UIndex part )
 }
 
 
+void vector_reverse( const USeriesIterM* si )
+{
+    const UBuffer* buf = si->buf;
+    switch( buf->elemSize )
+    {
+        case 2:
+            reverse_uint16_t( buf->ptr.u16 + si->it, buf->ptr.u16 + si->end );
+            break;
+        case 4:
+            reverse_uint32_t( buf->ptr.u32 + si->it, buf->ptr.u32 + si->end );
+            break;
+        case 8:
+            assert( 0 && buf->elemSize );
+            break;
+    }
+}
+
+
 int vector_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
     (void) ut;
@@ -701,8 +720,8 @@ USeriesType dt_vector =
     unset_markBuf,          binary_toShared,        unset_bind
     },
     vector_pick,            vector_poke,            vector_append,
-    vector_insert,
-    vector_change,          vector_remove,          vector_find
+    vector_insert,          vector_change,          vector_remove,
+    vector_reverse,         vector_find
 };
 
 

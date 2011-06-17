@@ -29,6 +29,11 @@ probe insert/part in-a #{F00BAD} 2
 probe c
 
 
+print "---- reverse"
+probe reverse #{01020304}
+probe reverse/part #{0102030405} 3
+
+
 print "---- find"
 probe find b 1
 probe find b #{0c01}

@@ -885,6 +885,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_insert,  "insert ser val /block /part n" );
     addCFunc( cfunc_change,  "change ser val /slice /part limit" );
     addCFunc( cfunc_remove,  "remove ser /slice /part n" );
+    addCFunc( cfunc_reverse, "reverse ser /part n" );
     addCFunc( cfunc_find,    "find ser val /last /case /part n" );
     addCFunc( cfunc_clear,   "clear ser" );
     addCFunc( cfunc_slice,   "slice ser n" );
