@@ -52,6 +52,10 @@ a: copy w
 probe change/part next a b 2
 probe a
 
+a: copy w
+probe change/part a b 8
+probe a
+
 
 print "---- swap"
 probe swap #{FFFE680065006C006C006F00}

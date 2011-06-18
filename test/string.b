@@ -73,6 +73,16 @@ a: "abcdefg"
 probe p: change/slice slice a 5 "UU"
 probe a
 
+
+print "---- change/part"
+a: change/part "abcde" "12" 4
+probe a
+probe head a
+
+a: change/part "abcde" "12" 8
+probe a
+probe head a
+
 /*
 a: "abcde"
 probe change/part a b -33

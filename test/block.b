@@ -91,6 +91,10 @@ probe change/part next a b 2
 probe a
 
 a: copy w
+probe change/part a b 8
+probe a
+
+a: copy w
 probe change/part a b -33
 probe a
 

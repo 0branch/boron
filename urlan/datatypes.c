@@ -2080,24 +2080,30 @@ int binary_change( UThread* ut, USeriesIterM* si, const UCell* val,
         UBinaryIter ri;
         UBuffer* buf;
         UIndex newUsed;
-        int slen;
+        int rlen;
 
         ur_binSlice( ut, &ri, val );
-        slen = ri.end - ri.it;
-        if( slen > 0 )
+        rlen = ri.end - ri.it;
+        if( rlen > 0 )
         {
             buf = si->buf;
             if( part > 0 )
             {
-                if( part < slen )
-                    ur_binExpand( buf, si->it, slen - part );
-                else if( part > slen )
-                    ur_binErase( buf, si->it, part - slen );
-                newUsed = buf->used;
+                if( part > rlen )
+                {
+                    ur_binErase( buf, si->it, part - rlen );
+                    newUsed = (buf->used < rlen) ? rlen : buf->used;
+                }
+                else 
+                {
+                    if( part < rlen )
+                        ur_binExpand( buf, si->it, rlen - part );
+                    newUsed = buf->used;
+                }
             }
             else
             {
-                newUsed = si->it + slen;
+                newUsed = si->it + rlen;
                 if( newUsed < buf->used )
                     newUsed = buf->used;
             }
@@ -2105,7 +2111,7 @@ int binary_change( UThread* ut, USeriesIterM* si, const UCell* val,
             // TODO: Handle overwritting self when buf is val.
 
             buf->used = si->it;
-            ur_binAppendData( buf, ri.it, slen );
+            ur_binAppendData( buf, ri.it, rlen );
             si->it = buf->used;
             buf->used = newUsed;
         }
@@ -2716,27 +2722,33 @@ static void ur_strChange( USeriesIterM* si, USeriesIter* ri, UIndex part )
 {
     UBuffer* buf;
     UIndex newUsed;
-    int slen = ri->end - ri->it;
+    int rlen = ri->end - ri->it;
 
-    if( slen > 0 )
+    if( rlen > 0 )
     {
         buf = si->buf;
         if( part > 0 )
         {
-            if( part < slen )
-                ur_arrExpand( buf, si->it, slen - part );
-            else if( part > slen )
-                ur_arrErase( buf, si->it, part - slen );
-            newUsed = buf->used;
+            if( part > rlen )
+            {
+                ur_arrErase( buf, si->it, part - rlen );
+                newUsed = (buf->used < rlen) ? rlen : buf->used;
+            }
+            else
+            {
+                if( part < rlen )
+                    ur_arrExpand( buf, si->it, rlen - part );
+                newUsed = buf->used;
+            }
         }
         else
         {
-            newUsed = si->it + slen;
+            newUsed = si->it + rlen;
             if( newUsed < buf->used )
                 newUsed = buf->used;
         }
 
-        // TODO: Handle overwritting self when buf is val.
+        // TODO: Handle overwritting self when buf is ri->buf.
 
         buf->used = si->it;
         ur_strAppend( buf, ri->buf, ri->it, ri->end );
@@ -3533,24 +3545,30 @@ int block_change( UThread* ut, USeriesIterM* si, const UCell* val,
         UBlockIter ri;
         UBuffer* buf;
         UIndex newUsed;
-        int slen;
+        int rlen;
 
         ur_blkSlice( ut, &ri, val );
-        slen = ri.end - ri.it;
-        if( slen > 0 )
+        rlen = ri.end - ri.it;
+        if( rlen > 0 )
         {
             buf = si->buf;
             if( part > 0 )
             {
-                if( part < slen )
-                    ur_arrExpand( buf, si->it, slen - part );
-                else if( part > slen )
-                    ur_arrErase( buf, si->it, part - slen );
-                newUsed = buf->used;
+                if( part > rlen )
+                {
+                    ur_arrErase( buf, si->it, part - rlen );
+                    newUsed = (buf->used < rlen) ? rlen : buf->used;
+                }
+                else 
+                {
+                    if( part < rlen )
+                        ur_arrExpand( buf, si->it, rlen - part );
+                    newUsed = buf->used;
+                }
             }
             else
             {
-                newUsed = si->it + slen;
+                newUsed = si->it + rlen;
                 if( newUsed < buf->used )
                     newUsed = buf->used;
             }
@@ -3558,7 +3576,7 @@ int block_change( UThread* ut, USeriesIterM* si, const UCell* val,
             // TODO: Handle overwritting self when buf is val.
 
             buf->used = si->it;
-            ur_blkAppendCells( buf, ri.it, slen );
+            ur_blkAppendCells( buf, ri.it, rlen );
             si->it = buf->used;
             buf->used = newUsed;
         }

@@ -41,6 +41,11 @@ true
 "a12345de"
 "fg"
 "UUfg"
+---- change/part
+"e"
+"12e"
+""
+"12"
 ---- remove
 "emove stuff"
 "e stuff"
