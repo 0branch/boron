@@ -1,7 +1,7 @@
 #ifndef BORON_H
 #define BORON_H
 /*
-  Copyright 2009,2010 Karl Robillard
+  Copyright 2009-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -27,6 +27,7 @@ enum BoronDataType
 {
     UT_FUNC = UT_BI_COUNT,
     UT_CFUNC,
+    UT_AFUNC,
     UT_PORT,
     UT_BORON_COUNT
 };

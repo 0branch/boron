@@ -6,6 +6,7 @@ random:   true
 socket:   true
 timecode: true
 thread:   true
+assemble: false
 
 if exists? config: %project.config [do config]
 
@@ -63,6 +64,10 @@ shlib %boron [
         cflags {-DCONFIG_THREAD}
         linux [libs %pthread]
         sources [%port_thread.c]
+    ]
+    if assemble [
+        cflags {-DCONFIG_ASSEMBLE}
+        libs %jit
     ]
     ;cflags {-DTRACK_MALLOC} sources [%urlan/memtrack.c]
 

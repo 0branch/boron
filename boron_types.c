@@ -42,6 +42,9 @@ typedef struct
     UIndex   argBufN;
     union {
         int (*func)( UThread*, UCell*, UCell* );
+#ifdef CONFIG_ASSEMBLE
+        jit_function_t jitFunc;
+#endif
         struct
         {
             UIndex bodyN;
@@ -55,6 +58,7 @@ UCellFunc;
 #define FCELL  ((UCellFunc*) cell)
 #define ur_funcBody(c)  ((UCellFunc*) c)->m.f.bodyN
 #define ur_funcFunc(c)  ((UCellFunc*) c)->m.func
+#define ur_afuncRet(c)  (c)->id._pad0
 
 
 enum FuncArgumentOpcodes
@@ -720,6 +724,15 @@ UDatatype boron_types[] =
     "cfunc!",
     unset_make,             unset_make,             unset_copy,
     cfunc_compare,          unset_operate,          func_select,
+    unset_toString,         unset_toText,
+    unset_recycle,          cfunc_mark,             unset_destroy,
+    unset_markBuf,          cfunc_toShared,         unset_bind
+  },
+  // CONFIG_ASSEMBLE
+  {
+    "afunc!",
+    unset_make,             unset_make,             unset_copy,
+    cfunc_compare,          unset_operate,          unset_select,
     unset_toString,         unset_toText,
     unset_recycle,          cfunc_mark,             unset_destroy,
     unset_markBuf,          cfunc_toShared,         unset_bind

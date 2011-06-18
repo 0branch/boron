@@ -27,6 +27,10 @@
 #include "bignum.h"
 #include "quickSortIndex.h"
 
+#ifdef CONFIG_ASSEMBLE
+#include <jit/jit.h>
+#endif
+
 
 /** \defgroup boron Boron Interpreter
   The Boron Interpreter.
@@ -76,6 +80,10 @@ typedef struct BoronThread
     UIndex  fstackN;
     UIndex  tempN;
     uint32_t funcOptions;
+#ifdef CONFIG_ASSEMBLE
+    jit_context_t jit;
+    UAtomEntry* insTable;
+#endif
 }
 BoronThread;
 
@@ -264,6 +272,10 @@ static void boron_threadMethod( UThread* ut, UThreadMethod op )
 
         case UR_THREAD_FREE:
             // All data is stored in dataStore, so there is nothing to free.
+#ifdef CONFIG_ASSEMBLE
+            if( BT->jit )
+                jit_context_destroy( BT->jit );
+#endif
             break;
 
         case UR_THREAD_FREEZE:
@@ -485,6 +497,10 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 
 #ifdef CONFIG_THREAD
 #include "boron_thread.c"
+#endif
+
+#ifdef CONFIG_ASSEMBLE
+#include "boron_asm.c"
 #endif
 
 
@@ -959,6 +975,9 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 #ifdef CONFIG_RANDOM
     addCFunc( cfunc_random,     "random a /seed" );
 #endif
+#ifdef CONFIG_ASSEMBLE
+    addCFunc( cfunc_assemble,   "assemble s block! body block!" );
+#endif
 
 
     if( ! boron_doCStr( ut, setupScript, sizeof(setupScript)-1 ) )
@@ -1205,6 +1224,13 @@ int boron_eval1( UThread* ut, UCell* blkC, UCell* res )
                 goto traceError;
             if( ur_is(cell, UT_CFUNC) || ur_is(cell, UT_FUNC) )
                 goto call_func;
+#ifdef CONFIG_ASSEMBLE
+            if( ur_is(cell, UT_AFUNC) )
+            {
+                ++blkC->series.it;
+                return _asmCall( ut, (UCellFunc*) cell, blkC, res );
+            }
+#endif
             if( ur_is(cell, UT_UNSET) )
             {
                 ur_error( ut, UR_ERR_SCRIPT, "unset word '%s",
