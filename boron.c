@@ -749,7 +749,10 @@ static void _addDatatypeWords( UThread* ut, int typeCount )
 }
 
 
+#ifdef CONFIG_SOCKET
 extern CFUNC_PUB( cfunc_set_addr );
+extern CFUNC_PUB( cfunc_hostname );
+#endif
 
 
 /**
@@ -928,7 +931,8 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_getenv,     "getenv val" );
     addCFunc( cfunc_open,       "open from /read /write /new /nowait" );
 #ifdef CONFIG_SOCKET
-    addCFunc( cfunc_set_addr,   "set-addr p host n" );
+    addCFunc( cfunc_set_addr,   "set-addr p host" );
+    addCFunc( cfunc_hostname,   "hostname p" );
 #endif
     addCFunc( cfunc_read,       "read from /text /into b" );
     addCFunc( cfunc_write,      "write to data /append /text" );

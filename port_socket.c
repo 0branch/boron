@@ -183,6 +183,58 @@ CFUNC_PUB( cfunc_set_addr )
 }
 
 
+/*-cf-
+    hostname
+        socket      none!/port!
+    return: string!
+
+    Get name of local host or peer.
+*/
+CFUNC_PUB( cfunc_hostname )
+{
+#define HLEN    80
+    char host[ HLEN ]; 
+    UBuffer* str;
+    int len;
+
+    if( ur_is(a1, UT_PORT) )
+    {
+        UBuffer* pbuf = ur_buffer( a1->series.buf );
+        if( (pbuf->form == UR_PORT_EXT) && pbuf->ptr.v )
+        {
+            SocketExt* ext = ur_ptr(SocketExt, pbuf);
+            if( ext->dev == &port_socket )
+            {
+                int err = getnameinfo( &ext->addr, ext->addrlen, host, HLEN,
+                                       0, 0, 0 );
+                if( ! err )
+                    goto makeStr;
+                return ur_error( ut, UR_ERR_ACCESS, "getnameinfo %s",
+                                 gai_strerror( err ) );
+            }
+        }
+        return ur_error( ut, UR_ERR_SCRIPT, "hostname expected socket port" );
+    }
+    else if( ur_is(a1, UT_NONE) )
+    {
+        if( gethostname( host, HLEN ) == 0 )
+            goto makeStr;
+        return ur_error( ut, UR_ERR_ACCESS, "gethostname %s", SOCKET_ERR );
+    }
+    return ur_error( ut, UR_ERR_TYPE, "hostname expected none!/port!" );
+
+makeStr:
+
+    host[ HLEN - 1 ] = '\0';
+    len = strLen( host );
+
+    str = ur_makeStringCell( ut, UR_ENC_LATIN1, len, res );
+    memCpy( str->ptr.c, host, len );
+    str->used = len;
+    return UR_OK;
+}
+
+
 /*
    \param ext  If non-zero, then bind socket to ext->addr.
 */
@@ -285,9 +337,8 @@ static int _openTcpServer( UThread* ut, struct sockaddr* addr,
 /*
   "tcp://host:port"
   "tcp://:port"
-  ['udp local-port]
-  ['udp local-port "host" host-port 'nowait]
-  ['tcp "host" host-port]
+  "udp://host:port"
+  "udp://:port"
 */
 static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
                         int opt )
@@ -317,6 +368,11 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
 #if 0
     else if( ur_is(from, UT_BLOCK) )
     {
+        /*
+        ['udp local-port]
+        ['udp local-port "host" host-port 'nowait]
+        ['tcp "host" host-port]
+        */
         UBlockIter bi;
         UAtom atoms[3];
 
@@ -429,16 +485,16 @@ static void socket_close( UBuffer* portBuf )
 static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int part )
 {
     UBuffer* buf = 0;
+    SocketExt* ext;
     ssize_t len;
     ssize_t count;
     SOCKET fd = port->FD; 
 
     //printf( "KR socket_read %d %d\n", fd, port->TCP );
 
-    if( part )
-        len = part;
-    else
-        len = RECV_BUF_SIZE;
+    ext = port->TCP ? 0 : ur_ptr(SocketExt, port);
+
+    len = part ? part : RECV_BUF_SIZE;
 
     if( ur_is(dest, UT_BINARY) )
     {
@@ -470,15 +526,14 @@ static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int part )
 
     if( buf )
     {
-        if( port->TCP )
+        if( ext )
         {
-            count = recv( fd, buf->ptr.c, len, 0 );
+            count = recvfrom( fd, buf->ptr.c, len, 0,
+                              &ext->addr, &ext->addrlen );  // UDP
         }
         else
         {
-            SocketExt* ext = ur_ptr(SocketExt, port);
-            count = recvfrom( fd, buf->ptr.c, len, 0,
-                              &ext->addr, &ext->addrlen );
+            count = recv( fd, buf->ptr.c, len, 0 );         // TCP
         }
         if( count == -1 )
         {
