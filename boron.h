@@ -42,6 +42,7 @@ enum BoronWordBindings
 };
 
 
+typedef int (*BoronCFunc)(UThread*,UCell*,UCell*);
 #define CFUNC(name)     static int name( UThread* ut, UCell* a1, UCell* res )
 #define CFUNC_PUB(name) int name( UThread* ut, UCell* a1, UCell* res )
 #define CFUNC_OPTIONS   a1[-1].series.end
@@ -98,8 +99,7 @@ extern "C" {
 
 UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount );
 void     boron_freeEnv( UThread* );
-void     boron_addCFunc( UThread*, int (*func)(UThread*,UCell*,UCell*),
-                         const char* sig );
+void     boron_addCFunc( UThread*, BoronCFunc func, const char* sig );
 void     boron_addPortDevice( UThread*, UPortDevice*, UAtom name );
 void     boron_extendPort( UBuffer* port, UPortDevice** ext );
 void     boron_setAccessFunc( UThread*, int (*func)( UThread*, const char* ) );

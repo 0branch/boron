@@ -1,6 +1,6 @@
 ; Convert Boron data to C string.
 
-replace-quotes: func [str | a b] [
+replace-quotes: func [str] [
     replace/all copy str '"' {\"}
 ]
 

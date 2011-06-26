@@ -26,6 +26,7 @@
 #include "str.h"
 #include "bignum.h"
 #include "quickSortIndex.h"
+//#include "cpuCounter.h"
 
 #ifdef CONFIG_ASSEMBLE
 #include <jit/jit.h>
@@ -515,8 +516,7 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
   \param func   Function.  This must return UR_OK/UR_THROW.
   \param sig    ASCII string describing the calling signature.
 */
-void boron_addCFunc( UThread* ut, int (*func)(UThread*,UCell*,UCell*),
-                     const char* sig )
+void boron_addCFunc( UThread* ut, BoronCFunc func, const char* sig )
 {
     UCellFunc* cell;
     const char* cp;
@@ -549,6 +549,64 @@ void boron_addCFunc( UThread* ut, int (*func)(UThread*,UCell*,UCell*),
         }
     }
 }
+
+
+//#define CFUNC_TABLE
+#ifdef CFUNC_TABLE
+int boron_addCFuncS( UThread* ut, BoronCFunc* funcTable,
+                     const uint8_t* sigs, int slen )
+{
+    UBlockIter bi;
+    UCell tmp;
+    UIndex hold;
+    UCellFunc* cell;
+    const UCell* start;
+    const UCell* next;
+
+
+    if( ! ur_unserialize( ut, sigs, sigs + slen, &tmp ) )
+        return UR_THROW;
+
+    hold = ur_hold( tmp.series.buf );
+    ur_blkSlice( ut, &bi, &tmp );
+    start = bi.it;
+    while( bi.it != bi.end )
+    {
+        if( ! ur_is(bi.it, UT_SETWORD) )
+        {
+            ur_release( hold );
+            return ur_error( ut, UR_ERR_SCRIPT,
+                             "addCFuncS signature must start with set-word!" );
+        }
+
+        //printf( "KR %s\n", ur_atomCStr( ut, ur_atom(bi.it) ) );
+        cell = (UCellFunc*) ur_ctxAddWord( ur_threadContext(ut),
+                                           ur_atom(bi.it) );
+        ur_setId(cell, UT_CFUNC);
+        cell->argBufN = UR_INVALID_BUF;
+        cell->m.func  = *funcTable++;
+
+        next = bi.it + 1;
+        tmp.series.it = next - start;
+        while( next != bi.end )
+        {
+            if( ur_is(next, UT_SETWORD) )
+                break;
+            ++next;
+        }
+        tmp.series.end = next - start;
+        bi.it = next;
+
+        cell->argBufN = boron_makeArgProgram( ut, &tmp, 0, 0, cell );
+    }
+    ur_release( hold );
+
+    return UR_OK;
+}
+
+
+#include "cfuncTable.c"
+#endif
 
 
 // OS_WORD should be the same as the uname operating system name.
@@ -767,6 +825,15 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     UAtom atoms[ 7 ];
     UThread* ut;
 
+//#define TIME_MAKEENV
+#ifdef TIME_MAKEENV
+    uint64_t timeA, timeB, timeC, timeD, timeE;
+#define COUNTER(t)  t = cpuCounter()
+    COUNTER( timeA );
+#else
+#define COUNTER(t)
+#endif
+
     {
     UDatatype* table[ UT_MAX - UT_BI_COUNT ];
     unsigned int i;
@@ -781,6 +848,8 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     }
     if( ! ut )
         return 0;
+
+    COUNTER( timeB );
 
     // Need to override some Urlan methods.
     dt_context.make = context_make_override;
@@ -830,6 +899,16 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 
 #define addCFunc(func,spec)    boron_addCFunc(ut, func, spec)
 
+    COUNTER( timeC );
+#ifdef CFUNC_TABLE
+    // 1124363 / 1597020 = ~30% fewer cycles.
+    if( ! boron_addCFuncS( ut, _cfuncTable, _cfuncSigs, sizeof(_cfuncSigs) ) )
+    {
+        ur_freeEnv( ut );
+        return 0;
+    }
+#else
+    // CFUNC_TABLE_START
     addCFunc( cfunc_nop,     "nop" );
     addCFunc( cfunc_quit,    "quit" );
     addCFunc( cfunc_halt,    "halt" );
@@ -930,10 +1009,6 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_current_dir,"current-dir" );
     addCFunc( cfunc_getenv,     "getenv val" );
     addCFunc( cfunc_open,       "open from /read /write /new /nowait" );
-#ifdef CONFIG_SOCKET
-    addCFunc( cfunc_set_addr,   "set-addr p host" );
-    addCFunc( cfunc_hostname,   "hostname p" );
-#endif
     addCFunc( cfunc_read,       "read from /text /into b" );
     addCFunc( cfunc_write,      "write to data /append /text" );
     addCFunc( cfunc_delete,     "delete file" );
@@ -964,6 +1039,12 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_unserialize,"unserialize b" );
     addCFunc( cfunc_construct,  "construct s b" );
     addCFunc( cfunc_wait,       "wait b" );
+    // CFUNC_TABLE_END
+#endif
+#ifdef CONFIG_SOCKET
+    addCFunc( cfunc_set_addr,   "set-addr p host" );
+    addCFunc( cfunc_hostname,   "hostname p" );
+#endif
 #ifdef CONFIG_THREAD
     addCFunc( cfunc_sleep,      "sleep n" );
     addCFunc( cfunc_thread,     "thread body /port" );
@@ -984,11 +1065,20 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 #endif
 
 
+    COUNTER( timeD );
     if( ! boron_doCStr( ut, setupScript, sizeof(setupScript)-1 ) )
     {
         ur_freeEnv( ut );
         ut = 0;
     }
+
+#ifdef TIME_MAKEENV
+    COUNTER( timeE );
+    printf( "timeA: %ld\n", timeB - timeA );
+    printf( "timeB: %ld\n", timeC - timeB );
+    printf( "timeC: %ld\n", timeD - timeC );
+    printf( "timeD: %ld\n", timeE - timeD );
+#endif
 
     return ut;
 }
