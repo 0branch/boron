@@ -2131,11 +2131,11 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    63
+#define FA_COUNT    64
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
-        "add size text wait close\n"
+        "add size loop text wait close\n"
         "width height area rect raster texture\n"
         "gui-style value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
@@ -2149,7 +2149,9 @@ static void _createFixedAtoms( UThread* ut )
         atoms );
 
 #ifdef DEBUG
-    if( atoms[0] != UR_ATOM_ADD || atoms[5] != UR_ATOM_WIDTH ||
+    if( atoms[0] != UR_ATOM_ADD ||
+        atoms[3] != UR_ATOM_TEXT ||
+        atoms[6] != UR_ATOM_WIDTH ||
         atoms[FA_COUNT - 1] != UR_ATOM_FACE )
     {
         int i;
@@ -2160,10 +2162,11 @@ static void _createFixedAtoms( UThread* ut )
 
     assert( atoms[0] == UR_ATOM_ADD );
     assert( atoms[1] == UR_ATOM_SIZE );
-    assert( atoms[2] == UR_ATOM_TEXT );
-    assert( atoms[3] == UR_ATOM_WAIT );
-    assert( atoms[4] == UR_ATOM_CLOSE );
-    assert( atoms[5] == UR_ATOM_WIDTH );
+    assert( atoms[2] == UR_ATOM_LOOP );
+    assert( atoms[3] == UR_ATOM_TEXT );
+    assert( atoms[4] == UR_ATOM_WAIT );
+    assert( atoms[5] == UR_ATOM_CLOSE );
+    assert( atoms[6] == UR_ATOM_WIDTH );
     assert( atoms[FA_COUNT - 1] == UR_ATOM_FACE );
 }
 
