@@ -1365,26 +1365,27 @@ static int _animate( UThread* ut, const UCell* acell, double dt, int* playing )
             return UR_OK;
         }
 
+set_time:
         ur_decimal(timec) = dt;
         *playing = 1;   // Set as playing even at end so final frame is shown.
     }
-    /*
     else if( ur_is(behav, UT_WORD) )
     {
         switch( ur_atom(behav) )
         {
             case UR_ATOM_LOOP:
                 dt += ur_decimal(timec);
+                if( ! _curveValue( ut, curve, value, dt, &period ) )
+                    return UR_THROW;
                 if( dt > period )
                     dt -= period;
-                goto cval;
+                goto set_time;
 
             case UR_ATOM_PING_PONG:
             case UR_ATOM_PONG:
                 break;
         }
     }
-    */
     return UR_OK;
 }
 
@@ -1660,7 +1661,7 @@ bad_camera:
     }
     if( ! cameraData( ut, ur_bufferSer( a1 + 1 ), &cam ) )
         goto bad_camera;
-    sy = cam.view[3] - sy;
+    //sy = cam.view[3] - sy;    // Needed if screen-point is not in GL coord. 
 
     if( ur_is(a1 + 2, UT_VECTOR) )
     {
