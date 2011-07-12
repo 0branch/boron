@@ -21,6 +21,10 @@
 #include "urlan.h"
 #include "os.h"
 
+#ifdef CONFIG_HASHMAP
+extern void ur_mapInitV( UThread* ut, UBuffer* map, const UBuffer* valueBlk );
+#endif
+
 
 /*
     Example serialized data for [1 "hello" [a plan]]
@@ -407,6 +411,14 @@ static int _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
             packU32( _mapBuffer( ser, bi.it->context.buf ) );
             break;
 
+#ifdef CONFIG_HASHMAP
+        case UT_HASHMAP:
+            // Emit value block first so that it gets unserialized first.
+            packU32( _mapBuffer( ser, bi.it->series.it ) );   // ur_hashValBuf
+            packU32( _mapBuffer( ser, bi.it->series.buf ) );  // ur_hashMapBuf
+            break;
+#endif
+
         case UT_ERROR:
             break;
 
@@ -591,6 +603,18 @@ int ur_serialize( UThread* ut, UIndex blkN, UCell* res )
                 }
                 break;
 
+#ifdef CONFIG_HASHMAP
+            case UT_HASHMAP:
+            {
+                // NOTE: Assuming value index always preceeds map index.
+                int valueIndex = it - ((BufferIndex*) ser.bufMap.ptr.v) - 1;
+
+                push8( buf->type );
+                packU32( valueIndex );
+            }
+                break;
+#endif
+
             default:
                 ok = ur_error( ut, UR_ERR_SCRIPT,
                         "Invalid serialized buffer type (%d)", buf->type );
@@ -750,7 +774,10 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
         n = *bi->it++;
         type = n & CTYPE_MASK;
         if( type > UT_ERROR )
-            return 0;
+        {
+            if( type != UT_HASHMAP )
+                return 0;
+        }
 
         ur_setId( cell, type );
         if( n & CTYPE_SOL )
@@ -876,6 +903,17 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
             unpackU32( n );
             ur_setSeries( cell, ids[ n ], 0 );
             break;
+
+#ifdef CONFIG_HASHMAP
+        case UT_HASHMAP:
+        {
+            int v;
+            unpackU32( v );
+            unpackU32( n );
+            ur_setSeries( cell, ids[ n ], ids[ v ] );
+        }
+            break;
+#endif
 
         case UT_ERROR:
             break;
@@ -1065,6 +1103,22 @@ unser_block:
                 goto unser_block;
             }
             break;
+
+#ifdef CONFIG_HASHMAP
+        case UT_HASHMAP:
+        {
+            const UBuffer* blk;
+
+            used = _unpackU32(&bi);
+            blk = ur_buffer( ids.ptr.i[ used ] );
+            buf = ur_buffer( ids.ptr.i[ i ] );
+
+            assert( blk->type == UT_BLOCK );
+            ur_mapInitV( ut, buf, blk );
+
+        }
+            break;
+#endif
 
         default:
             ur_error( ut, UR_ERR_SCRIPT,

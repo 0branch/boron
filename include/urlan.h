@@ -68,6 +68,7 @@ enum UrlanDataType
     UT_SETPATH,
                 /* Other */
     UT_CONTEXT,
+    UT_HASHMAP,
     UT_ERROR,
 
     UT_BI_COUNT,

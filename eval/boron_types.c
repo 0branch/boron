@@ -516,7 +516,7 @@ const UDatatype boron_types[] =
     unset_toString,         unset_toText,
     unset_recycle,          binary_mark,            port_destroy,
     unset_markBuf,          binary_toShared,        unset_bind
-  },
+  }
 };
 
 

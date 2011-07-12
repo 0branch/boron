@@ -5,6 +5,7 @@ options [
     assemble: false         "Enable assemble function (requires libjit)"
     checksum: true          "Enable checksum function"
     compress: 'zlib         "Include compressor ('zlib/'bzip2/none)"
+    hashmap:  true          "Enable hash-map! datatype"
     execute:  true          "Enable execute function"
     random:   true          "Include random number generator"
     readline: 'linenoise    "Console editing ('linenoise/'gnu/none)"
@@ -58,6 +59,10 @@ lib-spec: [
         win32 [libs %libbz2]
         macx  [libs %bz2]
         unix  [libs %bz2]
+    ]
+    if hashmap [
+        cflags {-DCONFIG_HASHMAP}
+        sources [%urlan/hashmap.c]
     ]
     if execute [
         cflags {-DCONFIG_EXECUTE}

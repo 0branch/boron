@@ -1,0 +1,24 @@
+---- print
+make hash-map! [
+    hi [willy wonka]
+    5 "five"
+    0:10:00.0 some-time
+    "key" value
+]
+hi [willy wonka]
+5 "five"
+0:10:00.0 some-time
+"key" value
+
+---- path
+[willy wonka]
+"five"
+---- pick
+some-time
+none
+value
+---- poke
+77 88
+---- remove
+none none
+[[willy wonka] "five" some-time]

@@ -18,6 +18,11 @@
 */
 
 
+#ifdef CONFIG_HASHMAP
+#include "hashmap.h"
+#endif
+
+
 /** \def CFUNC
   Macro to define C functions.
 
@@ -481,8 +486,8 @@ extern void _contextWords( UThread* ut, const UBuffer* ctx, UIndex ctxN,
 */
 /*-cf-
     values-of
-        context     context!
-    return: Block of values defined in context.
+        context     context!/hash-map!
+    return: Block of values defined in context or map.
     group: data
     see: words-of
 */
@@ -492,24 +497,40 @@ CFUNC(cfunc_words_of)
 
     if( ur_int(a2) )
     {
-        const UCell* cell;
-        UBuffer* blk;
-        int used;
+        // Return values.
+        if( ur_is(a1, UT_CONTEXT) )
+        {
+            const UCell* cell;
+            UBuffer* blk;
+            int used;
 
-        ctx = ur_bufferSer(a1);
-        // Save what we need from ctx before ur_makeBlockCell invalidates it.
-        cell = ctx->ptr.cell;
-        used = ctx->used;
+            ctx = ur_bufferSer(a1);
+            // Save what we need from ctx before ur_makeBlockCell
+            // invalidates it.
+            cell = ctx->ptr.cell;
+            used = ctx->used;
 
-        blk = ur_makeBlockCell( ut, UT_BLOCK, used, res );
-        memCpy( blk->ptr.cell, cell, used * sizeof(UCell) );
-        blk->used = used;
+            blk = ur_makeBlockCell( ut, UT_BLOCK, used, res );
+            memCpy( blk->ptr.cell, cell, used * sizeof(UCell) );
+            blk->used = used;
+        }
+#ifdef CONFIG_HASHMAP
+        else //if( ur_is(a1, UT_HASHMAP) )
+        {
+            UBuffer* blk = ur_makeBlockCell( ut, UT_BLOCK, 0, res );
+            hashmap_values( ut, a1, blk );
+        }
+#endif
     }
     else
     {
-        if( ! (ctx = ur_sortedContext( ut, a1 )) )
-            return UR_THROW;
-        _contextWords( ut, ctx, a1->context.buf, res );
+        // Return words.
+        if( ur_is(a1, UT_CONTEXT) )
+        {
+            if( ! (ctx = ur_sortedContext( ut, a1 )) )
+                return UR_THROW;
+            _contextWords( ut, ctx, a1->context.buf, res );
+        }
     }
     return UR_OK;
 }
@@ -1744,8 +1765,8 @@ CFUNC(cfunc_tail)
 
 /*-cf-
     pick
-        series      Series or coord!/vec3!
-        position    int!/logic!
+        series      Series or coord!/vec3!/hash-map!
+        position    int!/logic! (or key value for hash-map!)
     return: Value at position or none! if position is out of range.
     group: series
     see: index?, poke
@@ -1758,7 +1779,17 @@ CFUNC(cfunc_tail)
 CFUNC(cfunc_pick)
 {
     UIndex n;
-    int type;
+    int type = ur_type(a1);
+
+#ifdef CONFIG_HASHMAP
+    if( type == UT_HASHMAP )
+    {
+        const UCell* cell = hashmap_select( ut, a1, a2, res );
+        if( cell != res )
+            *res = *cell;
+        return UR_OK;
+    }
+#endif
 
     if( ur_is(a2, UT_INT) )
     {
@@ -1776,7 +1807,6 @@ CFUNC(cfunc_pick)
     else
         return boron_badArg( ut, ur_type(a2), 1 );
 
-    type = ur_type(a1);
     if( ur_isSeriesType( type ) )
         SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it + n, res );
     else if( type == UT_VEC3 )
@@ -1794,7 +1824,7 @@ extern int vec3_poke ( UThread*, UCell* cell, int index, const UCell* src );
 
 /*-cf-
     poke
-        series      series/coord!/vec3!
+        series      series/coord!/vec3!/hash-map!
         position    int!/logic!
         value
     return: series.
@@ -1810,7 +1840,19 @@ CFUNC(cfunc_poke)
 {
     UBuffer* buf;
     UIndex n;
-    int type;
+    int type = ur_type(a1);
+
+#ifdef CONFIG_HASHMAP
+    if( type == UT_HASHMAP )
+    {
+        if( hashmap_insert( ut, a1, a2, a3 ) )
+        {
+            *res = *a1;
+            return UR_OK;
+        }
+        return UR_THROW;
+    }
+#endif
 
     if( ur_is(a2, UT_INT) )
     {
@@ -1826,7 +1868,6 @@ CFUNC(cfunc_poke)
         return boron_badArg( ut, ur_type(a2), 1 );
 
     *res = *a1;
-    type = ur_type(a1);
     if( ur_isSeriesType( type ) )
     {
         if( ! (buf = ur_bufferSerM(a1)) )
@@ -2160,11 +2201,13 @@ CFUNC(cfunc_change)
 
 /*-cf-
     remove
-        series      series or none!
+        series      series or none!/hash-map!
         /slice      Remove to end of slice.
         /part       Remove more than one element.
             number  int!
-    return: series or none!
+        /key        Remove value from hash-map!
+            kval
+    return: series or none!/hash-map!
     group: series
     see: append, clear, remove-each
 
@@ -2174,6 +2217,7 @@ CFUNC(cfunc_remove)
 {
 #define OPT_REMOVE_SLICE    0x01
 #define OPT_REMOVE_PART     0x02
+#define OPT_REMOVE_KEY      0x04
     USeriesIterM si;
     uint32_t opt = CFUNC_OPTIONS;
     int part = 0;
@@ -2186,6 +2230,17 @@ CFUNC(cfunc_remove)
             ur_setId(res, UT_NONE);
             return UR_OK;
         }
+#ifdef CONFIG_HASHMAP
+        else if( ur_is(a1, UT_HASHMAP) )
+        {
+            if( opt & OPT_REMOVE_KEY )
+            {
+                hashmap_remove( ut, a1, a2 );
+                goto set_result;
+            }
+            return errorType( "remove requires /key for hash-map!" );
+        }
+#endif
         return boron_badArg( ut, type, 0 );
     }
     if( ! ur_seriesSliceM( ut, &si, a1 ) )
@@ -2202,6 +2257,11 @@ CFUNC(cfunc_remove)
     }
 
     SERIES_DT( type )->remove( ut, &si, part );
+
+#ifdef CONFIG_HASHMAP
+set_result:
+#endif
+
     *res = *a1;
     return UR_OK;
 }
@@ -2311,8 +2371,8 @@ set_none:
 
 /*-cf-
     clear
-        series  series or none!
-    return: Empty series or none!.
+        series  series or none!/hash-map!
+    return: Empty series or none!/hash-map!.
     group: series
     see: remove
 
@@ -2329,6 +2389,13 @@ CFUNC(cfunc_clear)
             ur_setId(res, UT_NONE);
             return UR_OK;
         }
+#ifdef CONFIG_HASHMAP
+        else if( ur_is(a1, UT_HASHMAP) )
+        {
+            hashmap_clear( ut, a1 );
+            goto set_result;
+        }
+#endif
         return boron_badArg( ut, ur_type(a1), 0 );
     }
     if( ! (buf = ur_bufferSerM(a1)) )
@@ -2337,6 +2404,10 @@ CFUNC(cfunc_clear)
     // Limit erase to slice end?
     if( a1->series.it < buf->used )
         buf->used = a1->series.it;
+
+#ifdef CONFIG_HASHMAP
+set_result:
+#endif
 
     *res = *a1;
     return UR_OK;

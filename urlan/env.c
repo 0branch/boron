@@ -283,6 +283,9 @@ static void _addDT( UEnv* env, int id, const UDatatype* dt )
 
 extern UDatatype dt_coord;
 extern USeriesType dt_vector;
+#if CONFIG_HASHMAP
+extern UDatatype dt_hashmap;
+#endif
 #if CONFIG_TIMECODE
 extern UDatatype dt_timecode;
 #endif
@@ -450,6 +453,11 @@ UThread* ur_makeEnvP( const UEnvParameters* par )
     addDT( UT_SETPATH,  &dt_setpath.dt );
 
     addDT( UT_CONTEXT,  &dt_context );
+#if CONFIG_HASHMAP
+    addDT( UT_HASHMAP,  &dt_hashmap );
+#else
+    addDT( UT_HASHMAP,  0 );
+#endif
     addDT( UT_ERROR,    &dt_error );
 
     i = UT_BI_COUNT;
