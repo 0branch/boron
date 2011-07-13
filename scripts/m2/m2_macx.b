@@ -241,10 +241,10 @@ shlib_target: make exe_target [
         ;cflags {-fPIC}	; Default on Mac.
     ]
 
-    rule_text: does
-    [
+    rule_text: does [
         emit [ eol output_file ": " obj_macro
-            {^/^-$(LINK) -dynamiclib -o $@ } obj_macro
+            {^/^-$(} either link_cxx ["LINK_CXX"]["LINK"]
+                {) -dynamiclib -o $@ } obj_macro
             { $(} uc_name {_LFLAGS) }
             { $(} uc_name {_LIBS)} eol
         ]
