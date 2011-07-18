@@ -1,5 +1,5 @@
 /*
-  Copyright 2005-2009 Karl Robillard
+  Copyright 2005-2011 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -22,8 +22,6 @@
 #include "urlan_atoms.h"
 
 
-#define PARSE_ERR   ut, UR_ERR_SCRIPT
-
 enum BlockParseException
 {
     PARSE_EX_NONE,
@@ -38,11 +36,38 @@ typedef struct
     UBuffer* blk;
     UIndex   inputBuf;
     UIndex   inputEnd;
-    int      sliced;
-    int      exception;
+    short    sliced;
+    short    exception;
 }
 BlockParser;
 
+
+/*
+    Re-acquire buffer pointer & check if input modified.
+*/
+static UBuffer* _acquireInput( UThread* ut, BlockParser* pe )
+{
+    UBuffer* iblk = pe->blk = ur_buffer( pe->inputBuf );
+    if( pe->sliced )
+    {
+        // We have no way to track changes to the end of a slice,
+        // so just make sure we remain in valid memery.
+        if( iblk->used < pe->inputEnd )
+            pe->inputEnd = iblk->used;
+    }
+    else
+    {
+        // Not sliced, track input end.
+        if( iblk->used != pe->inputEnd )
+            pe->inputEnd = iblk->used;
+    }
+    return iblk;
+}
+
+
+#define BLK_RULE_ERROR(msg) \
+    ur_error( ut, UR_ERR_SCRIPT, msg ); \
+    goto parse_err
 
 #define CHECK_WORD(cell) \
     if( ! cell ) \
@@ -169,9 +194,7 @@ match:
                         if( ur_is(tval, UT_BLOCK) )
                         {
                             // TODO: If block then all values must match.
-                            ur_error( PARSE_ERR,
-                                      "to/thru block! not implemented" );
-                            goto parse_err;
+                            BLK_RULE_ERROR( "to/thru block! not implemented" );
                         }
                         else
                         {
@@ -191,6 +214,49 @@ match:
                     }
                         break;
 
+                    case UR_ATOM_INTO:
+                        ++rit;
+                        if( rit == rend || ! ur_is(rit, UT_BLOCK) )
+                        {
+                            BLK_RULE_ERROR( "parse into expected block" );
+                        }
+                        tval = iblk->ptr.cell + pos;
+                        if( ! ur_is(tval, UT_BLOCK) )
+                            goto failed;
+                        if( ur_isShared( tval->series.buf ) )
+                            goto failed;
+                    {
+                        BlockParser ip;
+                        UBlockIter bi;
+                        UIndex parsePos = 0;
+
+                        ip.eval = pe->eval;
+                        ip.blk  = ur_buffer( tval->series.buf );
+                        ip.inputBuf  = tval->series.buf;
+                        ip.inputEnd  = ip.blk->used;
+                        ip.sliced    = 0;
+                        ip.exception = PARSE_EX_NONE;
+
+                        ur_blkSlice( ut, &bi, rit );
+
+                        tval = _parseBlock( ut, &ip, bi.it, bi.end, &parsePos );
+                        iblk = _acquireInput( ut, pe );
+                        if( ! tval )
+                        {
+                            if( ip.exception == PARSE_EX_ERROR )
+                            {
+                                pe->exception = PARSE_EX_ERROR;
+                                ur_appendTrace( ut, rit->series.buf, 0 );
+                                return 0;
+                            }
+                            if( ip.exception != PARSE_EX_BREAK )
+                                goto failed;
+                        }
+                    }
+                        ++rit;
+                        ++pos;
+                        break;
+
                     case UR_ATOM_SKIP:
                         repMin = 1;
 skip:
@@ -206,8 +272,7 @@ skip:
                             goto unexpected_end;
                         if( ! ur_is(rit, UT_WORD) )
                         {
-                            ur_error( PARSE_ERR, "parse set expected word");
-                            goto parse_err;
+                            BLK_RULE_ERROR( "parse set expected word" );
                         }
                         {
                         UCell* cell = ur_wordCellM( ut, rit );
@@ -229,8 +294,7 @@ skip:
                                 break;
                             }
                         }
-                        ur_error( PARSE_ERR, "place expected series word" );
-                        goto parse_err;
+                        BLK_RULE_ERROR( "place expected series word" );
 
                     //case UR_ATOM_COPY:
 
@@ -245,8 +309,7 @@ skip:
                         }
                         else
                         {
-                            ur_error( PARSE_ERR, "parse expected block" );
-                            goto parse_err;
+                            BLK_RULE_ERROR( "parse expected block" );
                         }
                     }
                         break;
@@ -321,6 +384,18 @@ skip:
                 ++pos;
                 break;
 
+            case UT_CHAR:
+            case UT_BINARY:
+            case UT_STRING:
+            case UT_FILE:
+                if( pos >= pe->inputEnd )
+                    goto failed;
+                if( ! ur_equal( ut, iblk->ptr.cell + pos, rit ) )
+                    goto failed;
+                ++rit;
+                ++pos;
+                break;
+
             case UT_BLOCK:
                 tval = rit;
 match_block:
@@ -349,29 +424,12 @@ match_block:
             case UT_PAREN:
                 if( UR_OK != pe->eval( ut, rit ) )
                     goto parse_err;
-
-                /* Re-acquire pointer & check if input modified. */
-                iblk = pe->blk = ur_buffer( pe->inputBuf );
-                if( pe->sliced )
-                {
-                    // We have no way to track changes to the end of a slice,
-                    // so just make sure we remain in valid memery.
-                    if( iblk->used < pe->inputEnd )
-                        pe->inputEnd = iblk->used;
-                }
-                else
-                {
-                    // Not sliced, track input end.
-                    if( iblk->used != pe->inputEnd )
-                        pe->inputEnd = iblk->used;
-                }
-
+                iblk = _acquireInput( ut, pe );
                 ++rit;
                 break;
 
             default:
-                ur_error( PARSE_ERR, "invalid parse value" );
-                goto parse_err;
+                BLK_RULE_ERROR( "invalid parse value" );
         }
     }
 
@@ -387,8 +445,7 @@ repeat:
     if( rit == rend )
     {
 unexpected_end:
-        ur_error( PARSE_ERR, "Enexpected end of parse rule" );
-        goto parse_err;
+        BLK_RULE_ERROR( "Unexpected end of parse rule" );
     }
     else
     {
@@ -478,8 +535,7 @@ unexpected_end:
                 break;
 
             default:
-                ur_error( PARSE_ERR, "Invalid parse rule" );
-                goto parse_err;
+                BLK_RULE_ERROR( "Invalid parse rule" );
         }
 
         if( count < repMin )

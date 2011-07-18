@@ -8,6 +8,9 @@ true
 ---- block parse
 true
 [token]
+---- parse into
+true
+["Janet" 38 20.2]
 ---- sanity checks
 true
 ---- string case

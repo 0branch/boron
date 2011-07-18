@@ -25,6 +25,15 @@ print parse [1 2 token ...] [
 probe a
 
 
+print "---- parse into"
+name: age: x: none
+print parse [person ["Janet" 38] "-x" 20.2 ] [some[
+    'person into [set name skip set age skip]
+  | "-x" set x skip 
+]]
+probe reduce [name age x]
+
+
 print "---- sanity checks"
 ogs: "frog clog dog smog bog woggle toggle"
 print parse copy ogs [

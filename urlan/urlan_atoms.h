@@ -58,6 +58,7 @@ enum UrlanFixedAtoms
     UR_ATOM_COPY,
     UR_ATOM_TO,
     UR_ATOM_THRU,
+    UR_ATOM_INTO,
     UR_ATOM_PLACE,
     UR_ATOM_MARK,
 
