@@ -33,7 +33,7 @@ enum BlockParseException
 typedef struct
 {
     int (*eval)( UThread*, const UCell* );
-    UBuffer* blk;
+    const UBuffer* blk;
     UIndex   inputBuf;
     UIndex   inputEnd;
     short    sliced;
@@ -45,9 +45,9 @@ BlockParser;
 /*
     Re-acquire buffer pointer & check if input modified.
 */
-static UBuffer* _acquireInput( UThread* ut, BlockParser* pe )
+static const UBuffer* _acquireInput( UThread* ut, BlockParser* pe )
 {
-    UBuffer* iblk = pe->blk = ur_buffer( pe->inputBuf );
+    const UBuffer* iblk = pe->blk = ur_bufferE( pe->inputBuf );
     if( pe->sliced )
     {
         // We have no way to track changes to the end of a slice,
@@ -84,7 +84,7 @@ static const UCell* _parseBlock( UThread* ut, BlockParser* pe,
     int32_t repMin;
     int32_t repMax;
     UAtom atom;
-    UBuffer* iblk = pe->blk;
+    const UBuffer* iblk = pe->blk;
     UIndex pos = *spos;
 
 
@@ -231,7 +231,7 @@ match:
                         UIndex parsePos = 0;
 
                         ip.eval = pe->eval;
-                        ip.blk  = ur_buffer( tval->series.buf );
+                        ip.blk  = ur_bufferSer( tval );
                         ip.inputBuf  = tval->series.buf;
                         ip.inputEnd  = ip.blk->used;
                         ip.sliced    = 0;
