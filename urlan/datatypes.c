@@ -2015,8 +2015,19 @@ int binary_append( UThread* ut, UBuffer* buf, const UCell* val )
         buf->ptr.b[ buf->used++ ] = ur_int(val);
         return UR_OK;
     }
+    else if( vt == UT_BLOCK )
+    {
+        UBlockIter bi;
+        ur_blkSlice( ut, &bi, val );
+        ur_foreach( bi )
+        {
+            if( ! binary_append( ut, buf, bi.it ) )
+                return UR_THROW;
+        }
+        return UR_OK;
+    }
     return ur_error( ut, UR_ERR_TYPE,
-                     "append binary! expected char!/int!/binary!/string!" );
+                 "append binary! expected char!/int!/binary!/string!/block!" );
 }
 
 
@@ -2645,12 +2656,10 @@ int string_append( UThread* ut, UBuffer* buf, const UCell* val )
         USeriesIter si;
         ur_seriesSlice( ut, &si, val );
         ur_strAppend( buf, si.buf, si.it, si.end );
-        return UR_OK;
     }
     else if( type == UT_CHAR )
     {
         ur_strAppendChar( buf, ur_int(val) );
-        return UR_OK;
     }
     else if( type == UT_BLOCK )
     {
@@ -2662,13 +2671,12 @@ int string_append( UThread* ut, UBuffer* buf, const UCell* val )
             dt[ ur_type(bi.it) ]->toText( ut, bi.it, buf, 0 );
             //ur_toText( ut, bi.it, str );
         }
-        return UR_OK;
     }
     else
     {
         DT( type )->toText( ut, val, buf, 0 );
-        return UR_OK;
     }
+    return UR_OK;
 }
 
 

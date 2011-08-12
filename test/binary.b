@@ -62,3 +62,7 @@ probe swap #{FFFE680065006C006C006F00}
 probe swap/group #{00112233} 4
 probe swap/group #{0011223344556677} 3
 
+
+print "---- rejoin"
+a: #{ABCD}
+probe rejoin [#{0001} 2 a a]
