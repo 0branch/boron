@@ -1,4 +1,6 @@
+print "---- tokenize"
 probe [0 +0 -0 +1 -1]
+print try [do {32word}]
 
 print "---- hex"
 probe [$0 $10  $ffffffff]

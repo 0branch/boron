@@ -23,6 +23,7 @@
 #include "urlan_atoms.h"
 #include "bignum.h"
 #include "mem_util.h"
+#include "os.h"
 
 #ifdef _MSC_VER
 #define inline  __inline
@@ -706,17 +707,33 @@ static uint8_t firstCharOp[ 127 ] =
 };
 
 
-#define syntaxError(msg) \
-    ur_error( ut, UR_ERR_SYNTAX, "%s (line %d)", msg, lines + 1 ); \
-    goto error
+static const char* _errToken( UBuffer* bin, const char* it, const char* end )
+{
+    const char* start = it;
+    int ch;
 
-#ifdef LANG_THUNE
-#define COLON_WORD  UT_SETWORD
-#define WORD_COLON  UT_GETWORD
-#else
-#define COLON_WORD  UT_GETWORD
-#define WORD_COLON  UT_SETWORD
-#endif
+    SCAN_LOOP
+        if( IS_DELIM(ch) )
+            break;
+    SCAN_END
+
+    ch = it - start;
+    ur_binReserve( bin, ch + 1 );
+    memCpy( bin->ptr.c, start, ch );
+    bin->ptr.c[ ch ] = '\0';
+
+    return bin->ptr.c;
+}
+
+
+#define syntaxError(msg) \
+    errorMsg = msg; \
+    goto error_msg
+
+#define syntaxErrorT(msg) \
+    errorMsg = msg; \
+    goto error_token
+
 
 /**
   \ingroup urlan_core
@@ -742,6 +759,7 @@ UIndex ur_tokenize( UThread* ut, const char* it, const char* end, UCell* res )
     UIndex blkN;
     UCell* cell;
     const char* token;
+    const char* errorMsg;
     int ch;
     int mode;
     int sol = 0;
@@ -853,7 +871,7 @@ invalid_bin:
                     SCAN_LOOP
                         if( IS_DELIM(ch) )
                         {
-array_white:
+vector_white:
                             if( token )
                             {
                                 if( ! buf->used )
@@ -882,7 +900,7 @@ array_white:
                             }
                             if( ch == '\n' )
                             {
-array_newline:
+vector_newline:
                                 ++lines;
                             }
                             else if( ch == ';' )
@@ -890,7 +908,7 @@ array_newline:
                                 ++it;
                                 SCAN_LOOP
                                     if( ch == '\n' )
-                                        goto array_newline;
+                                        goto vector_newline;
                                 SCAN_END
                                 break;
                             }
@@ -909,7 +927,7 @@ array_newline:
                             if( it )
                             {
                                 --it;
-                                goto array_white;
+                                goto vector_white;
                             }
                             break;
                         }
@@ -918,7 +936,7 @@ array_newline:
                             token = it;
                         }
                     SCAN_END
-                    syntaxError( "Invalid array" );
+                    syntaxError( "Invalid vector" );
                 }
                 break;
 
@@ -1014,6 +1032,11 @@ string_end:
                     goto set_sol;
                 }
                 }
+                if( it != end && isDigit(*it) )
+                {
+                    --token;
+                    syntaxErrorT( "Invalid lit-word" );
+                }
                 mode = UT_LITWORD;
                 goto alpha;
 
@@ -1049,7 +1072,7 @@ number:
                     ur_decimal(cell) = ur_stringToDate( token, end, &it );
                     if( it == token )
                     {
-                        syntaxError( "Invalid date" );
+                        syntaxErrorT( "Invalid date" );
                     }
                     break;
                 case '.':   // UT_DECIMAL, UT_VEC3
@@ -1080,6 +1103,10 @@ number:
                 case '#':   // UT_BINARY
                     goto binary;
                 default:
+                    if( (it != end) && ! IS_DELIM(ch) )
+                    {
+                        syntaxErrorT( "Invalid int" );
+                    }
                     cell = appendInt( blk, str_toInt64( token, end, &it ),
                                       INT32_MAX );
                     break;
@@ -1095,7 +1122,10 @@ hex_number:
                                   UINT32_MAX );
                 if( it == token )
                 {
-                    syntaxError( "Invalid hexidecimal number" );
+                    --token;
+                    if( *token == 'x' )
+                        --token;
+                    syntaxErrorT( "Invalid hexidecimal number" );
                 }
                 ur_setFlags( cell, UR_FLAG_INT_HEX );
                 goto set_sol;
@@ -1134,6 +1164,11 @@ hex_number:
 
             case COLON:
                 token = ++it;
+                if( it != end && isDigit(*it) )
+                {
+                    --token;
+                    syntaxErrorT( "Invalid get-word" );
+                }
                 mode = UT_GETWORD;
                 goto alpha;
 
@@ -1158,7 +1193,8 @@ alpha:
                 {
                     if( mode != UT_WORD )
                     {
-                        syntaxError( "Unexpected colon in word" );
+                        --token;
+                        syntaxErrorT( "Unexpected colon" );
                     }
                     cell = ur_blkAppendNew( BLOCK, UT_SETWORD );
                     ur_setWordUnbound( cell, ur_internAtom( ut, token, it ) );
@@ -1217,6 +1253,22 @@ invalid_char:
 
     ur_error( ut, UR_ERR_SYNTAX,
               "Unprintable/Non-ASCII Input %d (line %d)", ch, lines + 1 );
+    goto error;
+
+error_msg:
+
+    ur_error( ut, UR_ERR_SYNTAX, "%s (line %d)", errorMsg, lines + 1 );
+    goto error;
+
+error_token:
+
+    {
+    UBuffer etok;
+    ur_binInit( &etok, 0 );
+    ur_error( ut, UR_ERR_SYNTAX, "%s %s (line %d)",
+              errorMsg, _errToken( &etok, token, end ), lines + 1 );
+    ur_binFree( &etok );
+    }
 
 error:
 
