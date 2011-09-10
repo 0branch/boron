@@ -85,6 +85,8 @@ exe_target: make target_env
     obj_macro: none
     cfg_console: false
 
+    append defines "_WIN32"
+
     config:
     [
         obj_macro: rejoin ["$(" uc_name "_OBJECTS)"]
@@ -171,7 +173,7 @@ exe_target: make target_env
         ]
 
         emit [
-            uc_name "_CFLAGS   = " menv_cflags ' ' gnu_string "/D" defines eol
+            uc_name "_CFLAGS   = " menv_cflags /*' ' gnu_string "/D" defines*/ eol
             uc_name "_CXXFLAGS = $(" uc_name "_CFLAGS) " menv_cxxflags eol
             uc_name "_INCPATH  = " gnu_string "/I" include_paths eol
             uc_name "_LFLAGS   = " menv_lflags eol

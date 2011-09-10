@@ -1,8 +1,8 @@
 #!/usr/bin/boron -s
 /*
 	M2 - A meta-make tool
-	Copyright 2001-2010 Karl Robillard
-	Version 1.0.2
+	Copyright 2001-2011 Karl Robillard
+	Version 1.1.0
 
 	TODO:
 		* Remove files outside the build directory from dist rule.
@@ -61,8 +61,9 @@ m2: context
 	; These can be changed for each target.
 
 	configuration: context [
-		release: debug: warn:
+		release: debug:
 		opengl: qt: qt-static: x11: false
+		warn: true
 	]
 
 	target_env: context [
@@ -320,6 +321,10 @@ m2: context
 	project: "project"
 	version: none
 
+	do-any: func [file] [
+		if exists? file [do file]
+	]
+
 	linux:
 	macx:
 	sun:
@@ -332,20 +337,21 @@ m2: context
 	into:		func [dir] [ct/output_dir: term-dir dir]
 
 	aflags:		func [str string!] [add_flags ct/menv_aflags   str]
-	cflags:		func [str string!] [add_flags ct/menv_cflags   str]
-	cxxflags:	func [str string!] [add_flags ct/menv_cxxflags str]
+	cflags:		func [str string!] [add_flags ct/menv_cflags   str add_def str]
+	cxxflags:	func [str string!] [add_flags ct/menv_cxxflags str add_def str]
 	lflags:		func [str string!] [add_flags ct/menv_lflags   str]
 
 	debug:		does [ct/cfg/debug:   true] ; Building debug version.
 	release:	does [ct/cfg/release: true] ; Optimize for release build.
 	warn:		does [ct/cfg/warn:    true] ; Enable compiler warnings.
+	no-warn:	does [ct/cfg/warn:   false] ; Disable compiler warnings.
 
 	opengl:		does [ct/cfg/opengl: true]  ; Using OpenGL libraries.
 	qt:			func [libs block!] [ct/cfg/qt: libs]  ; Using Qt 4.
 	qt-static:	does [ct/cfg/qt-static: true]
 	x11:		does [ct/cfg/x11: true]     ; Using X11 libraries.
 
-	define:		func [str string!] [append ct/defines parse-white str]
+	include-define:	func [str string!] [append ct/defines parse-white str]
 
 	include_from: func [list string!/file!/block!] [
 		if string? list [
@@ -535,35 +541,72 @@ find_include_file: func [
 
 
 space: charset { ^-}
+define-symbol: charset {_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz}
+
+add_def: func [str | tok] [
+	parse str [some[
+		thru "-D" tok: some define-symbol :tok (append ct/defines tok)
+	]]
+]
+
+context [
+	dtok:
+	use-include: none
+	inc-stack: []
+
+	if-case: func [enable] [
+		if last inc-stack [use-include: enable]
+	]
+	push-if: func [enable] [
+		append inc-stack use-include
+		if-case enable
+	]
+
+	def-exp: [
+		some space opt "defined(" dtok: some define-symbol :dtok thru '^/'
+	]
+
+	set 'get-includes func [code defs inc-blk] [
+		use-include: true
+		clear inc-stack
+		defs: copy defs
+		parse code [any[
+			any space '#' [
+				"include" some space '"' dtok: to '"' :dtok (
+					if use-include [append inc-blk copy dtok]
+				)
+			  | "define"  def-exp   (if use-include [append defs dtok])
+			  | "ifdef"   def-exp   (push-if find defs dtok)
+			  | "ifndef"  def-exp   (push-if not find defs dtok)
+			  | "if"      def-exp   (push-if either eq? dtok "1"
+										[true] [find defs dtok])
+			  | "else"    thru '^/' (if-case not use-include)
+			  | "elif"    def-exp   (if-case find defs dtok)
+			  | "endif"   thru '^/' (use-include: pop inc-stack)
+			]
+		  | any space "/*" thru "*/"
+		  | thru '^/'
+		]]
+	]
+]
 
 included_files: func [
    /* Returns a block of the files which are included in a C/C++ file.
-	  Addes   #include "file.h"
+	  Adds    #include "file.h"
 	  Ignores #include <file.h>
-	  Ignores #include MACRO */
+   */
 	file  file!/string! "File to check for #include statements"
 	paths block!        "Paths to check for included files"
 	| blk tmp
 ][
-	blk: make block! 8
+	blk: make block! 0
 
 	ifn exists? file [
 		print ["included_files:" file "not found"]
 		return blk
 	]
 
-	; BUG: #include can be defined out but will still be included here.
-	; This causes errors when Windows-only code includes files with paths
-	; (using backslash) and we are compiling on a non-Windows system.
-
-	parse read-buf file [
-		any [
-			thru "^/#include" some space [
-				'"' tmp: to '"' :tmp (append blk copy tmp)
-				| to '^/'
-			]
-		]
-	]
+	get-includes read-buf file ct/defines blk
 
 	blk: intersect blk blk   ; Removes duplicates.
 

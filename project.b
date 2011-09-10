@@ -8,10 +8,9 @@ timecode: true
 thread:   true
 assemble: false
 
-if exists? config: %project.config [do config]
+do-any %project.config
 
 default [
-    warn
    ;debug
     release
 
