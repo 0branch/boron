@@ -1556,7 +1556,10 @@ void SWidget::setEventBlock( const UCell* val )
 void SWidget::closeEvent( QCloseEvent* e )
 {
     _blk.switchWord( qEnv.atom_close ); 
-    e->accept();
+    if( ur_isTrue( boron_result( UT ) ) )
+        e->accept();
+    else
+        e->ignore();
 }
 
 
