@@ -2540,7 +2540,7 @@ void string_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     }
 
     if( (len > longLen) ||
-        (ur_strFindChars( si.buf, 0, (len < longLen) ? len : longLen,
+        (ur_strFindChars( si.buf, si.it, si.end,
                           _strLongChars, sizeof(_strLongChars) ) > -1) )
     {
         ur_strAppendChar( str, '{' );
