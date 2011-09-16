@@ -1,5 +1,5 @@
 /*
-  Copyright 2009,2010 Karl Robillard
+  Copyright 2009-2011 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -3985,7 +3985,8 @@ const UCell* context_select( UThread* ut, const UCell* cell, const UCell* sel,
 }
 
 
-void context_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
+static void context_print( UThread* ut, const UBuffer* buf, UBuffer* str,
+                           int depth )
 {
 #define ASTACK_SIZE 8
     union {
@@ -3994,7 +3995,6 @@ void context_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     } atoms;
     UAtom* ait;
     int alloced;
-    const UBuffer* buf = ur_bufferSer(cell);
     const UCell* it  = buf->ptr.cell;
     const UCell* end = it + buf->used;
 
@@ -4026,6 +4026,43 @@ void context_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 }
 
 
+#define ur_ctxRecursion(buf)    (buf)->form
+
+#define ur_printRecurseEnd(cell,ctxb) \
+    if( ! ur_isShared(cell->context.buf) ) \
+        ur_ctxRecursion((UBuffer*) ctxb) = 0
+
+static
+const UBuffer* ur_printRecurse( UThread* ut, const UCell* cell, UBuffer* str )
+{
+    const UBuffer* buf = ur_bufferSer( cell );
+
+    // Recursion on shared buffers is not handled.
+    if( ur_isShared(cell->series.buf) )
+        return buf;
+
+    if( ur_ctxRecursion(buf) )
+    {
+        unset_toString( ut, cell, str, 0 );
+        return 0;
+    }
+
+    ur_ctxRecursion((UBuffer*) buf) = 1;
+    return buf;
+}
+
+
+void context_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
+{
+    const UBuffer* buf = ur_printRecurse( ut, cell, str );
+    if( buf )
+    {
+        context_print( ut, buf, str, depth );
+        ur_printRecurseEnd( cell, buf );
+    }
+}
+
+
 /*
   If depth is -1 then the context word and braces will be omitted.
 */
@@ -4037,10 +4074,15 @@ void context_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     }
     else
     {
-        ur_strAppendCStr( str, "context [\n" );
-        context_toText( ut, cell, str, depth + 1 );
-        ur_strAppendIndent( str, depth );
-        ur_strAppendCStr( str, "]" );
+        const UBuffer* buf = ur_printRecurse( ut, cell, str );
+        if( buf )
+        {
+            ur_strAppendCStr( str, "context [\n" );
+            context_print( ut, buf, str, depth + 1 );
+            ur_strAppendIndent( str, depth );
+            ur_strAppendCStr( str, "]" );
+            ur_printRecurseEnd( cell, buf );
+        }
     }
 }
 

@@ -29,3 +29,11 @@ context [
     b: 2
     extra: 3.0
 ]
+---- print recursion
+context [
+    a: 1
+    b: context [
+        a: 2
+        b: ~context!~
+    ]
+]

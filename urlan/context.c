@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009-2011 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -20,7 +20,7 @@
   UBuffer members:
     type        UT_CONTEXT
     elemSize    Unused
-    form        Unused
+    form        Recursion marker
     flags       Sorted flag
     used        Number of words used
     ptr.cell    Cell values

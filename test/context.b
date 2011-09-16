@@ -37,3 +37,10 @@ print "---- append"
 c: context [a: 1 b: 2]
 set append c 'extra 3.0
 probe c
+
+
+print "---- print recursion"
+c1: context [a: 1 b: none]
+c2: make c1 [a: 2 b: c1]
+c1/b: c2
+probe c1
