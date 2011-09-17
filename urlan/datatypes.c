@@ -2184,6 +2184,85 @@ int binary_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 }
 
 
+int binary_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
+                    int op )
+{
+    if( ur_type(a) == ur_type(b) )
+    {
+        switch( op )
+        {
+            /*
+            case UR_OP_ADD:
+            case UR_OP_SUB:
+            case UR_OP_MUL:
+            case UR_OP_DIV:
+            case UR_OP_MOD:
+            */
+
+            case UR_OP_AND:
+            case UR_OP_OR:
+            case UR_OP_XOR:
+            {
+                UBinaryIter biA;
+                UBinaryIter biB;
+                UBinaryIter* biL;
+                UBuffer* bin;
+                uint8_t* bp;
+                int large;
+                int small;
+
+                bin = ur_makeBinaryCell( ut, 0, res );
+                ur_type(res) = ur_type(a);
+
+                ur_binSlice( ut, &biA, a );
+                ur_binSlice( ut, &biB, b );
+                small = biA.end - biA.it;
+                large = biB.end - biB.it;
+
+                if( large < small )
+                {
+                    int tmp = large;
+                    large = small;
+                    small = tmp;
+                    biL = &biA;
+                }
+                else
+                    biL = &biB;
+
+                if( large )
+                {
+                    ur_binExpand( bin, 0, large );
+                    bp = bin->ptr.b;
+                    large -= small;
+                    switch( op )
+                    {
+                        case UR_OP_AND:
+                            while( small-- )
+                                *bp++ = *biA.it++ & *biB.it++;
+                            memSet( bp, 0, large );
+                            break;
+
+                        case UR_OP_OR:
+                            while( small-- )
+                                *bp++ = *biA.it++ | *biB.it++;
+                            memCpy( bp, biL->it, large );
+                            break;
+
+                        case UR_OP_XOR:
+                            while( small-- )
+                                *bp++ = *biA.it++ ^ *biB.it++;
+                            memCpy( bp, biL->it, large );
+                            break;
+                    }
+                }
+            }
+                return UR_OK;
+        }
+    }
+    return unset_operate( ut, a, b, res, op );
+}
+
+
 const UCell* binary_select( UThread* ut, const UCell* cell, const UCell* sel,
                             UCell* tmp )
 {
@@ -2203,7 +2282,7 @@ USeriesType dt_binary =
     {
     "binary!",
     binary_make,            binary_make,            binary_copy,
-    binary_compare,         unset_operate,          binary_select,
+    binary_compare,         binary_operate,         binary_select,
     binary_toString,        binary_toString,
     unset_recycle,          binary_mark,            ur_binFree,
     unset_markBuf,          binary_toShared,        unset_bind
@@ -2335,7 +2414,7 @@ USeriesType dt_bitset =
     {
     "bitset!",
     bitset_make,            bitset_make,            binary_copy,
-    unset_compare,          unset_operate,          unset_select,
+    unset_compare,          binary_operate,         unset_select,
     bitset_toString,        bitset_toString,
     unset_recycle,          binary_mark,            ur_binFree,
     unset_markBuf,          binary_toShared,        unset_bind
