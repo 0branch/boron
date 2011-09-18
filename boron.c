@@ -998,6 +998,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_negate,     "negate n" );
     addCFunc( cfunc_intersect,  "intersect a b" );
     addCFunc( cfunc_difference, "difference a b" );
+    addCFunc( cfunc_union,      "union a b" );
     addCFunc( cfunc_sort,       "sort ser /case /group size" );
     addCFunc( cfunc_foreach,    "foreach 'w s body /ghost" );
     addCFunc( cfunc_forall,     "forall 'w body /ghost" );

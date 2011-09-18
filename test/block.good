@@ -43,6 +43,8 @@ none
 ["h" 45 new]
 [b d]
 []
+[2 2 0]
+[3 2 0 1 4]
 ---- sort
 [1 5 20.0 50.0]
 ["goodbye" "hello" "now" "NOW" "then"]

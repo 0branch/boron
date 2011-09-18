@@ -2594,8 +2594,16 @@ CFUNC( cfunc_negate )
 }
 
 
+enum SetOperation
+{
+    SET_OP_INTERSECT,
+    SET_OP_DIFF,
+    SET_OP_UNION
+};
+
+
 static int set_relation( UThread* ut, const UCell* a1, UCell* res,
-                         int intersect )
+                         enum SetOperation op )
 {
     USeriesIter si;
     const USeriesType* dt;
@@ -2614,32 +2622,62 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
         UBuffer* blk = ur_makeBlockCell( ut, type, 0, res );
 
         ur_blkSlice( ut, &bi, a1 );
-        ur_seriesSlice( ut, &si, argB );
 
-        if( intersect )
+        switch( op )
         {
-            USeriesIter ri;
-
-            ri.buf = ur_buffer(res->series.buf);
-            ri.it = ri.end = 0;
-
-            ur_foreach( bi )
+            case SET_OP_INTERSECT:
             {
-                if( (dt->find( ut, &si, bi.it, 0 ) > -1) &&
-                    (dt->find( ut, &ri, bi.it, 0 ) == -1) )
+                USeriesIter ri;
+
+                ur_seriesSlice( ut, &si, argB );
+
+                ri.buf = blk;
+                ri.it = ri.end = 0;
+
+                ur_foreach( bi )
                 {
-                    ur_blkPush( blk, bi.it );
-                    ri.end = blk->used;
+                    if( (dt->find( ut, &si, bi.it, 0 ) > -1) &&
+                        (dt->find( ut, &ri, bi.it, 0 ) == -1) )
+                    {
+                        ur_blkPush( blk, bi.it );
+                        ++ri.end;
+                    }
                 }
             }
-        }
-        else
-        {
-            ur_foreach( bi )
+            break;
+
+            case SET_OP_DIFF:
+                ur_seriesSlice( ut, &si, argB );
+
+                ur_foreach( bi )
+                {
+                    if( dt->find( ut, &si, bi.it, 0 ) < 0 )
+                        ur_blkPush( blk, bi.it );
+                }
+                break;
+
+            case SET_OP_UNION:
             {
-                if( dt->find( ut, &si, bi.it, 0 ) < 0 )
-                    ur_blkPush( blk, bi.it );
+                si.buf = blk;
+                si.it = si.end = 0;
+union_loop:
+                ur_foreach( bi )
+                {
+                    if( dt->find( ut, &si, bi.it, 0 ) < 0 )
+                    {
+                        ur_blkPush( blk, bi.it );
+                        ++si.end;
+                    }
+                }
+
+                if( type )
+                {
+                    type = 0;
+                    ur_blkSlice( ut, &bi, argB );
+                    goto union_loop;
+                }
             }
+                break;
         }
     }
     else
@@ -2656,12 +2694,12 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
     intersect
         setA    series
         setB    series
-    return: New value that contains only the elements common to both sets.
+    return: New series that contains only the elements common to both sets.
     group: series
 */
 CFUNC(cfunc_intersect)
 {
-    return set_relation( ut, a1, res, 1 );
+    return set_relation( ut, a1, res, SET_OP_INTERSECT );
 }
 
 
@@ -2669,12 +2707,28 @@ CFUNC(cfunc_intersect)
     difference
         setA    series
         setB    series
-    return: New value that contains only the elements unique to each set.
+    return: New series that contains the elements of setA which are not in setB.
     group: series
+
+    This function generates the set-theoretic difference, not the symmetric
+    difference (the elements unique to both sets).
 */
 CFUNC(cfunc_difference)
 {
-    return set_relation( ut, a1, res, 0 );
+    return set_relation( ut, a1, res, SET_OP_DIFF );
+}
+
+
+/*-cf-
+    union
+        setA    series
+        setB    series
+    return: New series that contains the distinct elements of both sets.
+    group: series
+*/
+CFUNC(cfunc_union)
+{
+    return set_relation( ut, a1, res, SET_OP_UNION );
 }
 
 

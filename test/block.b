@@ -63,6 +63,8 @@ probe intersect [a b c d] [c 1 'a]
 probe intersect b: ["h" 45 new 45] b
 probe difference [a b c d] [c 1 'a]
 probe difference b: ["h" 45 new 45] b
+probe difference [3 2 2 0] [1 3 4]
+probe union [3 2 2 0] [1 3 4]
 
 
 print "---- sort"
