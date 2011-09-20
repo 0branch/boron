@@ -1630,6 +1630,9 @@ static int word_atomOrType( const UCell* cell )
 }
 
 
+int compare_ic_uint8_t( const uint8_t*, const uint8_t*,
+                        const uint8_t*, const uint8_t* );
+
 int word_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 {
     switch( test )
@@ -1652,12 +1655,15 @@ int word_compare( UThread* ut, const UCell* a, const UCell* b, int test )
         case UR_COMPARE_ORDER_CASE:
             if( ur_type(a) == ur_type(b) )
             {
-#define ATOM_STR(cell)  (const uint8_t*) ur_wordCStr(cell)
 #define ATOM_LEN(str)   strLen((const char*) str)
-                const uint8_t* strA = ATOM_STR(a);
-                const uint8_t* strB = ATOM_STR(b);
-                return compare_uint8_t( strA, strA + ATOM_LEN(strA),
-                                        strB, strB + ATOM_LEN(strB) );
+                const uint8_t* strA = (const uint8_t*) ur_wordCStr(a);
+                const uint8_t* strB = (const uint8_t*) ur_wordCStr(b);
+                int (*func)(const uint8_t*, const uint8_t*,
+                            const uint8_t*, const uint8_t* );
+                func = (test == UR_COMPARE_ORDER) ? compare_ic_uint8_t
+                                                  : compare_uint8_t;
+                return func( strA, strA + ATOM_LEN(strA),
+                             strB, strB + ATOM_LEN(strB) );
             }
             break;
     }
