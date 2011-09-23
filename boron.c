@@ -1033,6 +1033,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_terminate,  "terminate ser val /dir" );
     addCFunc( cfunc_to_hex,     "to-hex n" );
     addCFunc( cfunc_to_dec,     "to-dec n" );
+    addCFunc( cfunc_mark_sol,   "mark-sol val /block /clear" );
     addCFunc( cfunc_now,        "now /date" );
     addCFunc( cfunc_cpu_cycles, "cpu-cycles n int! b block!" );
     addCFunc( cfunc_free,       "free s" );

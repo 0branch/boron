@@ -4510,6 +4510,42 @@ CFUNC(cfunc_to_dec)
 
 
 /*-cf-
+    mark-sol
+        value
+        /block  Mark block rather than value at block position.
+        /clear  Clear start of line flag.
+    return: Value with flag set.
+    group: data
+
+    Flag value so that it is printed at the start of a line.
+*/
+CFUNC(cfunc_mark_sol)
+{
+#define OPT_MARK_SOL_BLOCK   0x01
+#define OPT_MARK_SOL_CLEAR   0x02
+    uint32_t opt = CFUNC_OPTIONS;
+    int type = ur_type(a1);
+
+    *res = *a1;
+
+    if( ur_isBlockType( type ) && ! (opt & OPT_MARK_SOL_BLOCK) )
+    {
+        UBlockIterM bi;
+        if( ! ur_blkSliceM( ut, &bi, a1 ) )
+            return UR_THROW;
+        if( bi.it == bi.end )
+            return UR_OK;
+        res = bi.it;
+    }
+    if( opt & OPT_MARK_SOL_CLEAR )
+        ur_clrFlags(res, UR_FLAG_SOL);
+    else
+        ur_setFlags(res, UR_FLAG_SOL);
+    return UR_OK;
+}
+
+
+/*-cf-
     now
         /date   Return date! rather than time!
     return: time! or date!
