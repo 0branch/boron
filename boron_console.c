@@ -85,6 +85,7 @@ int main( int argc, char** argv )
     char cmd[ 2048 ];
     UThread* ut;
     UBuffer rstr;
+    UCell* val;
     int fileN = 0;
     int ret = 0;
     int secure = 1;
@@ -264,7 +265,7 @@ prompt:
 #endif
                 if( boron_doCStr( ut, cmd, -1 ) )
                 {
-                    UCell* val = boron_result( ut );
+                    val = boron_result( ut );
 
                     if( ur_is(val, UT_UNSET) ||
                         ur_is(val, UT_CONTEXT) ) //||
@@ -315,7 +316,7 @@ prompt:
         }
     }
 
-quit:
+cleanup:
 
     ur_strFree( &rstr );
     boron_freeEnv( ut );
@@ -325,6 +326,13 @@ quit:
 #endif
 
     return ret;
+
+quit:
+
+    val = boron_result( ut );
+    if( ur_is(val, UT_INT) )
+        ret = ur_int(val) & 0xff;
+    goto cleanup;
 }
 
 

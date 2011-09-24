@@ -53,6 +53,7 @@ CFUNC(cfunc_nop)
 
 /*-cf-
     quit
+        /return value   Returns value as exit status to operating system.
     return: NA
     group: control
 
@@ -60,8 +61,15 @@ CFUNC(cfunc_nop)
 */
 CFUNC(cfunc_quit)
 {
-    (void) a1;
-    (void) res;
+    if( CFUNC_OPTIONS & 1 )
+    {
+        *res = *a1;
+    }
+    else
+    {
+        ur_setId(res, UT_INT);
+        ur_int(res) = 0;
+    }
     return boron_throwWord( ut, UR_ATOM_QUIT );
 }
 
