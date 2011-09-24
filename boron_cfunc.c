@@ -53,7 +53,8 @@ CFUNC(cfunc_nop)
 
 /*-cf-
     quit
-        /return value   Returns value as exit status to operating system.
+        /return     Returns value as exit status to operating system.
+            value   Normally an int! between 0 and 255.
     return: NA
     group: control
 
@@ -156,7 +157,8 @@ CFUNC(cfunc_throw)
 /*-cf-
     catch
         body block!
-        /name word word!/block!
+        /name
+            word word!/block!
     return: Result of block evaluation or thrown value.
     group: control
 */
@@ -2002,7 +2004,8 @@ CFUNC(cfunc_append)
         series
         value
         /block          Insert block value as a single item.
-        /part limit     Insert only a limited number of elements from value.
+        /part           Insert only a limited number of elements from value.
+            limit
     return: Modified series.
     group: series
 */
@@ -2057,7 +2060,8 @@ done:
         series
         replacement
         /slice          Remove slice and insert replacement.
-        /part limit     Remove to limit and insert replacement.
+        /part           Remove to limit and insert replacement.
+            limit
     return: Series at end of change.
     group: series
 */
