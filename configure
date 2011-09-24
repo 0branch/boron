@@ -13,19 +13,21 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo "  --no-socket     Remove the socket port"
   echo "  --assemble      Enable assemble function (requires libjit)"
   echo "  --bzip2         Use bzip2 for compress instead of zlib"
+  echo "  --readline      Enable console editing and history using GNU Readline"
   echo "  --timecode      Enable timecode! datatype"
   echo "  --thread        Enable thread functions"
   exit
 fi
 
 MAKE=m2
+CFG_ASSEM=0
 CFG_CHECKSUM=1
 CFG_COMPRESS=zlib
 CFG_RANDOM=1
+CFG_READLINE=0
 CFG_SOCKET=1
 CFG_TIMECODE=0
 CFG_THREAD=0
-CFG_ASSEM=0
 
 for opt in "$@"; do
   case $opt in
@@ -47,6 +49,8 @@ for opt in "$@"; do
       CFG_ASSEM=1 ;;
     --bzip2)
       CFG_COMPRESS=bzip2 ;;
+    --readline)
+      CFG_READLINE=1 ;;
     --timecode)
       CFG_TIMECODE=1 ;;
     --thread)
@@ -91,6 +95,7 @@ if command -v m2 >/dev/null; then
       echo "compress: false" >> project.config ;;
   esac
   m2-option "random"   $CFG_RANDOM
+  m2-option "readline" $CFG_READLINE
   m2-option "socket"   $CFG_SOCKET
   m2-option "timecode" $CFG_TIMECODE
   m2-option "thread"   $CFG_THREAD
@@ -110,6 +115,7 @@ if command -v gcc >/dev/null; then
 
   echo "CHECKSUM=$CFG_CHECKSUM" >Makefile
   echo "RANDOM=$CFG_RANDOM" >>Makefile
+  echo "READLINE=$CFG_READLINE" >>Makefile
   echo "SOCKET=$CFG_SOCKET" >>Makefile
   echo "COMPRESS=$CFG_COMPRESS" >>Makefile
   echo "TIMECODE=$CFG_TIMECODE" >>Makefile
@@ -127,6 +133,7 @@ if command -v gcc >/dev/null; then
   echo -e "ifeq (\$(COMPRESS),zlib)\n  CFLAGS+=-DCONFIG_COMPRESS=1\n  LIBS+=-lz\nendif" >>Makefile
   echo -e "ifeq (\$(COMPRESS),bzip2)\n  CFLAGS+=-DCONFIG_COMPRESS=2\n  LIBS+=-lbz2\nendif" >>Makefile
   echo -e "ifeq (\$(RANDOM),1)\n  CFLAGS+=-DCONFIG_RANDOM\n  OBJS+=support/well512.o\nendif" >>Makefile
+  echo -e "ifeq (\$(READLINE),1)\n  CFLAGS+=-DCONFIG_READLINE\n  LIBS+=-lreadline -lhistory\nendif" >>Makefile
   echo -e "ifeq (\$(SOCKET),1)\n  CFLAGS+=-DCONFIG_SOCKET\n  OBJS+=port_socket.o\nendif" >>Makefile
   echo -e "ifeq (\$(TIMECODE),1)\n  CFLAGS+=-DCONFIG_TIMECODE\nendif" >>Makefile
   echo -e "ifeq (\$(THREAD),1)\n  CFLAGS+=-DCONFIG_THREAD\n  OBJS+=port_thread.o\n  LIBS+=-lpthread\nendif" >>Makefile

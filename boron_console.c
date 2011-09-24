@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2011 Karl Robillard
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,6 +18,11 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
+#ifdef CONFIG_READLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
 #include "boron.h"
 #include "urlan_atoms.h"
 #include "str.h"
@@ -25,7 +30,6 @@
 #include <winsock2.h>
 #endif
 #ifdef BORON_GL
-#include <stdlib.h>
 #include "boron-gl.h"
 #define boron_makeEnv   boron_makeEnvGL
 #define boron_freeEnv   boron_freeEnvGL
@@ -35,8 +39,12 @@
 #endif
 
 
-#define ESC         27
+#define PROMPT      ")> "
+#define CMD_SIZE    2048
 #define PRINT_MAX   156
+#ifndef CONFIG_READLINE
+#define ESC         27
+#endif
 
 
 void usage( const char* arg0 )
@@ -82,7 +90,7 @@ void reportError( UThread* ut, UCell* err, UBuffer* str )
 
 int main( int argc, char** argv )
 {
-    char cmd[ 2048 ];
+    char* cmd = 0;
     UThread* ut;
     UBuffer rstr;
     UCell* val;
@@ -174,8 +182,8 @@ usage_err:
         else
             expression = 0;
 
-        pos = cmd;
-        cmd[ sizeof(cmd) - 1 ] = -1;
+        pos = cmd = malloc( CMD_SIZE );
+        cmd[ CMD_SIZE - 1 ] = -1;
 
         // Create args block for any command line parameters.
         if( (argc - fileN) > 1 )
@@ -207,7 +215,7 @@ usage_err:
             *pos++ = '}';
         }
 
-        assert( cmd[ sizeof(cmd) - 1 ] == -1 && "cmd buffer overflow" );
+        assert( cmd[ CMD_SIZE - 1 ] == -1 && "cmd buffer overflow" );
 
         if( ! boron_doCStr( ut, cmd, pos - cmd ) )
         {
@@ -237,11 +245,24 @@ usage_err:
 
 prompt:
 
+#ifndef CONFIG_READLINE
+        if( ! cmd )
+            cmd = malloc( CMD_SIZE );
+#endif
+
         while( 1 )
         {
-            printf( ")> " );
+#ifdef CONFIG_READLINE
+            free( cmd );
+            cmd = readline( PROMPT );
+            if( ! cmd || ! *cmd )
+               continue;
+            add_history( cmd );
+#else
+            printf( PROMPT );
             fflush( stdout );   /* Required on Windows. */
-            fgets( cmd, sizeof(cmd), stdin ); 
+            fgets( cmd, CMD_SIZE, stdin ); 
+#endif
 #if 0
             {
                 char* cp = cmd;
@@ -270,7 +291,7 @@ prompt:
                     if( ur_is(val, UT_UNSET) ||
                         ur_is(val, UT_CONTEXT) ) //||
                         //ur_is(val, UT_FUNC) )
-                        goto prompt;
+                        continue;
 
                     rstr.used = 0;
                     ur_toStr( ut, val, &rstr, 0 );
@@ -325,6 +346,7 @@ cleanup:
     WSACleanup();
 #endif
 
+    free( cmd );
     return ret;
 
 quit:

@@ -1,12 +1,13 @@
 project: "boron"
 
+assemble: false
 checksum: true
 compress: 'zlib
 random:   true
+readline: false
 socket:   true
-timecode: true
-thread:   true
-assemble: false
+thread:   false
+timecode: false
 
 do-any %project.config
 
@@ -111,6 +112,10 @@ shlib %boron [
 
 exe %boron [
     libs_from %. %boron
+    if readline [
+        cflags {-DCONFIG_READLINE}
+        libs [%readline %history]
+    ]
     win32 [
         console
         libs %ws2_32
