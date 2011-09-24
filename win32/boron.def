@@ -77,7 +77,7 @@ EXPORTS
     ur_binSlice             @75
     ur_binSliceM            @76
     ur_binToStr             @77
-    ur_binAppendHex         @78
+    ur_binAppendBase        @78
     ur_makeString           @79
     ur_makeStringCell       @80
     ur_makeStringUtf8       @81

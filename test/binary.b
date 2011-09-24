@@ -66,3 +66,19 @@ probe swap/group #{0011223344556677} 3
 print "---- rejoin"
 a: #{ABCD}
 probe rejoin [#{0001} 2 a a]
+
+
+print "---- encoding"
+probe b: #{abcd012345}
+probe b2: 2#{10101011 11001101 00000001 00100011 01000101}
+probe b64: 64#{q80BI0U=}
+
+probe eq? b b2
+probe encode 16 b2
+
+probe eq? b b64
+probe encode 16 b64
+
+probe encode 64 b 
+probe reduce [slice b 1 slice b 2 slice b 3]
+probe [64#{qw==} 64#{q80=} 64#{q80B}]

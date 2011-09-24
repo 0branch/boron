@@ -295,7 +295,7 @@ const char* str_toVec3( UCell* cell, const char* it, const char* end )
 
 
 /* Whitespace: null space tab cr lf */
-static uint8_t charset_white[32] = {
+uint8_t charset_white[32] = {
     0x01,0x26,0x00,0x00,0x01,0x00,0x00,0x00,
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -311,7 +311,7 @@ static uint8_t charset_delimiter[32] = {
 };
 
 /* Hexidecimal: 0-9 a-f A-F */
-static uint8_t charset_hex[32] = {
+uint8_t charset_hex[32] = {
     0x00,0x00,0x00,0x00,0x00,0x00,0xFF,0x03,
     0x7E,0x00,0x00,0x00,0x7E,0x00,0x00,0x00,
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -333,6 +333,14 @@ static uint8_t charset_path[32] = {
     0xFE,0xFF,0xFF,0xD7,0xFF,0xFF,0xFF,0x57,
     0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
     0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
+};
+
+/* Base64 encoding: +/= 0-9 a-z A-Z */
+uint8_t charset_base64[32] = {
+    0x00,0x00,0x00,0x00,0x00,0x88,0xFF,0x23,
+    0xFE,0xFF,0xFF,0x07,0xFE,0xFF,0xFF,0x07,
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
 #define ur_bitIsSet(mem,n)  (mem[(n)>>3] & 1<<((n)&7))
@@ -419,52 +427,6 @@ static int ur_charUtf8ToUcs2( const uint8_t* it, const uint8_t* end,
         return -1;
     *pos = it + 1;
     return c;
-}
-
-
-/**
-  \ingroup dt_binary
-  Append hexadecimal ASCII string to binary buffer.
-
-  \param buf    Initialized binary buffer.
-  \param it     Start of string
-  \param end    End of string
-
-  \return End of string or position where non-hex or non-whitespace
-          character was found.
-*/
-const char* ur_binAppendHex( UBuffer* buf, const char* it, const char* end )
-{
-    int c;
-    int byte = 0;
-    int high = 0;
-    uint8_t* out;
-
-    ur_binReserve( buf, buf->used + (end - it) / 2 );
-    out = buf->ptr.b + buf->used;
-
-    while( it != end )
-    {
-        c = *it++;
-        if( IS_HEX(c) )
-        {
-            byte |= hexNibble(c);
-            if( high )
-            {
-                *out++ = byte;
-                byte = high = 0;
-            }
-            else
-            {
-                byte <<= 4;
-                high = 1;
-            }
-        }
-        else if( ! IS_WHITE(c) )
-            break;
-    }
-    buf->used = out - buf->ptr.b;
-    return it;
 }
 
 
@@ -819,19 +781,21 @@ newline:
                 goto word;
 
             case BIN:
+                mode = UR_BENC_16;
 binary:
                 ++it;
                 if( it == end )
                     goto invalid_bin;
                 if( *it == '{' )
                 {
-                    int bn = 0;
+                    const uint8_t* baseChars = (mode == UR_BENC_64) ?
+                        charset_base64 : charset_hex;
                     ++it;
                     token = it;
                     SCAN_LOOP
-                        if( IS_HEX(ch) )
+                        if( ur_bitIsSet( baseChars, ch ) )
                         {
-                            ++bn;
+                            continue;
                         }
                         else if( IS_WHITE(ch) )
                         {
@@ -840,12 +804,12 @@ binary:
                         }
                         else if( ch == '}' )
                         {
-                            if( bn & 1 )
+                            UBuffer* bin;
+                            cell = ur_blkAppendNew( BLOCK, UT_NONE );
+                            bin = ur_makeBinaryCell( ut, 0, cell );
+                            bin->form = mode;
+                            if( ur_binAppendBase( bin, token, it, mode ) != it )
                                 goto invalid_bin;
-                            bn = ur_makeBinary( ut, 0 );
-                            cell = ur_blkAppendNew( BLOCK, UT_BINARY );
-                            ur_setSeries( cell, bn, 0 );
-                            ur_binAppendHex( ur_buffer(bn), token, it );
                             ++it;
                             goto set_sol;
                         }
@@ -1101,7 +1065,22 @@ number:
                     it = str_toCoord( cell, token, end );
                     break;
                 case '#':   // UT_BINARY
-                    goto binary;
+                    if( token[0] == '6' && token[1] == '4' )
+                    {
+                        mode = UR_BENC_64;
+                        goto binary;
+                    }
+                    else if( token[0] == '2' && token[1] == '#' )
+                    {
+                        mode = UR_BENC_2;
+                        goto binary;
+                    }
+                    else if( token[0] == '1' && token[1] == '6' )
+                    {
+                        mode = UR_BENC_16;
+                        goto binary;
+                    }
+                    syntaxErrorT( "Invalid binary base" );
                 default:
                     if( (it != end) && ! IS_DELIM(ch) )
                     {

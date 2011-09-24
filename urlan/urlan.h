@@ -94,6 +94,15 @@ enum UrlanWordBindings
 };
 
 
+enum UrlanBinaryEncoding
+{
+    UR_BENC_16,
+    UR_BENC_2,
+    UR_BENC_64,
+    UR_BENC_COUNT
+};
+
+
 enum UrlanStringEncoding
 {
     UR_ENC_LATIN1,
@@ -496,11 +505,13 @@ void     ur_binExpand( UBuffer*, int index, int count );
 void     ur_binErase( UBuffer*, int start, int count );
 void     ur_binAppendData( UBuffer*, const uint8_t* data, int len );
 void     ur_binAppendArray( UBuffer*, const USeriesIter* si );
+const char* ur_binAppendBase( UBuffer* buf, const char* it, const char* end,
+                              enum UrlanBinaryEncoding enc );
 void     ur_binFree( UBuffer* );
 void     ur_binSlice( UThread*, UBinaryIter*, const UCell* cell );
 int      ur_binSliceM( UThread*, UBinaryIterM*, const UCell* cell );
 void     ur_binToStr( UBuffer*, int encoding );
-const char* ur_binAppendHex( UBuffer* buf, const char* it, const char* end );
+#define ur_binAppendHex(buf,it,end) ur_binAppendBase(buf,it,end,UR_BENC_16)
 
 UIndex   ur_makeString( UThread*, int enc, int size );
 UBuffer* ur_makeStringCell( UThread*, int enc, int size, UCell* cell );

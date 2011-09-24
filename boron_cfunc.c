@@ -4113,11 +4113,19 @@ CFUNC(cfunc_encodingQ)
     static UAtom encAtoms[4] = {
         UR_ATOM_LATIN1, UR_ATOM_UTF8, UR_ATOM_UCS2, UT_UNSET
     };
+    static char bencBase[4] = { 16, 2, 64, 16 };
+
     if( ur_isStringType( ur_type(a1) ) )
     {
         const UBuffer* buf = ur_bufferSer(a1);
         ur_setId(res, UT_WORD);
         ur_setWordUnbound(res, encAtoms[buf->form & 3] );
+    }
+    else if( ur_is(a1, UT_BINARY) )
+    {
+        const UBuffer* buf = ur_bufferSer(a1);
+        ur_setId(res, UT_INT);
+        ur_int(res) = bencBase[buf->form & 3];
     }
     else
         ur_setId(res, UT_NONE);
@@ -4127,11 +4135,17 @@ CFUNC(cfunc_encodingQ)
 
 /*-cf-
     encode
-        type    word!   latin1, utf8, ucs2
-        data    string!
+        type    int!/word!   2, 16, 64, latin1, utf8, ucs2
+        data    binary!/string!
         /bom    Prepend Unicode BOM for utf8 or ucs2 and return binary.
-    return: New string or binary with data converted to encoding type.
+    return: String or binary with data converted to encoding type.
     group: data
+
+    When data is a string! then the type must be a a word! and a new string
+    is returned.
+
+    If data is a binary! then the type must be an int! and the input value
+    is returned with only the base indicator modified.
 */
 CFUNC(cfunc_encode)
 {
@@ -4140,13 +4154,13 @@ CFUNC(cfunc_encode)
     const UCell* data = a2;
     int type = ur_type(data);
 
-    if( ! ur_is(a1, UT_WORD) )
-        return errorType( "encode expected word! type" );
-
     if( ur_isStringType( type ) )
     {
         USeriesIter si;
         int enc;
+
+        if( ! ur_is(a1, UT_WORD) )
+            return errorType( "encode expected word! type" );
 
         switch( ur_atom(a1) )
         {
@@ -4207,7 +4221,36 @@ CFUNC(cfunc_encode)
         }
         return UR_OK;
     }
-    return errorType( "encode expected string! data" );
+    else if( type == UT_BINARY )
+    {
+        UBuffer* bin;
+
+        if( ! ur_is(a1, UT_INT) )
+        {
+bad_type:
+            return errorType( "encode expected type 2, 16, or 64 for binary" );
+        }
+
+        if( ! (bin = ur_bufferSerM(data)) )
+            return UR_THROW;
+        switch( ur_int(a1) )
+        {
+            case 2:
+                bin->form = UR_BENC_2;
+                break;
+            case 16:
+                bin->form = UR_BENC_16;
+                break;
+            case 64:
+                bin->form = UR_BENC_64;
+                break;
+            default:
+                goto bad_type;
+        }
+        *res = *data;
+        return UR_OK;
+    }
+    return errorType( "encode expected binary!/string! data" );
 }
 
 

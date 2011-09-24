@@ -20,7 +20,7 @@
   UBuffer members:
     type        UT_BINARY
     elemSize    Unused
-    form        Unused
+    form        UR_BENC_*
     flags       Unused
     used        Number of bytes used
     ptr.b       Data
@@ -236,6 +236,184 @@ void ur_binAppendArray( UBuffer* buf, const USeriesIter* si )
 }
 
 
+/*
+  \param c  Valid hexidecimal character.
+
+  \return Number from 0 to 15.
+*/
+static inline int hexNibble( int c )
+{
+    if( c <= '9' )
+        return c - '0';
+    else if( c <= 'F' )
+        return c - 'A' + 10;
+    else
+        return c - 'a' + 10;
+}
+
+
+static inline int base64_decodeChar( int c )
+{
+    if( c >= 'a' /*&& c <= 'z'*/ )
+        return c - 'a' + 26;
+    if( c >= 'A' /*&& c <= 'Z'*/ )
+        return c - 'A';
+    if( c >= '0' && c <= '9' )
+        return c - '0' + 52;
+    if( c == '+' )
+        return 62;
+    return (c == '/') ? 63 : -1;
+}
+
+
+extern uint8_t charset_white[32];
+extern uint8_t charset_hex[32];
+extern uint8_t charset_base64[32];
+#define ur_bitIsSet(mem,n)  (mem[(n)>>3] & 1<<((n)&7))
+
+/**
+  Append encoded ASCII string to binary buffer.
+
+  \param buf    Initialized binary buffer.
+  \param it     Start of string
+  \param end    End of string
+  \param enc    Encoding of string.
+
+  \return End of string or position where non-hex or non-whitespace
+          character was found.
+*/
+const char* ur_binAppendBase( UBuffer* buf, const char* it, const char* end,
+                              enum UrlanBinaryEncoding enc )
+{
+    int c;
+    int high;
+    uint32_t byte = 0;
+    uint8_t* out;
+
+    c = end - it;
+    if( enc == UR_BENC_16 )
+        c = (c + 1) / 2;
+    else if( enc == UR_BENC_2 )
+        c = (c + 7) / 8;
+    ur_binReserve( buf, buf->used + c );
+    out = buf->ptr.b + buf->used;
+
+    switch( enc )
+    {
+        case UR_BENC_16:
+            high = 0;
+            while( it != end )
+            {
+                c = *it++;
+                if( ur_bitIsSet(charset_hex, c) )
+                {
+                    byte |= hexNibble(c);
+                    if( high )
+                    {
+                        *out++ = byte;
+                        byte = high = 0;
+                    }
+                    else
+                    {
+                        byte <<= 4;
+                        high = 1;
+                    }
+                }
+                else if( ! ur_bitIsSet(charset_white, c) )
+                {
+                    --it;
+                    break;
+                }
+            }
+            if( high )
+                --it;
+            break;
+
+        case UR_BENC_2:
+            high = 0x80;
+            while( it != end )
+            {
+                c = *it++;
+                if( c == '0' || c == '1' )
+                {
+                    if( c == '1' )
+                        byte |= high;
+                    if( high == 1 )
+                    {
+                        high = 0x80;
+                        *out++ = byte;
+                        byte = 0;
+                    }   
+                    else
+                        high >>= 1;
+                }
+                else if( ! ur_bitIsSet(charset_white, c) )
+                {
+                    --it;
+                    break;
+                }
+            }
+            // TODO: Should subtract the correct number of characters not
+            // emitted to out, but this is good enough for the caller
+            // (like ur_tokenize) to know the input ended early.
+            if( high != 0x80 )
+                --it;
+            break;
+
+        case UR_BENC_64:
+        {
+            high = 0;
+            while( it != end )
+            {
+                c = *it++;
+                if( ur_bitIsSet(charset_base64, c) )
+                {
+                    if( c == '=' )
+                        continue;
+                    byte = (byte << 6) | base64_decodeChar( c );
+                    if( high == 3 )
+                    {
+                        high = 0;
+                        *out++ = byte >> 16;
+                        *out++ = byte >>  8;
+                        *out++ = byte;
+                    }
+                    else
+                        ++high;
+                }
+                else if( ! ur_bitIsSet(charset_white, c) )
+                {
+                    --it;
+                    break;
+                }
+            }
+            switch( high )
+            {
+                case 0:
+                    break;
+                case 2:
+                    *out++ = byte >> 4;
+                    break;
+                case 3:
+                    *out++ = byte >> 10;
+                    *out++ = byte >>  2;
+                    break;
+                default:
+                    --it;
+                    break;
+            }
+        }
+            break;
+
+        default:
+            break;
+    }
+
+    buf->used = out - buf->ptr.b;
+    return it;
+}
+
+
 /**
   Set UBinaryIter to binary slice.
 
@@ -320,6 +498,53 @@ void ur_binToStr( UBuffer* buf, int encoding )
     }
     else
         buf->elemSize = 1;
+}
+
+
+/*
+  Convert 1 byte to 8 encoded characters.
+*/
+void base2_encodeByte( const uint8_t n, char* out )
+{
+    int mask;
+    for( mask = 0x80; mask; mask >>= 1 )
+        *out++ = (n & mask) ? '1' : '0';
+}
+
+
+static uint8_t _base64[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/*
+  Convert 1-3 bytes to 4 encoded characters.
+*/
+void base64_encodeTriplet( const uint8_t* in, int len, char* out )
+{
+    int n;
+
+    *out++ = _base64[ in[0] >> 2 ];
+    n = (in[0] & 0x03) << 4;
+    if( len > 1 )
+    {
+        *out++ = _base64[ n | ((in[1] & 0xf0) >> 4) ];
+        n = (in[1] & 0x0f) << 2;
+        if( len > 2 )
+        {
+            *out++ = _base64[ n | ((in[2] & 0xc0) >> 6) ];
+            *out   = _base64[ in[2] & 0x3f ];
+        }
+        else
+        {
+            *out++ = _base64[ n ];
+            *out   = '=';
+        }
+    }
+    else
+    {
+        *out++ = _base64[ n ];
+        *out++ = '=';
+        *out   = '=';
+    }
 }
 
 
