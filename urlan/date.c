@@ -19,7 +19,7 @@
 
 
 #ifdef __linux
-#define _BSD_SOURCE     // Needed for timegm (Fedora 11)
+//#define _BSD_SOURCE     // Needed for timegm (Fedora 11)
 #endif
 
 #include <time.h>

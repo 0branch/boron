@@ -162,28 +162,28 @@ int coord_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
         ur_setId(res, UT_COORD);
         res->coord.len = big->coord.len;
 
-#define operate(OP) res->coord.n[i] = a->coord.n[i] OP b->coord.n[i]
+#define coord_op(OP) res->coord.n[i] = a->coord.n[i] OP b->coord.n[i]
 
         switch( op )
         {
             case UR_OP_ADD:
                 for( i = 0; i < len; ++i )
-                    operate( + );
+                    coord_op( + );
                 break;
             case UR_OP_SUB:
                 for( i = 0; i < len; ++i )
-                    operate( - );
+                    coord_op( - );
                 break;
             case UR_OP_MUL:
                 for( i = 0; i < len; ++i )
-                    operate( * );
+                    coord_op( * );
                 break;
             case UR_OP_DIV:
                 for( i = 0; i < len; ++i )
                 {
                     if( b->coord.n[i] == 0 )
                         goto div_by_zero;
-                    operate( / );
+                    coord_op( / );
                 }
                 break;
             case UR_OP_MOD:
@@ -191,20 +191,20 @@ int coord_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
                 {
                     if( b->coord.n[i] == 0 )
                         goto div_by_zero;
-                    operate( % );
+                    coord_op( % );
                 }
                 break;
             case UR_OP_AND:
                 for( i = 0; i < len; ++i )
-                    operate( & );
+                    coord_op( & );
                 break;
             case UR_OP_OR:
                 for( i = 0; i < len; ++i )
-                    operate( | );
+                    coord_op( | );
                 break;
             case UR_OP_XOR:
                 for( i = 0; i < len; ++i )
-                    operate( ^ );
+                    coord_op( ^ );
                 break;
             default:
                 return unset_operate( ut, a, b, res, op );

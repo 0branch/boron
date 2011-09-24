@@ -1,19 +1,143 @@
 #!/bin/bash
 
-if [ -n `which cmake` ]
-then
-  echo "Building Makefile with cmake"
-  cmake .
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  echo "Configuration Options:"
+  echo "  -h, --help      Display this help and exit"
+  echo "  --cmake         Use cmake to build Makefile"
+  echo "  --m2            Use m2 to build Makefile (default)"
+  echo "  --make          Generate simple Makefile"
+  echo -e "\nOptional Features:"
+  echo "  --no-checksum   Remove the checksum function"
+  echo "  --no-compress   Remove the compress function"
+  echo "  --no-random     Remove the random function"
+  echo "  --no-socket     Remove the socket port"
+  echo "  --assemble      Enable assemble function (requires libjit)"
+  echo "  --bzip2         Use bzip2 for compress instead of zlib"
+  echo "  --timecode      Enable timecode! datatype"
+  echo "  --thread        Enable thread functions"
   exit
 fi
 
-if [ -n `which m2` ]
-then
+MAKE=m2
+CFG_CHECKSUM=1
+CFG_COMPRESS=zlib
+CFG_RANDOM=1
+CFG_SOCKET=1
+CFG_TIMECODE=0
+CFG_THREAD=0
+CFG_ASSEM=0
+
+for opt in "$@"; do
+  case $opt in
+    --cmake)
+      MAKE=cmake ;;
+    --m2)
+      MAKE=m2 ;;
+    --make)
+      MAKE=make ;;
+    --no-checksum)
+      CFG_CHECKSUM=0 ;;
+    --no-compress)
+      CFG_COMPRESS=0 ;;
+    --no-random)
+      CFG_RANDOM=0 ;;
+    --no-socket)
+      CFG_SOCKET=0 ;;
+    --assemble)
+      CFG_ASSEM=1 ;;
+    --bzip2)
+      CFG_COMPRESS=bzip2 ;;
+    --timecode)
+      CFG_TIMECODE=1 ;;
+    --thread)
+      CFG_THREAD=1 ;;
+    *)
+      echo "Invalid option $opt"
+      exit 1
+      ;;
+  esac
+done
+
+if [ $MAKE = cmake ]; then
+if command -v cmake >/dev/null; then
+  echo "Building Makefile with cmake"
+  echo "FIXME: Configuration options are NOT applied when using cmake!"
+  cmake .
+  exit
+else
+  echo "cmake does not exist. Try --m2 or --make."
+  exit 1
+fi
+fi
+
+if [ $MAKE = m2 ]; then
+if command -v m2 >/dev/null; then
+  echo "Generating project.config"
+  rm -f project.config
+
+  function m2-option {
+    if [ $2 = 1 ]; then
+      echo "$1: true" >> project.config
+    else
+      echo "$1: false" >> project.config
+    fi
+  }
+
+  m2-option "checksum" $CFG_CHECKSUM
+  case $CFG_COMPRESS in
+    zlib | bzip2)
+      echo "compress: '$CFG_COMPRESS" >> project.config ;;
+    *)
+      echo "compress: false" >> project.config ;;
+  esac
+  m2-option "random"   $CFG_RANDOM
+  m2-option "socket"   $CFG_SOCKET
+  m2-option "timecode" $CFG_TIMECODE
+  m2-option "thread"   $CFG_THREAD
+  m2-option "assemble" $CFG_ASSEM
+
   echo "Building Makefile with m2"
   m2
   exit
+else
+  echo "m2 does not exist. Try --cmake or --make."
+  exit 1
+fi
 fi
 
-echo "Could not find cmake or m2."
-echo "You must install one of these to build."
+if command -v gcc >/dev/null; then
+  echo "Generating simple Makefile for a static binary."
+
+  echo "CHECKSUM=$CFG_CHECKSUM" >Makefile
+  echo "RANDOM=$CFG_RANDOM" >>Makefile
+  echo "SOCKET=$CFG_SOCKET" >>Makefile
+  echo "COMPRESS=$CFG_COMPRESS" >>Makefile
+  echo "TIMECODE=$CFG_TIMECODE" >>Makefile
+  echo "THREAD=$CFG_THREAD" >>Makefile
+  echo -e "\nCFLAGS=-Iurlan -Isupport -I. -std=gnu99 -pedantic -Wall -W -O3" >>Makefile
+  echo "LIBS=-lm" >>Makefile
+  echo "OBJS=env.o array.o binary.o block.o coord.o date.o \\" >>Makefile
+  echo "	path.o string.o context.o gc.o serialize.o tokenize.o \\" >>Makefile
+  echo "	bignum.o vector.o parse_binary.o parse_block.o \\" >>Makefile
+  echo "	parse_string.o \\" >>Makefile
+  echo "	support/str.o support/mem_util.o support/quickSortIndex.o \\" >>Makefile
+  echo "	unix/os.o \\" >>Makefile
+  echo "	boron.o boron_console.o port_file.o" >>Makefile
+  echo -e "\nifeq (\$(CHECKSUM),1)\n  CFLAGS+=-DCONFIG_CHECKSUM\nendif" >>Makefile
+  echo -e "ifeq (\$(COMPRESS),zlib)\n  CFLAGS+=-DCONFIG_COMPRESS=1\n  LIBS+=-lz\nendif" >>Makefile
+  echo -e "ifeq (\$(COMPRESS),bzip2)\n  CFLAGS+=-DCONFIG_COMPRESS=2\n  LIBS+=-lbz2\nendif" >>Makefile
+  echo -e "ifeq (\$(RANDOM),1)\n  CFLAGS+=-DCONFIG_RANDOM\n  OBJS+=support/well512.o\nendif" >>Makefile
+  echo -e "ifeq (\$(SOCKET),1)\n  CFLAGS+=-DCONFIG_SOCKET\n  OBJS+=port_socket.o\nendif" >>Makefile
+  echo -e "ifeq (\$(TIMECODE),1)\n  CFLAGS+=-DCONFIG_TIMECODE\nendif" >>Makefile
+  echo -e "ifeq (\$(THREAD),1)\n  CFLAGS+=-DCONFIG_THREAD\n  OBJS+=port_thread.o\n  LIBS+=-lpthread\nendif" >>Makefile
+  echo -e "\nboron: \$(OBJS)\n\tgcc \$^ -o \$@ \$(LIBS)" >>Makefile
+  echo -e "\n%.o: %.c\n\tgcc -c \$(CFLAGS) \$< -o \$@" >>Makefile
+  echo -e "\n%.o: urlan/%.c\n\tgcc -c \$(CFLAGS) \$< -o \$@" >>Makefile
+  echo -e "\n.PHONY: clean\nclean:\n\trm -f boron \$(OBJS)" >>Makefile
+
+  echo "Type 'make' to build Boron."
+  exit
+fi
+
+echo "No compiler found; no Makefile generated."
 exit 1

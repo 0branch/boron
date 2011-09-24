@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2011 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
