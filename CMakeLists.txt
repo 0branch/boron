@@ -18,9 +18,10 @@ set(CMAKE_SKIP_RPATH true)
 add_definitions(
     -DCONFIG_CHECKSUM
     -DCONFIG_COMPRESS=1
+    -DCONFIG_LINENOISE
     -DCONFIG_RANDOM
     -DCONFIG_SOCKET
-#    -DCONFIG_TIMECODE
+    -DCONFIG_TIMECODE
     -DCONFIG_THREAD
 )
 
@@ -71,7 +72,7 @@ add_library(boron-lib SHARED
 )
 
 set_target_properties(boron-lib PROPERTIES
-   VERSION 0.1.12
+   VERSION 0.1.13
    SOVERSION 0
    OUTPUT_NAME "boron")
 
@@ -90,6 +91,7 @@ endif ()
 
 add_executable(boron-bin
     boron_console.c
+    support/linenoise.c
 )
 set_target_properties(boron-bin PROPERTIES OUTPUT_NAME "boron")
 
