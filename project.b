@@ -4,7 +4,7 @@ assemble: false
 checksum: true
 compress: 'zlib
 random:   true
-readline: false
+readline: 'linenoise
 socket:   true
 thread:   false
 timecode: false
@@ -111,14 +111,21 @@ shlib %boron [
 ]
 
 exe %boron [
-    libs_from %. %boron
-    if readline [
-        cflags {-DCONFIG_READLINE}
-        libs [%readline %history]
-    ]
     win32 [
         console
         libs %ws2_32
+        readline: false
+    ]
+    libs_from %. %boron
+    switch readline [
+        linenoise [
+            cflags {-DCONFIG_LINENOISE}
+            sources [%support/linenoise.c]
+        ]
+        gnu [
+            cflags {-DCONFIG_READLINE}
+            libs [%readline %history]
+        ]
     ]
     sources [
         %boron_console.c

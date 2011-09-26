@@ -23,6 +23,11 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
+#ifdef CONFIG_LINENOISE
+#include "linenoise.h"
+#define readline    linenoise
+#define add_history linenoiseHistoryAdd
+#endif
 #include "boron.h"
 #include "urlan_atoms.h"
 #include "str.h"
@@ -245,14 +250,16 @@ usage_err:
 
 prompt:
 
-#ifndef CONFIG_READLINE
+#ifdef CONFIG_READLINE
+        rl_bind_key( '\t', rl_insert );     // Disable tab completion.
+#elif ! defined(CONFIG_LINENOISE)
         if( ! cmd )
             cmd = malloc( CMD_SIZE );
 #endif
 
         while( 1 )
         {
-#ifdef CONFIG_READLINE
+#if defined(CONFIG_READLINE) || defined(CONFIG_LINENOISE)
             free( cmd );
             cmd = readline( PROMPT );
             if( ! cmd || ! *cmd )

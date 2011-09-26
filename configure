@@ -10,10 +10,11 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo "  --no-checksum   Remove the checksum function"
   echo "  --no-compress   Remove the compress function"
   echo "  --no-random     Remove the random function"
+  echo "  --no-readline   Remove console editing and history"
   echo "  --no-socket     Remove the socket port"
   echo "  --assemble      Enable assemble function (requires libjit)"
   echo "  --bzip2         Use bzip2 for compress instead of zlib"
-  echo "  --readline      Enable console editing and history using GNU Readline"
+  echo "  --gnu-readline  Use GNU Readline for console editing and history"
   echo "  --timecode      Enable timecode! datatype"
   echo "  --thread        Enable thread functions"
   exit
@@ -24,7 +25,7 @@ CFG_ASSEM=0
 CFG_CHECKSUM=1
 CFG_COMPRESS=zlib
 CFG_RANDOM=1
-CFG_READLINE=0
+CFG_READLINE=linenoise
 CFG_SOCKET=1
 CFG_TIMECODE=0
 CFG_THREAD=0
@@ -43,14 +44,16 @@ for opt in "$@"; do
       CFG_COMPRESS=0 ;;
     --no-random)
       CFG_RANDOM=0 ;;
+    --no-readline)
+      CFG_READLINE=0 ;;
     --no-socket)
       CFG_SOCKET=0 ;;
     --assemble)
       CFG_ASSEM=1 ;;
     --bzip2)
       CFG_COMPRESS=bzip2 ;;
-    --readline)
-      CFG_READLINE=1 ;;
+    --gnu-readline)
+      CFG_READLINE=gnu ;;
     --timecode)
       CFG_TIMECODE=1 ;;
     --thread)
@@ -79,27 +82,29 @@ if command -v m2 >/dev/null; then
   echo "Generating project.config"
   rm -f project.config
 
-  function m2-option {
-    if [ $2 = 1 ]; then
-      echo "$1: true" >> project.config
-    else
+  function m2-word {
+    if [ $2 = 0 ]; then
       echo "$1: false" >> project.config
+    else
+      echo "$1: '$2" >> project.config
+    fi
+  }
+  function m2-logic {
+    if [ $2 = 0 ]; then
+      echo "$1: false" >> project.config
+    else
+      echo "$1: true" >> project.config
     fi
   }
 
-  m2-option "checksum" $CFG_CHECKSUM
-  case $CFG_COMPRESS in
-    zlib | bzip2)
-      echo "compress: '$CFG_COMPRESS" >> project.config ;;
-    *)
-      echo "compress: false" >> project.config ;;
-  esac
-  m2-option "random"   $CFG_RANDOM
-  m2-option "readline" $CFG_READLINE
-  m2-option "socket"   $CFG_SOCKET
-  m2-option "timecode" $CFG_TIMECODE
-  m2-option "thread"   $CFG_THREAD
-  m2-option "assemble" $CFG_ASSEM
+  m2-logic "assemble" $CFG_ASSEM
+  m2-logic "checksum" $CFG_CHECKSUM
+  m2-word  "compress" $CFG_COMPRESS
+  m2-logic "random"   $CFG_RANDOM
+  m2-word  "readline" $CFG_READLINE
+  m2-logic "socket"   $CFG_SOCKET
+  m2-logic "timecode" $CFG_TIMECODE
+  m2-logic "thread"   $CFG_THREAD
 
   echo "Building Makefile with m2"
   m2
@@ -133,7 +138,8 @@ if command -v gcc >/dev/null; then
   echo -e "ifeq (\$(COMPRESS),zlib)\n  CFLAGS+=-DCONFIG_COMPRESS=1\n  LIBS+=-lz\nendif" >>Makefile
   echo -e "ifeq (\$(COMPRESS),bzip2)\n  CFLAGS+=-DCONFIG_COMPRESS=2\n  LIBS+=-lbz2\nendif" >>Makefile
   echo -e "ifeq (\$(RANDOM),1)\n  CFLAGS+=-DCONFIG_RANDOM\n  OBJS+=support/well512.o\nendif" >>Makefile
-  echo -e "ifeq (\$(READLINE),1)\n  CFLAGS+=-DCONFIG_READLINE\n  LIBS+=-lreadline -lhistory\nendif" >>Makefile
+  echo -e "ifeq (\$(READLINE),gnu)\n  CFLAGS+=-DCONFIG_READLINE\n  LIBS+=-lreadline -lhistory\nendif" >>Makefile
+  echo -e "ifeq (\$(READLINE),linenoise)\n  CFLAGS+=-DCONFIG_LINENOISE\n  OBJS+=support/linenoise.o\nendif" >>Makefile
   echo -e "ifeq (\$(SOCKET),1)\n  CFLAGS+=-DCONFIG_SOCKET\n  OBJS+=port_socket.o\nendif" >>Makefile
   echo -e "ifeq (\$(TIMECODE),1)\n  CFLAGS+=-DCONFIG_TIMECODE\nendif" >>Makefile
   echo -e "ifeq (\$(THREAD),1)\n  CFLAGS+=-DCONFIG_THREAD\n  OBJS+=port_thread.o\n  LIBS+=-lpthread\nendif" >>Makefile
