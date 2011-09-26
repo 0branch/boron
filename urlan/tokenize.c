@@ -1,5 +1,5 @@
 /*
-  Copyright 2009,2010 Karl Robillard
+  Copyright 2009-2011 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -281,7 +281,7 @@ const char* str_toVec3( UCell* cell, const char* it, const char* end )
             *nit++ = (float) str_toDouble( it, end, &it );
             if( nit == nend )
                 break;
-            if( (it != end) && *it != ',' )
+            if( (it == end) || *it != ',' )
                 break;
             ++it;
         }
