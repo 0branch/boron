@@ -54,6 +54,7 @@ const T* find_last_ ## T( const T* it, const T* end, T val ) { \
 
 FIND_LAST(uint8_t)
 FIND_LAST(uint16_t)
+FIND_LAST(uint32_t)
 
 
 /*

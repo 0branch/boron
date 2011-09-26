@@ -1,5 +1,5 @@
 /*
-  Copyright 2009,2010 Karl Robillard
+  Copyright 2009-2011 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -197,30 +197,23 @@ int vector_compare( UThread* ut, const UCell* a, const UCell* b, int test )
                 (a->series.it == b->series.it) &&
                 (a->series.end == b->series.end) )
                 return 1;
-#if 0
             {
             USeriesIter ai;
             USeriesIter bi;
-            int t;
+            int size;
 
-            ur_serSlice( ut, &ai, a );
-            ur_serSlice( ut, &bi, b );
+            ur_seriesSlice( ut, &ai, a );
+            ur_seriesSlice( ut, &bi, b );
+            size = ai.end - ai.it;
 
-            if( (ai.end - ai.it) == (bi.end - bi.it) )
+            if( (size == (bi.end - bi.it)) && (ai.buf->form == bi.buf->form) )
             {
-                ur_foreach( ai )
-                {
-                    t = ur_type(ai.it);
-                    if( t < ur_type(bi.it) )
-                        t = ur_type(bi.it);
-                    if( ! dt[ t ]->compare( ut, ai.it, bi.it, test ) )
-                        return 0;
-                    ++bi.it;
-                }
-                return 1;
+                if( memcmp( ai.buf->ptr.b + (ai.it * ai.buf->elemSize),
+                            bi.buf->ptr.b + (bi.it * bi.buf->elemSize),
+                           size * ai.buf->elemSize ) == 0 )
+                    return 1;
             }
             }
-#endif
             break;
 
         case UR_COMPARE_ORDER:
@@ -676,31 +669,113 @@ void vector_reverse( const USeriesIterM* si )
 }
 
 
+static int intValue( const UCell* cell, uint32_t* n )
+{
+    int type = ur_type(cell);
+    if( (type == UT_INT) || (type == UT_CHAR) )
+    {
+        *n = ur_int(cell);
+        return 1;
+    }
+    if( type == UT_DECIMAL )
+    {
+        *n = (uint32_t) ur_decimal(cell);
+        return 1;
+    }
+    return 0;
+}
+
+
+/*
+static int floatValue( const UCell* cell, double* n )
+{
+    int type = ur_type(cell);
+    if( (type == UT_INT) || (type == UT_CHAR) )
+    {
+        *n = (double) ur_int(cell);
+        return 1;
+    }
+    if( type == UT_DECIMAL )
+    {
+        *n = ur_decimal(cell);
+        return 1;
+    }
+    return 0;
+}
+*/
+
+
 int vector_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
-    (void) ut;
-    (void) si;
-    (void) val;
-    (void) opt;
-#if 0
-    const uint8_t* it;
     const UBuffer* buf = si->buf;
-    int vt = ur_type(val);
+    (void) ut;
 
-    if( (vt == UT_CHAR) || (vt == UT_INT) )
+    switch( buf->form )
     {
-        it = buf->ptr.b;
-        if( opt & UR_FIND_LAST )
-            it = find_last_uint8_t( it + si->it, it + si->end, ur_int(val) );
-        else
-            it = find_uint8_t( it + si->it, it + si->end, ur_int(val) );
-        if( it )
-            return it - buf->ptr.b;
-    }
-    else if( vt == UT_DECIMAL )
-    {
-    }
+        case UR_ATOM_I16:
+        case UR_ATOM_U16:
+        {
+            const uint16_t* it = buf->ptr.u16;
+            uint32_t n;
+            if( ! intValue( val, &n ) )
+                return -1;
+            if( opt & UR_FIND_LAST )
+                it = find_last_uint16_t( it + si->it, it + si->end, n );
+            else
+                it = find_uint16_t( it + si->it, it + si->end, n );
+            if( it )
+                return it - buf->ptr.u16;
+        }
+            break;
+
+        case UR_ATOM_I32:
+        case UR_ATOM_U32:
+        {
+            const uint32_t* it = buf->ptr.u32;
+            uint32_t n;
+            if( ! intValue( val, &n ) )
+                return -1;
+            if( opt & UR_FIND_LAST )
+                it = find_last_uint32_t( it + si->it, it + si->end, n );
+            else
+                it = find_uint32_t( it + si->it, it + si->end, n );
+            if( it )
+                return it - buf->ptr.u32;
+        }
+            break;
+#if 0
+        // Need to comapare floats with tolerance?
+        case UR_ATOM_F32:
+        {
+            const float* it = buf->ptr.f;
+            double n;
+            if( ! floatValue( val, &n ) )
+                return -1;
+            if( opt & UR_FIND_LAST )
+                it = find_last_float( it + si->it, it + si->end, n );
+            else
+                it = find_float( it + si->it, it + si->end, n );
+            if( it )
+                return it - buf->ptr.f;
+        }
+            break;
+
+        case UR_ATOM_F64:
+        {
+            const double* it = buf->ptr.d;
+            double n;
+            if( ! floatValue( val, &n ) )
+                return -1;
+            if( opt & UR_FIND_LAST )
+                it = find_last_double( it + si->it, it + si->end, n );
+            else
+                it = find_double( it + si->it, it + si->end, n );
+            if( it )
+                return it - buf->ptr.d;
+        }
+            break;
 #endif
+    }
     return -1;
 }
 
