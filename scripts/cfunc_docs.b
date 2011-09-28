@@ -97,9 +97,8 @@ argument-table: func [args | str a p opt] [
 {<p class="func-sec">Arguments</p>
 <table border="1" class="func-ref">
 <colgroup>
-<col width="13%" />
-<col width="25%" />
-<col width="63%" />
+<col width="15%" />
+<col width="75%" />
 </colgroup>
 <tbody valign="top">
 }
