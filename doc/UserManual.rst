@@ -2,7 +2,7 @@
      Boron User Manual
 ==============================
 
-:Version:   0.1.12
+:Version:   0.2.0
 :Date:      |date|
 
 .. sectnum::
