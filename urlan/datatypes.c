@@ -2251,50 +2251,50 @@ int binary_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
                 UBinaryIter* biL;
                 UBuffer* bin;
                 uint8_t* bp;
-                int large;
-                int small;
+                int largeS;
+                int smallS;
 
                 bin = ur_makeBinaryCell( ut, 0, res );
                 ur_type(res) = ur_type(a);
 
                 ur_binSlice( ut, &biA, a );
                 ur_binSlice( ut, &biB, b );
-                small = biA.end - biA.it;
-                large = biB.end - biB.it;
+                smallS = biA.end - biA.it;
+                largeS = biB.end - biB.it;
 
-                if( large < small )
+                if( largeS < smallS )
                 {
-                    int tmp = large;
-                    large = small;
-                    small = tmp;
+                    int tmp = largeS;
+                    largeS = smallS;
+                    smallS = tmp;
                     biL = &biA;
                 }
                 else
                     biL = &biB;
 
-                if( large )
+                if( largeS )
                 {
-                    ur_binExpand( bin, 0, large );
+                    ur_binExpand( bin, 0, largeS );
                     bp = bin->ptr.b;
-                    large -= small;
+                    largeS -= smallS;
                     switch( op )
                     {
                         case UR_OP_AND:
-                            while( small-- )
+                            while( smallS-- )
                                 *bp++ = *biA.it++ & *biB.it++;
-                            memSet( bp, 0, large );
+                            memSet( bp, 0, largeS );
                             break;
 
                         case UR_OP_OR:
-                            while( small-- )
+                            while( smallS-- )
                                 *bp++ = *biA.it++ | *biB.it++;
-                            memCpy( bp, biL->it, large );
+                            memCpy( bp, biL->it, largeS );
                             break;
 
                         case UR_OP_XOR:
-                            while( small-- )
+                            while( smallS-- )
                                 *bp++ = *biA.it++ ^ *biB.it++;
-                            memCpy( bp, biL->it, large );
+                            memCpy( bp, biL->it, largeS );
                             break;
                     }
                 }
