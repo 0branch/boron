@@ -511,7 +511,6 @@ void     ur_binFree( UBuffer* );
 void     ur_binSlice( UThread*, UBinaryIter*, const UCell* cell );
 int      ur_binSliceM( UThread*, UBinaryIterM*, const UCell* cell );
 void     ur_binToStr( UBuffer*, int encoding );
-#define ur_binAppendHex(buf,it,end) ur_binAppendBase(buf,it,end,UR_BENC_16)
 
 UIndex   ur_makeString( UThread*, int enc, int size );
 UBuffer* ur_makeStringCell( UThread*, int enc, int size, UCell* cell );
