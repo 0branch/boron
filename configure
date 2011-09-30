@@ -9,6 +9,7 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo -e "\nOptional Features:"
   echo "  --no-checksum   Remove the checksum function"
   echo "  --no-compress   Remove the compress function"
+  echo "  --no-execute    Remove the execute function"
   echo "  --no-random     Remove the random function"
   echo "  --no-readline   Remove console editing and history"
   echo "  --no-socket     Remove the socket port"
@@ -24,6 +25,7 @@ MAKE=m2
 CFG_ASSEM=0
 CFG_CHECKSUM=1
 CFG_COMPRESS=zlib
+CFG_EXECUTE=1
 CFG_RANDOM=1
 CFG_READLINE=linenoise
 CFG_SOCKET=1
@@ -42,6 +44,8 @@ for opt in "$@"; do
       CFG_CHECKSUM=0 ;;
     --no-compress)
       CFG_COMPRESS=0 ;;
+    --no-execute)
+      CFG_EXECUTE=0 ;;
     --no-random)
       CFG_RANDOM=0 ;;
     --no-readline)
@@ -100,6 +104,7 @@ if command -v m2 >/dev/null; then
   m2-logic "assemble" $CFG_ASSEM
   m2-logic "checksum" $CFG_CHECKSUM
   m2-word  "compress" $CFG_COMPRESS
+  m2-logic "execute"  $CFG_EXECUTE
   m2-logic "random"   $CFG_RANDOM
   m2-word  "readline" $CFG_READLINE
   m2-logic "socket"   $CFG_SOCKET
@@ -119,10 +124,11 @@ if command -v gcc >/dev/null; then
   echo "Generating simple Makefile for a static binary."
 
   echo "CHECKSUM=$CFG_CHECKSUM" >Makefile
+  echo "COMPRESS=$CFG_COMPRESS" >>Makefile
+  echo "EXECUTE=$CFG_EXECUTE" >>Makefile
   echo "RANDOM=$CFG_RANDOM" >>Makefile
   echo "READLINE=$CFG_READLINE" >>Makefile
   echo "SOCKET=$CFG_SOCKET" >>Makefile
-  echo "COMPRESS=$CFG_COMPRESS" >>Makefile
   echo "TIMECODE=$CFG_TIMECODE" >>Makefile
   echo "THREAD=$CFG_THREAD" >>Makefile
   echo -e "\nCFLAGS=-Iurlan -Isupport -I. -std=gnu99 -pedantic -Wall -W -O3" >>Makefile
@@ -137,6 +143,7 @@ if command -v gcc >/dev/null; then
   echo -e "\nifeq (\$(CHECKSUM),1)\n  CFLAGS+=-DCONFIG_CHECKSUM\nendif" >>Makefile
   echo -e "ifeq (\$(COMPRESS),zlib)\n  CFLAGS+=-DCONFIG_COMPRESS=1\n  LIBS+=-lz\nendif" >>Makefile
   echo -e "ifeq (\$(COMPRESS),bzip2)\n  CFLAGS+=-DCONFIG_COMPRESS=2\n  LIBS+=-lbz2\nendif" >>Makefile
+  echo -e "ifeq (\$(EXECUTE),1)\n  CFLAGS+=-DCONFIG_EXECUTE\nendif" >>Makefile
   echo -e "ifeq (\$(RANDOM),1)\n  CFLAGS+=-DCONFIG_RANDOM\n  OBJS+=support/well512.o\nendif" >>Makefile
   echo -e "ifeq (\$(READLINE),gnu)\n  CFLAGS+=-DCONFIG_READLINE\n  LIBS+=-lreadline -lhistory\nendif" >>Makefile
   echo -e "ifeq (\$(READLINE),linenoise)\n  CFLAGS+=-DCONFIG_LINENOISE\n  OBJS+=support/linenoise.o\nendif" >>Makefile

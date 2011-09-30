@@ -3,6 +3,7 @@ project: "boron"
 assemble: false
 checksum: true
 compress: 'zlib
+execute:  true
 random:   true
 readline: 'linenoise
 socket:   true
@@ -48,6 +49,9 @@ shlib %boron [
         win32 [libs %libbz2]
         macx  [libs %bz2]
         unix  [libs {bz2 m}]
+    ]
+    if execute [
+        cflags {-DCONFIG_EXECUTE}
     ]
     if random [
         cflags {-DCONFIG_RANDOM}

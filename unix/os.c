@@ -1,5 +1,5 @@
 /*
-  Copyright 2005-2009 Karl Robillard
+  Copyright 2005-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -31,7 +31,7 @@
 #include <signal.h>
 #include <time.h>
 #include "os.h"
-#include "urlan.h"
+#include "boron.h"
 
 
 #if 0
@@ -218,19 +218,12 @@ int ur_readDir( UThread* ut, const char* filename, UCell* res )
 }
 
 
-#if 0
-#ifdef UR_CONFIG_OS_RUN
-static void argumentList( UString* str, int si, char** argv, int maxArg )
+#ifdef CONFIG_EXECUTE
+static void argumentList( char* cp, char** argv, int maxArg )
 {
-    char* cp;
-    int prevWhite;
-    int argc;
+    int prevWhite = 1;
+    int argc = 0;
 
-    ur_termCStr( str );
-    cp = str->ptr.c + si;
-
-    argc = 0;
-    prevWhite = 1;
     while( *cp != '\0' )
     {
         if( *cp == ' ' || *cp == '\t' || *cp == '\n' )
@@ -255,22 +248,14 @@ term:
 }
 
 
-#if 0
-static void _callOutput( UThread* ut, UCell* tos )
+static int _execOutput( UThread* ut, char** argv, UCell* res, UBuffer* buf )
 {
 #define BUFSIZE     512
     int pid;
     int pfd[2];
-    char* argv[10];
 
     if( pipe(pfd) == -1 )
-    {
-        ur_throwErr( UR_ERR_INTERNAL, "pipe failed" );
-        return;
-    }
-
-    // Create arg list before fork to avoid any possible copy-on-write overhead.
-    argumentList( ur_bin(tos), tos->series.it, argv, 9 );
+        return ur_error( ut, UR_ERR_INTERNAL, "pipe failed" );
 
     pid = fork();
     if( pid == 0 )
@@ -283,9 +268,10 @@ static void _callOutput( UThread* ut, UCell* tos )
 
         if( execvp( argv[0], argv ) == -1 )
         {
-            perror( "uc_system_run execvp" );
+            perror( "execvp" );
             _exit( 255 );
         }
+        return 0;
     }
     else if( pid > 0 )
     {
@@ -293,52 +279,63 @@ static void _callOutput( UThread* ut, UCell* tos )
 
         int n;
         int status;
-        OString* str;
-
-        str = ur_binPtr(REF_CALL_OUT);
-        str->used = 0;
-        ur_arrayReserve( str, 1, BUFSIZE ); 
 
         close( pfd[1] );
-        while( (n = read( pfd[0], str->ptr.c + str->used, BUFSIZE )) > 0 )
+
+        buf->used = 0;
+        if( buf->type == UT_STRING )
         {
-            str->used += n;
-            ur_arrayReserve( str, 1, str->used + BUFSIZE ); 
+            int ucs2 = ur_strIsUcs2(buf);
+            ur_arrReserve( buf, BUFSIZE ); 
+            while( (n = read( pfd[0], buf->ptr.c + buf->used, BUFSIZE )) > 0 )
+            {
+                buf->used += ucs2 ? n >> 1 : n;
+                ur_arrReserve( buf, buf->used + BUFSIZE ); 
+            }
         }
+        else
+        {
+            ur_binReserve( buf, BUFSIZE ); 
+            while( (n = read( pfd[0], buf->ptr.c + buf->used, BUFSIZE )) > 0 )
+            {
+                buf->used += n;
+                ur_binReserve( buf, buf->used + BUFSIZE ); 
+            }
+        }
+
         close( pfd[0] );
 
         waitpid( pid, &status, 0 );
         if( WIFEXITED(status) )
         {
-            ur_initType( tos, UT_INT );
-            ur_int(tos) = WEXITSTATUS(status);
-            return;
+            ur_setId(res, UT_INT);
+            ur_int(res) = WEXITSTATUS(status);
+            return UR_OK;
         }
-        ur_setNone(tos);
+        ur_setId(res, UT_NONE);
+        return UR_OK;
     }
     else
     {
         // fork failed.
         close( pfd[0] );
         close( pfd[1] );
-        ur_throwErr( UR_ERR_INTERNAL, "fork failed" );
+        return ur_error( ut, UR_ERR_INTERNAL, "fork failed" );
     }
 }
+
+
+#ifdef EXECUTE_WAIT
+static int _asyncProcCount = 0;
 #endif
 
-
-static int _asyncProcCount = 0;
-
-static void _callSimple( UThread* ut, UCell* tos )
+static int _execSimple( UThread* ut, char**argv, UCell* res )
 {
     int pid;
     int status;
+#ifdef EXECUTE_WAIT
     int waitRef;
-    char* argv[10];
 
-#if 1
-    waitRef = 1;
-#else
     waitRef = orRefineSet(REF_CALL_WAIT);
     if( ! waitRef )
     {
@@ -352,9 +349,6 @@ static void _callSimple( UThread* ut, UCell* tos )
     }
 #endif
 
-    // Create arg list before fork to avoid any possible copy-on-write overhead.
-    argumentList( ur_bin(tos), tos->series.it, argv, 9 );
-
     pid = fork();
     if( pid == 0 )
     {
@@ -362,58 +356,84 @@ static void _callSimple( UThread* ut, UCell* tos )
 
         if( execvp( argv[0], argv ) == -1 )
         {
-            perror( "uc_system_run execvp" );
+            perror( "execvp" );
             _exit( 255 );
         }
+        return 0;
     }
     else if( pid > 0 )
     {
         // In parent process.
 
+#ifdef EXECUTE_WAIT
         if( waitRef )
+#endif
         {
             waitpid( pid, &status, 0 );
             if( WIFEXITED(status) )
             {
-                ur_initType( tos, UT_INT );
-                ur_int(tos) = WEXITSTATUS( status );
-                return;
+                ur_setId(res, UT_INT);
+                ur_int(res) = WEXITSTATUS( status );
+                return UR_OK;
             }
         }
-        ur_setNone(tos);
+        ur_setId(res, UT_NONE);
+        return UR_OK;
     }
     else
     {
         // fork failed.
-        ur_throwErr( UR_ERR_INTERNAL, "fork failed" );
+#ifdef EXECUTE_WAIT
         if( ! waitRef )
             --_asyncProcCount;
+#endif
+        return ur_error( ut, UR_ERR_INTERNAL, "fork failed" );
     }
 }
 
 
-// (command -- status)
-UR_CALL_PUB( uc_system_run )
+/*-cf-
+    execute
+        command     string!
+        /out        Store output of command.
+            buffer  binary!/string!
+    return: return status of command
+    group: os
+
+    Runs an external program.
+*/
+CFUNC_PUB( cfunc_execute )
 {
-    if( ! ur_is(tos, UT_STRING) )
+    char* argv[10];
+
+    if( ! ur_is(a1, UT_STRING) )
     {
-        ur_setFalse( tos );
-        return;
+        ur_setId(res, UT_LOGIC);
+        ur_int(res) = 0;
+        return UR_OK;
     }
 
-    /*
-    if( orRefineSet( REF_CALL_OUTPUT ) )
+    // Create arg list before fork to avoid any possible copy-on-write overhead.
+    argumentList( boron_cstr( ut, a1, 0 ), argv, 9 );
+
+    if( CFUNC_OPTIONS & 1 )
     {
-        _callOutput( ut, tos );
+        UBuffer* buf;
+        int type = ur_type(a1 + 1);
+
+        if( type != UT_BINARY && type != UT_STRING )
+            return ur_error( ut, UR_ERR_TYPE,
+                             "execute expected binary!/string! output" );
+        if( ! (buf = ur_bufferSerM(a1 + 1)) )
+            return UR_THROW;
+
+        return _execOutput( ut, argv, res, buf );
     }
-    else
-    */
-    {
-        _callSimple( ut, tos );
-    }
+    return _execSimple( ut, argv, res );
 }
 
 
+#ifdef EXECUTE_WAIT
 /* Cleans up after callSimple() */
 static void child_handler( int sig )
 {
@@ -426,28 +446,10 @@ static void child_handler( int sig )
         --_asyncProcCount;
     }
 }
-#endif
-
-
-#if 0
-void kill_handler( int sig )
-{
-    (void) sig;
-    printf( "User Abort\n" );
-}
-
-void fpe_handler( int sig )
-{
-    (void) sig;
-    printf( "Math Error\n" );
-    exit(-1);
-}
-#endif
 
 
 void ur_installExceptionHandlers()
 {
-#ifdef UR_CONFIG_OS_RUN
     /* NOTE: Cannot use this if using Qt's QProcess (it uses SIGCHLD) */
     struct sigaction childSA;
 
@@ -456,33 +458,8 @@ void ur_installExceptionHandlers()
     sigemptyset( &childSA.sa_mask );
 
     sigaction( SIGCHLD, &childSA, NULL );
-#endif
-
-#if 0
-    struct sigaction action;
-    struct sigaction faction;
-
-    action.sa_handler = kill_handler;
-    action.sa_flags   = 0;
-    sigemptyset( &action.sa_mask );
-
-    sigaction( SIGTERM, &action, NULL );    // kill
-    sigaction( SIGINT,  &action, NULL );    // Ctrl-C
-
-    faction.sa_handler = fpe_handler;
-    faction.sa_flags   = 0;
-    sigemptyset( &faction.sa_mask );
-
-    sigaction( SIGFPE,  &faction, NULL );
-#endif
-
-#if 0
-    //double f = 0.0;
-    //printf( "%g\n", 2.0 / f );
-    int n = 0;
-    printf( "%d\n", 2 / n );
-#endif
 }
+#endif
 #endif
 
 

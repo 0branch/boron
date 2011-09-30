@@ -811,6 +811,9 @@ static void _addDatatypeWords( UThread* ut, int typeCount )
 extern CFUNC_PUB( cfunc_set_addr );
 extern CFUNC_PUB( cfunc_hostname );
 #endif
+#ifdef CONFIG_EXECUTE
+extern CFUNC_PUB( cfunc_execute );
+#endif
 
 
 /**
@@ -1061,6 +1064,9 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 #endif
 #ifdef CONFIG_RANDOM
     addCFunc( cfunc_random,     "random a /seed" );
+#endif
+#ifdef CONFIG_EXECUTE
+    addCFunc( cfunc_execute,    "execute s /out b" );
 #endif
 #ifdef CONFIG_ASSEMBLE
     addCFunc( cfunc_assemble,   "assemble s block! body block!" );

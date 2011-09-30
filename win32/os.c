@@ -1,5 +1,5 @@
 /*
-  Copyright 2005-2009 Karl Robillard
+  Copyright 2005-2011 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -23,7 +23,7 @@
 #include <sys/timeb.h>
 #include <time.h>
 #include "os.h"
-#include "urlan.h"
+#include "boron.h"
 
 #ifndef INVALID_FILE_ATTRIBUTES
 #define INVALID_FILE_ATTRIBUTES     ((DWORD)-1)
@@ -312,14 +312,10 @@ int ur_readDir( UThread* ut, const char* filename, UCell* res )
 }
 
 
-#if 0
-#ifdef UR_CONFIG_OS_RUN
-#if 0
-static void _callOutput( UThread* ut, UCell* tos )
+#ifdef CONFIG_EXECUTE
+static int _execOutput( UThread* ut, const char* cmd, UCell* res, UBuffer* buf )
 {
-#define BUFSIZE     256
-    UString* str;
-    char* cp;
+#define BUFSIZE     512
     HANDLE childStdOutR;
     HANDLE childStdOutW;
     DWORD nr;
@@ -328,20 +324,12 @@ static void _callOutput( UThread* ut, UCell* tos )
     PROCESS_INFORMATION pi;
 
 
-    str = ur_bin( tos );
-    ur_termCStr( str );
-    cp = str->ptr.c + tos->series.it;
-
-
     sec.nLength              = sizeof(SECURITY_ATTRIBUTES); 
     sec.lpSecurityDescriptor = NULL;
     sec.bInheritHandle       = TRUE; 
 
     if( ! CreatePipe( &childStdOutR, &childStdOutW, &sec, 0 ) ) 
-    {
-        ur_throwErr( UR_ERR_INTERNAL, "CreatePipe failed\n" );
-        return;
-    }
+        return ur_error( ut, UR_ERR_INTERNAL, "CreatePipe failed\n" );
 
     SetHandleInformation( childStdOutR, HANDLE_FLAG_INHERIT, 0 );
 
@@ -356,7 +344,7 @@ static void _callOutput( UThread* ut, UCell* tos )
 
     // Start the child process. 
     if( ! CreateProcess( NULL,   // No module name (use command line). 
-        TEXT(cp),         // Command line. 
+        TEXT(cmd),        // Command line. 
         NULL,             // Process handle not inheritable. 
         NULL,             // Thread handle not inheritable. 
         TRUE,             // Handle inheritance. 
@@ -369,30 +357,41 @@ static void _callOutput( UThread* ut, UCell* tos )
     {
         CloseHandle( childStdOutW );
         CloseHandle( childStdOutR );
-        ur_throwErr( UR_ERR_INTERNAL,
-                     "CreateProcess failed (%d).\n", GetLastError() );
-        return;
+        return ur_error( ut, UR_ERR_INTERNAL,
+                         "CreateProcess failed (%d).\n", GetLastError() );
     }
 
     CloseHandle( childStdOutW );
 
-    str = ur_binPtr(REF_CALL_OUT);
-    str->used = 0;
-    ur_arrayReserve( str, 1, BUFSIZE ); 
-
-    while( 1 )
+    buf->used = 0;
+    if( buf->type == UT_STRING )
     {
-        if( ReadFile( childStdOutR, str->ptr.c + str->used, BUFSIZE,
-                      &nr, NULL ) == 0 )
+        int ucs2 = ur_strIsUcs2(buf);
+        ur_arrReserve( buf, BUFSIZE ); 
+        while( 1 )
         {
-            // GetLastError();
-            break;
+            if( ReadFile( childStdOutR, buf->ptr.c + buf->used, BUFSIZE,
+                          &nr, NULL ) == 0 )
+                break;  // GetLastError();
+            if( nr == 0 )
+                break;
+            buf->used += ucs2 ? nr >> 1 : nr;
+            ur_arrReserve( buf, buf->used + BUFSIZE ); 
         }
-        if( nr == 0 )
-            break;
-
-        str->used += nr;
-        orArrayReserve( str, 1, str->used + BUFSIZE ); 
+    }
+    else
+    {
+        ur_binReserve( buf, BUFSIZE ); 
+        while( 1 )
+        {
+            if( ReadFile( childStdOutR, buf->ptr.c + buf->used, BUFSIZE,
+                          &nr, NULL ) == 0 )
+                break;  // GetLastError();
+            if( nr == 0 )
+                break;
+            buf->used += nr;
+            ur_binReserve( buf, buf->used + BUFSIZE ); 
+        }
     }
 
     // MSDN example does not CloseHandle(childStdOutR);
@@ -405,12 +404,12 @@ static void _callOutput( UThread* ut, UCell* tos )
 
     if( GetExitCodeProcess( pi.hProcess, &code ) )
     {
-        ur_initType( tos, UT_INT );
-        ur_int(tos) = code;
+        ur_setId(res, UT_INT);
+        ur_int(res) = code;
     }
     else
     {
-        ur_setNone(tos);
+        ur_setId(res, UT_NONE);
     }
     }
 
@@ -418,19 +417,12 @@ static void _callOutput( UThread* ut, UCell* tos )
     CloseHandle( pi.hProcess );
     CloseHandle( pi.hThread );
 }
-#endif
 
 
-static void _callSimple( UThread* ut, UCell* tos )
+static int _execSimple( UThread* ut, const char* cmd, UCell* res )
 {
-    UString* str;
-    char* cp;
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
-
-    str = ur_bin( tos );
-    ur_termCStr( str );
-    cp  = str->ptr.c + tos->series.it;
 
     ZeroMemory( &si, sizeof(si) );
     si.cb = sizeof(si);
@@ -439,7 +431,7 @@ static void _callSimple( UThread* ut, UCell* tos )
 
     // Start the child process. 
     if( ! CreateProcess( NULL,   // No module name (use command line). 
-        TEXT(cp),         // Command line. 
+        TEXT(cmd),        // Command line. 
         NULL,             // Process handle not inheritable. 
         NULL,             // Thread handle not inheritable. 
         FALSE,            // Set handle inheritance to FALSE. 
@@ -450,12 +442,11 @@ static void _callSimple( UThread* ut, UCell* tos )
         &pi )             // Pointer to PROCESS_INFORMATION structure.
     )
     {
-        ur_throwErr( UR_ERR_INTERNAL,
-                     "CreateProcess failed (%d).\n", GetLastError() );
-        return;
+        return ur_error( ut, UR_ERR_INTERNAL,
+                         "CreateProcess failed (%d).\n", GetLastError() );
     }
 
-    ur_setNone(tos);
+    ur_setId(res, UT_NONE);
 
     //if( orRefineSet(REF_CALL_WAIT) )
     {
@@ -466,41 +457,47 @@ static void _callSimple( UThread* ut, UCell* tos )
 
         if( GetExitCodeProcess( pi.hProcess, &code ) )
         {
-            ur_initType( tos, UT_INT );
-            ur_int(tos) = code;
+            ur_setId(res, UT_INT);
+            ur_int(res) = code;
         }
     }
 
     // Close process and thread handles. 
     CloseHandle( pi.hProcess );
     CloseHandle( pi.hThread );
+
+    return UR_OK;
 }
 
 
-UR_CALL_PUB( uc_system_run )
+CFUNC_PUB( cfunc_execute )
 {
-    if( ! ur_is(tos, UT_STRING) )
+    if( ! ur_is(a1, UT_STRING) )
     {
-        ur_setFalse( tos );
-        return;
+        ur_setId(res, UT_LOGIC);
+        ur_int(res) = 0;
+        return UR_OK;
     }
 
-    /*
-    if( orRefineSet( REF_CALL_OUTPUT ) )
+    if( CFUNC_OPTIONS & 1 )
     {
-        _callOutput( ut, tos );
+        UBuffer* buf;
+        int type = ur_type(a1 + 1);
+
+        if( type != UT_BINARY && type != UT_STRING )
+            return ur_error( ut, UR_ERR_TYPE,
+                             "execute expected binary!/string! output" );
+        if( ! (buf = ur_bufferSerM(a1 + 1)) )
+            return UR_THROW;
+
+        return _execOutput( ut, boron_cstr( ut, a1, 0 ), res, buf );
     }
-    else
-    */
-    {
-        _callSimple( ut, tos );
-    }
+    return _execSimple( ut, boron_cstr( ut, a1, 0 ), res );
 }
 #endif
 
 
-void ur_installExceptionHandlers() {}
-#endif
+//void ur_installExceptionHandlers() {}
 
 
 /*EOF*/
