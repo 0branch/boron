@@ -20,7 +20,7 @@ int main()
 {
     UThread* ut = boron_makeEnv( 0, 0 );            // Startup.
     if( ! ut )
-        return -1;
+        return 255;
 
     boron_addCFunc( ut, printHello, "hello n" );    // Add our cfunc!.
     boron_doCStr( ut, "hello 3", -1 );              // Invoke it.

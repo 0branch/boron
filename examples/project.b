@@ -1,7 +1,6 @@
-project "examples"
+project: "examples"
 
 default [
-    warn
     debug
    ;release
 

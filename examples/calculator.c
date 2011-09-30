@@ -206,7 +206,7 @@ int main( int argc, char** argv )
     if( ! ut )
     {
         printf( "ur_makeEnv failed\n" );
-        return -1;
+        return 255;
     }
 
     defineWords( ut );
