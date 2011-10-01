@@ -4600,6 +4600,8 @@ CFUNC(cfunc_mark_sol)
 }
 
 
+extern double ur_now();
+
 /*-cf-
     now
         /date   Return date! rather than time!

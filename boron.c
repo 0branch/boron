@@ -20,6 +20,7 @@
 
 #include "boron.h"
 #include "os.h"
+#include "os_file.h"
 #include "env.h"
 #include "urlan_atoms.h"
 #include "mem_util.h"

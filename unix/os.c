@@ -31,6 +31,7 @@
 #include <signal.h>
 #include <time.h>
 #include "os.h"
+#include "os_file.h"
 #include "boron.h"
 
 

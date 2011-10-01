@@ -23,6 +23,7 @@
 #include <sys/timeb.h>
 #include <time.h>
 #include "os.h"
+#include "os_file.h"
 #include "boron.h"
 
 #ifndef INVALID_FILE_ATTRIBUTES

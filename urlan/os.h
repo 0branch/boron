@@ -31,7 +31,6 @@
 #endif
 
 #define vaStrPrint  _vsnprintf
-#define memSwab     _swab
 
 typedef HANDLE              OSThread;
 typedef CRITICAL_SECTION    OSMutex;
@@ -53,7 +52,6 @@ typedef CONDITION_VARIABLE  OSCond;
 #include <unistd.h>
 
 #define vaStrPrint  vsnprintf
-#define memSwab     swab
 
 typedef pthread_t           OSThread;
 typedef pthread_mutex_t     OSMutex;
@@ -71,13 +69,6 @@ typedef pthread_cond_t      OSCond;
 #endif
 
 
-#define cprint      printf
-#ifdef UR_CONFIG_EMH
-#define dprint      ur_dprint
-#else
-#define dprint      printf
-#endif
-
 #define strPrint    sprintf
 #define strNCpy     strncpy
 #define strLen      strlen
@@ -86,6 +77,10 @@ typedef pthread_cond_t      OSCond;
 #define memSet      memset
 #define memMove     memmove
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef TRACK_MALLOC
 void* memAlloc( size_t );
@@ -98,45 +93,11 @@ void  memReport( int verbose );
 #define memFree     free
 #endif
 
-
-enum OSFileInfoMask
-{
-    FI_Size = 0x01,
-    FI_Time = 0x02,
-    FI_Type = 0x04
-};
-
-
-enum OSFileType
-{
-    FI_File,
-    FI_Link,
-    FI_Dir,
-    FI_Socket,
-    FI_Other
-};
-
-
-typedef struct
-{
-    int64_t size;
-    double  accessed;
-    double  modified;
-    uint8_t type;
-}
-OSFileInfo;
-
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern int  ur_fileInfo( const char* path, OSFileInfo* info, int mask );
-extern void ur_installExceptionHandlers();
-extern double ur_now();
-
 #ifdef UR_CONFIG_EMH
 extern void ur_dprint( const char*, ... );
+#define dprint      ur_dprint
+#else
+#define dprint      printf
 #endif
 
 #ifdef __cplusplus
