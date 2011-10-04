@@ -23,6 +23,10 @@
 #include "urlan.h"
 
 
+#define BORON_VERSION_STR  "0.2.1"
+#define BORON_VERSION      0x000201
+
+
 enum BoronDataType
 {
     UT_FUNC = UT_BI_COUNT,

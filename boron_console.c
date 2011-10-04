@@ -54,7 +54,7 @@
 
 void usage( const char* arg0 )
 {
-    printf( APPNAME " %s (%s)\n\n", UR_VERSION_STR, __DATE__ );
+    printf( APPNAME " %s (%s)\n\n", BORON_VERSION_STR, __DATE__ );
     printf( "Usage: %s [options] [script] [arguments]\n\n", arg0 );
     printf( "Options:\n"
 #ifdef BORON_GL
@@ -246,7 +246,7 @@ usage_err:
     }
     else
     {
-        printf( APPNAME " %s (%s)\n", UR_VERSION_STR, __DATE__ );
+        printf( APPNAME " %s (%s)\n", BORON_VERSION_STR, __DATE__ );
 
 prompt:
 
