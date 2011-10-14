@@ -70,9 +70,17 @@
 #define BUF_ERROR_BLK   0
 #define BUF_THREAD_CTX  1
 
-
 #include "datatypes.c"
 #include "atoms.c"
+
+
+#define GEN_FREE    64
+// No initial allocation when using GEN_FREE (would be redundant).
+#ifdef GEN_FREE
+#define INIT_BUF_COUNT  0
+#else
+#define INIT_BUF_COUNT  64
+#endif
 
 
 static void _nopThreadFunc( UThread* ut, UThreadMethod op )
@@ -86,7 +94,7 @@ static void _threadInitStore( UThread* ut )
 {
     UIndex bufN[2];
 
-    ur_arrInit( &ut->dataStore, sizeof(UBuffer), 64 );
+    ur_arrInit( &ut->dataStore, sizeof(UBuffer), INIT_BUF_COUNT );
     ur_arrInit( &ut->holds,     sizeof(UIndex),  16 );
     ur_binInit( &ut->gcBits, 64/8 );
     ut->freeBufCount = 0;
@@ -624,7 +632,6 @@ void ur_genBuffers( UThread* ut, int count, UIndex* index )
 
     if( ut->freeBufCount < count )
     {
-#define GEN_FREE    64
 #ifdef GEN_FREE
         int newCount = count + GEN_FREE;
 #else
