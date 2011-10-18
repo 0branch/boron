@@ -290,7 +290,7 @@ struct UThread
     UIndex      freeBufList;
     UEnv*       env;
     UThread*    nextThread;
-    UDatatype** types;
+    const UDatatype** types;
     const UCell* (*wordCell)( UThread*, const UCell* );
     UCell* (*wordCellM)( UThread*, const UCell* );
 };
@@ -442,8 +442,8 @@ UAtomEntry;
 extern "C" {
 #endif
 
-UThread* ur_makeEnv( int atomLimit, UDatatype** dtTable, unsigned int dtCount,
-                     unsigned int thrSize,
+UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
+                     unsigned int dtCount, unsigned int thrSize,
                      void (*thrMethod)(UThread*,UThreadMethod) );
 void     ur_freeEnv( UThread* );
 void     ur_freezeEnv( UThread* );

@@ -2786,7 +2786,7 @@ int string_append( UThread* ut, UBuffer* buf, const UCell* val )
     else if( type == UT_BLOCK )
     {
         UBlockIter bi;
-        UDatatype** dt = ut->types;
+        const UDatatype** dt = ut->types;
         ur_blkSlice( ut, &bi, val );
         ur_foreach( bi )
         {
@@ -3364,7 +3364,7 @@ int block_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             {
             UBlockIter ai;
             UBlockIter bi;
-            UDatatype** dt;
+            const UDatatype** dt;
             int t;
 
             ur_blkSlice( ut, &ai, a );

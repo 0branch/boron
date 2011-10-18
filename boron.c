@@ -256,11 +256,6 @@ static void boron_threadInit( UThread* ut )
     ++ed;
     ur_setId( ed, UT_BINARY );
     ur_setSeries( ed, bufN[3], 0 );
-
-
-    // Install recycle method here or else it would get called by
-    // ur_genBuffers above.
-    boron_types[1].recycle = cfunc_recycle2;
 }
 
 
@@ -281,10 +276,10 @@ static void boron_threadMethod( UThread* ut, UThreadMethod op )
             break;
 
         case UR_THREAD_FREEZE:
-            boron_types[1].recycle = unset_recycle;
             ur_buffer(BT->dstackN)->used = 0;
             ur_buffer(BT->fstackN)->used = 0;
             ur_release( BT->holdData );
+            BT->dstackN = 0;    // Disables cfunc_recycle2.
             break;
     }
 }
@@ -839,7 +834,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 #endif
 
     {
-    UDatatype* table[ UT_MAX - UT_BI_COUNT ];
+    const UDatatype* table[ UT_MAX - UT_BI_COUNT ];
     unsigned int i;
 
     for( i = 0; i < (sizeof(boron_types) / sizeof(UDatatype)); ++i )

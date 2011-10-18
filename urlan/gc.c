@@ -81,11 +81,11 @@ void ur_gcReport( UBuffer* store, UThread* ut )
 */
 static void _recyclePhase( UThread* ut, int phase )
 {
-    UDatatype** it  = ut->types + UT_BI_COUNT;
-    UDatatype** end = ut->types + ur_datatypeCount( ut );
+    const UDatatype** it  = ut->types + UT_BI_COUNT;
+    const UDatatype** end = ut->types + ur_datatypeCount( ut );
     while( it != end )
     {
-        UDatatype* dt = *it;
+        const UDatatype* dt = *it;
         if( dt->recycle )
             dt->recycle( ut, phase );
         ++it;
@@ -111,7 +111,7 @@ void ur_recycle( UThread* ut )
     uint8_t* markBits;
     UBuffer* buf;
     UBuffer* bufStart = ut->dataStore.ptr.buf;
-    UDatatype** datatypes = ut->types;
+    const UDatatype** datatypes = ut->types;
     UBuffer* gcBits = &ut->gcBits;
 
 #ifdef GC_TIME

@@ -96,7 +96,7 @@ static void _threadInitStore( UThread* ut )
 
     ur_arrInit( &ut->dataStore, sizeof(UBuffer), INIT_BUF_COUNT );
     ur_arrInit( &ut->holds,     sizeof(UIndex),  16 );
-    ur_binInit( &ut->gcBits, 64/8 );
+    ur_binInit( &ut->gcBits, INIT_BUF_COUNT / 8 );
     ut->freeBufCount = 0;
     ut->freeBufList = -1;
     ut->wordCell = 0;
@@ -148,7 +148,7 @@ static UThread* _threadMake( UEnv* env )
 
 static void _destroyDataStore( UEnv* env, UBuffer* store )
 {
-    UDatatype** dt = env->types;
+    const UDatatype** dt = env->types;
     UBuffer* it  = store->ptr.buf;
     UBuffer* end = it + store->used;
 
@@ -252,7 +252,7 @@ static void _validateEnv()
 #endif
 
 
-static void _addDT( UEnv* env, int id, UDatatype* dt )
+static void _addDT( UEnv* env, int id, const UDatatype* dt )
 {
     static uint8_t reserved[] = ":type:XX";
     if( dt )
@@ -296,8 +296,8 @@ extern UDatatype dt_timecode;
 
   \return Pointer to initial thread.
 */
-UThread* ur_makeEnv( int atomLimit, UDatatype** dtTable, unsigned int dtCount,
-                     unsigned int thrSize,
+UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
+                     unsigned int dtCount, unsigned int thrSize,
                      void (*thrMethod)(UThread*, UThreadMethod) )
 {
     UEnv* env;
@@ -389,7 +389,7 @@ UThread* ur_makeEnv( int atomLimit, UDatatype** dtTable, unsigned int dtCount,
     i = UT_BI_COUNT;
     if( dtCount )
     {
-        UDatatype** dtEnd = dtTable + dtCount;
+        const UDatatype** dtEnd = dtTable + dtCount;
         for( ; dtTable != dtEnd; ++dtTable, ++i )
             addDT( i, *dtTable );
     }
@@ -511,7 +511,7 @@ void ur_freezeEnv( UThread* ut )
 
     UBuffer* it  = env->dataStore.ptr.buf;
     UBuffer* end = it + env->dataStore.used;
-    UDatatype** dt = env->types;
+    const UDatatype** dt = env->types;
 
     // TODO: Eliminate unused buffers.
     //while( end[-1].type == UT_UNSET )

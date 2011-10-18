@@ -36,7 +36,7 @@ struct UEnv
     uint32_t    threadSize;
     void (*threadFunc)( UThread*, UThreadMethod );
     UThread*    threads;    // Protected by mutex.
-    UDatatype*  types[ UT_MAX ];
+    const UDatatype* types[ UT_MAX ];
 };
 
 

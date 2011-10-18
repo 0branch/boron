@@ -501,11 +501,11 @@ int cfunc_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 
 
 /*
-  Installed by boron_threadInit().
+  Updates used member of stack blocks before every recycle.
 */
 void cfunc_recycle2( UThread* ut, int phase )
 {
-    if( phase == UR_RECYCLE_MARK )
+    if( phase == UR_RECYCLE_MARK && BT->dstackN )
     {
         // Sync data stack used with tos.
         UBuffer* buf = ur_buffer(BT->dstackN);
@@ -710,14 +710,14 @@ int port_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 //----------------------------------------------------------------------------
 
 
-UDatatype boron_types[] =
+const UDatatype boron_types[] =
 {
   {
     "func!",
     unset_make,             unset_make,             func_copy,
     func_compare,           unset_operate,          func_select,
     func_toString,          func_toString,
-    unset_recycle,          func_mark,              func_destroy,
+    cfunc_recycle2,         func_mark,              func_destroy,
     unset_markBuf,          func_toShared,          func_bind
   },
   {
