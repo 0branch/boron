@@ -546,6 +546,67 @@ void cfunc_toShared( UCell* cell )
     ptr.v       UPortDevice* or UPortDevice**
 */
 
+/** \struct UPortDevice
+  The UPortDevice struct holds methods for a class of input/ouput device.
+*/
+/** \enum PortForm
+  These are the UBuffer::form values for port buffers.
+*/
+/** \var PortForm::UR_PORT_SIMPLE
+  Denotes that UBuffer::ptr is the UPortDevice pointer.
+*/
+/** \var PortForm::UR_PORT_EXT
+  Denotes that UBuffer::ptr points to extension data and that the first
+  member is the UPortDevice pointer.
+*/
+
+/** \fn int (*UPortDevice::open)(UThread*, const UPortDevice* pdev, const UCell* from, int opt, UCell* res)
+  Create and open a new port.
+
+  \param pdev   This device class.
+  \param from   Specification of port.
+  \param opt    Port options.
+  \param res    Cell for new port.
+
+  \return UR_OK/UR_THROW.
+
+  Open will normally call boron_makePort() to generate a port buffer and
+  set res.
+*/
+/** \fn void (*UPortDevice::close)(UBuffer* pbuf)
+  Close port.
+
+  \param pbuf   Buffer created by UPortDevice::open.
+*/
+/** \fn int (*UPortDevice::read)(UThread*, UBuffer* pbuf, UCell* dest, int part)
+  Read data from port.
+
+  \param pbuf   Buffer created by UPortDevice::open.
+  \param dest   Destination buffer.
+  \param part   If greater than zero, then limit read to this number of bytes.
+
+  \return UR_OK/UR_THROW
+*/
+/** \fn int (*UPortDevice::write)(UThread*, UBuffer* pbuf, const UCell* data)
+  Write data to port.
+
+  \param pbuf   Buffer created by UPortDevice::open.
+  \param data   Data to write.
+
+  \return UR_OK/UR_THROW
+*/
+/** \fn int (*UPortDevice::seek)(UThread*, UBuffer* pbuf, UCell* pos, int where)
+  Seek to position.
+
+  \param pbuf   Buffer created by UPortDevice::open.
+  \param pos    New position relative to where.
+  \param where  SEEK_SET, SEEK_END, or SEEK_CUR.
+
+  \return UR_OK/UR_THROW
+
+  If the device cannot seek then call ur_error().
+*/
+
 
 extern void binary_mark( UThread* ut, UCell* cell );
 extern void binary_toShared( UCell* cell );
@@ -553,28 +614,17 @@ extern void binary_toShared( UCell* cell );
 
 /**
   Register port device.
-  A single device may be added multiple times with different names.
+  A single device struct may be added multiple times with different names.
 
   \param dev    Pointer to UPortDevice.
   \param name   Name of device.
 */
-void boron_addPortDevice( UThread* ut, UPortDevice* dev, UAtom name )
+void boron_addPortDevice( UThread* ut, const UPortDevice* dev, UAtom name )
 {
     UBuffer* ctx = &ut->env->ports;
     int n = ur_ctxAddWordI( ctx, name );
-    ((UPortDevice**) ctx->ptr.v)[ n ] = dev;
+    ((const UPortDevice**) ctx->ptr.v)[ n ] = dev;
     ur_ctxSort( ctx );
-}
-
-
-/*
-  Called from UPortDevice::open() method if extended data is used.
-*/
-void boron_extendPort( UBuffer* port, UPortDevice** ext )
-{
-    port->form = UR_PORT_EXT;
-    *ext = port->ptr.v;
-    port->ptr.v = ext;
 }
 
 
@@ -588,8 +638,26 @@ static UPortDevice* portLookup( UThread* ut, UAtom name )
 }
 
 
-int ur_makePort( UThread* ut, UPortDevice* pdev, const UCell* from, UCell* res,
-                 int options )
+/**
+  Create port buffer.
+
+  \param pdev   Device pointer.
+  \param ext    Pointer to port extension data or zero.
+  \param res    Result port cell.
+
+  \return UBuffer with type, form, and ptr initialized.
+
+  This is usually called from inside a UPortDevice::open method.
+
+  The UBuffer::type is set to UT_PORT.
+
+  If ext is zero then the UBuffer::form is set to UR_PORT_SIMPLE and the
+  UBuffer::ptr member is set to pdev.  If ext is non-zero then the form is set
+  to UR_PORT_EXT, ptr is set to ext, and pdev is copied to the start
+  of ext.
+*/
+UBuffer* boron_makePort( UThread* ut, const UPortDevice* pdev, void* ext,
+                         UCell* res )
 {
     UBuffer* buf;
     UIndex bufN;
@@ -597,20 +665,22 @@ int ur_makePort( UThread* ut, UPortDevice* pdev, const UCell* from, UCell* res,
     ur_genBuffers( ut, 1, &bufN );
     buf = ur_buffer( bufN );
 
-    buf->type  = UT_PORT;
-    buf->form  = UR_PORT_SIMPLE;
-    buf->ptr.v = pdev;
-
-    if( ! pdev->open( ut, buf, from, options ) )
+    buf->type = UT_PORT;
+    if( ext )
     {
-        //buf = ur_buffer( bufN );    // Re-aquire
-        buf->ptr.v = 0;
-        return UR_THROW;
+        buf->form  = UR_PORT_EXT;
+        buf->ptr.v = ext;
+        *((const UPortDevice**) ext) = pdev;
+    }
+    else
+    {
+        buf->form  = UR_PORT_SIMPLE;
+        buf->ptr.v = (void*) pdev;
     }
 
     ur_setId(res, UT_PORT);
     ur_setSeries(res, bufN, 0);
-    return UR_OK;
+    return buf;
 }
 
 
@@ -666,7 +736,7 @@ int port_make( UThread* ut, const UCell* from, UCell* res )
         return ur_error( ut, UR_ERR_SCRIPT, "Port type %s does not exist",
                          ur_atomCStr(ut, name) );
 
-    return ur_makePort( ut, pdev, from, res, 0 );
+    return pdev->open( ut, pdev, from, 0, res );
 }
 
 

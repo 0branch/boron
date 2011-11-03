@@ -59,7 +59,7 @@ static char* WSAGetLastErrorMessage()
 
 typedef struct
 {
-    UPortDevice* dev;
+    const UPortDevice* dev;
     struct sockaddr addr;
     socklen_t addrlen;
 }
@@ -340,8 +340,8 @@ static int _openTcpServer( UThread* ut, struct sockaddr* addr,
   "udp://host:port"
   "udp://:port"
 */
-static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
-                        int opt )
+static int socket_open( UThread* ut, const UPortDevice* pdev,
+                        const UCell* from, int opt, UCell* res )
 {
     NodeServ ns;
     SocketExt* ext;
@@ -435,18 +435,18 @@ static int socket_open( UThread* ut, UBuffer* portBuf, const UCell* from,
         else
         {
             socket = _openTcpServer( ut, &ext->addr, ext->addrlen, 10 );
-            portBuf->ptr.v = &port_listenSocket;
+            pdev = &port_listenSocket;
         }
     }
 
     if( socket > -1 )
     {
-        portBuf->TCP = (ns.socktype == SOCK_STREAM) ? 1 : 0;
-        portBuf->FD  = socket;
+        UBuffer* pbuf;
 
-        boron_extendPort( portBuf, (UPortDevice**) ext );
-
-        //printf( "KR socket_open %d %d\n", portBuf->FD, portBuf->TCP );
+        pbuf = boron_makePort( ut, pdev, ext, res );
+        pbuf->TCP = (ns.socktype == SOCK_STREAM) ? 1 : 0;
+        pbuf->FD  = socket;
+        //printf( "KR socket_open %d %d\n", pbuf->FD, pbuf->TCP );
         return UR_OK;
     }
 
@@ -457,18 +457,18 @@ fail:
 }
 
 
-static void socket_close( UBuffer* portBuf )
+static void socket_close( UBuffer* pbuf )
 {
-    //printf( "KR socket_close %d\n", portBuf->FD );
+    //printf( "KR socket_close %d\n", pbuf->FD );
 
-    if( portBuf->FD > -1 )
+    if( pbuf->FD > -1 )
     {
-        closesocket( portBuf->FD );
-        portBuf->FD = -1;
+        closesocket( pbuf->FD );
+        pbuf->FD = -1;
     }
 
-    memFree( portBuf->ptr.v );
-    portBuf->ptr.v = 0;
+    memFree( pbuf->ptr.v );
+    pbuf->ptr.v = 0;
 }
 
 
@@ -566,12 +566,10 @@ static int socket_accept( UThread* ut, UBuffer* port, UCell* dest, int part )
     SOCKET fd;
     SocketExt* ext;
     UBuffer* buf;
-    UIndex bufN;
     (void) part;
 
 
     ext = (SocketExt*) memAlloc( sizeof(SocketExt) );
-    ext->dev = &port_socket;
 
     fd = accept( port->FD, &ext->addr, &ext->addrlen );
     if( fd < 0 )
@@ -580,18 +578,9 @@ static int socket_accept( UThread* ut, UBuffer* port, UCell* dest, int part )
         return ur_error( ut, UR_ERR_INTERNAL, SOCKET_ERR );
     }
 
-    //ur_makePort( ut, dest, );
-    ur_genBuffers( ut, 1, &bufN );
-    buf = ur_buffer( bufN );
-
-    buf->type  = UT_PORT;
-    buf->form  = UR_PORT_EXT;
-    buf->TCP   = 1;
-    buf->FD    = fd;
-    buf->ptr.v = ext;
-
-    ur_setId(dest, UT_PORT);
-    ur_setSeries(dest, bufN, 0);
+    buf = boron_makePort( ut, &port_socket, ext, dest );
+    buf->TCP = 1;
+    buf->FD  = fd;
     return UR_OK;
 }
 

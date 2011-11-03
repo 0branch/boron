@@ -46,11 +46,11 @@
 #define FD  used
 
 
-static int file_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
+static int file_open( UThread* ut, const UPortDevice* pdev, const UCell* from,
+                      int opt, UCell* res )
 {
-    int fd = -1;
-    int flags;
-    const char* path;
+    UBuffer* port;
+    int fd;
 
     if( ur_is(from, UT_INT) )
     {
@@ -62,6 +62,9 @@ static int file_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
     }
     else if( ur_is(from, UT_FILE) )
     {
+        const char* path;
+        int flags;
+
         path = boron_cstr( ut, from, 0 );
 
         if( ! boron_requestAccess( ut, "Open file \"%s\"", path ) )
@@ -81,7 +84,12 @@ static int file_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
         if( fd == -1 )
             return ur_error( ut, UR_ERR_ACCESS, strerror( errno ) );
     }
+    else
+    {
+        return ur_error( ut, UR_ERR_SCRIPT, "File port expected int!/file!" );
+    }
 
+    port = boron_makePort( ut, pdev, 0, res );
     port->FD = fd;
     return UR_OK;
 }

@@ -162,7 +162,7 @@ CFUNC( cfunc_thread )
 
     if( CFUNC_OPTIONS & OPT_THREAD_PORT )
     {
-        if( ! ur_makePort( ut, &port_thread, res, res, 0 ) )
+        if( ! port_thread.open( ut, &port_thread, res, 0, res ) )
             return UR_THROW;
         boron_installThreadPort( ut, res, child );
     }

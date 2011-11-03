@@ -3469,7 +3469,7 @@ CFUNC(cfunc_getenv)
 CFUNC(cfunc_open)
 {
     if( ur_is(a1, UT_FILE) )
-        return ur_makePort( ut, &port_file, a1, res, CFUNC_OPTIONS );
+        return port_file.open( ut, &port_file, a1, CFUNC_OPTIONS, res );
     return port_make( ut, a1, res );
 }
 

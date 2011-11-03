@@ -47,7 +47,7 @@ ThreadQueue;
 
 typedef struct
 {
-    UPortDevice* dev;
+    const UPortDevice* dev;
     ThreadQueue A;      // SIDE_A writes here.
     ThreadQueue B;      // SIDE_B writes here.
 }
@@ -62,7 +62,6 @@ void boron_installThreadPort( UThread* ut, const UCell* portC, UThread* utB )
     UBuffer* buf;
     UCell* cell;
     ThreadExt* ext;
-    UIndex bufN;
 
 
     port = ur_bufferSer( portC );
@@ -72,18 +71,10 @@ void boron_installThreadPort( UThread* ut, const UCell* portC, UThread* utB )
 
     // Make port for SIDE_B.
 
-    ur_genBuffers( utB, 1, &bufN );
-    buf = utB->dataStore.ptr.buf + bufN;    //ur_buffer( bufN )
-
-    buf->type  = UT_PORT;
-    buf->form  = UR_PORT_EXT;
-    buf->SIDE  = SIDE_B;
-    buf->ptr.v = ext;
-
     ctx = ur_threadContext( utB );
     cell = ur_ctxAddWord( ctx, ur_internAtom(ut, portStr, portStr + 11) );
-    ur_setId(cell, UT_PORT);
-    ur_setSeries(cell, bufN, 0);
+    buf = boron_makePort( utB, ext->dev, ext, cell );
+    buf->SIDE = SIDE_B;
 }
 
 
@@ -115,8 +106,10 @@ static void _freeThreadQueue( ThreadQueue* queue )
 }
 
 
-static int thread_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
+static int thread_open( UThread* ut, const UPortDevice* pdev,
+                        const UCell* from, int opt, UCell* res )
 {
+    UBuffer* port;
     ThreadExt* ext;
     (void) from;
     (void) opt;
@@ -141,8 +134,8 @@ fail:
     ext->A.END_OPEN = 0;
     ext->B.END_OPEN = 1;
 
+    port = boron_makePort( ut, pdev, ext, res );
     port->SIDE = SIDE_A;
-    boron_extendPort( port, (UPortDevice**) ext );
     return UR_OK;
 }
 

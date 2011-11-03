@@ -88,7 +88,8 @@ typedef struct UPortDevice  UPortDevice;
 
 struct UPortDevice
 {
-    int  (*open) ( UThread*, UBuffer*, const UCell* from, int opt );
+    int  (*open) ( UThread*, const UPortDevice*, const UCell* from, int opt,
+                   UCell* res );
     void (*close)( UBuffer* );
     int  (*read) ( UThread*, UBuffer*, UCell*, int part );
     int  (*write)( UThread*, UBuffer*, const UCell* );
@@ -104,8 +105,8 @@ extern "C" {
 UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount );
 void     boron_freeEnv( UThread* );
 void     boron_addCFunc( UThread*, BoronCFunc func, const char* sig );
-void     boron_addPortDevice( UThread*, UPortDevice*, UAtom name );
-void     boron_extendPort( UBuffer* port, UPortDevice** ext );
+void     boron_addPortDevice( UThread*, const UPortDevice*, UAtom name );
+UBuffer* boron_makePort( UThread*, const UPortDevice*, void* ext, UCell* res );
 void     boron_setAccessFunc( UThread*, int (*func)( UThread*, const char* ) );
 int      boron_requestAccess( UThread*, const char* msg, ... );
 void     boron_bindDefault( UThread*, UIndex blkN );
