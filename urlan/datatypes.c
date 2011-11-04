@@ -777,16 +777,15 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
             }
             else
             {
-                const char* cp = si.buf->ptr.c;
+                const char* cp  = si.buf->ptr.c + si.it;
+                const char* end = si.buf->ptr.c + si.end;
                 if( (si.end - si.it) > 2 && (cp[0] == '0') && (cp[1] == 'x') )
                 {
-                    ur_int(res) = (int32_t) str_hexToInt64(cp + si.it + 2,
-                                                           cp + si.end, 0);
+                    ur_int(res) = (int32_t) str_hexToInt64( cp + 2, end, 0 );
                     ur_setFlags(res, UR_FLAG_INT_HEX);
                 }
                 else
-                    ur_int(res) = (int32_t) str_toInt64(cp + si.it,
-                                                        cp + si.end, 0);
+                    ur_int(res) = (int32_t) str_toInt64( cp, end, 0 );
             }
         }
             break;
