@@ -1111,7 +1111,7 @@ const UBuffer* ur_bufferEnv( UThread* ut, UIndex n )
 
   \return Pointer to buffer referenced by cell->series.buf.
 */
-const UBuffer* ur_bufferSeries( UThread* ut, const UCell* cell )
+const UBuffer* ur_bufferSeries( const UThread* ut, const UCell* cell )
 {
     UIndex n = cell->series.buf;
     if( ur_isShared(n) )
@@ -1148,7 +1148,7 @@ UBuffer* ur_bufferSeriesM( UThread* ut, const UCell* cell )
   \param si    Iterator struct to fill.
   \param cell  Pointer to a valid series cell.
 */
-void ur_seriesSlice( UThread* ut, USeriesIter* si, const UCell* cell )
+void ur_seriesSlice( const UThread* ut, USeriesIter* si, const UCell* cell )
 {
     const UBuffer* buf = si->buf = ur_bufferSer( cell );
     si->it  = (cell->series.it < buf->used) ? cell->series.it : buf->used;

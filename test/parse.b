@@ -49,3 +49,11 @@ count: 0  parse/case in rules  print count
 rules: [some[ thru "From" (++ count) ]]
 count: 0  parse      in rules  print count
 count: 0  parse/case in rules  print count
+
+
+print "---- string UCS2"
+a: none
+parse {Рабочий стол Plasma, Чувар екрана} [
+    thru "стол" some white a: to ',' :a
+]
+probe a

@@ -1,5 +1,5 @@
 /*
-  Copyright 2005-2009 Karl Robillard
+  Copyright 2005-2011 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -23,10 +23,7 @@
 #include "mem_util.h"
 
 
-typedef char   UChar;
-
-
-#define UString UBuffer
+#define REPEAT_ANY  0x7fffffff
 #define bitIsSet(array,n)    (array[(n)>>3] & 1<<((n)&7))
 
 
@@ -43,7 +40,7 @@ enum StringParseException
 typedef struct
 {
     int (*eval)( UThread*, const UCell* );
-    UString* str;
+    UBuffer* str;
     UIndex   inputBuf;
     UIndex   inputEnd;
     int      sliced;
@@ -53,96 +50,86 @@ typedef struct
 StringParser;
 
 
-static int _repeatChar( UString* input, UIndex pos, UIndex inputEnd,
-                        int limit, int c )
-{
-    UChar* start;
-    UChar* it;
-    UChar* end;
-
-    it  = input->ptr.c;
-    end = it + inputEnd;
-    it += pos;
-    if( end > (it + limit) )
-        end = it + limit;
-
-    start = it;
-    while( it != end )
-    {
-        if( *it != c )
-            break;
-        ++it;
-    }
-    return it - start;
+/*
+  Return number of characters advanced.
+*/
+#define REPEAT_CHAR(T) \
+static int _repeatChar_ ## T( const T* start, UIndex pos, UIndex inputEnd, \
+        int limit, int c ) { \
+    const T* it  = start + pos; \
+    const T* end = start + inputEnd; \
+    if( (limit != REPEAT_ANY) && (end > (it + limit)) ) \
+        end = it + limit; \
+    start = it; \
+    while( it != end ) { \
+        if( *it != c ) \
+            break; \
+        ++it; \
+    } \
+    return it - start; \
 }
+
+REPEAT_CHAR(uint8_t)
+REPEAT_CHAR(uint16_t)
 
 
 /*
   Return number of characters advanced.
 */
-static int _repeatBitset( UThread* ut,
-                          UString* input, UIndex pos, UIndex inputEnd,
-                          int limit, const UCell* patc )
-{
-    UChar* start;
-    UChar* it;
-    UChar* end;
-    int c;
-    const UBuffer* bin = ur_bufferSer(patc);
-    const uint8_t* bits = bin->ptr.b;
-    int maxC = bin->used * 8;
-
-    it  = input->ptr.c;
-    end = it + inputEnd;
-    it += pos;
-    if( end > (it + limit) )
-        end = it + limit;
-
-    start = it;
-    while( it != end )
-    {
-        c = *it;
-        if( c >= maxC )
-            break;
-        if( ! bitIsSet( bits, c ) )
-            break;
-        ++it;
-    }
-    return it - start;
+#define REPEAT_BITSET(T) \
+static int _repeatBitset_ ## T( const UThread* ut, \
+        const T* start, UIndex pos, UIndex inputEnd, \
+        int limit, const UCell* binc ) { \
+    const T* it  = start + pos; \
+    const T* end = start + inputEnd; \
+    int c; \
+    const UBuffer* bin = ur_bufferSer(binc); \
+    const uint8_t* bits = bin->ptr.b; \
+    int maxC = bin->used * 8; \
+    if( end > (it + limit) ) \
+        end = it + limit; \
+    start = it; \
+    while( it != end ) { \
+        c = *it; \
+        if( c >= maxC ) \
+            break; \
+        if( ! bitIsSet( bits, c ) ) \
+            break; \
+        ++it; \
+    } \
+    return it - start; \
 }
+
+REPEAT_BITSET(uint8_t)
+REPEAT_BITSET(uint16_t)
 
 
 /*
   Return new pos or -1 if not found.
 */
-static int _scanToBitset( UThread* ut,
-                          UString* input, UIndex pos, UIndex inputEnd,
-                          const UCell* binc )
-{
-    UChar* start;
-    UChar* it;
-    UChar* end;
-    int c;
-    const UBuffer* bin = ur_bufferSer(binc);
-    const uint8_t* bits = bin->ptr.b;
-    int maxC = bin->used * 8;
-
-    it  = input->ptr.c + pos;
-    end = input->ptr.c + inputEnd;
-
-    start = it;
-    while( it != end )
-    {
-        c = *it;
-        if( c < maxC )
-        {
-            if( bitIsSet( bits, c ) )
-                return it - input->ptr.c;
-        }
-        ++it;
-    }
-    return -1;
+#define SCAN_BITSET(T) \
+static int _scanToBitset_ ## T( const UThread* ut, \
+        const T* start, UIndex pos, UIndex inputEnd, \
+        const UCell* binc ) { \
+    const T* it  = start + pos; \
+    const T* end = start + inputEnd; \
+    int c; \
+    const UBuffer* bin = ur_bufferSer(binc); \
+    const uint8_t* bits = bin->ptr.b; \
+    int maxC = bin->used * 8; \
+    while( it != end ) { \
+        c = *it; \
+        if( c < maxC ) { \
+            if( bitIsSet( bits, c ) ) \
+                return it - start; \
+        } \
+        ++it; \
+    } \
+    return -1; \
 }
+
+SCAN_BITSET(uint8_t)
+SCAN_BITSET(uint16_t)
 
 
 #define CHECK_WORD(cell) \
@@ -159,7 +146,7 @@ static const UCell* _parseStr( UThread* ut, StringParser* pe,
     const UCell* tval;
     int32_t repMin;
     int32_t repMax;
-    UString* istr = pe->str;
+    UBuffer* istr = pe->str;
     UIndex pos = *spos;
 
 
@@ -181,13 +168,13 @@ match:
                 case UR_ATOM_ANY:
                     ++rit;
                     repMin = 0;
-                    repMax = 0x7fffffff;
+                    repMax = REPEAT_ANY;
                     goto repeat;
 
                 case UR_ATOM_SOME:
                     ++rit;
                     repMin = 1;
-                    repMax = 0x7fffffff;
+                    repMax = REPEAT_ANY;
                     goto repeat;
 
                 case UR_ATOM_BREAK:
@@ -220,22 +207,12 @@ match:
                     switch( ur_type(tval) )
                     {
                         case UT_CHAR:
-                        {
-                            int c = ur_int(tval);
-                            UChar* cp  = istr->ptr.c + pos;
-                            UChar* end = istr->ptr.c + pe->inputEnd;
-                            while( cp != end )
-                            {
-                                if( *cp == c )
-                                    break;
-                                ++cp;
-                            }
-                            if( cp == end )
+                            pos = ur_strFindChar( istr, pos, pe->inputEnd,
+                                                  ur_int(tval) );
+                            if( pos < 0 )
                                 goto failed;
-                            pos = cp - istr->ptr.c;
                             if( ratom == UR_ATOM_THRU )
                                 ++pos;
-                        }
                             break;
 
                         case UT_STRING:
@@ -248,9 +225,16 @@ match:
                             si.end = pe->inputEnd;
 
                             ur_seriesSlice( ut, &sp, tval );
-                            if( sp.buf->form == UR_ENC_UCS2 )
-                                goto bad_enc;
-
+#if 1
+                            // Required until ur_strFind is fully implemented.
+                            if( sp.buf->elemSize != istr->elemSize )
+                            {
+                                ur_error( ut, UR_ERR_INTERNAL,
+                                          "string parse requires string "
+                                          "pattern to match input encoding" );
+                                goto parse_err;
+                            }
+#endif
                             pos = ur_strFind( &si, &sp, pe->matchCase );
                             if( pos < 0 )
                                 goto failed;
@@ -260,16 +244,15 @@ match:
                             break;
 
                         case UT_BITSET:
-                        {
-                            int n;
-                            n = _scanToBitset( ut, istr, pos, pe->inputEnd,
-                                               tval );
-                            if( n < 0 )
+                            pos = ur_strIsUcs2(istr) ?
+                                _scanToBitset_uint16_t( ut, istr->ptr.u16,
+                                            pos, pe->inputEnd, tval ) :
+                                _scanToBitset_uint8_t( ut, istr->ptr.b,
+                                            pos, pe->inputEnd, tval );
+                            if( pos < 0 )
                                 goto failed;
-                            pos = n;
                             if( ratom == UR_ATOM_THRU )
                                 ++pos;
-                        }
                             break;
 
                         default:
@@ -375,8 +358,10 @@ skip:
             case UT_CHAR:
                 tval = rit;
 match_char:
-                if( (pos >= pe->inputEnd) ||
-                    (istr->ptr.c[ pos ] != ur_int(tval)) )
+                if( pos >= pe->inputEnd )
+                    goto failed;
+                if( (ur_strIsUcs2(istr) ? istr->ptr.u16[ pos ] :
+                                          istr->ptr.b[ pos ]) != ur_int(tval) )
                     goto failed;
                 ++rit;
                 ++pos;
@@ -511,8 +496,11 @@ repeat:
         switch( ur_type(tval) )
         {
             case UT_CHAR:
-                count = _repeatChar( istr, pos, pe->inputEnd,
-                                     repMax, ur_int(tval) );
+                count = ur_strIsUcs2(istr) ?
+                    _repeatChar_uint16_t( istr->ptr.u16, pos, pe->inputEnd,
+                                          repMax, ur_int(tval) ) :
+                    _repeatChar_uint8_t( istr->ptr.b, pos, pe->inputEnd,
+                                         repMax, ur_int(tval) );
                 pos += count;
                 break;
 
@@ -545,8 +533,11 @@ repeat:
                 break;
 
             case UT_BITSET:
-                count = _repeatBitset( ut, istr, pos, pe->inputEnd,
-                                       repMax, tval );
+                count = ur_strIsUcs2(istr) ?
+                    _repeatBitset_uint16_t( ut, istr->ptr.u16,
+                                            pos, pe->inputEnd, repMax, tval ) :
+                    _repeatBitset_uint8_t( ut, istr->ptr.b,
+                                           pos, pe->inputEnd, repMax, tval );
                 pos += count;
                 break;
 
@@ -610,10 +601,6 @@ failed:
     }
     return 0;
 
-bad_enc:
-
-    ur_error( ut, UR_ERR_INTERNAL, "string parse does not handle UCS2" );
-
 parse_err:
 
     pe->exception = PARSE_EX_ERROR;
@@ -631,7 +618,11 @@ parse_err:
 
   Parse a string using the parse language.
 
-  \note Currently only UR_ENC_LATIN1 strings are handled.
+  \note Currently, the encoding of any pattern strings must be the same as
+        the input encoding.
+
+  \note UR_ENC_UTF8 strings are accepted but multi-byte characters are not
+        handled.
 
   \param str        Input to parse, which must be in thread storage.
   \param start      Starting character in input.
@@ -650,12 +641,6 @@ int ur_parseString( UThread* ut, UBuffer* str, UIndex start, UIndex end,
                     int (*eval)( UThread*, const UCell* ), int matchCase )
 {
     StringParser p;
-
-    if( str->form == UR_ENC_UCS2 )
-    {
-        return ur_error( ut, UR_ERR_INTERNAL,
-                         "string parse does not handle UCS2" );
-    }
 
     p.eval = eval;
     p.str  = str;
