@@ -380,13 +380,25 @@ static inline int hexNibble( int c )
 int ur_caretChar( const uint8_t* it, const uint8_t* end, const uint8_t** pos )
 {
     int c = *it++;
-    (void) end;
     if( IS_HEX(c) )
         c = hexNibble(c);
     else if( c == '-' )
         c = '\t';
     else if( c == '/' )
         c = '\n';
+    else if( c == 'x' )
+    {
+        int nib;
+        c = 0;
+        while( it != end )
+        {
+            nib = *it;
+            if( ! IS_HEX(nib) )
+                break;
+            c = (c << 4) + hexNibble(nib);
+            ++it;
+        }
+    }
     *pos = it;
     return c;
 }
@@ -400,30 +412,38 @@ int ur_caretChar( const uint8_t* it, const uint8_t* end, const uint8_t** pos )
   \param end    End of character string buffer.
   \param pos    Return pointer to end of sequence (past the single quote).
 
-  \return UCS2 character and set pos, or -1 if invaild.
+  \return UCS2 character and set pos, or -1 if invalid.
 */
 static int ur_charUtf8ToUcs2( const uint8_t* it, const uint8_t* end,
                               const uint8_t** pos )
 {
     int c = *it++;
-    if( c < 127 )
+    if( c <= 0x7f )
     {
         if( c == '^' )
         {
-            if( it != end )
-                c = ur_caretChar( it, end, &it );
+            if( it == end )
+                return -1;
+            c = ur_caretChar( it, end, &it );
         }
     }
-#if 0
-    if( ++it != end )
+    else if( c >= 0xc2 && c <= 0xdf )
     {
-        if( c >= 0xc2 && c <= 0xdf )
-            return ((c & 0x1f) << 6) | (*it & 0x3f);
-        else if( c >= 0xe0 && c <= 0xef && ((end - it) > 1) )
-            return ((c & 0x0f) << 12) | ((it[0] & 0x3f) << 6) | (it[1] & 0x3f); 
+        if( it == end )
+            return -1;
+        c = ((c & 0x1f) << 6) | (*it & 0x3f);
+        ++it;
     }
-#endif
-    if( *it != '\'' )
+    else if( c >= 0xe0 && c <= 0xef )
+    {
+        if( (end - it) < 2 )
+            return -1;
+        c = ((c & 0x0f) << 12) | ((it[0] & 0x3f) << 6) | (it[1] & 0x3f); 
+        it += 2;
+    }
+    else
+        return -1;
+    if( (it == end) || (*it != '\'') )
         return -1;
     *pos = it + 1;
     return c;

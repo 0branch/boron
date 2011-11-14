@@ -34,6 +34,10 @@
 #include "mem_util.h"
 
 
+// Emit inverted question mark for invalid Latin1 characters.
+#define NOT_LATIN1_CHAR     0xBF
+
+
 /** \defgroup dt_string Datatype String
   \ingroup urlan
 
@@ -296,7 +300,7 @@ int copyUtf8ToLatin1( uint8_t* dest, const uint8_t* src, int srcLen )
                     goto output_char;
                 }
             }
-            c = 0xBF;   // Not a Latin1 character; emit inverted question mark.
+            c = NOT_LATIN1_CHAR;
         }
 output_char:
         *dest++ = (uint8_t) c;
@@ -317,7 +321,7 @@ int copyUcs2ToLatin1( uint8_t* dest, const uint16_t* src, int srcLen )
     {
         c = *src++;
         if( c > 255 )
-            c = 0xBF;   // Not a Latin1 character; emit inverted question mark.
+            c = NOT_LATIN1_CHAR;
         *dest++ = (uint8_t) c;
     }
     return srcLen;
@@ -326,10 +330,12 @@ int copyUcs2ToLatin1( uint8_t* dest, const uint16_t* src, int srcLen )
 
 /*
    Returns number of characters copied.
+
+   \param dest      UTF8 output.  Must have room for three bytes.
+   \param src       UCS2 input.
 */
 int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int srcLen )
 {
-    // TODO: Prevent overflow of dest.
     const uint8_t* dStart;
     const uint16_t* end;
     uint16_t c;
@@ -365,12 +371,28 @@ int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int srcLen )
 */
 void ur_strAppendChar( UBuffer* str, int uc )
 {
-    ur_arrReserve( str, str->used + 1 );
-    if( str->form == UR_ENC_UCS2 )
-        str->ptr.u16[ str->used ] = uc;
-    else
-        str->ptr.c[ str->used ] = uc;
-    ++str->used;
+    switch( str->form )
+    {
+        case UR_ENC_LATIN1:
+            ur_arrReserve( str, str->used + 1 );
+            str->ptr.b[ str->used ] = (uc > 255) ? NOT_LATIN1_CHAR : uc;
+            ++str->used;
+            break;
+
+        case UR_ENC_UTF8:
+        {
+            uint16_t n = uc;
+            ur_arrReserve( str, str->used + 3 );
+            str->used += copyUcs2ToUtf8( str->ptr.b + str->used, &n, 1 );
+        }
+            break;
+
+        case UR_ENC_UCS2:
+            ur_arrReserve( str, str->used + 1 );
+            str->ptr.u16[ str->used ] = uc;
+            ++str->used;
+            break;
+    }
 }
 
 
@@ -390,7 +412,7 @@ void ur_strAppendCStr( UBuffer* str, const char* cstr )
 }
 
 
-static char _hexDigits[] = "0123456789ABCDEF";  //GHIJKLMNOPQRSTUVWXYZ";
+char _hexDigits[] = "0123456789ABCDEF";  //GHIJKLMNOPQRSTUVWXYZ";
 
 #define INT_TO_STR(T) \
     T* cp; \

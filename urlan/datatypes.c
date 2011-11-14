@@ -669,19 +669,54 @@ int char_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+extern int copyUcs2ToUtf8( uint8_t* dest, const uint16_t* src, int srcLen );
+extern char _hexDigits[];
+
 void char_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     char tmp[5];
     char* cstr;
-    int n = ur_int(cell);
+    uint16_t n = ur_int(cell);
     (void) ut;
     (void) depth;
 
     if( n > 127 )
     {
-        ur_strAppendChar( str, '\'' );
-        ur_strAppendChar( str, n );
-        ur_strAppendChar( str, '\'' );
+        if( str->form == UR_ENC_UCS2 )
+        {
+            uint16_t* cp;
+            ur_arrReserve( str, str->used + 3 );
+            cp = str->ptr.u16 + str->used;
+            *cp++ = '\'';
+            *cp++ = n;
+            *cp   = '\'';
+            str->used += 3;
+        }
+        else
+        {
+            uint8_t* cp;
+            ur_arrReserve( str, str->used + 8 );
+            cp = str->ptr.b + str->used;
+            *cp++ = '\'';
+            if( str->form == UR_ENC_UTF8 )
+            {
+                cp += copyUcs2ToUtf8( cp, &n, 1 );
+            }
+            else
+            {
+                *cp++ = '^';
+                *cp++ = 'x';
+                if( n & 0xff00 )
+                {
+                    *cp++ = _hexDigits[ ((n >> 12) & 0xf) ];
+                    *cp++ = _hexDigits[ ((n >>  8) & 0xf) ];
+                }
+                *cp++ = _hexDigits[ ((n >> 4) & 0xf) ];
+                *cp++ = _hexDigits[ (n & 0xf) ];
+            }
+            *cp++ = '\'';
+            str->used = cp - str->ptr.b;
+        }
         return;
     }
 

@@ -3168,7 +3168,7 @@ CFUNC(cfunc_probe)
 {
     UBuffer str;
 
-    ur_strInit( &str, UR_ENC_UTF8, 0);
+    ur_strInit( &str, UR_ENC_UTF8, 0 );
     ur_toStr( ut, a1, &str, 0 );
     ur_strTermNull( &str );
     fputs( str.ptr.c, stdout );
@@ -3194,7 +3194,7 @@ CFUNC(cfunc_prin)
     {
         UBuffer str;
 
-        ur_strInit( &str, UR_ENC_UTF8, 0);
+        ur_strInit( &str, UR_ENC_UTF8, 0 );
         ur_toText( ut, res, &str );
         ur_strTermNull( &str );
         fputs( str.ptr.c, stdout );

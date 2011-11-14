@@ -6,3 +6,8 @@ char! a
 size? b: 6
 first line 
  	 second line
+---- escape hex
+['©' '¶' 'й' '∋']
+© ¶ й ∋
+©¶й∋
+['^xA9' '^xB6' '^x0439' '^x220B']
