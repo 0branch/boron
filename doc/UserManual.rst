@@ -115,7 +115,7 @@ Datatype      Examples
 `lit-word!`_  'hello 'focal-len '.s
 `set-word!`_  hello: focal-len: .s:
 `get-word!`_  :hello :focal-len :.s
-`char!`_      'a' '^-'
+`char!`_      'a' '^-' '^(01f3)'
 `int!`_       1 455 -22
 `decimal!`_   3.05  -4.
 `coord!`_     0,255,100  -1, 0, 0 
@@ -164,15 +164,26 @@ A boolean value of *true* or *false*.
 Char!
 -----
 
-Special characters can be specified with a caret (^).
+A Unicode character.  A char! can be specified with either a UTF-8 character
+between two single quotes, or an ASCII caret (^) sequence between two single
+quotes.
 
-========  ===============
-Sequence  Character
-========  ===============
-``'^0'``  Nul (0x00)
-``'^-'``  Tab (0x09)
-``'^/'``  New line (0x0A)
-========  ===============
+The following caret sequences can be used:
+
+===================  =======================
+Sequence             Character Value
+===================  =======================
+``'^-'``             Tab, 0x09
+``'^/'``             New line, 0x0A
+``'^^'``             Caret, 0x5E
+``'^0'`` - ``'^F'``  Hexidecimal nibble, 0x00 - 0x0F
+``'^(xxxx)'``        Hexidecimal number, 0x0000 - 0xFFFF
+===================  =======================
+
+For example, a new line character could be declared in any of the following
+ways::
+
+    '^/' '^a' '^(0A)'
 
 
 Int!
@@ -293,14 +304,16 @@ String!
 Strings are UTF-8 text enclosed with either double quotes or braces.
 The text can span multiple lines in the script when braces are used.
 
-String examples:
+Strings can include the same caret character sequences as `char!`_ values.
 
-::
+String examples::
 
    "Alpha Centari"
 
    {This string
    spans multiple lines.}
+
+   "First line^/Second line^/"
 
 
 File!
