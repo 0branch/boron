@@ -695,7 +695,7 @@ void char_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
         else
         {
             uint8_t* cp;
-            ur_arrReserve( str, str->used + 8 );
+            ur_arrReserve( str, str->used + 9 );
             cp = str->ptr.b + str->used;
             *cp++ = '\'';
             if( str->form == UR_ENC_UTF8 )
@@ -705,7 +705,7 @@ void char_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
             else
             {
                 *cp++ = '^';
-                *cp++ = 'x';
+                *cp++ = '(';
                 if( n & 0xff00 )
                 {
                     *cp++ = _hexDigits[ ((n >> 12) & 0xf) ];
@@ -713,6 +713,7 @@ void char_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
                 }
                 *cp++ = _hexDigits[ ((n >> 4) & 0xf) ];
                 *cp++ = _hexDigits[ (n & 0xf) ];
+                *cp++ = ')';
             }
             *cp++ = '\'';
             str->used = cp - str->ptr.b;

@@ -386,17 +386,16 @@ int ur_caretChar( const uint8_t* it, const uint8_t* end, const uint8_t** pos )
         c = '\t';
     else if( c == '/' )
         c = '\n';
-    else if( c == 'x' )
+    else if( c == '(' )
     {
         int nib;
         c = 0;
         while( it != end )
         {
-            nib = *it;
+            nib = *it++;
             if( ! IS_HEX(nib) )
-                break;
+                break;          // Skipping what should be ')' here.
             c = (c << 4) + hexNibble(nib);
-            ++it;
         }
     }
     *pos = it;

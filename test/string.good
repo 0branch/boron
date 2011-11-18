@@ -23,6 +23,11 @@ latin1 ucs2
 }"
 "}"
 }
+---- caret hex
+ucs2 20
+"hash: # AE: Ǣ xai: Ϧ"
+hash: # AE: Ǣ xai: Ϧ
+"hash: # AE: ¿ xai: ¿"
 ---- compare
 true
 ---- do

@@ -113,6 +113,9 @@ UBuffer* ur_makeStringCell( UThread* ut, int enc, int size, UCell* cell )
 }
 
 
+extern int ur_caretChar( const uint8_t* it, const uint8_t* end,
+                         const uint8_t** pos );
+
 /*
    Convert UTF-8 to UCS-2
 */
@@ -130,6 +133,12 @@ static void _makeString2( UBuffer* str, const uint8_t* it, const uint8_t* end )
 
         if( ch <= 0x7f )
         {
+            if( ch == '^' )
+            {
+                // Filter caret escape sequence.
+                if( it != end )
+                    ch = ur_caretChar( it, end, &it );
+            }
             *out++ = ch;
         }
         else if( ch >= 0xc2 && ch <= 0xdf )
@@ -161,9 +170,6 @@ static void _makeString2( UBuffer* str, const uint8_t* it, const uint8_t* end )
     str->used = out - str->ptr.u16;
 }
 
-
-extern int ur_caretChar( const uint8_t* it, const uint8_t* end,
-                         const uint8_t** pos );
 
 /**
   Generate and initialize a single string buffer from memory holding a
@@ -203,7 +209,7 @@ UIndex ur_makeStringUtf8( UThread* ut, const uint8_t* it, const uint8_t* end )
                     goto output_char;
                 }
             }
-
+make_ucs2:
             // Abandon latin1 string to GC.
             n = ur_makeString( ut, UR_ENC_UCS2, len );
             _makeString2( ur_buffer(n), start, end );
@@ -213,7 +219,11 @@ UIndex ur_makeStringUtf8( UThread* ut, const uint8_t* it, const uint8_t* end )
         {
             // Filter caret escape sequence.
             if( it != end )
+            {
                 ch = ur_caretChar( it, end, &it );
+                if( ch >= 256 )
+                    goto make_ucs2;
+            }
         }
 output_char:
         *out++ = ch;

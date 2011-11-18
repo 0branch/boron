@@ -38,6 +38,15 @@ probe "}"
 print "}"
 
 
+print "---- caret hex"
+a: "hash: ^(23) AE: ^(1E2) xai: ^(03e6)"
+print [encoding? a size? a]
+probe a
+print a
+b: encode 'latin1 a
+probe b
+
+
 print "---- compare"
 probe equal? "str" "STR"
 
