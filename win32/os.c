@@ -314,12 +314,49 @@ int ur_readDir( UThread* ut, const char* filename, UCell* res )
 
 
 #ifdef CONFIG_EXECUTE
-static int _execOutput( UThread* ut, const char* cmd, UCell* res, UBuffer* buf )
+static void _readPipe( HANDLE fd, UBuffer* buf )
 {
-#define BUFSIZE     512
+#define BUFSIZE     1024
+    DWORD nr;
+
+    buf->used = 0;
+    if( buf->type == UT_STRING )
+    {
+        int ucs2 = ur_strIsUcs2(buf);
+        ur_arrReserve( buf, BUFSIZE );
+        while( 1 )
+        {
+            if( ReadFile(fd, buf->ptr.c + buf->used, BUFSIZE, &nr, NULL) == 0 )
+                break;  // GetLastError();
+            if( nr == 0 )
+                break;
+            buf->used += ucs2 ? nr >> 1 : nr;
+            ur_arrReserve( buf, buf->used + BUFSIZE ); 
+        }
+    }
+    else
+    {
+        ur_binReserve( buf, BUFSIZE );
+        while( 1 )
+        {
+            if( ReadFile(fd, buf->ptr.c + buf->used, BUFSIZE, &nr, NULL) == 0 )
+                break;  // GetLastError();
+            if( nr == 0 )
+                break;
+            buf->used += nr;
+            ur_binReserve( buf, buf->used + BUFSIZE ); 
+        }
+    }
+}
+
+
+static int _execIO( UThread* ut, const char* cmd, UCell* res,
+                    const UBuffer* in, UBuffer* out )
+{
+    HANDLE childStdInR;
+    HANDLE childStdInW;
     HANDLE childStdOutR;
     HANDLE childStdOutW;
-    DWORD nr;
     SECURITY_ATTRIBUTES sec;
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
@@ -329,17 +366,37 @@ static int _execOutput( UThread* ut, const char* cmd, UCell* res, UBuffer* buf )
     sec.lpSecurityDescriptor = NULL;
     sec.bInheritHandle       = TRUE; 
 
-    if( ! CreatePipe( &childStdOutR, &childStdOutW, &sec, 0 ) ) 
-        return ur_error( ut, UR_ERR_INTERNAL, "CreatePipe failed\n" );
+    if( in )
+    {
+        if( ! CreatePipe( &childStdInR, &childStdInW, &sec, 0 ) ) 
+            return ur_error( ut, UR_ERR_INTERNAL, "CreatePipe failed\n" );
+        // Child does not inherit our end of pipe.
+        SetHandleInformation( childStdInW, HANDLE_FLAG_INHERIT, 0 );
+    }
 
-    SetHandleInformation( childStdOutR, HANDLE_FLAG_INHERIT, 0 );
+    if( out )
+    {
+        if( ! CreatePipe( &childStdOutR, &childStdOutW, &sec, 0 ) ) 
+        {
+            if( in )
+            {
+                CloseHandle( childStdInW );
+                CloseHandle( childStdInR );
+            }
+            return ur_error( ut, UR_ERR_INTERNAL, "CreatePipe failed\n" );
+        }
+        // Child does not inherit our end of pipe.
+        SetHandleInformation( childStdOutR, HANDLE_FLAG_INHERIT, 0 );
+    }
 
     ZeroMemory( &si, sizeof(si) );
-    si.cb         = sizeof(si);
-    si.hStdError  = childStdOutW;
-    si.hStdOutput = childStdOutW;
-    si.hStdInput  = NULL;
-    si.dwFlags    = STARTF_USESTDHANDLES;
+    si.cb = sizeof(si);
+    if( in || out )
+    {
+        si.hStdError = si.hStdOutput = out ? childStdOutW : NULL;
+        si.hStdInput = in ? childStdInR : NULL;
+        si.dwFlags   = STARTF_USESTDHANDLES;
+    }
 
     ZeroMemory( &pi, sizeof(pi) );
 
@@ -356,46 +413,36 @@ static int _execOutput( UThread* ut, const char* cmd, UCell* res, UBuffer* buf )
         &pi )             // Pointer to PROCESS_INFORMATION structure.
     )
     {
-        CloseHandle( childStdOutW );
-        CloseHandle( childStdOutR );
+        if( in )
+        {
+            CloseHandle( childStdInW );
+            CloseHandle( childStdInR );
+        }
+        if( out )
+        {
+            CloseHandle( childStdOutW );
+            CloseHandle( childStdOutR );
+        }
         return ur_error( ut, UR_ERR_INTERNAL,
                          "CreateProcess failed (%d).\n", GetLastError() );
     }
 
-    CloseHandle( childStdOutW );
-
-    buf->used = 0;
-    if( buf->type == UT_STRING )
+    if( in )
     {
-        int ucs2 = ur_strIsUcs2(buf);
-        ur_arrReserve( buf, BUFSIZE ); 
-        while( 1 )
-        {
-            if( ReadFile( childStdOutR, buf->ptr.c + buf->used, BUFSIZE,
-                          &nr, NULL ) == 0 )
-                break;  // GetLastError();
-            if( nr == 0 )
-                break;
-            buf->used += ucs2 ? nr >> 1 : nr;
-            ur_arrReserve( buf, buf->used + BUFSIZE ); 
-        }
-    }
-    else
-    {
-        ur_binReserve( buf, BUFSIZE ); 
-        while( 1 )
-        {
-            if( ReadFile( childStdOutR, buf->ptr.c + buf->used, BUFSIZE,
-                          &nr, NULL ) == 0 )
-                break;  // GetLastError();
-            if( nr == 0 )
-                break;
-            buf->used += nr;
-            ur_binReserve( buf, buf->used + BUFSIZE ); 
-        }
+        DWORD nw;
+        CloseHandle( childStdInR );
+        WriteFile( childStdInW, in->ptr.v,
+                   (in->type == UT_STRING) ? in->used * in->elemSize : in->used,
+                   &nw, NULL );
+        CloseHandle( childStdInW );
     }
 
-    // MSDN example does not CloseHandle(childStdOutR);
+    if( out )
+    {
+        CloseHandle( childStdOutW );
+        _readPipe( childStdOutR, out );
+        CloseHandle( childStdOutR );
+    }
 
     {
     DWORD code;
@@ -420,6 +467,7 @@ static int _execOutput( UThread* ut, const char* cmd, UCell* res, UBuffer* buf )
 }
 
 
+#if 0
 static int _execSimple( UThread* ut, const char* cmd, UCell* res )
 {
     STARTUPINFO si;
@@ -469,10 +517,20 @@ static int _execSimple( UThread* ut, const char* cmd, UCell* res )
 
     return UR_OK;
 }
+#endif
 
 
+/*
+  execute command /in input /out output
+*/
 CFUNC_PUB( cfunc_execute )
 {
+#define OPT_EXECUTE_IN   0x01
+#define OPT_EXECUTE_OUT  0x02
+    const UBuffer* in = 0;
+    UBuffer* out = 0;
+    int type;
+
     if( ! ur_is(a1, UT_STRING) )
     {
         ur_setId(res, UT_LOGIC);
@@ -480,25 +538,28 @@ CFUNC_PUB( cfunc_execute )
         return UR_OK;
     }
 
-    if( CFUNC_OPTIONS & 1 )
+    if( CFUNC_OPTIONS & OPT_EXECUTE_IN )
     {
-        UBuffer* buf;
-        int type = ur_type(a1 + 1);
+        type = ur_type(a1 + 1);
+        if( type != UT_BINARY && type != UT_STRING )
+            return ur_error( ut, UR_ERR_TYPE,
+                             "execute expected binary!/string! input" );
+        in = ur_bufferSer(a1 + 1);
+    }
 
+    if( CFUNC_OPTIONS & OPT_EXECUTE_OUT )
+    {
+        type = ur_type(a1 + 2);
         if( type != UT_BINARY && type != UT_STRING )
             return ur_error( ut, UR_ERR_TYPE,
                              "execute expected binary!/string! output" );
-        if( ! (buf = ur_bufferSerM(a1 + 1)) )
+        if( ! (out = ur_bufferSerM(a1 + 2)) )
             return UR_THROW;
-
-        return _execOutput( ut, boron_cstr( ut, a1, 0 ), res, buf );
     }
-    return _execSimple( ut, boron_cstr( ut, a1, 0 ), res );
+
+    return _execIO( ut, boron_cstr( ut, a1, 0 ), res, out );
 }
 #endif
-
-
-//void ur_installExceptionHandlers() {}
 
 
 /*EOF*/

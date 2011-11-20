@@ -249,23 +249,82 @@ term:
 }
 
 
-static int _execOutput( UThread* ut, char** argv, UCell* res, UBuffer* buf )
+static void _readPipe( int fd, UBuffer* buf )
 {
-#define BUFSIZE     512
-    int pid;
-    int pfd[2];
+#define BUFSIZE     1024
+    int n;
 
-    if( pipe(pfd) == -1 )
-        return ur_error( ut, UR_ERR_INTERNAL, "pipe failed" );
+    buf->used = 0;
+    if( buf->type == UT_STRING )
+    {
+        int ucs2 = ur_strIsUcs2(buf);
+        ur_arrReserve( buf, BUFSIZE ); 
+        while( (n = read( fd, buf->ptr.c + buf->used, BUFSIZE )) > 0 )
+        {
+            buf->used += ucs2 ? n >> 1 : n;
+            ur_arrReserve( buf, buf->used + BUFSIZE ); 
+        }
+    }
+    else
+    {
+        ur_binReserve( buf, BUFSIZE ); 
+        while( (n = read( fd, buf->ptr.c + buf->used, BUFSIZE )) > 0 )
+        {
+            buf->used += n;
+            ur_binReserve( buf, buf->used + BUFSIZE ); 
+        }
+    }
+}
+
+
+static void _closePipe( int pipe[2] )
+{
+    close( pipe[0] );
+    close( pipe[1] );
+}
+
+
+static int _execIO( UThread* ut, char** argv, UCell* res,
+                    const UBuffer* in, UBuffer* out )
+{
+    int pid;
+    int inPipe[2];
+    int outPipe[2];
+
+    if( in )
+    {
+        if( pipe(inPipe) == -1 )
+            return ur_error( ut, UR_ERR_INTERNAL, "pipe failed" );
+    }
+    if( out )
+    {
+        if( pipe(outPipe) == -1 )
+        {
+            if( in )
+                _closePipe( inPipe );
+            return ur_error( ut, UR_ERR_INTERNAL, "pipe failed" );
+        }
+    }
 
     pid = fork();
     if( pid == 0 )
     {
         // In child process; invoke command.
 
-        close( pfd[0] );
-        dup2( pfd[1], 1 );
-        close( pfd[1] );
+        if( in )
+        {
+            // Set stdin to pipe.
+            close( inPipe[1] );
+            dup2( inPipe[0], 0 );
+            close( inPipe[0] );
+        }
+        if( out )
+        {
+            // Set stdout to pipe.
+            close( outPipe[0] );
+            dup2( outPipe[1], 1 );
+            close( outPipe[1] );
+        }
 
         if( execvp( argv[0], argv ) == -1 )
         {
@@ -278,33 +337,22 @@ static int _execOutput( UThread* ut, char** argv, UCell* res, UBuffer* buf )
     {
         // In parent process.
 
-        int n;
         int status;
 
-        close( pfd[1] );
-
-        buf->used = 0;
-        if( buf->type == UT_STRING )
+        if( in )
         {
-            int ucs2 = ur_strIsUcs2(buf);
-            ur_arrReserve( buf, BUFSIZE ); 
-            while( (n = read( pfd[0], buf->ptr.c + buf->used, BUFSIZE )) > 0 )
-            {
-                buf->used += ucs2 ? n >> 1 : n;
-                ur_arrReserve( buf, buf->used + BUFSIZE ); 
-            }
+            close( inPipe[0] );
+            write( inPipe[1], in->ptr.v,
+                   (in->type == UT_STRING) ? in->used * in->elemSize
+                                           : in->used );
+            close( inPipe[1] );
         }
-        else
+        if( out )
         {
-            ur_binReserve( buf, BUFSIZE ); 
-            while( (n = read( pfd[0], buf->ptr.c + buf->used, BUFSIZE )) > 0 )
-            {
-                buf->used += n;
-                ur_binReserve( buf, buf->used + BUFSIZE ); 
-            }
+            close( outPipe[1] );
+            _readPipe( outPipe[0], out );
+            close( outPipe[0] );
         }
-
-        close( pfd[0] );
 
         waitpid( pid, &status, 0 );
         if( WIFEXITED(status) )
@@ -319,13 +367,17 @@ static int _execOutput( UThread* ut, char** argv, UCell* res, UBuffer* buf )
     else
     {
         // fork failed.
-        close( pfd[0] );
-        close( pfd[1] );
+
+        if( in )
+            _closePipe( inPipe );
+        if( out )
+            _closePipe( outPipe );
         return ur_error( ut, UR_ERR_INTERNAL, "fork failed" );
     }
 }
 
 
+#if 0
 #ifdef EXECUTE_WAIT
 static int _asyncProcCount = 0;
 #endif
@@ -391,13 +443,16 @@ static int _execSimple( UThread* ut, char**argv, UCell* res )
         return ur_error( ut, UR_ERR_INTERNAL, "fork failed" );
     }
 }
+#endif
 
 
 /*-cf-
     execute
         command     string!
+        /in         Provide data via stdin.
+            input   binary!/string!
         /out        Store output of command.
-            buffer  binary!/string!
+            output  binary!/string!
     return: return status of command
     group: os
 
@@ -405,7 +460,13 @@ static int _execSimple( UThread* ut, char**argv, UCell* res )
 */
 CFUNC_PUB( cfunc_execute )
 {
+#define OPT_EXECUTE_IN   0x01
+#define OPT_EXECUTE_OUT  0x02
     char* argv[10];
+    const UBuffer* in = 0;
+    UBuffer* out = 0;
+    int type;
+
 
     if( ! ur_is(a1, UT_STRING) )
     {
@@ -417,20 +478,26 @@ CFUNC_PUB( cfunc_execute )
     // Create arg list before fork to avoid any possible copy-on-write overhead.
     argumentList( boron_cstr( ut, a1, 0 ), argv, 9 );
 
-    if( CFUNC_OPTIONS & 1 )
+    if( CFUNC_OPTIONS & OPT_EXECUTE_IN )
     {
-        UBuffer* buf;
-        int type = ur_type(a1 + 1);
+        type = ur_type(a1 + 1);
+        if( type != UT_BINARY && type != UT_STRING )
+            return ur_error( ut, UR_ERR_TYPE,
+                             "execute expected binary!/string! input" );
+        in = ur_bufferSer(a1 + 1);
+    }
 
+    if( CFUNC_OPTIONS & OPT_EXECUTE_OUT )
+    {
+        type = ur_type(a1 + 2);
         if( type != UT_BINARY && type != UT_STRING )
             return ur_error( ut, UR_ERR_TYPE,
                              "execute expected binary!/string! output" );
-        if( ! (buf = ur_bufferSerM(a1 + 1)) )
+        if( ! (out = ur_bufferSerM(a1 + 2)) )
             return UR_THROW;
-
-        return _execOutput( ut, argv, res, buf );
     }
-    return _execSimple( ut, argv, res );
+
+    return _execIO( ut, argv, res, in, out );
 }
 
 
