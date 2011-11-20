@@ -131,6 +131,10 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
     FO_RESERVE(2); \
     FO_EMIT2(op,data)
 
+#define COMPLETE_OPT_ARGS \
+    options[ optionCount - 1 ].codeOffset = optCodeOffset; \
+    FO_EMIT_R( FO_option )
+
 
     ur_binReserve( prog, 16 );
     prog->ptr.b[0] = FO_clearLocal;
@@ -196,7 +200,7 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
                 if( optArgs )
                 {
                     optArgs = 0;
-                    options[ optionCount - 1 ].codeOffset = optCodeOffset;
+                    COMPLETE_OPT_ARGS;
                 }
             }
             else
@@ -214,7 +218,11 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
                     {
                         ++optArgs;
                         FO_RESERVE( 3 );
-                        FO_EMIT( FO_option );
+                        if( prog->ptr.b[ prog->used - 1 ] != FO_option )
+                        {
+                            FO_EMIT( FO_option );
+                        }
+                        optCodeOffset = prog->used;
                         FO_EMIT2( FO_setArgPos, localCount );
                     }
                 }
@@ -226,11 +234,13 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
             break;
 
         case UT_OPTION:
+            // TODO: Throw error rather than assert.
             assert( optAtom != ATOM_LOCAL );
+            assert( optionCount < MAX_OPT );
             if( optArgs )
             {
                 optArgs = 0;
-                options[ optionCount - 1 ].codeOffset = optCodeOffset;
+                COMPLETE_OPT_ARGS;
             }
             optAtom = ur_atom(bi.it);
             if( optAtom == UR_ATOM_GHOST )
@@ -238,7 +248,6 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
                 ur_setFlags(fcell, FUNC_FLAG_GHOST);
                 break;
             }
-            optCodeOffset = prog->used + 1;
             options[ optionCount ].atom = optAtom;
             options[ optionCount ].optN = optionCount;
             options[ optionCount ].codeOffset = 0;
@@ -251,8 +260,7 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
 
     if( optArgs )
     {
-        options[ optionCount - 1 ].codeOffset = optCodeOffset;
-        FO_EMIT_R( FO_option );     // Terminate last option sequence.
+        COMPLETE_OPT_ARGS;      // Complete last option sequence.
     }
 
     if( optionCount )
@@ -272,6 +280,12 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
         UIndex pbufN;
         int progLen = (prog->used + 3) & ~3;
         int optTableLen = optionCount * sizeof(FuncOption);
+
+#if 0
+        for( pbufN = 0; pbufN < prog->used; ++pbufN )
+            printf( " %d", prog->ptr.b[ pbufN ] );
+        printf( "\n" );
+#endif
 
         // Finish with prog before ur_genBuffers().
         mem = (uint8_t*) memAlloc( progLen + optTableLen );
