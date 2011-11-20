@@ -150,7 +150,10 @@ EXPORTS
     bignum_add              @148
     bignum_sub              @149
     bignum_mul              @150
-    find_pattern_uint8_t    @151
-    find_pattern_ic_uint8_t @152
-    find_pattern_uint16_t   @153
-    find_pattern_ic_uint16_t    @154
+    find_uint8_t            @151
+    find_uint16_t           @152
+    find_uint32_t           @153
+    find_pattern_uint8_t    @154
+    find_pattern_ic_uint8_t @155
+    find_pattern_uint16_t   @156
+    find_pattern_ic_uint16_t    @157
