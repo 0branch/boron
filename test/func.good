@@ -38,6 +38,12 @@ true false none false
 false true 66 false
 false false none true
 true false none true
+---- option ordering
+false none false none
+true 1 false none
+false none true 2
+true 1 true 2
+true 1 true 2
 ---- empty body
 ---- compare
 false

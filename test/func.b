@@ -91,6 +91,15 @@ mo/any
 mo/opt/any
 
 
+print "---- option ordering"
+mof: func [/a arg1 /b arg2]  [print [a arg1 b arg2]]
+mof
+mof/a 1
+mof/b 2
+mof/a/b 1 2
+mof/b/a 2 1
+
+
 print "---- empty body"
 ef:  func [blk block!] []
 ef [1 2]

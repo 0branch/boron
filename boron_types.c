@@ -72,7 +72,8 @@ enum FuncArgumentOpcodes
     FO_variant,       // n       Push variant int! onto dstack.
     FO_checkArg,      // t       Check last argument type.
     FO_checkArgMask,  // 2*u32   Check last argument type against mask.
-    FO_option,        // n skip  Skip number of instructions if option off.
+    FO_option,        //         Check for more optional arguments.
+    FO_setArgPos,     // n       Set dstack position for argument fetch.
     FO_nop,           //         Ignore instruction.
     FO_nop2,          // i       Ignore instruction and the next.
     FO_end            //         End function program.
@@ -82,7 +83,8 @@ enum FuncArgumentOpcodes
 typedef struct
 {
     UAtom    atom;
-    uint16_t n;     // Option number (to be used when table sorted by atom).
+    uint8_t  optN;      // Option number (to be used when table sorted by atom).
+    uint8_t  codeOffset;    // Index of option instructions in program.
 }
 FuncOption;
 
@@ -107,7 +109,7 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
     int localCount = 0;
     int optionCount = 0;
     int optArgs = 0;
-    int prevOptPos = 0;
+    int optCodeOffset = 0;
     UAtom optAtom = 0;
     UBuffer* prog = ur_buffer( BT->tempN );
 
@@ -191,7 +193,11 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
             else if( ur_atom(bi.it) == ATOM_LOCAL )
             {
                 optAtom = ATOM_LOCAL;
-                goto close_option;
+                if( optArgs )
+                {
+                    optArgs = 0;
+                    options[ optionCount - 1 ].codeOffset = optCodeOffset;
+                }
             }
             else
             {
@@ -207,10 +213,9 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
                     if( ! optArgs )
                     {
                         ++optArgs;
-                        prevOptPos = prog->used;
                         FO_RESERVE( 3 );
                         FO_EMIT( FO_option );
-                        FO_EMIT2( optionCount - 1, 0 );
+                        FO_EMIT2( FO_setArgPos, localCount );
                     }
                 }
                 ++localCount;
@@ -222,29 +227,33 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
 
         case UT_OPTION:
             assert( optAtom != ATOM_LOCAL );
+            if( optArgs )
+            {
+                optArgs = 0;
+                options[ optionCount - 1 ].codeOffset = optCodeOffset;
+            }
             optAtom = ur_atom(bi.it);
             if( optAtom == UR_ATOM_GHOST )
             {
                 ur_setFlags(fcell, FUNC_FLAG_GHOST);
                 break;
             }
+            optCodeOffset = prog->used + 1;
             options[ optionCount ].atom = optAtom;
-            options[ optionCount ].n    = 0;
+            options[ optionCount ].optN = optionCount;
+            options[ optionCount ].codeOffset = 0;
             ++optionCount;
             if( optCtx )
                 ur_ctxAddWordI( optCtx, ur_atom(bi.it) );
-close_option:
-            if( optArgs )
-            {
-                optArgs = 0;
-                prog->ptr.b[ prevOptPos + 2 ] = prog->used - prevOptPos - 1;
-            }
             break;
         }
     }
 
     if( optArgs )
-        prog->ptr.b[ prevOptPos + 2 ] = prog->used - prevOptPos - 1;
+    {
+        options[ optionCount - 1 ].codeOffset = optCodeOffset;
+        FO_EMIT_R( FO_option );     // Terminate last option sequence.
+    }
 
     if( optionCount )
     {
@@ -370,7 +379,11 @@ const UCell* func_select( UThread* ut, const UCell* cell, const UCell* sel,
             {
                 if( atom == it->atom )
                 {
-                    BT->funcOptions |= 1 << (it - opt);
+                    // NOTE: If ur_pathCell() is called outside boron_eval1()
+                    // then jumpEnd could go past end of fo.optionJump.
+                    if( it->codeOffset /*&& called_from_eval1*/ )
+                        BT->fo.optionJump[ BT->fo.jumpEnd++ ] = it->codeOffset;
+                    BT->fo.optionMask |= 1 << it->optN;
                     return cell;
                 }
             }
@@ -382,7 +395,7 @@ const UCell* func_select( UThread* ut, const UCell* cell, const UCell* sel,
     {
         ur_error( ut, UR_ERR_SCRIPT, "function select expected word!" );
     }
-    BT->funcOptions = 0;
+    BT->fo.optionMask = 0;
     return 0;
 }
 

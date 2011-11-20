@@ -50,7 +50,7 @@ int boron_doBlock( UThread* ut, const UCell* ec, UCell* res );
 int boron_eval1( UThread* ut, UCell* blkC, UCell* res );
 
 #define MAX_OPT     8       // LIMIT: 8 options per func/cfunc.
-#define OPT_BITS(c) (c)->series.end
+#define OPT_BITS(c) (c)->id._pad0
 
 #define DT(dt)          (ut->types[ dt ])
 #define SERIES_DT(dt)   ((const USeriesType*) (ut->types[ dt ]))
@@ -67,6 +67,19 @@ typedef struct
 LocalFrame;
 
 
+// UCellFuncOpt is stored on the data stack just before function arguments.
+typedef struct
+{
+    uint8_t  type;          // UT_LOGIC (For UR_BIND_OPTION result).
+    uint8_t  flags;
+    uint16_t optionMask;    // UCellId _pad0
+    uint8_t  optionJump[ MAX_OPT ];
+    uint16_t jumpIt;
+    uint16_t jumpEnd;
+}
+UCellFuncOpt;
+
+
 typedef struct BoronThread
 {
     UThread ut;
@@ -81,7 +94,7 @@ typedef struct BoronThread
     UIndex  dstackN;
     UIndex  fstackN;
     UIndex  tempN;
-    uint32_t funcOptions;
+    UCellFuncOpt fo;
 #ifdef CONFIG_ASSEMBLE
     jit_context_t jit;
     UAtomEntry* insTable;
@@ -201,6 +214,7 @@ static void boron_threadInit( UThread* ut )
     ut->wordCell  = boron_wordCell;
     ut->wordCellM = boron_wordCellM;
     BT->requestAccess = 0;
+    ur_setId( &BT->fo, UT_LOGIC );
 
     // Create evalData block.  This never changes size so we can safely
     // keep a pointer to the cells.
@@ -1132,8 +1146,8 @@ static int boron_call( UThread* ut, const UCellFunc* fcell, UCell* blkC,
         {
             UCell* it;
             UCell* end;
-            const UBuffer* abuf = ur_bufferE( fcopy.argBufN );
-            const uint8_t* pc = abuf->ptr.b;
+            const uint8_t* progStart = ur_bufferE( fcopy.argBufN )->ptr.b;
+            const uint8_t* pc = progStart;
             while( (ok = *pc++) < FO_end ) 
             {
                 switch( ok )
@@ -1144,16 +1158,14 @@ static int boron_call( UThread* ut, const UCellFunc* fcell, UCell* blkC,
 
                         if( ! (args = boron_stackPushN( ut, nc )) )
                         {
-                            BT->funcOptions = 0;
+                            BT->fo.optionMask = 0;
                             goto traceError;
                         }
                         end = args + nc;
                         if( ok == FO_clearLocalOpt )
                         {
-                            ur_setId(args, UT_LOGIC);
-                            OPT_BITS(args) = BT->funcOptions;
-                            BT->funcOptions = 0;
-                            ++args;
+                            *args++ = *((UCell*) &BT->fo);
+                            BT->fo.optionMask = 0;
                         }
 
                         for( it = args; it != end; ++it )
@@ -1210,10 +1222,23 @@ bad_arg:
                         break;
 
                     case FO_option:
-                        if( OPT_BITS(args - 1) & (1 << *pc) )
-                            pc += 2;
+                    {
+                        UCellFuncOpt* fopt = (UCellFuncOpt*) (args - 1);
+                        if( fopt->jumpIt < fopt->jumpEnd )
+                        {
+                            pc = progStart + fopt->optionJump[ fopt->jumpIt++ ];
+                        }
                         else
-                            pc += pc[1];
+                        {
+                            // TODO: Should continue with program
+                            //       (there may be a variant, etc).
+                            goto prog_done;
+                        }
+                    }
+                        break;
+
+                    case FO_setArgPos:
+                        it = args + *pc++;
                         break;
 
                     case FO_nop:
@@ -1225,6 +1250,9 @@ bad_arg:
                 }
             }
         }
+
+prog_done:
+
         assert( nc );
 
         if( fcopy.id.type == UT_CFUNC )
@@ -1391,14 +1419,17 @@ int boron_eval1( UThread* ut, UCell* blkC, UCell* res )
 
         case UT_PATH:
         {
-            int headType = ur_pathCell( ut, cell, res );
+            int headType;
+
+            BT->fo.jumpEnd = 0;
+            headType = ur_pathCell( ut, cell, res );
             if( ! headType )
                 goto traceError;
             if( (ur_is(res, UT_CFUNC) || ur_is(res, UT_FUNC)) &&
                 headType == UT_WORD )
             {
                 cell = res;
-                goto call_func;
+                goto call_func_option;
             }
         }
             ++blkC->series.it;
@@ -1422,6 +1453,10 @@ set_res:
     return UR_OK;
 
 call_func:
+
+    BT->fo.jumpEnd = 0;
+
+call_func_option:
 
     ++blkC->series.it;
     if( boron_call( ut, (UCellFunc*) cell, blkC, res ) )
