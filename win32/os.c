@@ -350,7 +350,7 @@ static void _readPipe( HANDLE fd, UBuffer* buf )
 }
 
 
-static int _execIO( UThread* ut, const char* cmd, UCell* res,
+static int _execIO( UThread* ut, char* cmd, UCell* res,
                     const UBuffer* in, UBuffer* out )
 {
     HANDLE childStdInR;
@@ -360,6 +360,7 @@ static int _execIO( UThread* ut, const char* cmd, UCell* res,
     SECURITY_ATTRIBUTES sec;
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
+    DWORD flags = 0;
 
 
     sec.nLength              = sizeof(SECURITY_ATTRIBUTES); 
@@ -387,13 +388,22 @@ static int _execIO( UThread* ut, const char* cmd, UCell* res,
         }
         // Child does not inherit our end of pipe.
         SetHandleInformation( childStdOutR, HANDLE_FLAG_INHERIT, 0 );
+        flags = DETACHED_PROCESS;
     }
 
     ZeroMemory( &si, sizeof(si) );
     si.cb = sizeof(si);
     if( in || out )
     {
-        si.hStdError = si.hStdOutput = out ? childStdOutW : NULL;
+        if( out )
+        {
+            si.hStdError = si.hStdOutput = childStdOutW;
+        }
+        else
+        {
+            si.hStdError  = GetStdHandle( STD_ERROR_HANDLE );
+            si.hStdOutput = GetStdHandle( STD_OUTPUT_HANDLE );
+        }
         si.hStdInput = in ? childStdInR : NULL;
         si.dwFlags   = STARTF_USESTDHANDLES;
     }
@@ -406,7 +416,7 @@ static int _execIO( UThread* ut, const char* cmd, UCell* res,
         NULL,             // Process handle not inheritable. 
         NULL,             // Thread handle not inheritable. 
         TRUE,             // Handle inheritance. 
-        DETACHED_PROCESS, // Prevent pop-up of MSDOS windows.
+        flags,            // Creation flags.
         NULL,             // Use parent's environment block. 
         NULL,             // Use parent's starting directory. 
         &si,              // Pointer to STARTUPINFO structure.
@@ -464,6 +474,7 @@ static int _execIO( UThread* ut, const char* cmd, UCell* res,
     // Close process and thread handles. 
     CloseHandle( pi.hProcess );
     CloseHandle( pi.hThread );
+    return UR_OK;
 }
 
 
@@ -557,7 +568,7 @@ CFUNC_PUB( cfunc_execute )
             return UR_THROW;
     }
 
-    return _execIO( ut, boron_cstr( ut, a1, 0 ), res, out );
+    return _execIO( ut, boron_cstr( ut, a1, 0 ), res, in, out );
 }
 #endif
 
