@@ -780,6 +780,9 @@ UDatatype dt_char =
 extern int64_t str_toInt64( const char*, const char*, const char** pos );
 extern int64_t str_hexToInt64( const char*, const char*, const char** pos );
 
+#define MAKE_NO_UCS2(tn) \
+    ur_error(ut,UR_ERR_INTERNAL,"make %s does not handle UCS2 strings",tn)
+
 int int_make( UThread* ut, const UCell* from, UCell* res )
 {
     ur_setId(res, UT_INT);
@@ -807,9 +810,7 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
             ur_seriesSlice( ut, &si, from );
             if( ur_strIsUcs2(si.buf) )
             {
-                return ur_error( ut, UR_ERR_INTERNAL,
-                        "FIXME: make number does not handle UCS2 strings" );
-                //ur_int(res) = 0;
+                return MAKE_NO_UCS2( "int!" );
             }
             else
             {
@@ -990,9 +991,7 @@ int decimal_make( UThread* ut, const UCell* from, UCell* res )
             USeriesIter si;
             ur_seriesSlice( ut, &si, from );
             if( ur_strIsUcs2(si.buf) )
-                return ur_error( ut, UR_ERR_INTERNAL,
-                        "FIXME: make number does not handle UCS2 strings" );
-                //ur_decimal(res) = 0;
+                return MAKE_NO_UCS2( "decimal!" );
             else
                 ur_decimal(res) = str_toDouble( si.buf->ptr.c + si.it,
                                                 si.buf->ptr.c + si.end, 0 );
@@ -1193,9 +1192,7 @@ int bignum_make( UThread* ut, const UCell* from, UCell* res )
             ur_setId(res, UT_BIGNUM);
             if( ur_strIsUcs2(si.buf) )
             {
-                return ur_error( ut, UR_ERR_INTERNAL,
-                        "FIXME: make number does not handle UCS2 strings" );
-                //bignum_zero( res );
+                return MAKE_NO_UCS2( "bignum!" );
             }
             else
             {
@@ -1250,6 +1247,8 @@ UDatatype dt_bignum =
 // UT_TIME
 
 
+double str_toTime( const char* start, const char* end, const char** pos );
+
 int time_make( UThread* ut, const UCell* from, UCell* res )
 {
     switch( ur_type(from) )
@@ -1262,9 +1261,25 @@ int time_make( UThread* ut, const UCell* from, UCell* res )
             ur_setId(res, UT_TIME);
             ur_decimal(res) = ur_decimal(from);
             break;
+        case UT_STRING:
+        {
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, from );
+            if( ur_strIsUcs2(si.buf) )
+            {
+                return MAKE_NO_UCS2( "time!" );
+            }
+            else
+            {
+                const char* cp  = si.buf->ptr.c;
+                ur_setId(res, UT_TIME);
+                ur_decimal(res) = str_toTime( cp + si.it, cp + si.end, 0 );
+            }
+        }
+            break;
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                "make time! expected int!/decimal!" );
+                "make time! expected int!/decimal!/string!" );
     }
     return UR_OK;
 }
@@ -3341,8 +3356,7 @@ int block_make( UThread* ut, const UCell* from, UCell* res )
         }
         else
         {
-            ur_error( ut, UR_ERR_TYPE,
-                      "FIXME: make block! does not handle UCS2 string!" );
+            MAKE_NO_UCS2( "block!" );
         }
         return UR_THROW;
     }
