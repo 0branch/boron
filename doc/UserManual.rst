@@ -173,11 +173,11 @@ The following caret sequences can be used:
 ===================  =======================
 Sequence             Character Value
 ===================  =======================
-``'^-'``             Tab, 0x09
-``'^/'``             New line, 0x0A
-``'^^'``             Caret, 0x5E
-``'^0'`` - ``'^F'``  Hexidecimal nibble, 0x00 - 0x0F
-``'^(xxxx)'``        Hexidecimal number, 0x0000 - 0xFFFF
+``^-``               Tab, 0x09
+``^/``               New line, 0x0A
+``^^``               Caret, 0x5E
+``^0`` - ``^F``      Hexidecimal nibble, 0x00 - 0x0F
+``^(xxxx)``          Hexidecimal number, 0x0000 - 0xFFFF
 ===================  =======================
 
 For example, a new line character could be declared in any of the following
