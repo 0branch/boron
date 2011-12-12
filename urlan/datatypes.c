@@ -1285,6 +1285,36 @@ int time_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+int time_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    (void) ut;
+
+    switch( test )
+    {
+        case UR_COMPARE_SAME:
+            return ur_decimal(a) == ur_decimal(b);
+
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) == ur_type(b) )
+                return ur_decimal(a) == ur_decimal(b);
+            break;
+
+        case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
+            if( ur_type(a) == ur_type(b) )
+            {
+                if( ur_decimal(a) > ur_decimal(b) )
+                    return 1;
+                if( ur_decimal(a) < ur_decimal(b) )
+                    return -1;
+            }
+            break;
+    }
+    return 0;
+}
+
+
 void time_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     int seg;
@@ -1326,7 +1356,7 @@ UDatatype dt_time =
 {
     "time!",
     time_make,              time_make,              unset_copy,
-    decimal_compare,        decimal_operate,        unset_select,
+    time_compare,           decimal_operate,        unset_select,
     time_toString,          time_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
@@ -1338,13 +1368,42 @@ UDatatype dt_time =
 
 
 extern void date_toString( UThread*, const UCell*, UBuffer*, int );
+extern double ur_stringToDate( const char*, const char*, const char** );
+
+
+int date_make( UThread* ut, const UCell* from, UCell* res )
+{
+    switch( ur_type(from) )
+    {
+        case UT_STRING:
+        {
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, from );
+            if( ur_strIsUcs2(si.buf) )
+            {
+                return MAKE_NO_UCS2( "date!" );
+            }
+            else
+            {
+                const char* cp  = si.buf->ptr.c;
+                ur_setId(res, UT_DATE);
+                ur_decimal(res) = ur_stringToDate( cp + si.it, cp + si.end, 0 );
+            }
+        }
+            break;
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                "make date! expected string!" );
+    }
+    return UR_OK;
+}
 
 
 UDatatype dt_date =
 {
     "date!",
-    unset_make,             unset_make,             unset_copy,
-    decimal_compare,        unset_operate,          unset_select,
+    date_make,              date_make,              unset_copy,
+    time_compare,           unset_operate,          unset_select,
     date_toString,          date_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
