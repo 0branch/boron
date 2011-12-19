@@ -63,7 +63,7 @@ static GWidget* listw_make( UThread* ut, UBlockIter* bi,
         ep->dp[0]      = ur_makeDrawProg( ut );
         ep->selCol     = -1;
         ep->selRow     = -1;
-        ep->itemHeight = 16;
+        ep->itemHeight = 0;
         ep->headerBlkN = arg[1].series.buf;
         ep->dataBlkN   = arg[2].series.buf;
 
@@ -223,7 +223,17 @@ key_handler:
 }
 
 
+static int listw_calcItemHeight( UThread* ut, GList* ep )
+{
+    TexFont* tf;
+    tf = ur_texFontV( ut, glEnv.guiStyle + CI_STYLE_LIST_FONT );
+    if( tf )
+        ep->itemHeight = txf_lineSpacing( tf ) + 2;
+}
+
+
 #define MAX_DIM     0x7fff
+#define MIN_COLW    120
 
 static void listw_sizeHint( GWidget* wp, GSizeHint* size )
 {
@@ -234,13 +244,16 @@ static void listw_sizeHint( GWidget* wp, GSizeHint* size )
     UThread* ut  = glEnv.guiUT;
 
 
+    if( ! ep->itemHeight )
+        listw_calcItemHeight( ut, ep );
+
     blk = ur_buffer( ep->headerBlkN );
     colCount = blk->used;
 
     blk = ur_buffer( ep->dataBlkN );
     rowCount = blk->used / colCount;
 
-    size->minW    = colCount * 100;
+    size->minW    = colCount * MIN_COLW;
     size->minH    = ep->itemHeight * (rowCount + 1);
     size->maxW    = MAX_DIM;
     size->maxH    = MAX_DIM;
@@ -265,15 +278,12 @@ static void listw_layout( GWidget* wp )
     EX_PTR;
     DPCompiler* save;
     DPCompiler dpc;
-    TexFont* tf;
 
 
     if( (ep->headerBlkN <= 0) ||(ep->dataBlkN <= 0) )
         return;
 
-    tf = ur_texFontV( ut, style + CI_STYLE_LIST_FONT );
-    if( tf )
-        ep->itemHeight = txf_lineSpacing( tf ) + 2;
+    listw_calcItemHeight( ut, ep );
 
     itemY = wp->area.y + wp->area.h - ep->itemHeight;
 
@@ -301,9 +311,9 @@ static void listw_layout( GWidget* wp )
 
         rc = style + CI_STYLE_AREA;
         rc->coord.len = 4;
-        rc->coord.n[0] = wp->area.x + (col * 200);
+        rc->coord.n[0] = wp->area.x + (col * MIN_COLW);
         rc->coord.n[1] = itemY;
-        rc->coord.n[2] = 200;
+        rc->coord.n[2] = MIN_COLW;
         rc->coord.n[3] = ep->itemHeight;
 
         rc = style + CI_STYLE_LIST_HEADER;
@@ -345,9 +355,9 @@ static void listw_layout( GWidget* wp )
 
             rc = style + CI_STYLE_AREA;
             rc->coord.len = 4;
-            rc->coord.n[0] = wp->area.x + (col * 200);
+            rc->coord.n[0] = wp->area.x + (col * MIN_COLW);
             rc->coord.n[1] = itemY;
-            rc->coord.n[2] = 200;
+            rc->coord.n[2] = MIN_COLW;
             rc->coord.n[3] = ep->itemHeight;
 
             rc = style + ((row == ep->selRow) ?

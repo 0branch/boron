@@ -203,7 +203,17 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 
                 if( ev->state & GLV_MASK_CTRL )
                 {
-                    if( ev->code == KEY_v )
+                    if( ev->code == KEY_k )
+                    {
+                        // Remove from cursor to end (from Bash).
+                        int len = str->used - ep->editPos;
+                        if( len > 0 )
+                        {
+                            ur_arrErase( str, ep->editPos, len );
+                            ledit_setChanged;
+                        }
+                    }
+                    else if( ev->code == KEY_v )
                     {
                         ledit_paste( ut, ep );
                         ledit_setChanged;
@@ -329,7 +339,7 @@ static void ledit_sizeHint( GWidget* wp, GSizeHint* size )
     size->maxH    = size->minH;
     size->weightX = 2;
     size->weightY = 1;
-    size->policyX = GW_WEIGHTED;
+    size->policyX = GW_EXPANDING;
     size->policyY = GW_FIXED;
 
     if( ep->strN )

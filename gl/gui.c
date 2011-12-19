@@ -245,8 +245,8 @@ static void expand_sizeHint( GWidget* wp, GSizeHint* size )
     size->minH    = 0;
     size->maxW    = MAX_DIM;
     size->maxH    = MAX_DIM;
-    size->weightX = 0;
-    size->weightY = 0;
+    size->weightX = 1;
+    size->weightY = 1;
     size->policyX = GW_EXPANDING;
     size->policyY = GW_EXPANDING;
 }
@@ -777,7 +777,7 @@ static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
             ++hint;
         }
 
-        if( avail > 0 )
+        if( avail > 0 && lo.expandWeight )
         {
             // Allocate unused space to expanders.
             hint = lo.hint;
@@ -909,7 +909,7 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
             ++hint;
         }
 
-        if( avail > 0 )
+        if( avail > 0 && lo.expandWeight )
         {
             // Allocate unused space to expanders.
             hint = lo.hint;
