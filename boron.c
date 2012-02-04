@@ -978,6 +978,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_loop,    "loop n body /ghost" );
     addCFunc( cfunc_select,  "select data val /last /case" );
     addCFunc( cfunc_switch,  "switch val body" );
+    addCFunc( cfunc_case,    "case body" );
     addCFunc( cfunc_first,   "first ser" );
     addCFunc( cfunc_second,  "second ser" );
     addCFunc( cfunc_third,   "third ser" );

@@ -1419,6 +1419,51 @@ CFUNC(cfunc_switch)
 }
 
 
+/*-cf-
+    case
+        options block!
+    return: Result of value following the first true case.
+    group: control
+*/
+CFUNC(cfunc_case)
+{
+    UCell bc2;
+    const UCell* found;
+
+    if( ! ur_is(a1, UT_BLOCK) )
+        return ur_error( ut, UR_ERR_TYPE, "case expected block! body" );
+
+    ur_setId( &bc2, UT_BLOCK );
+    bc2.series.buf = a1->series.buf;
+    bc2.series.it  = 0;
+    bc2.series.end = ur_bufferSer( a1 )->used;
+
+    while( bc2.series.it < bc2.series.end )
+    {
+        if( ! boron_eval1( ut, &bc2, res ) )
+            return UR_THROW;
+        if( ur_isTrue( res ) )
+        {
+            if( bc2.series.it >= bc2.series.end )
+                break;
+            found = ur_bufferSer( a1 )->ptr.cell + bc2.series.it;
+            if( ur_is(found, UT_BLOCK) || ur_is(found, UT_PAREN) )
+                return boron_doBlock( ut, found, res );
+
+            *res = *found;
+            return UR_OK;
+        }
+        else
+        {
+            ++bc2.series.it;
+        }
+    }
+
+    ur_setId(res, UT_NONE);
+    return UR_OK;
+}
+
+
 extern void coord_pick( const UCell* cell, int index, UCell* res );
 extern void vec3_pick( const UCell* cell, int index, UCell* res );
 #define ORD_ERR_MSG "%s expected series/coord!/vec3!"
@@ -3039,7 +3084,7 @@ CFUNC(cfunc_all)
         }
     }
 
-    ur_setId(res, UT_LOGIC );
+    ur_setId(res, UT_LOGIC);
     ur_int(res) = 1;
     return UR_OK;
 }
@@ -3072,7 +3117,7 @@ CFUNC(cfunc_any)
         }
     }
 
-    ur_setId(res, UT_LOGIC );
+    ur_setId(res, UT_LOGIC);
     ur_int(res) = 0;
     return UR_OK;
 }

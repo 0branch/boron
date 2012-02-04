@@ -34,3 +34,7 @@ false
 5
 Done
 ~unset!~
+---- case
+integer > 2
+operator ^
+word box

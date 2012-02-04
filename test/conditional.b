@@ -55,3 +55,12 @@ print while [gt? a 0] [
     if gt? a 5 [print "Done" break]
 ]
 
+
+print "---- case"
+foreach x [3 ^ 0 box] [
+    case [
+        find [^ & |] x       [print ['operator x]]
+        word? x              [print ['word x]]
+        all [int? x gt? x 2] [print "integer > 2"]
+    ]
+]
