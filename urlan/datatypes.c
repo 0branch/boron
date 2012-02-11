@@ -1258,6 +1258,8 @@ int time_make( UThread* ut, const UCell* from, UCell* res )
             ur_decimal(res) = (double) ur_int(from);
             break;
         case UT_DECIMAL:
+        case UT_TIME:
+        case UT_DATE:
             ur_setId(res, UT_TIME);
             ur_decimal(res) = ur_decimal(from);
             break;
@@ -1279,7 +1281,7 @@ int time_make( UThread* ut, const UCell* from, UCell* res )
             break;
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                "make time! expected int!/decimal!/string!" );
+                "make time! expected int!/decimal!/time!/date!/string!" );
     }
     return UR_OK;
 }
@@ -1375,6 +1377,11 @@ int date_make( UThread* ut, const UCell* from, UCell* res )
 {
     switch( ur_type(from) )
     {
+        case UT_TIME:
+        case UT_DATE:
+            ur_setId(res, UT_DATE);
+            ur_decimal(res) = ur_decimal(from);
+            break;
         case UT_STRING:
         {
             USeriesIter si;
@@ -1393,7 +1400,7 @@ int date_make( UThread* ut, const UCell* from, UCell* res )
             break;
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                "make date! expected string!" );
+                "make date! expected time!/date!/string!" );
     }
     return UR_OK;
 }
