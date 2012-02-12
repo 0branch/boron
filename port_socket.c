@@ -150,11 +150,27 @@ static int makeSockAddr( UThread* ut, SocketExt* ext, const NodeServ* ns )
 }
 
 
+static SocketExt* _socketPort( UThread* ut, UCell* cell, const char* funcName )
+{
+    SocketExt* ext;
+    UBuffer* pbuf = ur_buffer( cell->series.buf );
+    if( (pbuf->form == UR_PORT_EXT) && pbuf->ptr.v )
+    {
+        ext = ur_ptr(SocketExt, pbuf);
+        if( ext->dev == &port_socket )
+            return ext;
+    }
+    ur_error( ut, UR_ERR_SCRIPT, "%s expected socket port", funcName );
+    return 0;
+}
+
+
 /*-cf-
     set-addr
         socket      port!
-        address     string!
+        hostname    string!
     return: unset!
+    group: os
 
     Set Internet address of socket.
 */
@@ -164,20 +180,18 @@ CFUNC_PUB( cfunc_set_addr )
 
     ur_setId(res, UT_UNSET);
 
-    if( ur_is(a1, UT_PORT) && ur_is(addr, UT_STRING) )
+    if( ur_is(a1, UT_PORT) )
     {
-        UBuffer* pbuf = ur_buffer( a1->series.buf );
-        if( (pbuf->form == UR_PORT_EXT) && pbuf->ptr.v )
+        SocketExt* ext = _socketPort( ut, a1, "set-addr" );
+        if( ! ext )
+            return UR_THROW;
+
+        if( ur_is(addr, UT_STRING) )
         {
-            SocketExt* ext = ur_ptr(SocketExt, pbuf);
-            if( ext->dev == &port_socket )
-            {
-                NodeServ ns;
-                stringToNodeServ( ut, addr, &ns );
-                return makeSockAddr( ut, ext, &ns );
-            }
+            NodeServ ns;
+            stringToNodeServ( ut, addr, &ns );
+            return makeSockAddr( ut, ext, &ns );
         }
-        return ur_error( ut, UR_ERR_SCRIPT, "set-addr expected socket port" );
     }
     return ur_error( ut, UR_ERR_TYPE, "set-addr expected port! string!" );
 }
@@ -187,8 +201,9 @@ CFUNC_PUB( cfunc_set_addr )
     hostname
         socket      none!/port!
     return: string!
+    group: os
 
-    Get name of local host or peer.
+    Get name of local host (if socket is none) or peer (if socket is a port).
 */
 CFUNC_PUB( cfunc_hostname )
 {
@@ -199,21 +214,16 @@ CFUNC_PUB( cfunc_hostname )
 
     if( ur_is(a1, UT_PORT) )
     {
-        UBuffer* pbuf = ur_buffer( a1->series.buf );
-        if( (pbuf->form == UR_PORT_EXT) && pbuf->ptr.v )
-        {
-            SocketExt* ext = ur_ptr(SocketExt, pbuf);
-            if( ext->dev == &port_socket )
-            {
-                int err = getnameinfo( &ext->addr, ext->addrlen, host, HLEN,
-                                       0, 0, 0 );
-                if( ! err )
-                    goto makeStr;
-                return ur_error( ut, UR_ERR_ACCESS, "getnameinfo %s",
-                                 gai_strerror( err ) );
-            }
-        }
-        return ur_error( ut, UR_ERR_SCRIPT, "hostname expected socket port" );
+        int err;
+        SocketExt* ext = _socketPort( ut, a1, "hostname" );
+        if( ! ext )
+            return UR_THROW;
+
+        err = getnameinfo( &ext->addr, ext->addrlen, host, HLEN, 0, 0, 0 );
+        if( ! err )
+            goto makeStr;
+        return ur_error( ut, UR_ERR_ACCESS, "getnameinfo %s",
+                         gai_strerror( err ) );
     }
     else if( ur_is(a1, UT_NONE) )
     {

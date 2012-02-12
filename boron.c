@@ -489,7 +489,8 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 #define PORT_SITE(dev,pbuf,portC) \
     UBuffer* pbuf = ur_buffer( portC->series.buf ); \
     UPortDevice* dev = (pbuf->form == UR_PORT_SIMPLE) ? \
-        (UPortDevice*) pbuf->ptr.v : *((UPortDevice**) pbuf->ptr.v)
+        (UPortDevice*) pbuf->ptr.v : \
+        (pbuf->ptr.v ? *((UPortDevice**) pbuf->ptr.v) : 0)
 
 
 #ifdef CONFIG_CHECKSUM
