@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2011 Karl Robillard
+  Copyright 2009-2012 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -37,13 +37,15 @@
 
 
 #ifdef GC_REPORT
-void ur_gcReport( UBuffer* store, UThread* ut )
+#include "env.h"
+
+void ur_gcReport( const UBuffer* store, UThread* ut )
 {
     static const char datatypeChar[] = ".!nlcidDty+3w'::ob0s%v[(/|<CeFfp~~~~~";
     int used = 0;
     int unused = 0;
-    UBuffer* it  = store->ptr.buf;
-    UBuffer* end = it + store->used;
+    const UBuffer* it  = store->ptr.buf;
+    const UBuffer* end = it + store->used;
 
     while( it != end )
     {
@@ -72,6 +74,38 @@ void ur_gcReport( UBuffer* store, UThread* ut )
         }
     }
     dprint( "\n\n" );
+}
+
+
+void ur_blkReport( const UBuffer* store, const char* name )
+{
+    int used   = 0;
+    int excess = 0;
+    int count  = 0;
+    int sizeCount[4] = { 0, 0, 0, 0 };
+    const UBuffer* it  = store->ptr.buf;
+    const UBuffer* end = it + store->used;
+
+    while( it != end )
+    {
+        if( ur_isBlockType(it->type) )
+        {
+            if( it->ptr.cell )
+            {
+                used   += it->used * sizeof(UCell);
+                excess += (ur_avail(it) - it->used) * sizeof(UCell);
+            }
+            if( it->used < 4 )
+                ++sizeCount[ it->used ];
+            ++count;
+        }
+        ++it;
+    }
+    dprint( "%s blocks: %5d (%3d %3d %3d %3d)"
+            "  mem-used: %7d  mem-excess: %7d\n",
+            name, count, sizeCount[0], sizeCount[1], sizeCount[2], sizeCount[3],
+            used, excess
+          );
 }
 #endif
 
@@ -121,6 +155,8 @@ void ur_recycle( UThread* ut )
 
 #ifdef GC_REPORT
     dprint( "\nRecycle UThread %p:\n\n", (void*) ut );
+    ur_blkReport( &ut->env->dataStore, "Env" );
+    ur_blkReport( &ut->dataStore,      "Thr" );
     ur_gcReport( &ut->dataStore, ut );
 #endif
 
