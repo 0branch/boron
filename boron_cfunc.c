@@ -2873,6 +2873,14 @@ static inline UIndex _sliceEnd( const UBuffer* buf, const UCell* cell )
     return: Result of body.
     group: control
 */
+/*-cf-
+    remove-each
+        'words   word!/block!
+        series
+        body    block!
+    return: Result of body.
+    group: control
+*/
 CFUNC(cfunc_foreach)
 {
     const USeriesType* dt;
@@ -2882,6 +2890,7 @@ CFUNC(cfunc_foreach)
     UCell* cell;
     USeriesIter si;
     UBlockIterM wi;
+    int remove = ur_int(a1 + 3);
 
 
     // TODO: Handle custom series type.
@@ -2935,7 +2944,16 @@ CFUNC(cfunc_foreach)
 loop:
 
     dt = SERIES_DT( ur_type(sarg) );
-    ur_seriesSlice( ut, &si, sarg );
+    if( remove )
+    {
+        remove = wi.end - words;
+        if( ! ur_seriesSliceM( ut, (USeriesIterM*) &si, sarg ) )
+            return UR_THROW;
+    }
+    else
+    {
+        ur_seriesSlice( ut, &si, sarg );
+    }
     while( si.it < si.end )
     {
         wi.it = words;
@@ -2954,6 +2972,13 @@ loop:
         // Re-aquire buf & end.
         si.buf = ur_bufferSer( sarg );
         si.end = _sliceEnd( si.buf, sarg );
+
+        if( remove && ur_isTrue(res) )
+        {
+            si.it  -= remove;
+            si.end -= remove;
+            dt->remove( ut, (USeriesIterM*) &si, remove );
+        }
     }
     return UR_OK;
 }

@@ -38,3 +38,6 @@ two
 ---- map
 [3 4 5]
 "a b c;d-e"
+---- remove-each
+[a 2 2 b 3 3 c]
+[1 1 2 2 3 3]

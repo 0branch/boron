@@ -1015,7 +1015,8 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_difference, "difference a b" );
     addCFunc( cfunc_union,      "union a b" );
     addCFunc( cfunc_sort,       "sort ser /case /group size" );
-    addCFunc( cfunc_foreach,    "foreach 'w s body /ghost" );
+    addCFunc( cfunc_foreach,    "foreach 'w s body 0 /ghost" );
+    addCFunc( cfunc_foreach,    "remove-each 'w s body 1 /ghost" );
     addCFunc( cfunc_forall,     "forall 'w body /ghost" );
     addCFunc( cfunc_map,        "map 'w ser body /ghost" );
     addCFunc( cfunc_existsQ,    "exists? file" );

@@ -58,3 +58,11 @@ probe map x {a-b-c;d-e} [
         x
     ]
 ]
+
+
+print "---- remove-each"
+arr2: copy arr: [1 1 a 0 2 2 b 0 3 3 c 0]
+remove-each a arr [and int? a lt? a 2]
+probe arr
+remove-each [a b] arr2 [word? a]
+probe arr2
