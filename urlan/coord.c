@@ -1,5 +1,5 @@
 /*
-  Copyright 2009,2010 Karl Robillard
+  Copyright 2009,2010,2012 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -239,6 +239,21 @@ void coord_slice( const UCell* cell, int index, int count, UCell* res )
         res->coord.len = count;
         memCpy( res->coord.n, cell->coord.n + index, sizeof(int16_t) * count );
     }
+}
+
+
+/* index is zero-based */
+int coord_poke( UThread* ut, UCell* cell, int index, const UCell* src )
+{
+    if( (index < 0) || (index >= cell->coord.len) )
+        return ur_error( ut, UR_ERR_SCRIPT, "poke coord! index out of range" );
+
+    if( ur_is(src, UT_INT) || ur_is(src, UT_CHAR) )
+    {
+        cell->coord.n[ index ] = ur_int(src);
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE, "poke coord! expected char!/int!" );
 }
 
 

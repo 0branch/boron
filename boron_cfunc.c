@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2011 Karl Robillard
+  Copyright 2009-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -1465,7 +1465,7 @@ CFUNC(cfunc_case)
 
 
 extern void coord_pick( const UCell* cell, int index, UCell* res );
-extern void vec3_pick( const UCell* cell, int index, UCell* res );
+extern void vec3_pick ( const UCell* cell, int index, UCell* res );
 #define ORD_ERR_MSG "%s expected series/coord!/vec3!"
 
 
@@ -1813,17 +1813,15 @@ CFUNC(cfunc_tail)
 
 /*-cf-
     pick
-        series
+        series      series/coord!/vec3!
         position    int!
-    return: Value at position.
+    return: Value at position or none! if position is out of range.
     group: series
 */
 CFUNC(cfunc_pick)
 {
     UIndex n;
-    int type = ur_type(a1);
-    if( ! ur_isSeriesType( type ) )
-        return ur_error( ut, UR_ERR_TYPE, "pick expected series" );
+    int type;
 
     if( ur_is(a2, UT_INT) )
     {
@@ -1839,16 +1837,27 @@ CFUNC(cfunc_pick)
     else if( ur_is(a2, UT_LOGIC) )
         n = ur_int(a2) ? 0 : 1;
     else
-        return ur_error( ut, UR_ERR_TYPE, "pick expected logic!/int! position");
+        return errorType( "pick expected logic!/int! position" );
 
-    SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it + n, res );
+    type = ur_type(a1);
+    if( ur_isSeriesType( type ) )
+        SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it + n, res );
+    else if( type == UT_VEC3 )
+        vec3_pick( a1, n, res );
+    else if( type == UT_COORD )
+        coord_pick( a1, n, res );
+    else
+        return errorType( "pick expected series/coord!/vec3!" );
     return UR_OK;
 }
 
 
+extern int coord_poke( UThread*, UCell* cell, int index, const UCell* src );
+extern int vec3_poke ( UThread*, UCell* cell, int index, const UCell* src );
+
 /*-cf-
     poke
-        series
+        series      series/coord!/vec3!
         position    int!
         value
     return: series.
@@ -1858,9 +1867,7 @@ CFUNC(cfunc_poke)
 {
     UBuffer* buf;
     UIndex n;
-    int type = ur_type(a1);
-    if( ! ur_isSeriesType( type ) )
-        return ur_error( ut, UR_ERR_TYPE, "poke expected series" );
+    int type;
 
     if( ur_is(a2, UT_INT) )
     {
@@ -1868,22 +1875,27 @@ CFUNC(cfunc_poke)
         if( n > 0 )
             --n;
         else if( ! n )
-        {
-            ur_setId(res, UT_NONE);
-            return UR_OK;
-        }
+            return errorScript( "poke position out of range" );
     }
     else if( ur_is(a2, UT_LOGIC) )
         n = ur_int(a2) ? 0 : 1;
     else
-        return ur_error( ut, UR_ERR_TYPE, "poke expected logic!/int! position" );
+        return errorType( "poke expected logic!/int! position" );
 
-    if( ! (buf = ur_bufferSerM(a1)) )
-        return UR_THROW;
-
-    SERIES_DT( type )->poke( buf, a1->series.it + n, a3 );
     *res = *a1;
-    return UR_OK;
+    type = ur_type(a1);
+    if( ur_isSeriesType( type ) )
+    {
+        if( ! (buf = ur_bufferSerM(a1)) )
+            return UR_THROW;
+        SERIES_DT( type )->poke( buf, a1->series.it + n, a3 );
+        return UR_OK;
+    }
+    else if( type == UT_VEC3 )
+        return vec3_poke( ut, res, n, a3 );
+    else if( type == UT_COORD )
+        return coord_poke( ut, res, n, a3 );
+    return errorType( "poke expected series/coord!/vec3!" );
 }
 
 

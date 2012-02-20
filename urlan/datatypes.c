@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2011 Karl Robillard
+  Copyright 2009-2012 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -1539,6 +1539,27 @@ void vec3_pick( const UCell* cell, int index, UCell* res )
         ur_decimal(res) = cell->vec3.xyz[ index ];
     }
 }
+
+
+/* index is zero-based */
+int vec3_poke( UThread* ut, UCell* cell, int index, const UCell* src )
+{
+    float num;
+
+    if( (index < 0) || (index >= 3) )
+        return ur_error( ut, UR_ERR_SCRIPT, "poke vec3! index out of range" );
+
+    if( ur_is(src, UT_DECIMAL) )
+        num = (float) ur_decimal(src);
+    else if( ur_is(src, UT_INT) )
+        num = (float) ur_int(src);
+    else
+        return ur_error( ut, UR_ERR_TYPE, "poke vec3! expected int!/decimal!" );
+
+    cell->vec3.xyz[ index ] = num;
+    return UR_OK;
+}
+
 
 int vec3_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 {                       

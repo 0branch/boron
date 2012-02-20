@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2012 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -110,6 +110,9 @@ static UCell* ur_blkSelectWord( UBuffer* buf, UAtom atom )
 }
 
 
+extern int coord_poke( UThread*, UCell* cell, int index, const UCell* src );
+extern int vec3_poke ( UThread*, UCell* cell, int index, const UCell* src );
+
 /**
   Set path.  This copies src into the cell which the path refers to.
 
@@ -137,11 +140,12 @@ int ur_setPath( UThread* ut, const UCell* path, const UCell* src )
                 if( node )
                 {
                     int t = ur_type(node);
+                    int index = ur_int(bi.it) - 1;
                     if( ur_isBlockType(t) )
                     {
                         if( ! (buf = ur_bufferSerM(node)) )
                             return UR_THROW;
-                        t = node->series.it + ur_int(bi.it) - 1;
+                        t = node->series.it + index;
                         if( t > -1 && t < buf->used )
                         {
                             node = buf->ptr.cell + t;
@@ -155,9 +159,17 @@ int ur_setPath( UThread* ut, const UCell* path, const UCell* src )
                         if( bi.it + 1 == bi.end )
                         {
                             ((USeriesType*) ut->types[ t ])->poke( buf,
-                                    node->series.it + ur_int(bi.it) - 1, src );
+                                    node->series.it + index, src );
                             return UR_OK;
                         }
+                    }
+                    else if( t == UT_VEC3 )
+                    {
+                        return vec3_poke( ut, node, index, src );
+                    }
+                    else if( t == UT_COORD )
+                    {
+                        return coord_poke( ut, node, index, src );
                     }
                 }
                 goto err;
