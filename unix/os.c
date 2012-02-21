@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
-#include "os.h"
+#include "env.h"
 #include "os_file.h"
 #include "boron.h"
 
@@ -287,7 +287,7 @@ static void _closePipe( int pipe[2] )
 static int _execIO( UThread* ut, char** argv, UCell* res,
                     const UBuffer* in, UBuffer* out )
 {
-    int pid;
+    pid_t pid;
     int inPipe[2];
     int outPipe[2];
 
@@ -377,30 +377,77 @@ static int _execIO( UThread* ut, char** argv, UCell* res,
 }
 
 
-#if 0
-#ifdef EXECUTE_WAIT
-static int _asyncProcCount = 0;
-#endif
+#define MAX_SPAWN   4
+static pid_t _spawnPids[ MAX_SPAWN ] = { 0, 0, 0, 0 };
+static char  _sigchldInstalled = 0;
 
-static int _execSimple( UThread* ut, char**argv, UCell* res )
+
+/*
+    Must call wait() or waitpid() when SIGCHLD is received to avoid zombies.
+    Using wait() is not an option since it may get the status of a process
+    forked by _execIO.
+*/
+static void _childHandler( int signum, siginfo_t* info, void* context )
 {
-    int pid;
     int status;
-#ifdef EXECUTE_WAIT
-    int waitRef;
+    int i;
+    pid_t pid = info->si_pid;
 
-    waitRef = orRefineSet(REF_CALL_WAIT);
-    if( ! waitRef )
+    (void) signum;
+    (void) context;
+
+    for( i = 0; i < MAX_SPAWN; ++i )
     {
-        // Need to call wait() when SIGCHLD is received to avoid zombies.
-        /*
-         FIXME: Using _asyncProcCount may cause the signal handler to get
-         the status if call/wait is called while an asynchronous process is
-         still running.
-        */
-        _asyncProcCount++;
+        if( pid == _spawnPids[i] )
+        {
+            waitpid( pid, &status, 0 );
+            _spawnPids[i] = 0;
+            return;
+        }
     }
-#endif
+}
+
+
+/*
+    NOTE: Cannot use _execSpawn if using Qt's QProcess (it uses SIGCHLD).
+*/
+static int _execSpawn( UThread* ut, char** argv, UCell* res )
+{
+    UEnv* env = ut->env;
+    pid_t pid;
+    int pslot;
+
+
+    LOCK_GLOBAL
+
+    if( ! _sigchldInstalled )
+    {
+        struct sigaction childSA;
+
+        _sigchldInstalled = 1;
+
+        childSA.sa_sigaction = _childHandler;
+        childSA.sa_flags     = SA_SIGINFO | SA_NOCLDSTOP;
+        sigemptyset( &childSA.sa_mask );
+
+        sigaction( SIGCHLD, &childSA, NULL );
+    }
+
+    for( pslot = 0; pslot < MAX_SPAWN; ++pslot )
+    {
+        if( ! _spawnPids[ pslot ] )
+        {
+            // Using PID 1 as placeholder till fork returns the actual PID.
+            _spawnPids[ pslot ] = 1;
+            break;
+        }
+    }
+
+    UNLOCK_GLOBAL
+
+    if( pslot == MAX_SPAWN )
+        return ur_error( ut, UR_ERR_INTERNAL,
+                         "execute only handles %d spawn", MAX_SPAWN );
 
     pid = fork();
     if( pid == 0 )
@@ -417,33 +464,22 @@ static int _execSimple( UThread* ut, char**argv, UCell* res )
     else if( pid > 0 )
     {
         // In parent process.
+        // NOTE: If somehow the child exits and _childHandler is called
+        //       before _spawnPids is set here then we'll get a zombie and
+        //       the pslot will remain forever.
 
-#ifdef EXECUTE_WAIT
-        if( waitRef )
-#endif
-        {
-            waitpid( pid, &status, 0 );
-            if( WIFEXITED(status) )
-            {
-                ur_setId(res, UT_INT);
-                ur_int(res) = WEXITSTATUS( status );
-                return UR_OK;
-            }
-        }
-        ur_setId(res, UT_NONE);
+        _spawnPids[ pslot ] = pid;
+
+        ur_setId(res, UT_INT);
+        ur_int(res) = pid;
         return UR_OK;
     }
     else
     {
         // fork failed.
-#ifdef EXECUTE_WAIT
-        if( ! waitRef )
-            --_asyncProcCount;
-#endif
         return ur_error( ut, UR_ERR_INTERNAL, "fork failed" );
     }
 }
-#endif
 
 
 /*-cf-
@@ -453,19 +489,24 @@ static int _execSimple( UThread* ut, char**argv, UCell* res )
             input   binary!/string!
         /out        Store output of command.
             output  binary!/string!
+        /spawn      Run command asynchronously.
     return: return status of command
     group: os
 
     Runs an external program.
+
+    If /spwan is used then /in and /out are ignored.
 */
 CFUNC_PUB( cfunc_execute )
 {
-#define OPT_EXECUTE_IN   0x01
-#define OPT_EXECUTE_OUT  0x02
+#define OPT_EXECUTE_IN      0x01
+#define OPT_EXECUTE_OUT     0x02
+#define OPT_EXECUTE_SPAWN   0x04
     char* argv[10];
     const UBuffer* in = 0;
     UBuffer* out = 0;
     int type;
+    uint32_t opt = CFUNC_OPTIONS;
 
 
     if( ! ur_is(a1, UT_STRING) )
@@ -478,7 +519,10 @@ CFUNC_PUB( cfunc_execute )
     // Create arg list before fork to avoid any possible copy-on-write overhead.
     argumentList( boron_cstr( ut, a1, 0 ), argv, 9 );
 
-    if( CFUNC_OPTIONS & OPT_EXECUTE_IN )
+    if( opt & OPT_EXECUTE_SPAWN )
+        return _execSpawn( ut, argv, res );
+
+    if( opt & OPT_EXECUTE_IN )
     {
         type = ur_type(a1 + 1);
         if( type != UT_BINARY && type != UT_STRING )
@@ -487,7 +531,7 @@ CFUNC_PUB( cfunc_execute )
         in = ur_bufferSer(a1 + 1);
     }
 
-    if( CFUNC_OPTIONS & OPT_EXECUTE_OUT )
+    if( opt & OPT_EXECUTE_OUT )
     {
         type = ur_type(a1 + 2);
         if( type != UT_BINARY && type != UT_STRING )
@@ -499,35 +543,6 @@ CFUNC_PUB( cfunc_execute )
 
     return _execIO( ut, argv, res, in, out );
 }
-
-
-#ifdef EXECUTE_WAIT
-/* Cleans up after callSimple() */
-static void child_handler( int sig )
-{
-    (void) sig;
-
-    if( _asyncProcCount )
-    {
-        int status;
-        wait( &status );
-        --_asyncProcCount;
-    }
-}
-
-
-void ur_installExceptionHandlers()
-{
-    /* NOTE: Cannot use this if using Qt's QProcess (it uses SIGCHLD) */
-    struct sigaction childSA;
-
-    childSA.sa_handler = child_handler;
-    childSA.sa_flags   = SA_NOCLDSTOP;
-    sigemptyset( &childSA.sa_mask );
-
-    sigaction( SIGCHLD, &childSA, NULL );
-}
-#endif
 #endif
 
 

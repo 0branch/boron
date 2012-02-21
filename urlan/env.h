@@ -24,6 +24,10 @@
 #include "os.h"
 
 
+#define LOCK_GLOBAL     mutexLock( env->mutex );
+#define UNLOCK_GLOBAL   mutexUnlock( env->mutex );
+
+
 struct UEnv
 {
     OSMutex     mutex;

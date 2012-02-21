@@ -478,8 +478,7 @@ static int _execIO( UThread* ut, char* cmd, UCell* res,
 }
 
 
-#if 0
-static int _execSimple( UThread* ut, const char* cmd, UCell* res )
+static int _execSpawn( UThread* ut, char* cmd, UCell* res )
 {
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
@@ -506,41 +505,29 @@ static int _execSimple( UThread* ut, const char* cmd, UCell* res )
                          "CreateProcess failed (%d).\n", GetLastError() );
     }
 
-    ur_setId(res, UT_NONE);
-
-    //if( orRefineSet(REF_CALL_WAIT) )
-    {
-        DWORD code;
-
-        // Wait until child process exits.
-        WaitForSingleObject( pi.hProcess, INFINITE );
-
-        if( GetExitCodeProcess( pi.hProcess, &code ) )
-        {
-            ur_setId(res, UT_INT);
-            ur_int(res) = code;
-        }
-    }
-
     // Close process and thread handles. 
     CloseHandle( pi.hProcess );
     CloseHandle( pi.hThread );
 
+    ur_setId(res, UT_INT);
+    ur_int(res) = pi.dwProcessId;
     return UR_OK;
 }
-#endif
 
 
 /*
-  execute command /in input /out output
+  execute command /in input /out output /spawn
 */
 CFUNC_PUB( cfunc_execute )
 {
-#define OPT_EXECUTE_IN   0x01
-#define OPT_EXECUTE_OUT  0x02
+#define OPT_EXECUTE_IN      0x01
+#define OPT_EXECUTE_OUT     0x02
+#define OPT_EXECUTE_SPAWN   0x04
     const UBuffer* in = 0;
     UBuffer* out = 0;
     int type;
+    uint32_t opt = CFUNC_OPTIONS;
+
 
     if( ! ur_is(a1, UT_STRING) )
     {
@@ -549,7 +536,10 @@ CFUNC_PUB( cfunc_execute )
         return UR_OK;
     }
 
-    if( CFUNC_OPTIONS & OPT_EXECUTE_IN )
+    if( opt & OPT_EXECUTE_SPAWN )
+        return _execSpawn( ut, boron_cstr( ut, a1, 0 ), res );
+
+    if( opt & OPT_EXECUTE_IN )
     {
         type = ur_type(a1 + 1);
         if( type != UT_BINARY && type != UT_STRING )
@@ -558,7 +548,7 @@ CFUNC_PUB( cfunc_execute )
         in = ur_bufferSer(a1 + 1);
     }
 
-    if( CFUNC_OPTIONS & OPT_EXECUTE_OUT )
+    if( opt & OPT_EXECUTE_OUT )
     {
         type = ur_type(a1 + 2);
         if( type != UT_BINARY && type != UT_STRING )

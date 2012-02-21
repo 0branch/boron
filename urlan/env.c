@@ -64,9 +64,6 @@
 
 //#define GC_HOLD_TEST  1
 
-#define LOCK_GLOBAL     mutexLock( env->mutex );
-#define UNLOCK_GLOBAL   mutexUnlock( env->mutex );
-
 #define BUF_ERROR_BLK   0
 #define BUF_THREAD_CTX  1
 
