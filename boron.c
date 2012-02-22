@@ -1079,7 +1079,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_random,     "random a /seed" );
 #endif
 #ifdef CONFIG_EXECUTE
-    addCFunc( cfunc_execute,    "execute s /in a /out b /spawn" );
+    addCFunc( cfunc_execute,    "execute s /in a /out b /spawn /port" );
 #endif
 #ifdef CONFIG_ASSEMBLE
     addCFunc( cfunc_assemble,   "assemble s block! body block!" );

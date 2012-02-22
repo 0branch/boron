@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
@@ -408,15 +409,25 @@ static void _childHandler( int signum, siginfo_t* info, void* context )
 }
 
 
+extern UPortDevice port_file;
+#define FD  used
+
 /*
     NOTE: Cannot use _execSpawn if using Qt's QProcess (it uses SIGCHLD).
 */
-static int _execSpawn( UThread* ut, char** argv, UCell* res )
+static int _execSpawn( UThread* ut, char** argv, int port, UCell* res )
 {
     UEnv* env = ut->env;
     pid_t pid;
     int pslot;
+    int outPipe[2];
 
+
+    if( port )
+    {
+        if( pipe(outPipe) == -1 )
+            return ur_error( ut, UR_ERR_INTERNAL, "pipe failed" );
+    }
 
     LOCK_GLOBAL
 
@@ -446,13 +457,36 @@ static int _execSpawn( UThread* ut, char** argv, UCell* res )
     UNLOCK_GLOBAL
 
     if( pslot == MAX_SPAWN )
+    {
+        if( port )
+            _closePipe( outPipe );
         return ur_error( ut, UR_ERR_INTERNAL,
                          "execute only handles %d spawn", MAX_SPAWN );
+    }
 
     pid = fork();
     if( pid == 0 )
     {
         // In child process; invoke command.
+
+        close( STDIN_FILENO );
+
+        if( port )
+        {
+            // Redirect stdout & stderr to pipe.
+            close( outPipe[0] );
+            dup2( outPipe[1], STDOUT_FILENO );
+            dup2( outPipe[1], STDERR_FILENO );
+            close( outPipe[1] );
+        }
+        else
+        {
+            int nul = open( "/dev/null", O_WRONLY );
+            dup2( nul, STDOUT_FILENO );
+            close( nul );
+
+            // Don't change stderr so perror() will be seen.
+        }
 
         if( execvp( argv[0], argv ) == -1 )
         {
@@ -464,19 +498,36 @@ static int _execSpawn( UThread* ut, char** argv, UCell* res )
     else if( pid > 0 )
     {
         // In parent process.
+
         // NOTE: If somehow the child exits and _childHandler is called
         //       before _spawnPids is set here then we'll get a zombie and
         //       the pslot will remain forever.
 
         _spawnPids[ pslot ] = pid;
 
-        ur_setId(res, UT_INT);
-        ur_int(res) = pid;
+        if( port )
+        {
+            UBuffer* pbuf;
+
+            close( outPipe[1] );
+
+            // file_open
+            pbuf = boron_makePort( ut, &port_file, 0, res );
+            pbuf->FD = outPipe[0];
+        }
+        else
+        {
+            ur_setId(res, UT_INT);
+            ur_int(res) = pid;
+        }
         return UR_OK;
     }
     else
     {
         // fork failed.
+
+        if( port )
+            _closePipe( outPipe );
         return ur_error( ut, UR_ERR_INTERNAL, "fork failed" );
     }
 }
@@ -490,18 +541,20 @@ static int _execSpawn( UThread* ut, char** argv, UCell* res )
         /out        Store output of command.
             output  binary!/string!
         /spawn      Run command asynchronously.
-    return: return status of command
+        /port       Return port to read spawn output.
+    return: int! status of command or spawn port!
     group: os
 
     Runs an external program.
 
-    If /spwan is used then /in and /out are ignored.
+    If /spawn is used then /in and /out are ignored.
 */
 CFUNC_PUB( cfunc_execute )
 {
 #define OPT_EXECUTE_IN      0x01
 #define OPT_EXECUTE_OUT     0x02
 #define OPT_EXECUTE_SPAWN   0x04
+#define OPT_EXECUTE_PORT    0x08
     char* argv[10];
     const UBuffer* in = 0;
     UBuffer* out = 0;
@@ -520,7 +573,7 @@ CFUNC_PUB( cfunc_execute )
     argumentList( boron_cstr( ut, a1, 0 ), argv, 9 );
 
     if( opt & OPT_EXECUTE_SPAWN )
-        return _execSpawn( ut, argv, res );
+        return _execSpawn( ut, argv, opt & OPT_EXECUTE_PORT, res );
 
     if( opt & OPT_EXECUTE_IN )
     {
