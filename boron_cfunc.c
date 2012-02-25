@@ -686,6 +686,7 @@ CFUNC(cfunc_bind)
             return UR_THROW;
         bt.ctxN = ctxN;
         bt.bindType = ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD;
+        bt.self = UR_INVALID_ATOM;
 
         *res = *a1;
         ur_bindCells( ut, res, res + 1, &bt );
@@ -947,7 +948,7 @@ CFUNC(cfunc_make)
             if( ! ur_blkSliceM( ut, &bi, a2 ) )
                 return UR_THROW;
             ur_ctxSetWords( ctx, bi.it, bi.end );
-            ur_bind( ut, bi.buf, ur_ctxSort(ctx), UR_BIND_THREAD );
+            ur_bind( ut, bi.buf, ur_ctxSort(ctx), UR_BIND_SELF );
             return boron_doVoid( ut, a2 );
         }
     }
@@ -1086,6 +1087,7 @@ CFUNC(cfunc_func)
     UBindTarget bt;
 
     bt.ctxN = fc->m.f.bodyN;
+    bt.self = UR_INVALID_ATOM;
     body = ur_bufferSerM(a2);       // Re-aquire
 
     if( ctx.used )

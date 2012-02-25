@@ -25,6 +25,7 @@ enum UrlanFixedAtoms
     UR_ATOM_RETURN,
     UR_ATOM_BREAK,
     UR_ATOM_GHOST,
+    UR_ATOM_SELF,
     UR_ATOM_WORDS,
 
     UR_ATOM_LATIN1,

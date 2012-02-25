@@ -29,6 +29,7 @@
 
 
 #include "env.h"
+#include "urlan_atoms.h"
 
 
 #define SEARCH_LEN      5
@@ -223,7 +224,7 @@ UBuffer* ur_ctxClone( UThread* ut, const UBuffer* src, UCell* cell )
 
     nc = ur_buffer( cell->series.buf );     // Re-aquire
     ur_ctxSort( nc );
-    ur_bind( ut, nc, nc, UR_BIND_THREAD );
+    ur_bind( ut, nc, nc, UR_BIND_SELF );
     ur_release( hold );
     return nc;
 }
@@ -627,6 +628,8 @@ void ur_bindCells( UThread* ut, UCell* it, UCell* end, const UBindTarget* bt )
 {
     int wrdN;
     int type;
+    int self = bt->self;
+
     for( ; it != end; ++it )
     {
         type = ur_type(it);
@@ -642,6 +645,12 @@ void ur_bindCells( UThread* ut, UCell* it, UCell* end, const UBindTarget* bt )
                     ur_setBinding( it, bt->bindType );
                     it->word.ctx = bt->ctxN;
                     it->word.index = wrdN;
+                }
+                else if( ur_atom(it) == self )
+                {
+                    ur_setBinding( it, UR_BIND_SELF );
+                    it->word.ctx = bt->ctxN;
+                    it->word.index = 0;
                 }
                 break;
 
@@ -684,7 +693,16 @@ void ur_bind( UThread* ut, UBuffer* blk, const UBuffer* ctx, int bindType )
     assert( ctx->type == UT_CONTEXT );
 
     bt.ctx = ctx;
-    bt.bindType = bindType;
+    if( bindType == UR_BIND_SELF )
+    {
+        bt.bindType = bindType = UR_BIND_THREAD;
+        bt.self = UR_ATOM_SELF;
+    }
+    else
+    {
+        bt.bindType = bindType;
+        bt.self = UR_INVALID_ATOM;
+    }
 
     if( bindType == UR_BIND_THREAD )
         bt.ctxN = ctx - ut->dataStore.ptr.buf;

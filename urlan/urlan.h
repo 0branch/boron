@@ -90,6 +90,7 @@ enum UrlanWordBindings
     UR_BIND_UNBOUND = 0,    /* ur_setId zeros flags so this is default. */
     UR_BIND_THREAD,
     UR_BIND_ENV,
+    UR_BIND_SELF,
     UR_BIND_USER
 };
 
@@ -132,6 +133,7 @@ enum UrlanErrorType
 
 #define UR_INVALID_BUF  0
 #define UR_INVALID_HOLD -1
+#define UR_INVALID_ATOM -1
 
 
 typedef int32_t     UIndex;
@@ -286,6 +288,7 @@ struct UThread
     UBuffer     dataStore;
     UBuffer     holds;
     UBuffer     gcBits;
+    UCell       tmpWordCell;
     int32_t     freeBufCount;
     UIndex      freeBufList;
     UEnv*       env;
@@ -351,6 +354,7 @@ typedef struct
     const UBuffer* ctx;
     UIndex ctxN;
     int bindType;
+    int self;
 }
 UBindTarget;
 

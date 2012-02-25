@@ -407,11 +407,11 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
 
     // Intern commonly used atoms.
     {
-    UAtom atoms[ 54 ];
+    UAtom atoms[ 55 ];
     ur_internAtoms( ut,
                     "i8 u8 i16 u16 i32 u32 f32 f64\n"
                     "none true false on off yes no\n"
-                    "quit halt return break ghost words\n"
+                    "quit halt return break ghost self words\n"
                     "latin1 utf8 ucs2\n"
                     "+ - / * = < > <= >=\n"
                     "x y z r g b a\n"
@@ -995,6 +995,14 @@ const UCell* ur_wordCell( UThread* ut, const UCell* cell )
             return (ut->env->dataStore.ptr.buf - cell->word.ctx)->ptr.cell +
                    cell->word.index;
 
+        case UR_BIND_SELF:
+        {
+            UCell* self = &ut->tmpWordCell;
+            ur_setId( self, UT_CONTEXT );
+            ur_setSeries( self, cell->word.ctx, 0 );
+            return self;
+        }
+
         default:
             return ut->wordCell( ut, cell );
     }
@@ -1028,6 +1036,11 @@ UCell* ur_wordCellM( UThread* ut, const UCell* cell )
 
         case UR_BIND_ENV:
             ur_error( ut, UR_ERR_SCRIPT, "word '%s is in shared storage",
+                      ur_wordCStr( cell ) );
+            return 0;
+
+        case UR_BIND_SELF:
+            ur_error( ut, UR_ERR_SCRIPT, "word '%s has self binding",
                       ur_wordCStr( cell ) );
             return 0;
 

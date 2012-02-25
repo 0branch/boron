@@ -44,3 +44,22 @@ c1: context [a: 1 b: none]
 c2: make c1 [a: 2 b: c1]
 c1/b: c2
 probe c1
+
+
+print "---- self"
+c1: context [
+    f: does [self/v]
+    v: 1
+]
+c2: make c1 [v: 2]
+print [c1/f c2/f]
+probe c1/self
+
+
+print "---- self override"
+co: context [
+    self: 'override
+    f: does [probe self]
+]
+co/f
+probe co/self

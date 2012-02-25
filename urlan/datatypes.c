@@ -4128,7 +4128,7 @@ int context_make( UThread* ut, const UCell* from, UCell* res )
         ctx = ur_makeContextCell( ut, 0, res );
         ur_ctxSetWords( ctx, bi.it, bi.end );
         ur_ctxSort( ctx );
-        ur_bind( ut, bi.buf, ctx, UR_BIND_THREAD );
+        ur_bind( ut, bi.buf, ctx, UR_BIND_SELF );
         return UR_OK;
     }
     else if( ur_is(from, UT_CONTEXT) )
@@ -4222,9 +4222,15 @@ const UCell* context_select( UThread* ut, const UCell* cell, const UCell* sel,
             int i = ur_ctxLookup( ctx, ur_atom(sel) );
             if( i >= 0 )
                 return ur_ctxCell(ctx, i);
+            if( ur_atom(sel) == UR_ATOM_SELF )
+            {
+                *tmp = *cell;
+                return tmp;
+            }
             ur_error( ut, UR_ERR_SCRIPT, "context has no word '%s",
                       ur_wordCStr(sel) );
         }
+#if 0
         else if( ur_is(sel, UT_LITWORD) )   // Deprecated
         {
             if( ur_atom(sel) == UR_ATOM_WORDS )
@@ -4233,6 +4239,7 @@ const UCell* context_select( UThread* ut, const UCell* cell, const UCell* sel,
                 return tmp;
             }
         }
+#endif
         else
         {
             ur_error( ut, UR_ERR_SCRIPT,
