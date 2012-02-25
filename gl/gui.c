@@ -222,6 +222,9 @@ static int areaUpdate( GWidget* wp, GRect* rect )
 //----------------------------------------------------------------------------
 
 
+#define EXP_MIN     user
+
+
 static GWidget* expand_make( UThread* ut, UBlockIter* bi,
                              const GWidgetClass* wclass )
 {
@@ -231,24 +234,29 @@ static GWidget* expand_make( UThread* ut, UBlockIter* bi,
     ++bi->it;
     wp = gui_allocWidget( sizeof(GWidget), wclass );
 
-    // Does not handle input or add spacing. 
-    wp->flags |= GW_DISABLED | GW_SPACER;
+    if( bi->it != bi->end && ur_is(bi->it, UT_INT) )
+    {
+        // Does not handle input.
+        wp->flags |= GW_DISABLED;
+        wp->EXP_MIN = ur_int(bi->it);
+        ++bi->it;
+    }
+    else
+    {
+        // Does not handle input or add spacing. 
+        wp->flags |= GW_DISABLED | GW_NO_SPACE;
+        wp->EXP_MIN = 0;
+    }
     return wp;
 }
 
 
 static void expand_sizeHint( GWidget* wp, GSizeHint* size )
 {
-    (void) wp;
-
-    size->minW    = 0;
-    size->minH    = 0;
-    size->maxW    = MAX_DIM;
-    size->maxH    = MAX_DIM;
-    size->weightX = 1;
-    size->weightY = 1;
-    size->policyX = GW_EXPANDING;
-    size->policyY = GW_EXPANDING;
+    size->minW    = size->minH    = wp->EXP_MIN;
+    size->maxW    = size->maxH    = MAX_DIM;
+    size->weightX = size->weightY = 1;
+    size->policyX = size->policyY = GW_EXPANDING;
 }
 
 
@@ -655,7 +663,7 @@ static void hbox_sizeHint( GWidget* wp, GSizeHint* size )
 
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->sizeHint( it, &cs );
-        if( ! (it->flags & GW_SPACER) )     // cs.minW != 0
+        if( ! (it->flags & GW_NO_SPACE) )   // cs.minW != 0
             ++count;
         size->minW += cs.minW;
         cs.minH += marginH;
@@ -692,7 +700,7 @@ static void layout_query( GWidget* wp, LayoutData* lo )
     EACH_SHOWN_CHILD( wp, it )
         assert( lo->count < MAX_LO_WIDGETS );
         it->wclass->sizeHint( it, hint );
-        if( ! (it->flags & GW_SPACER) )
+        if( ! (it->flags & GW_NO_SPACE) )
             ++lo->spaceCount;
         ++lo->count;
         ++hint;
@@ -804,7 +812,7 @@ static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
         cr.h = MIN( hint->maxH, room );
 
         dim += cr.w;
-        if( ! (it->flags & GW_SPACER) )
+        if( ! (it->flags & GW_NO_SPACE) )
             dim += ep->spacing;
 
 #ifdef REPORT_LAYOUT
@@ -856,7 +864,7 @@ static void vbox_sizeHint( GWidget* wp, GSizeHint* size )
 
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->sizeHint( it, &cs );
-        if( ! (it->flags & GW_SPACER) )     // cs.minH != 0
+        if( ! (it->flags & GW_NO_SPACE) )   // cs.minH != 0
             ++count;
         size->minH += cs.minH;
         cs.minW += marginW;
@@ -936,7 +944,7 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
         cr.y = dim - cr.h;
 
         dim -= cr.h;
-        if( ! (it->flags & GW_SPACER) )
+        if( ! (it->flags & GW_NO_SPACE) )
             dim -= ep->spacing;
 
 #ifdef REPORT_LAYOUT

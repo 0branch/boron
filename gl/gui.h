@@ -125,7 +125,7 @@ struct GWidgetClass
 #define GW_DISABLED      0x0002
 #define GW_UPDATE_LAYOUT 0x0004
 #define GW_RECYCLE       0x0008
-#define GW_SPACER        0x0010
+#define GW_NO_SPACE      0x0010
 #define GW_FLAG_USER1    0x0100
 #define GW_FLAG_USER2    0x0200
 
@@ -138,6 +138,7 @@ struct GWidget
     GWidget*  next;
     GRect     area;
     uint16_t  flags;
+    uint16_t  user;
 };
 
 

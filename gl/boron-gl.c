@@ -2230,6 +2230,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
 #if 0
     printf( "sizeof(UCellRasterFont) %ld\n", sizeof(UCellRasterFont) );
     printf( "sizeof(GLuint) %ld\n", sizeof(GLuint) );
+    printf( "sizeof(GWidget) %ld\n", sizeof(GWidget) );
 #endif
     assert( sizeof(GLuint) == 4 );
 
