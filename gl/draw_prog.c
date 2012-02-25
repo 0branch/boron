@@ -35,9 +35,6 @@
 extern int boron_doBlock( UThread* ut, const UCell* ec, UCell* res );
 
 
-#define COLON_WORD  UT_GETWORD
-
-
 enum DPOpcode
 {
     DP_EMPTY,
@@ -1196,7 +1193,7 @@ static UIndex _wordBlock( const UCell* cell )
 
 static int emitWordOp( DPCompiler* emit, const UCell* cell, int opcode )
 {
-    if( ur_is(cell, UT_WORD) || ur_is(cell, COLON_WORD) )
+    if( ur_is(cell, UT_WORD) || ur_is(cell, UT_GETWORD) )
     {
         UIndex blkN = _wordBlock( cell );
         if( blkN != UR_INVALID_BUF )
@@ -1410,7 +1407,7 @@ comp_op:
 
             case DOP_CALL:
                 INC_PC
-                if( ur_is(pc, COLON_WORD) )
+                if( ur_is(pc, UT_GETWORD) )
                 {
                     emitWordOp( emit, pc, DP_RUN_PROGRAM_WORD );
                 }
@@ -1493,7 +1490,7 @@ image_next:
 
             case DOP_COLOR:
                 INC_PC
-                if( ur_is(pc, COLON_WORD) )
+                if( ur_is(pc, UT_GETWORD) )
                 {
                     emitWordOp( emit, pc, DP_COLOR_WORD );
                 }
@@ -1825,12 +1822,16 @@ bad_quad:
             case DOP_SHADER:
             {
                 INC_PC_VALUE(val)
+#if 0
+                // Don't allow old fixed functionality pipeline.
+                // This allows us to use 0 as the currentProgram "unset" state.
                 if( ur_is(val, UT_NONE) )
                 {
                     emitOp1( DP_SHADER, 0 );
                     emit->shaderProg = 0;
                 }
                 else
+#endif
                 {
                     const UBuffer* blk;
                     const Shader* sh;
@@ -2340,6 +2341,7 @@ static void disableClientState( struct ClientState* cs )
 void ur_initDrawState( DPState* state )
 {
     state->samplesQueryId = 0;
+    state->currentProgram = 0;
 }
 
 
@@ -2690,7 +2692,14 @@ dispatch:
             break;
 
         case DP_SHADER:
-            glUseProgram( *pc++ );
+        {
+            GLuint prog = *pc++;
+            if( ds->currentProgram != prog )
+            {
+                ds->currentProgram = prog;
+                glUseProgram( prog );
+            }
+        }
             break;
 
         case DP_SHADER_CTX:
@@ -2698,8 +2707,13 @@ dispatch:
             UCell cc;
             const UBuffer* blk;
             const Shader* sh;
+            GLuint prog = *pc++;
 
-            glUseProgram( *pc++ );
+            if( ds->currentProgram != prog )
+            {
+                ds->currentProgram = prog;
+                glUseProgram( prog );
+            }
 
             ur_setId( &cc, UT_CONTEXT );
             cc.series.buf = *pc++;

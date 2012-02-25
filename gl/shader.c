@@ -408,32 +408,6 @@ int shaderTextureUnit( const Shader* sh, UAtom name )
 
 
 #if 0
-void loadShader( UThread* ut, UCell* cell )
-{
-    Shader* sh;
-    UBuffer* blk;
-
-    sh = shaderContext( ut, cell, &blk );
-    if( ! sh )
-    {
-        glUseProgram( 0 );
-    }
-    else if( blk )
-    {
-        if( grState.shaderProg != sh->program )
-        {
-            grState.shaderProg = sh->program;
-            glUseProgram( sh->program );
-        }
-        setShaderUniforms( sh, blk );
-    }
-    else
-    {
-        glUseProgram( sh->program );
-    }
-}
-
-
 #if 1
 void setUniform( UThread* ut, UAtom name, UCell* cell )
 {

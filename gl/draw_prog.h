@@ -83,6 +83,7 @@ typedef uint16_t    DPSwitch;
 typedef struct
 {
     GLuint samplesQueryId;
+    GLuint currentProgram;
 }
 DPState;
 
