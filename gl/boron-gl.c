@@ -1772,68 +1772,68 @@ CFUNC( cfunc_change_vbo )
 
             glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
             dst = (GLfloat*) glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY );
-            if( dst )
+            if( ! dst )
+                return ur_error( ut, UR_ERR_INTERNAL, "glMapBuffer failed" );
+
+            dst += offset;
+            if( stride )
             {
-                dst += offset;
-                if( stride )
+                loops = si.end - si.it;
+                switch( copyLen )
                 {
-                    loops = si.end - si.it;
-                    switch( copyLen )
-                    {
-                        case 1:
-                            while( loops-- )
-                            {
-                                dst[0] = *src++; 
-                                dst += stride;
-                            }
-                            break;
-
-                        case 2:
-                            loops /= 2;
-                            while( loops-- )
-                            {
-                                dst[0] = *src++; 
-                                dst[1] = *src++; 
-                                dst += stride;
-                            }
-                            break;
-
-                        case 3:
-                            loops /= 3;
-                            while( loops-- )
-                            {
-                                dst[0] = *src++; 
-                                dst[1] = *src++; 
-                                dst[2] = *src++; 
-                                dst += stride;
-                            }
-                            break;
-
-                        default:
+                    case 1:
+                        while( loops-- )
                         {
-                            GLfloat* it;
-                            GLfloat* end;
-
-                            loops /= copyLen;
-                            while( loops-- )
-                            {
-                                it  = dst;
-                                end = it + copyLen;
-                                while( it != end )
-                                    *it++ = *src++; 
-                                dst += stride;
-                            }
+                            dst[0] = *src++; 
+                            dst += stride;
                         }
-                            break;
-                    }
-                }
-                else
-                {
-                    memCpy( dst, src, sizeof(float) * copyLen );
-                }
+                        break;
 
-                glUnmapBuffer( GL_ARRAY_BUFFER );
+                    case 2:
+                        loops /= 2;
+                        while( loops-- )
+                        {
+                            dst[0] = *src++; 
+                            dst[1] = *src++; 
+                            dst += stride;
+                        }
+                        break;
+
+                    case 3:
+                        loops /= 3;
+                        while( loops-- )
+                        {
+                            dst[0] = *src++; 
+                            dst[1] = *src++; 
+                            dst[2] = *src++; 
+                            dst += stride;
+                        }
+                        break;
+
+                    default:
+                    {
+                        GLfloat* it;
+                        GLfloat* end;
+
+                        loops /= copyLen;
+                        while( loops-- )
+                        {
+                            it  = dst;
+                            end = it + copyLen;
+                            while( it != end )
+                                *it++ = *src++; 
+                            dst += stride;
+                        }
+                    }
+                        break;
+                }
             }
+            else
+            {
+                memCpy( dst, src, sizeof(float) * copyLen );
+            }
+
+            glUnmapBuffer( GL_ARRAY_BUFFER );
         }
         ur_setId(res, UT_UNSET);
         return UR_OK;
