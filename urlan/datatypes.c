@@ -1605,67 +1605,77 @@ int vec3_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 }
 
 
-#define OPER_V3_V3(OP) \
-    res->vec3.xyz[0] = a->vec3.xyz[0] OP b->vec3.xyz[0]; \
-    res->vec3.xyz[1] = a->vec3.xyz[1] OP b->vec3.xyz[1]; \
-    res->vec3.xyz[2] = a->vec3.xyz[2] OP b->vec3.xyz[2]
+static const float* _load3f( const UCell* cell, float* tmp )
+{
+    switch( ur_type(cell) )
+    {
+        case UT_INT:
+            tmp[0] = tmp[1] = tmp[2] = (float) ur_int(cell);
+            break;
 
-#define OPER_V3_D(OP) \
-    res->vec3.xyz[0] = a->vec3.xyz[0] OP n; \
-    res->vec3.xyz[1] = a->vec3.xyz[1] OP n; \
-    res->vec3.xyz[2] = a->vec3.xyz[2] OP n
+        case UT_DECIMAL:
+            tmp[0] = tmp[1] = tmp[2] = (float) ur_decimal(cell);
+            break;
+
+        case UT_COORD:
+            tmp[0] = (float) cell->coord.n[0];
+            tmp[1] = (float) cell->coord.n[1];
+            tmp[2] = (cell->coord.len > 2) ? (float) cell->coord.n[2] : 0.0f;
+            break;
+
+        case UT_VEC3:
+            return cell->vec3.xyz;
+
+        default:
+            return 0;
+    }
+    return tmp;
+}
+
+
+#define OPER_V3(OP) \
+    res->vec3.xyz[0] = va[0] OP vb[0]; \
+    res->vec3.xyz[1] = va[1] OP vb[1]; \
+    res->vec3.xyz[2] = va[2] OP vb[2]
 
 int vec3_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
                   int op )
 {
-    if( ur_is(a, UT_VEC3) )
+    float tmp[ 3 ];
+    const float* va;
+    const float* vb;
+
+    va = _load3f( a, tmp );
+    if( ! va )
+        goto bad_type;
+    vb = _load3f( b, tmp );
+    if( ! vb )
+        goto bad_type;
+
+    ur_setId(res, UT_VEC3);
+    switch( op )
     {
-        ur_setId(res, UT_VEC3);
-        if( ur_is(b, UT_VEC3) )
-        {
-            switch( op )
-            {
-                case UR_OP_ADD:
-                    OPER_V3_V3( + );
-                    break;
-                case UR_OP_SUB:
-                    OPER_V3_V3( - );
-                    break;
-                case UR_OP_MUL:
-                    OPER_V3_V3( * );
-                    break;
-                case UR_OP_DIV:
-                    OPER_V3_V3( / );
-                    break;
-                default:
-                    return unset_operate( ut, a, b, res, op );
-            }
-        }
-        else if( ur_is(b, UT_DECIMAL) )
-        {
-            double n = ur_decimal(b);
-            switch( op )
-            {
-                case UR_OP_ADD:
-                    OPER_V3_D( + );
-                    break;
-                case UR_OP_SUB:
-                    OPER_V3_D( - );
-                    break;
-                case UR_OP_MUL:
-                    OPER_V3_D( * );
-                    break;
-                case UR_OP_DIV:
-                    OPER_V3_D( / );
-                    break;
-                default:
-                    return unset_operate( ut, a, b, res, op );
-            }
-        }
-        return UR_OK;
+        case UR_OP_ADD:
+            OPER_V3( + );
+            break;
+        case UR_OP_SUB:
+            OPER_V3( - );
+            break;
+        case UR_OP_MUL:
+            OPER_V3( * );
+            break;
+        case UR_OP_DIV:
+            OPER_V3( / );
+            break;
+        default:
+            return unset_operate( ut, a, b, res, op );
     }
+    return UR_OK;
+
+bad_type:
+
     return ur_error( ut, UR_ERR_TYPE,
-                     "vec3! operator exepected vec3!/decimal!" );
+                     "vec3! operator exepected int!/decimal!/coord!/vec3!" );
 }
 
 
