@@ -1002,14 +1002,14 @@ const UCell* ur_wordCell( UThread* ut, const UCell* cell )
             ur_setSeries( self, cell->word.ctx, 0 );
             return self;
         }
-
-        default:
-            return ut->wordCell( ut, cell );
     }
-
+#if 1
+    return ut->wordCell( ut, cell );
+#else
     ur_error( ut, UR_ERR_SCRIPT, "word '%s has invalid binding",
               ur_wordCStr( cell ) );
     return 0;
+#endif
 }
 
 
@@ -1043,14 +1043,14 @@ UCell* ur_wordCellM( UThread* ut, const UCell* cell )
             ur_error( ut, UR_ERR_SCRIPT, "word '%s has self binding",
                       ur_wordCStr( cell ) );
             return 0;
-
-        default:
-            return ut->wordCellM( ut, cell );
     }
-
+#if 1
+    return ut->wordCellM( ut, cell );
+#else
     ur_error( ut, UR_ERR_SCRIPT, "word '%s has invalid binding",
               ur_wordCStr( cell ) );
     return 0;
+#endif
 }
 
 
