@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2010 Karl Robillard
+  Copyright 2009-2012 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -804,7 +804,7 @@ UBuffer* ur_envContext( UThread* ut )
 
   The errorType is only descriptive, it has no real function.
 
-  \param errorType  UrlanErrorType (UR_ERR_DATATYPE, UR_ERR_SCRIPT, etc.).
+  \param errorType  UrlanErrorType (UR_ERR_TYPE, UR_ERR_SCRIPT, etc.).
   \param fmt        Error message with printf() style formatting.
 
   \return UR_THROW
