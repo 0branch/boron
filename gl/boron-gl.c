@@ -254,18 +254,25 @@ static void pickMode( const GLViewMode* md, void* data )
 
 /*-cf-
     display
-        size    coord!
+        size        coord!
         /fullscreen
+        /title
+            text    string!
     return: unset!
 */
 CFUNC( cfunc_display )
 {
 #define OPT_DISPLAY_FULLSCREEN  0x01
+#define OPT_DISPLAY_TITLE       0x02
     GLViewMode mode;
-    (void) ut;
 
     if( gView )
     {
+        if( (CFUNC_OPTIONS & OPT_DISPLAY_TITLE) && ur_is(a1+1, UT_STRING) )
+        {
+            glv_setTitle( gView, boron_cstr( ut, a1+1, 0 ) );
+        }
+
         if( ur_is(a1, UT_COORD) )
         {
             mode.id     = GLV_MODEID_WINDOW;
@@ -2308,7 +2315,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_load_png,    "load-png f" );
     addCFunc( cfunc_save_png,    "save-png f rast" );
     addCFunc( cfunc_buffer_audio,"buffer-audio a" );
-    addCFunc( cfunc_display,     "display size /fullscreen" );
+    addCFunc( cfunc_display,     "display size /fullscreen /title text" );
     addCFunc( cfunc_to_degrees,  "to-degrees n" );
     addCFunc( cfunc_to_radians,  "to-radians n" );
     addCFunc( cfunc_limit,       "limit n min max" );

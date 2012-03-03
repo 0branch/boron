@@ -1330,7 +1330,7 @@ static GWidget* window_make( UThread* ut, UBlockIter* bi,
     if( ur_is(arg, UT_STRING) )
     {
         ep->titleN = arg->series.buf;
-        glv_setTitle( glEnv.view, boron_cstr( ut, arg, 0 ) );
+        //glv_setTitle( glEnv.view, boron_cstr( ut, arg, 0 ) );
     }
 
     if( ++arg == bi->end )
