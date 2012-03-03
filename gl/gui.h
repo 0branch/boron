@@ -126,6 +126,7 @@ struct GWidgetClass
 #define GW_UPDATE_LAYOUT 0x0004
 #define GW_RECYCLE       0x0008
 #define GW_NO_SPACE      0x0010
+#define GW_NO_INPUT      0x0020
 #define GW_FLAG_USER1    0x0100
 #define GW_FLAG_USER2    0x0200
 #define GW_FLAG_USER3    0x0400

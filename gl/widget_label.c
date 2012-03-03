@@ -47,6 +47,7 @@ static GWidget* label_make( UThread* ut, UBlockIter* bi,
             goto bad_text;
 
         ep = (GLabel*) gui_allocWidget( sizeof(GLabel), wclass );
+        ep->wid.flags |= GW_NO_INPUT;
         ep->textN = arg->series.buf;
 
         bi->it = arg + 1;

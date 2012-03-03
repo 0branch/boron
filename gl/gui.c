@@ -52,7 +52,7 @@ extern int boron_doVoid( UThread* ut, const UCell* blkC );
 #define MAX_DIM     0x7fff
 
 
-#define IS_ENABLED(wp)  (! (wp->flags & GW_DISABLED))
+#define IGNORES_INPUT(wp)   (wp->flags & (GW_DISABLED | GW_NO_INPUT))
 
 #define EACH_CHILD(parent,it)   for(it = parent->child; it; it = it->next) {
 
@@ -205,6 +205,14 @@ void widget_renderChildren( GWidget* wp )
 }
 
 
+static void markLayoutDirty( GWidget* wp )
+{
+    wp->flags |= GW_UPDATE_LAYOUT;
+    if( wp->parent )
+        markLayoutDirty( wp->parent );
+}
+
+
 int gui_areaSelect( GWidget* wp, UAtom atom, UCell* result )
 {
     switch( atom )
@@ -276,15 +284,13 @@ static GWidget* expand_make( UThread* ut, UBlockIter* bi,
 
     if( bi->it != bi->end && ur_is(bi->it, UT_INT) )
     {
-        // Does not handle input.
-        wp->flags |= GW_DISABLED;
+        wp->flags |= GW_NO_INPUT;
         wp->expandMin = ur_int(bi->it);
         ++bi->it;
     }
     else
     {
-        // Does not handle input or add spacing. 
-        wp->flags |= GW_DISABLED | GW_NO_SPACE;
+        wp->flags |= GW_NO_INPUT | GW_NO_SPACE;
         wp->expandMin = 0;
     }
     return wp;
@@ -672,7 +678,7 @@ static void gui_removeFocus( GWidget* wp )
 
 static void sendFocusEvent( GWidget* wp, int eventType )
 {
-    if( wp && IS_ENABLED(wp) )
+    if( wp )
     {
         GLViewEvent me;
         INIT_EVENT( me, eventType, 0, 0, 0, 0 );
@@ -688,6 +694,7 @@ static void gui_setMouseFocus( GUIRoot* ui, GWidget* wp )
         sendFocusEvent( ui->mouseFocus, GLV_EVENT_FOCUS_OUT );
         ui->mouseFocus = wp;
         sendFocusEvent( wp, GLV_EVENT_FOCUS_IN );
+        //printf( "KR focus %s\n", wp ? wp->wclass->name : "NUL" );
     }
 }
 
@@ -746,16 +753,24 @@ int gui_hasFocus( GWidget* wp )
 
 
 /*
-  Returns child of wp under event x,y, or zero if no child contains the point.
+  Returns child of wp under event x,y or zero if no active child contains
+  the point.
 */
-static GWidget* childAt( GWidget* wp, const GLViewEvent* ev )
+static GWidget* activeChildAt( GWidget* wp, const GLViewEvent* ev )
 {
     GWidget* it;
     EACH_SHOWN_CHILD( wp, it )
         if( gui_widgetContains( it, ev->x, ev->y ) )
         {
-            wp = childAt( it, ev );
-            return wp ? wp : it;
+            // If a widget is disabled so are all it's children.
+            if( it->flags & GW_DISABLED )
+                break;
+            wp = activeChildAt( it, ev );
+            if( wp && ! IGNORES_INPUT(wp) )
+                return wp;
+            if( IGNORES_INPUT(it) )
+                break;
+            return it;
         }
     EACH_END
     return 0;
@@ -799,7 +814,7 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                     goto dispatch;
                 if( gui_widgetContains( cw, ev->x, ev->y ) )
                 {
-                    GWidget* cw2 = childAt( cw, ev );
+                    GWidget* cw2 = activeChildAt( cw, ev );
                     if( cw2 )
                     {
                         gui_setMouseFocus( ep, cw2 );
@@ -809,7 +824,7 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                 }
             }
 
-            cw = childAt( wp, ev );
+            cw = activeChildAt( wp, ev );
             gui_setMouseFocus( ep, cw );
             if( cw )
                 goto dispatch_used;
@@ -822,7 +837,7 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             break;
 
         case GLV_EVENT_FOCUS_IN:
-            ep->mouseFocus = childAt( wp, ev );
+            ep->mouseFocus = activeChildAt( wp, ev );
             // Fall through...
 
         case GLV_EVENT_FOCUS_OUT:
@@ -854,7 +869,7 @@ dispatch_used:
             if( cw == wp )
                 goto dispatch_ctx;
         }
-        while( cw->flags & GW_DISABLED );
+        while( IGNORES_INPUT(cw) );
         goto dispatch_used;
     }
 }
@@ -958,7 +973,7 @@ static GWidget* box_make( UThread* ut, UBlockIter* bi,
 
     ep = (Box*) gui_allocWidget( sizeof(Box), wclass );
 
-    ep->wid.flags |= GW_DISABLED;   // Does not handle input. 
+    ep->wid.flags |= GW_NO_INPUT;
 
     ep->marginL = 0;
     ep->marginT = 0;
@@ -1312,6 +1327,10 @@ typedef struct
     BOX_MEMBERS
     UIndex  dp[2];
     UIndex  titleN;
+    int16_t dragX;
+    int16_t dragY;
+    int16_t transX;
+    int16_t transY;
 }
 GWindow;
 
@@ -1319,6 +1338,7 @@ GWindow;
 #define EX_PTR  GWindow* ep = (GWindow*) wp
 
 #define WINDOW_HBOX     GW_FLAG_USER1
+#define WINDOW_DRAG     GW_FLAG_USER2
 
 
 static GWidget* window_make( UThread* ut, UBlockIter* bi,
@@ -1392,6 +1412,49 @@ static void window_mark( UThread* ut, GWidget* wp )
 }
 
 
+static void window_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
+{
+    switch( ev->type )
+    {
+        case GLV_EVENT_BUTTON_DOWN:
+            if( ev->code == GLV_BUTTON_LEFT )
+            {
+                EX_PTR;
+                ep->dragX = ev->x;
+                ep->dragY = ev->y;
+                ep->transX = ep->transY = 0;
+                wp->flags |= WINDOW_DRAG;
+                gui_grabMouse( wp, 1 );
+                return;
+            }
+            break;
+
+        case GLV_EVENT_BUTTON_UP:
+            if( ev->code == GLV_BUTTON_LEFT )
+            {
+                EX_PTR;
+                wp->flags &= ~WINDOW_DRAG;
+                gui_ungrabMouse( wp );
+                gui_move( wp, wp->area.x + ep->transX,
+                              wp->area.y + ep->transY );
+                return;
+            }
+            break;
+
+        case GLV_EVENT_MOTION:
+            if( wp->flags & WINDOW_DRAG )
+            {
+                EX_PTR;
+                ep->transX = ev->x - ep->dragX;
+                ep->transY = ev->y - ep->dragY;
+                return;
+            }
+            break;
+    }
+    eventContextDispatch( ut, wp, ev );
+}
+
+
 static void window_sizeHint( GWidget* wp, GSizeHint* size )
 {
     if( wp->flags & WINDOW_HBOX )
@@ -1456,6 +1519,7 @@ static void window_render( GWidget* wp )
 {
     EX_PTR;
     DPState ds;
+    int drag;
 
 
     if( ! (glEnv.guiStyle = gui_style( glEnv.guiUT )) )
@@ -1467,10 +1531,19 @@ static void window_render( GWidget* wp )
         window_layout( wp );
     }
 
+    drag = wp->flags & WINDOW_DRAG;
+    if( drag )
+    {
+        glPushMatrix();
+        glTranslatef( (GLfloat) ep->transX, (GLfloat) ep->transY, 0.0f );
+    }
+
     ur_initDrawState( &ds );
     ur_runDrawProg( glEnv.guiUT, &ds, ep->dp[0] );
-
     widget_renderChildren( wp );
+
+    if( drag )
+        glPopMatrix();
 }
 
 
@@ -1510,9 +1583,9 @@ GWidgetClass wclass_vbox =
 GWidgetClass wclass_window =
 {
     "window",
-    window_make,            widget_free,        window_mark,
-    eventContextDispatch,   window_sizeHint,    window_layout,
-    window_render,          eventContextSelect,
+    window_make,        widget_free,        window_mark,
+    window_dispatch,    window_sizeHint,    window_layout,
+    window_render,      eventContextSelect,
     0, 0
 };
 
@@ -1704,14 +1777,6 @@ void gui_enable( GWidget* wp, int active )
     {
         wp->flags |= GW_DISABLED;
     }
-}
-
-
-static void markLayoutDirty( GWidget* wp )
-{
-    wp->flags |= GW_UPDATE_LAYOUT;
-    if( wp->parent )
-        markLayoutDirty( wp->parent );
 }
 
 
