@@ -135,7 +135,7 @@ static int label_select( GWidget* wp, UAtom atom, UCell* res )
     {
         ur_setId(res, UT_STRING);
         ur_setSeries(res, ep->textN, 0);
-        return 1;
+        return UR_OK;
     }
     return gui_areaSelect( wp, atom, res );
 }

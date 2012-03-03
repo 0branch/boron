@@ -395,7 +395,7 @@ static int listw_select( GWidget* wp, UAtom atom, UCell* res )
         {
             ur_setId( res, UT_NONE );
         }
-        return 1;
+        return UR_OK;
     }
     return gui_areaSelect( wp, atom, res );
 }

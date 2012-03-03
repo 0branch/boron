@@ -328,19 +328,19 @@ static int button_select( GWidget* wp, UAtom atom, UCell* res )
     {
         ur_setId(res, UT_LOGIC);
         ur_int(res) = ep->checked;
-        return 1;
+        return UR_OK;
     }
     else if( atom == UR_ATOM_TEXT )
     {
         ur_setId(res, UT_STRING);
         ur_setSeries(res, ep->labelN, 0);
-        return 1;
+        return UR_OK;
     }
     else if( atom == UR_ATOM_ACTION )
     {
         ur_setId(res, UT_BLOCK);
         ur_setSeries(res, ep->actionN, 0);
-        return 1;
+        return UR_OK;
     }
     return gui_areaSelect( wp, atom, res );
 }

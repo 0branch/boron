@@ -1419,11 +1419,13 @@ comp_op:
                         refDrawProg( val->series.buf );
                         emitOp1( DP_RUN_PROGRAM, val->series.buf );
                     }
+#if 0
                     else if( ur_is(val, UT_WIDGET) )
                     {
                         //refWidget( ur_int(val) );
                         emitOp1( DP_RENDER_WIDGET, ur_int(val) );
                     }
+#endif
                     else
                     {
                         ur_error(ut, UR_ERR_SCRIPT, "call expected draw-prog!");
@@ -2675,12 +2677,12 @@ dispatch:
                 return UR_THROW;
         }
             break;
-
+#if 0
         case DP_RENDER_WIDGET:
             // NOTE: Compilation of draw lists will happen in gui_render().
-            //KR_TODO gui_render( &gxEnv.gui, *pc++ );
+            gui_render( &gxEnv.gui, *pc++ );
             break;
-
+#endif
         case DP_CLEAR:
             glDepthMask( GL_TRUE );
             glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );

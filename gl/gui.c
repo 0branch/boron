@@ -213,11 +213,10 @@ int gui_areaSelect( GWidget* wp, UAtom atom, UCell* result )
         case UR_ATOM_SIZE:
         case UR_ATOM_POS:
             gui_initRectCoord( result, wp, atom );
-            return 1;
+            return UR_OK;
     }
-    ur_error( glEnv.guiUT, UR_ERR_SCRIPT, "Invalid widget selector '%s",
-              ur_atomCStr(glEnv.guiUT, atom) );
-    return 0;
+    return ur_error( glEnv.guiUT, UR_ERR_SCRIPT, "Invalid widget selector '%s",
+                     ur_atomCStr(glEnv.guiUT, atom) );
 }
 
 
@@ -306,7 +305,6 @@ static void expand_sizeHint( GWidget* wp, GSizeHint* size )
 
 enum EventContextIndex
 {
-    EI_AREA,
     EI_EVENT,
     EI_KEY_DOWN,
     EI_KEY_UP,
@@ -333,7 +331,7 @@ static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC )
     int i;
 
 
-    ur_internAtoms( ut, "area event key-down key-up\n"
+    ur_internAtoms( ut, "event key-down key-up\n"
                     "mouse-move mouse-down mouse-up mouse-wheel\n"
                     "close resize joystick draw",
                     atoms );
@@ -342,7 +340,7 @@ static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC )
 
     ctx = ur_buffer( wp->eventCtxN );
     for( i = 0; i < EI_COUNT; ++i )
-        ur_ctxAddWordI( ctx, atoms[i] );
+        ur_ctxAppendWord( ctx, atoms[i] );
     ur_ctxSort( ctx );
 
     blk = ur_bufferSerM( blkC );
@@ -357,6 +355,23 @@ static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC )
     gui_remapKeys( ut, ur_ctxCell( ctx, EI_KEY_DOWN ) );
     gui_remapKeys( ut, ur_ctxCell( ctx, EI_KEY_UP ) );
     return UR_OK;
+}
+
+
+static int eventContextSelect( GWidget* wp, UAtom atom, UCell* result )
+{
+    if( wp->eventCtxN )
+    {
+        UThread* ut = glEnv.guiUT;
+        const UBuffer* ctx = ur_buffer( wp->eventCtxN );
+        int i = ur_ctxLookup( ctx, atom );
+        if( i > -1 )
+        {
+            *result = *ur_ctxCell( ctx, i );
+            return UR_OK;
+        }
+    }
+    return gui_areaSelect( wp, atom, result );
 }
 
 
@@ -861,21 +876,24 @@ static void root_sizeHint( GWidget* wp, GSizeHint* size )
 static void root_render( GWidget* wp )
 {
     GWidget* it;
-    //GLViewEvent me;
 
+#if 0
     if( ! (glEnv.guiStyle = gui_style( glEnv.guiUT )) )
         return;
-
+#endif
+#if 0
     if( wp->flags & GW_UPDATE_LAYOUT )
     {
         wp->flags &= ~GW_UPDATE_LAYOUT;
 
-        /*
+        {
+        GLViewEvent me;
         INIT_EVENT( me, GLV_EVENT_RESIZE, 0, 0, wp->area.w, wp->area.h );
-        wc->dispatch( glEnv.guiUT, wp, &me );
-        wc->layout( glEnv.guiUT, wp );
-        */
+        wp->wclass->dispatch( glEnv.guiUT, wp, &me );
+        //wc->layout( glEnv.guiUT, wp );
+        }
     }
+#endif
 
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->render( it );
@@ -1464,7 +1482,7 @@ GWidgetClass wclass_root =
     "root",
     root_make,          widget_free,        root_mark,
     root_dispatch,      root_sizeHint,      no_layout,
-    root_render,        gui_areaSelect,
+    root_render,        eventContextSelect,
     0, 0
 };
 
@@ -1494,7 +1512,7 @@ GWidgetClass wclass_window =
     "window",
     window_make,            widget_free,        window_mark,
     eventContextDispatch,   window_sizeHint,    window_layout,
-    window_render,          gui_areaSelect,
+    window_render,          eventContextSelect,
     0, 0
 };
 
@@ -1719,13 +1737,12 @@ void gui_show( GWidget* wp, int show )
 }
 
 
-#if 0
 void gui_move( GWidget* wp, int x, int y )
 {
     wp->area.x = x;
     wp->area.y = y;
+    markLayoutDirty( wp );
 }
-#endif
 
 
 UCell* gui_style( UThread* ut )

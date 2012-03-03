@@ -504,14 +504,14 @@ static int ledit_select( GWidget* wp, UAtom atom, UCell* res )
         EX_PTR;
         ur_setId(res, UT_STRING);
         ur_setSeries(res, ep->strN, 0);
-        return 1;
+        return UR_OK;
     }
     else if( atom == UR_ATOM_ACTION )
     {
         EX_PTR;
         ur_setId(res, UT_BLOCK);
         ur_setSeries(res, ep->codeN, 0);
-        return 1;
+        return UR_OK;
     }
     return gui_areaSelect( wp, atom, res );
 }

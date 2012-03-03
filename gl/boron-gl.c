@@ -897,7 +897,6 @@ CFUNC( cfunc_hide )
 }
 
 
-#if 0
 /*-cf-
     move
         widget      widget!
@@ -929,7 +928,6 @@ CFUNC( cfunc_move )
     ur_setId(res, UT_UNSET);
     return UR_OK;
 }
-#endif
 
 
 static int _convertUnits( UThread* ut, const UCell* a1, UCell* res,
@@ -2302,7 +2300,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_set_volume,  "set-volume n b" );
     addCFunc( cfunc_show,        "show wid" );
     addCFunc( cfunc_hide,        "hide wid" );
-    //addCFunc( cfunc_move,        "move wid pos /center" );
+    addCFunc( cfunc_move,        "move wid pos /center" );
     addCFunc( cfunc_text_size,   "text-size f text" );
     addCFunc( uc_handle_events,  "handle-events wid /wait" );
     addCFunc( uc_clear_color,    "clear-color color" );
