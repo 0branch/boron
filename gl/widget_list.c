@@ -223,7 +223,7 @@ key_handler:
 }
 
 
-static int listw_calcItemHeight( UThread* ut, GList* ep )
+static void listw_calcItemHeight( UThread* ut, GList* ep )
 {
     TexFont* tf;
     tf = ur_texFontV( ut, glEnv.guiStyle + CI_STYLE_LIST_FONT );

@@ -343,7 +343,7 @@ GWidgetClass wclass_button =
     "button",
     button_make,       widget_free,       button_mark,
     button_dispatch,   button_sizeHint,   button_layout,
-    widget_render,     button_select,
+    widget_renderNul,  button_select,
     0, 0
 };
 
@@ -353,7 +353,7 @@ GWidgetClass wclass_checkbox =
     "checkbox",
     button_make,       widget_free,       button_mark,
     check_dispatch,    button_sizeHint,   button_layout,
-    widget_render,     button_select,
+    widget_renderNul,  button_select,
     0, 0
 };
 

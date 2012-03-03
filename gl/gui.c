@@ -1,6 +1,6 @@
 /*
   Boron OpenGL GUI
-  Copyright 2008-2011 Karl Robillard
+  Copyright 2008-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -92,6 +92,18 @@ void widget_free( GWidget* wp )
 }
 
 
+void widget_markChildren( UThread* ut, GWidget* wp )
+{
+    GMarkFunc func;
+    GWidget* it;
+
+    EACH_CHILD( wp, it )
+        if( (func = it->wclass->mark) )
+            func( ut, it );
+    EACH_END
+}
+
+
 static void _freeWidget( GWidget* wp )
 {
     GWidget* it;
@@ -164,8 +176,8 @@ void gui_initRectCoord( UCell* cell, GWidget* w, UAtom what )
 
 
 #define no_mark     0
-#define no_layout   widget_render
-#define no_render   widget_render
+#define no_layout   widget_renderNul
+#define no_render   widget_renderNul
 #define no_dispatch widget_dispatch
 
 
@@ -177,9 +189,19 @@ void widget_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 }
 
 
-void widget_render( GWidget* wp )
+void widget_renderNul( GWidget* wp )
 {
     (void) wp;
+}
+
+
+void widget_renderChildren( GWidget* wp )
+{
+    GWidget* it;
+
+    EACH_SHOWN_CHILD( wp, it )
+        it->wclass->render( it );
+    EACH_END
 }
 
 
@@ -219,10 +241,29 @@ static int areaUpdate( GWidget* wp, GRect* rect )
 #endif
 
 
+extern CFUNC_PUB(cfunc_key_code);
+
+void gui_remapKeys( UThread* ut, const UCell* cell )
+{
+    if( ur_is(cell, UT_BLOCK) && (! ur_isShared(cell->series.buf)) )
+    {
+        UBlockIterM bi;
+        ur_blkSliceM( ut, &bi, cell );
+        ur_foreach( bi )
+        {
+            // Skip code blocks and previously mapped keys (ints).
+            if( ur_is(bi.it, UT_BLOCK) || ur_is(bi.it, UT_INT) )
+                continue;
+            cfunc_key_code( ut, bi.it, bi.it );
+        }
+    }
+}
+
+
 //----------------------------------------------------------------------------
 
 
-#define EXP_MIN     user
+#define expandMin   user16
 
 
 static GWidget* expand_make( UThread* ut, UBlockIter* bi,
@@ -238,14 +279,14 @@ static GWidget* expand_make( UThread* ut, UBlockIter* bi,
     {
         // Does not handle input.
         wp->flags |= GW_DISABLED;
-        wp->EXP_MIN = ur_int(bi->it);
+        wp->expandMin = ur_int(bi->it);
         ++bi->it;
     }
     else
     {
         // Does not handle input or add spacing. 
         wp->flags |= GW_DISABLED | GW_NO_SPACE;
-        wp->EXP_MIN = 0;
+        wp->expandMin = 0;
     }
     return wp;
 }
@@ -253,7 +294,7 @@ static GWidget* expand_make( UThread* ut, UBlockIter* bi,
 
 static void expand_sizeHint( GWidget* wp, GSizeHint* size )
 {
-    size->minW    = size->minH    = wp->EXP_MIN;
+    size->minW    = size->minH    = wp->expandMin;
     size->maxW    = size->maxH    = MAX_DIM;
     size->weightX = size->weightY = 1;
     size->policyX = size->policyY = GW_EXPANDING;
@@ -263,12 +304,277 @@ static void expand_sizeHint( GWidget* wp, GSizeHint* size )
 //----------------------------------------------------------------------------
 
 
+enum EventContextIndex
+{
+    EI_AREA,
+    EI_EVENT,
+    EI_KEY_DOWN,
+    EI_KEY_UP,
+    EI_MOUSE_MOVE,
+    EI_MOUSE_DOWN,
+    EI_MOUSE_UP,
+    EI_MOUSE_WHEEL,
+    EI_CLOSE,
+    EI_RESIZE,
+    EI_JOYSTICK,
+    EI_DRAW,
+    EI_COUNT
+};
+
+
+#define eventCtxN       user32
+
+
+static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC )
+{
+    UAtom atoms[ EI_COUNT ];
+    UBuffer* blk;
+    UBuffer* ctx;
+    int i;
+
+
+    ur_internAtoms( ut, "area event key-down key-up\n"
+                    "mouse-move mouse-down mouse-up mouse-wheel\n"
+                    "close resize joystick draw",
+                    atoms );
+
+    wp->eventCtxN = ur_makeContext( ut, EI_COUNT );
+
+    ctx = ur_buffer( wp->eventCtxN );
+    for( i = 0; i < EI_COUNT; ++i )
+        ur_ctxAddWordI( ctx, atoms[i] );
+    ur_ctxSort( ctx );
+
+    blk = ur_bufferSerM( blkC );
+    if( ! blk )
+        return UR_THROW;
+    ur_bind( ut, blk, ctx, UR_BIND_THREAD );
+
+    if( boron_doVoid( ut, blkC ) != UR_OK )
+        return UR_THROW;
+
+    ctx = ur_buffer( wp->eventCtxN );   // Re-aquire
+    gui_remapKeys( ut, ur_ctxCell( ctx, EI_KEY_DOWN ) );
+    gui_remapKeys( ut, ur_ctxCell( ctx, EI_KEY_UP ) );
+    return UR_OK;
+}
+
+
+static int mapButton( int code )
+{
+    switch( code )
+    {
+        case GLV_BUTTON_LEFT:   return 1;
+        case GLV_BUTTON_RIGHT:  return 2;
+        case GLV_BUTTON_MIDDLE: return 3;
+    }
+    return 0;
+}
+
+
+static const UCell* selectKeyHandler( UThread* ut, const UCell* cell, int code )
+{
+    if( ur_is(cell, UT_BLOCK) )
+    {
+        UBlockIter bi;
+        ur_blkSlice( ut, &bi, cell );
+        if( (bi.end - bi.it) & 1 )
+            --bi.end;
+
+        // TODO: Sort key-handler block so a binary search can be used here.
+        while( bi.it != bi.end )
+        {
+            if( ur_int(bi.it) == code )
+                return bi.it + 1;
+            bi.it += 2;
+        }
+    }
+    return 0;
+}
+
+
+static void eventContextDispatch( UThread* ut, GWidget* wp,
+                                  const GLViewEvent* event )
+{
+    UCell* val;
+    const UCell* cell;
+    const UBuffer* ctx;
+
+#define CCELL(N)     ur_ctxCell(ctx,N)
+
+    if( ! wp->eventCtxN )
+        return;
+
+    ctx = ur_buffer( wp->eventCtxN );
+    val = ur_ctxCell( ctx, EI_EVENT );
+
+    switch( event->type )
+    {
+/*
+        case GLV_EVENT_FOCUS_IN:
+            ur_setId(val, UT_LOGIC);
+            ur_logic(val) = 1;
+            break;
+
+        case GLV_EVENT_FOCUS_OUT:
+            ur_setId(val, UT_LOGIC);
+            ur_logic(val) = 0;
+            break;
+*/
+        case GLV_EVENT_RESIZE:
+            // coord elements: x, y, width, height
+            ur_setId(val, UT_COORD);
+            val->coord.len  = 4;
+            val->coord.n[0] = wp->area.x;
+            val->coord.n[1] = wp->area.y;
+            val->coord.n[2] = event->x;
+            val->coord.n[3] = event->y;
+
+            cell = CCELL( EI_RESIZE );
+            break;
+
+        case GLV_EVENT_CLOSE:
+            ur_setId(val, UT_NONE);
+
+            cell = CCELL( EI_CLOSE );
+            break;
+
+        case GLV_EVENT_BUTTON_DOWN:
+            // coord elements: x, y, button
+            ur_setId(val, UT_COORD);
+            val->coord.len  = 3;
+            val->coord.n[0] = event->x - wp->area.x;
+            val->coord.n[1] = event->y - wp->area.y;
+            val->coord.n[2] = mapButton( event->code );
+
+            cell = CCELL( EI_MOUSE_DOWN );
+            break;
+
+        case GLV_EVENT_BUTTON_UP:
+            // coord elements: x, y, button
+            ur_setId(val, UT_COORD);
+            val->coord.len  = 3;
+            val->coord.n[0] = event->x - wp->area.x;
+            val->coord.n[1] = event->y - wp->area.y;
+            val->coord.n[2] = mapButton( event->code );
+
+            cell = CCELL( EI_MOUSE_UP );
+            break;
+
+        case GLV_EVENT_MOTION:
+            // coord elements: x, y, dx, dy, btn-mask
+            ur_setId(val, UT_COORD);
+            val->coord.len  = 5;
+            val->coord.n[0] = event->x - wp->area.x;
+            //val->coord.n[1] = (ui->rootH - event->y - 1) - wp->y;
+            val->coord.n[1] = event->y - wp->area.y;
+            val->coord.n[2] = glEnv.mouseDeltaX;
+            val->coord.n[3] = glEnv.mouseDeltaY;
+            val->coord.n[4] = event->state;
+
+            cell = CCELL( EI_MOUSE_MOVE );
+            break;
+
+        case GLV_EVENT_WHEEL:
+            ur_setId(val, UT_INT);
+            ur_int(val) = event->y;
+
+            cell = CCELL( EI_MOUSE_WHEEL );
+            break;
+
+        case GLV_EVENT_KEY_DOWN:
+            cell = CCELL( EI_KEY_DOWN );
+            goto key_handler;
+
+        case GLV_EVENT_KEY_UP:
+            cell = CCELL( EI_KEY_UP );
+key_handler:
+            ur_setId(val, UT_INT);
+            ur_int(val) = event->code;
+
+            cell = selectKeyHandler( ut, cell, event->code );
+            if( ! cell )
+                return;
+            break;
+
+        default:
+            return;
+    }
+
+    if( ur_is(cell, UT_BLOCK) )
+        gui_doBlock( ut, cell );
+}
+
+
+static void ur_arrAppendPtr( UBuffer* arr, void* ptr )
+{
+    ur_arrReserve( arr, arr->used + 1 );
+    ((void**) arr->ptr.v)[ arr->used ] = ptr;
+    ++arr->used;
+}
+
+
+static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent )
+{
+    GWidgetClass* wclass;
+    GWidget* wp;
+    const UCell* cell;
+    const UCell* setWord = 0;
+
+
+    while( bi->it != bi->end )
+    {
+        if( ur_is(bi->it, UT_SETWORD) )
+        {
+            setWord = bi->it++;
+        }
+        else if( ur_is(bi->it, UT_WORD) )
+        {
+            wclass = gui_widgetClass( ur_atom(bi->it) );
+            if( ! wclass )
+            {
+                return ur_error( ut, UR_ERR_SCRIPT, "unknown widget class '%s",
+                                 ur_wordCStr( bi->it ) );
+            }
+            wp = wclass->make( ut, bi, wclass );
+            if( ! wp )
+                return UR_THROW;
+
+            if( parent )
+                gui_appendChild( parent, wp );
+            else
+                ur_arrAppendPtr( &glEnv.rootWidgets, wp );
+
+            if( setWord )
+            {
+                if( ! (cell = ur_wordCellM( ut, setWord )) )
+                    return UR_THROW;
+                ur_setId(cell, UT_WIDGET);
+                ur_widgetPtr(cell) = wp;
+                setWord = 0;
+            }
+        }
+        else
+        {
+            return ur_error( ut, UR_ERR_TYPE,
+                             "widget make expected name word! or set-word!" );
+        }
+    }
+    return UR_OK;
+}
+
+
+//----------------------------------------------------------------------------
+
+
+
+#define mouseGrabbed    wid.user16
+
 typedef struct
 {
     GWidget  wid;
     GWidget* keyFocus;
     GWidget* mouseFocus;
-    char     mouseGrabbed;
 }
 GUIRoot;
 
@@ -276,43 +582,50 @@ GUIRoot;
 static GWidget* root_make( UThread* ut, UBlockIter* bi,
                            const GWidgetClass* wclass )
 {
-    GUIRoot* ep;
-    const UCell* arg = bi->it;
-
-
-    ep = (GUIRoot*) gui_allocWidget( sizeof(GUIRoot), wclass );
-
+    GUIRoot* ep = (GUIRoot*) gui_allocWidget( sizeof(GUIRoot), wclass );
     ep->keyFocus = ep->mouseFocus = 0;
     ep->mouseGrabbed = 0;
 
-
-    if( ++arg == bi->end )
-        goto arg_end;
-    if( ur_is(arg, UT_BLOCK) )
+    if( ++bi->it == bi->end )
+        goto done;
+    if( ur_is(bi->it, UT_BLOCK) )
     {
-        if( ! gui_makeWidgets( ut, arg, (GWidget*) ep ) )
-        {
-            wclass->free( (GWidget*) ep );
-            return 0;
-        }
-        if( ep->wid.child )
-            ep->keyFocus = ep->wid.child;
-        ++arg;
+        if( ! _installEventContext( ut, (GWidget*) ep, bi->it ) )
+            goto fail;
+        ++bi->it;
     }
 
-arg_end:
+    if( ! _makeChildren( ut, bi, (GWidget*) ep ) )
+        goto fail;
 
-    bi->it = arg;
+#if 0
+    if( ep->wid.child )
+        ep->keyFocus = ep->wid.child;
+#endif
+
+done:
     return (GWidget*) ep;
+
+fail:
+    wclass->free( (GWidget*) ep );
+    return 0;
+}
+
+
+static void root_mark( UThread* ut, GWidget* wp )
+{
+    ur_markBlkN( ut, wp->eventCtxN );
+    widget_markChildren( ut, wp );
 }
 
 
 GWidgetClass wclass_root;
+#define isRoot(ui)      ((ui)->wid.wclass == &wclass_root)
 
 static void gui_removeFocus( GWidget* wp )
 {
     GUIRoot* ui = (GUIRoot*) gui_root( wp );
-    if( ui->wid.wclass == &wclass_root )
+    if( isRoot(ui) )
     {
         if( ui->mouseFocus == wp )
         {
@@ -351,7 +664,7 @@ static void gui_setMouseFocus( GUIRoot* ui, GWidget* wp )
 void gui_setKeyFocus( GWidget* wp )
 {
     GUIRoot* ui = (GUIRoot*) gui_root( wp );
-    if( ui->wid.wclass == &wclass_root )
+    if( isRoot(ui) )
     {
         ui->keyFocus = wp;
     }
@@ -361,7 +674,7 @@ void gui_setKeyFocus( GWidget* wp )
 void gui_grabMouse( GWidget* wp, int keyFocus )
 {
     GUIRoot* ui = (GUIRoot*) gui_root( wp );
-    if( ui->wid.wclass == &wclass_root )
+    if( isRoot(ui) )
     {
         ui->mouseFocus = wp;
         ui->mouseGrabbed = 1;
@@ -374,7 +687,7 @@ void gui_grabMouse( GWidget* wp, int keyFocus )
 void gui_ungrabMouse( GWidget* wp )
 {
     GUIRoot* ui = (GUIRoot*) gui_root( wp );
-    if( ui->wid.wclass == &wclass_root )
+    if( isRoot(ui) )
     {
         if( ui->mouseFocus == wp )
             ui->mouseGrabbed = 0;
@@ -386,7 +699,7 @@ int gui_hasFocus( GWidget* wp )
 {
     GUIRoot* ui = (GUIRoot*) gui_root( wp );
     int mask = 0;
-    if( ui->wid.wclass == &wclass_root )
+    if( isRoot(ui) )
     {
         if( ui->keyFocus == wp )
             mask |= GW_FOCUS_KEY;
@@ -439,21 +752,14 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             }
             break;
 
-        case GLV_EVENT_CLOSE:
-            if( (cw = wp->child) )
-                goto dispatch;
-            /*
-            boron_throwWord( ut, UR_ATOM_QUIT );
-            UR_GUI_THROW;   // Ignores any later events.
-            */
-            return;
+        //case GLV_EVENT_CLOSE:
 
         case GLV_EVENT_BUTTON_DOWN:
         case GLV_EVENT_BUTTON_UP:
         case GLV_EVENT_WHEEL:
             if( (cw = ep->mouseFocus) )
                 goto dispatch;
-            return;
+            break;
 
         case GLV_EVENT_MOTION:
             if( (cw = ep->mouseFocus) )
@@ -494,6 +800,7 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                 goto dispatch;
             break;
     }
+    eventContextDispatch( ut, wp, ev );
     return;
 
 dispatch:
@@ -629,18 +936,6 @@ arg_end:
 
     bi->it = arg;
     return (GWidget*) ep;
-}
-
-
-static void box_mark( UThread* ut, GWidget* wp )
-{
-    GMarkFunc func;
-    GWidget* it;
-
-    EACH_CHILD( wp, it )
-        if( (func = it->wclass->mark) )
-            func( ut, it );
-    EACH_END
 }
 
 
@@ -832,16 +1127,6 @@ static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
 }
 
 
-static void box_render( GWidget* wp )
-{
-    GWidget* it;
-
-    EACH_SHOWN_CHILD( wp, it )
-        it->wclass->render( it );
-    EACH_END
-}
-
-
 //----------------------------------------------------------------------------
 
 
@@ -971,9 +1256,8 @@ typedef struct
 {
     GWidget wid;
     BOX_MEMBERS
-    UIndex   dp[2];
-    UIndex   titleN;
-    UIndex   eventN;        // Event handler block
+    UIndex  dp[2];
+    UIndex  titleN;
 }
 GWindow;
 
@@ -1017,7 +1301,9 @@ static GWidget* window_make( UThread* ut, UBlockIter* bi,
         goto arg_end;
     if( ur_is(arg, UT_BLOCK) )
     {
-        ep->eventN = arg->series.buf;
+        if( ! _installEventContext( ut, (GWidget*) ep, arg ) )
+            goto fail;
+        ep->wid.eventCtxN = arg->series.buf;
     }
 
     if( ++arg == bi->end )
@@ -1025,17 +1311,17 @@ static GWidget* window_make( UThread* ut, UBlockIter* bi,
     if( ur_is(arg, UT_BLOCK) )
     {
         if( ! gui_makeWidgets( ut, arg, (GWidget*) ep ) )
-        {
-            wclass->free( (GWidget*) ep );
-            return 0;
-        }
+            goto fail;
         ++arg;
     }
 
 arg_end:
-
     bi->it = arg;
     return (GWidget*) ep;
+
+fail:
+    wclass->free( (GWidget*) ep );
+    return 0;
 }
 
 
@@ -1046,59 +1332,9 @@ static void window_mark( UThread* ut, GWidget* wp )
     ur_markBuffer( ut, ep->dp[0] );
     if( ep->titleN > UR_INVALID_BUF )   // Also acts as (! ur_isShared(n))
         ur_markBuffer( ut, ep->titleN );
-    ur_markBlkN( ut, ep->eventN );
 
-    box_mark( ut, wp );
-}
-
-
-static void window_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
-{
-    EX_PTR;
-    UBlockIter bi;
-    UAtom name;
-
-    //printf( "KR window event %d\n", ev->type );
-    if( ep->eventN )
-    {
-        switch( ev->type )
-        {
-            case GLV_EVENT_CLOSE:
-                name = UR_ATOM_CLOSE;
-                break;
-            case GLV_EVENT_RESIZE:
-                name = UR_ATOM_RESIZE;
-                // TODO: Pass area to handler.
-                break;
-            default:
-                return;
-        }
-
-        bi.buf = ur_buffer( ep->eventN );
-        bi.it  = bi.buf->ptr.cell;
-        bi.end = bi.it + bi.buf->used;
-        if( bi.buf->used & 1 )
-            --bi.end;
-        while( bi.it != bi.end )
-        {
-            if( ur_is(bi.it, UT_WORD) )
-            {
-                if( ur_atom(bi.it) == name )
-                {
-                    ++bi.it;
-                    if( ur_is(bi.it, UT_BLOCK) )
-                    {
-                        if( ! boron_doVoid( ut, bi.it ) )
-                        {
-                            UR_GUI_THROW;
-                        }
-                    }
-                    return;
-                }
-            }
-            bi.it += 2;
-        }
-    }
+    ur_markBlkN( ut, wp->eventCtxN );
+    widget_markChildren( ut, wp );
 }
 
 
@@ -1180,7 +1416,7 @@ static void window_render( GWidget* wp )
     ur_initDrawState( &ds );
     ur_runDrawProg( glEnv.guiUT, &ds, ep->dp[0] );
 
-    box_render( wp );
+    widget_renderChildren( wp );
 }
 
 
@@ -1190,7 +1426,7 @@ static void window_render( GWidget* wp )
 GWidgetClass wclass_root =
 {
     "root",
-    root_make,          widget_free,        box_mark,
+    root_make,          widget_free,        root_mark,
     root_dispatch,      root_sizeHint,      no_layout,
     root_render,        gui_areaSelect,
     0, 0
@@ -1200,9 +1436,9 @@ GWidgetClass wclass_root =
 GWidgetClass wclass_hbox =
 {
     "hbox",
-    box_make,           widget_free,        box_mark,
-    no_dispatch,        hbox_sizeHint,      hbox_layout,
-    box_render,         gui_areaSelect,
+    box_make,               widget_free,        widget_markChildren,
+    no_dispatch,            hbox_sizeHint,      hbox_layout,
+    widget_renderChildren,  gui_areaSelect,
     0, 0
 };
 
@@ -1210,9 +1446,9 @@ GWidgetClass wclass_hbox =
 GWidgetClass wclass_vbox =
 {
     "vbox",
-    box_make,           widget_free,        box_mark,
-    no_dispatch,        vbox_sizeHint,      vbox_layout,
-    box_render,         gui_areaSelect,
+    box_make,               widget_free,        widget_markChildren,
+    no_dispatch,            vbox_sizeHint,      vbox_layout,
+    widget_renderChildren,  gui_areaSelect,
     0, 0
 };
 
@@ -1220,9 +1456,9 @@ GWidgetClass wclass_vbox =
 GWidgetClass wclass_window =
 {
     "window",
-    window_make,        widget_free,        window_mark,
-    window_dispatch,    window_sizeHint,    window_layout,
-    window_render,      gui_areaSelect,
+    window_make,            widget_free,        window_mark,
+    eventContextDispatch,   window_sizeHint,    window_layout,
+    window_render,          gui_areaSelect,
     0, 0
 };
 
@@ -1237,7 +1473,6 @@ GWidgetClass wclass_expand =
 };
 
 
-extern GWidgetClass wclass_script;
 extern GWidgetClass wclass_button;
 extern GWidgetClass wclass_checkbox;
 extern GWidgetClass wclass_label;
@@ -1254,21 +1489,20 @@ extern GWidgetClass wclass_list;
 
 void gui_addStdClasses()
 {
-    GWidgetClass* classes[ 11 ];
+    GWidgetClass* classes[ 10 ];
 
     classes[0]  = &wclass_root;
     classes[1]  = &wclass_expand;
     classes[2]  = &wclass_hbox;
     classes[3]  = &wclass_vbox;
     classes[4]  = &wclass_window;
-    classes[5]  = &wclass_script;
-    classes[6]  = &wclass_button;
-    classes[7]  = &wclass_checkbox;
-    classes[8]  = &wclass_label;
-    classes[9]  = &wclass_lineedit;
-    classes[10] = &wclass_list;
+    classes[5]  = &wclass_button;
+    classes[6]  = &wclass_checkbox;
+    classes[7]  = &wclass_label;
+    classes[8]  = &wclass_lineedit;
+    classes[9]  = &wclass_list;
 
-    gui_addWidgetClasses( classes, 11 );
+    gui_addWidgetClasses( classes, 10 );
 }
 
 
@@ -1449,6 +1683,15 @@ void gui_show( GWidget* wp, int show )
 }
 
 
+#if 0
+void gui_move( GWidget* wp, int x, int y )
+{
+    wp->area.x = x;
+    wp->area.y = y;
+}
+#endif
+
+
 UCell* gui_style( UThread* ut )
 {
     UBuffer* ctx = ur_threadContext( ut );
@@ -1510,30 +1753,6 @@ GWidgetClass* gui_widgetClass( UAtom name )
 }
 
 
-#if 0
-/*.cf.
-   make-widget
-        parent  widget!/none!
-        block   block!
-*/
-CFUNC_PUB( make_widget )
-{
-    GWidget* parent = 0;
-    if( ur_is(a1, UT_WIDGET) )
-        parent = gui_widgetPtr( a1 );
-    return ur_error( ut, UR_ERR_SCRIPT, "widget! make expected block!" );
-}
-#endif
-
-
-static void ur_arrAppendPtr( UBuffer* arr, void* ptr )
-{
-    ur_arrReserve( arr, arr->used + 1 );
-    ((void**) arr->ptr.v)[ arr->used ] = ptr;
-    ++arr->used;
-}
-
-
 /*
   \param blkC       Valid block with widget layout language.
   \param parent     Pointer to parent or zero if none.
@@ -1543,56 +1762,8 @@ static void ur_arrAppendPtr( UBuffer* arr, void* ptr )
 int gui_makeWidgets( UThread* ut, const UCell* blkC, GWidget* parent )
 {
     UBlockIter bi;
-    GWidgetClass* wclass;
-    GWidget* wp;
-    const UCell* cell;
-    const UCell* setWord = 0;
-
-
     ur_blkSlice( ut, &bi, blkC );
-    while( bi.it != bi.end )
-    {
-        if( ur_is(bi.it, UT_SETWORD) )
-        {
-            setWord = bi.it++;
-        }
-        else if( ur_is(bi.it, UT_WORD) )
-        {
-            wclass = gui_widgetClass( ur_atom(bi.it) );
-            if( ! wclass )
-            {
-                return ur_error( ut, UR_ERR_SCRIPT, "unknown widget class '%s",
-                                 ur_wordCStr( bi.it ) );
-            }
-            wp = wclass->make( ut, &bi, wclass );
-            if( ! wp )
-                return UR_THROW;
-
-            if( parent )
-            {
-                gui_appendChild( parent, wp );
-            }
-            else
-            {
-                ur_arrAppendPtr( &glEnv.rootWidgets, wp );
-            }
-
-            if( setWord )
-            {
-                if( ! (cell = ur_wordCellM( ut, setWord )) )
-                    return UR_THROW;
-                ur_setId(cell, UT_WIDGET);
-                ur_widgetPtr(cell) = wp;
-                setWord = 0;
-            }
-        }
-        else
-        {
-            return ur_error( ut, UR_ERR_TYPE,
-                             "widget make expected name word! or set-word!" );
-        }
-    }
-    return UR_OK;
+    return _makeChildren( ut, &bi, parent );
 }
 
 

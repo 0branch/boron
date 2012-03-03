@@ -636,7 +636,7 @@ static int _keyCode( const char* cp, int len )
 
     Maps key to window system key code.
 */
-CFUNC_PUB( uc_key_code )
+CFUNC_PUB( cfunc_key_code )
 {
     int code;
     (void) ut;
@@ -853,25 +853,18 @@ CFUNC( cfunc_set_volume )
         widget  widget!
     return: unset!
 */
-CFUNC( uc_show )
+CFUNC( cfunc_show )
 {
     (void) ut;
     if( ur_is(a1, UT_WIDGET) )
     {
-#ifdef KR_TODO
-        UCell* inv;
-        GWidgetId id = ur_int(a1);
-        GWidget* wp = gui_widgetPtr( &glEnv.gui, id );
-        if( wp )
+        GWidget* wp = ur_widgetPtr( a1 );
+        gui_show( wp, 1 );
+#if 0
+        if( CFUNC_OPTIONS & OPT_SHOW_FOCUS )
         {
-            gui_show( &glEnv.gui, wp, 1 );
-
-            inv = UR_CALL_CELL;
-            if( inv && (ur_sel(inv) == UR_ATOM_FOCUS) )
-            {
-                gui_setKeyFocus( &glEnv.gui, id );
-                gui_setMouseFocus( &glEnv.gui, id );
-            }
+            gui_setKeyFocus( wp );
+            //gui_setMouseFocus( root, wp );
         }
 #endif
     }
@@ -885,20 +878,51 @@ CFUNC( uc_show )
         widget  widget!
     return: unset!
 */
-CFUNC( uc_hide )
+CFUNC( cfunc_hide )
 {
     (void) ut;
     if( ur_is(a1, UT_WIDGET) )
     {
-#ifdef KR_TODO
-        GWidget* wp = gui_widgetPtr( &glEnv.gui, ur_int(a1) );
-        if( wp )
-            gui_show( &glEnv.gui, wp, 0 );
-#endif
+        gui_show( ur_widgetPtr( a1 ), 0 );
     }
     ur_setId(res, UT_UNSET);
     return UR_OK;
 }
+
+
+#if 0
+/*-cf-
+    move
+        widget      widget!
+        position    coord!
+        /center
+    return: unset!
+*/
+CFUNC( cfunc_move )
+{
+    UCell* a2 = a1 + 1;
+    int x, y;
+    (void) ut;
+
+    if( ur_is(a1, UT_WIDGET) && ur_is(a2, UT_COORD) )
+    {
+        GWidget* wp = ur_widgetPtr( a1 );
+        if( (CFUNC_OPTIONS & 1) && (a2->coord.len > 3) )
+        {
+            x = (a2->coord.n[2] - wp->area.w) / 2;
+            y = (a2->coord.n[3] - wp->area.h) / 2;
+        }
+        else
+        {
+            x = a2->coord.n[0];
+            y = a2->coord.n[1];
+        }
+        gui_move( wp, x, y );
+    }
+    ur_setId(res, UT_UNSET);
+    return UR_OK;
+}
+#endif
 
 
 static int _convertUnits( UThread* ut, const UCell* a1, UCell* res,
@@ -2269,8 +2293,9 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_play,        "play n" );
     addCFunc( cfunc_stop,        "stop n" );
     addCFunc( cfunc_set_volume,  "set-volume n b" );
-    addCFunc( uc_show,           "show wid" );
-    addCFunc( uc_hide,           "hide wid" );
+    addCFunc( cfunc_show,        "show wid" );
+    addCFunc( cfunc_hide,        "hide wid" );
+    //addCFunc( cfunc_move,        "move wid pos /center" );
     addCFunc( cfunc_text_size,   "text-size f text" );
     addCFunc( uc_handle_events,  "handle-events wid /wait" );
     addCFunc( uc_clear_color,    "clear-color color" );
@@ -2279,7 +2304,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( uc_display_snap,   "display-snapshot" );
     addCFunc( uc_display_cursor, "display-cursor" );
     addCFunc( uc_key_repeat,     "key-repeat" );
-    addCFunc( uc_key_code,       "key-code" );
+    addCFunc( cfunc_key_code,    "key-code" );
     addCFunc( cfunc_load_png,    "load-png f" );
     addCFunc( cfunc_save_png,    "save-png f rast" );
     addCFunc( cfunc_buffer_audio,"buffer-audio a" );

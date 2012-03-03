@@ -2,7 +2,7 @@
 #define GUI_H
 /*
   Boron OpenGL GUI
-  Copyright 2010-2011 Karl Robillard
+  Copyright 2010-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -32,7 +32,7 @@ enum GUIEvent
 };
 
 
-// Order must match gui-style-proto in gx.t.
+// Order must match gui-style-proto in boot.b.
 enum ContextIndexStyle
 {
     CI_STYLE_TEXTURE,       // texture!
@@ -128,6 +128,7 @@ struct GWidgetClass
 #define GW_NO_SPACE      0x0010
 #define GW_FLAG_USER1    0x0100
 #define GW_FLAG_USER2    0x0200
+#define GW_FLAG_USER3    0x0400
 
 
 struct GWidget
@@ -138,7 +139,8 @@ struct GWidget
     GWidget*  next;
     GRect     area;
     uint16_t  flags;
-    uint16_t  user;
+    uint16_t  user16;
+    uint32_t  user32;
 };
 
 
@@ -176,8 +178,10 @@ int      gui_hasFocus( GWidget* );
 UIndex   gui_parentDrawProg( GWidget* );
 
 void widget_free( GWidget* );
+void widget_markChildren( UThread*, GWidget* );
 void widget_dispatch( UThread*, GWidget*, const GLViewEvent* );
-void widget_render( GWidget* );
+void widget_renderNul( GWidget* );
+void widget_renderChildren( GWidget* );
 
 
 #endif /*GUI_H*/

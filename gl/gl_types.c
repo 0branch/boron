@@ -1462,7 +1462,7 @@ static void widget_mark( UThread* ut, UCell* cell )
 {
     GWidget* wp = ur_widgetPtr(cell);
     wp = gui_root( wp );
-    if( wp )
+    if( wp && (wp->flags & GW_RECYCLE) )
     {
         GMarkFunc func = wp->wclass->mark;
         if( func )

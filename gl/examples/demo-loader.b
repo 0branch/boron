@@ -16,7 +16,7 @@ clear-color 0.1,0.3,0.8
 zoom: 1.0
 
 demo-window: [
-    script-widget [
+    root [
         close: [quit]
         key-down: [
             esc [quit]
