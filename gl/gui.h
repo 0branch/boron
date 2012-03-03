@@ -148,6 +148,9 @@ struct GWidget
 #define GW_FOCUS_MOUSE   0x0002
 #define GW_FOCUS_GRAB    0x0004
 
+#define gui_ignoreEvent(ev)     ((GLViewEvent*) ev)->type |= 0x1000
+#define gui_acceptEvent(ev)     ((GLViewEvent*) ev)->type &= 0x0fff
+
 
 void gui_addWidgetClasses( GWidgetClass** classTable, int count );
 GWidgetClass* gui_widgetClass( UAtom name );

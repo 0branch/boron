@@ -293,10 +293,18 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                                 ++ep->editPos;
                                 ledit_setChanged;
                             }
+                            else
+                            {
+                                gui_ignoreEvent( ev );
+                            }
                         }
                         break;
                 }
             }
+            break;
+
+        case GLV_EVENT_KEY_UP:
+            gui_ignoreEvent( ev );
             break;
 
         case GLV_EVENT_FOCUS_IN:

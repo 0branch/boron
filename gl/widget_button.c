@@ -148,6 +148,10 @@ static void button_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                 button_setState( ut, ep, BTN_STATE_UP );
                 goto activate;
             }
+            // Fall through...
+
+        case GLV_EVENT_KEY_UP:
+            gui_ignoreEvent( ev );
             break;
 
         case GLV_EVENT_FOCUS_IN:
@@ -204,6 +208,10 @@ static void check_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
         case GLV_EVENT_KEY_DOWN:
             if( ev->code == KEY_Return )
                 goto activate;
+            // Fall through...
+
+        case GLV_EVENT_KEY_UP:
+            gui_ignoreEvent( ev );
             break;
 
         case GLV_EVENT_FOCUS_IN:

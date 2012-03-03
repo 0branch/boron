@@ -102,6 +102,28 @@ static int listw_validRow( UThread* ut, GList* ep, unsigned int row )
 
 static void listw_layout( GWidget* );
 
+static void listw_selectNextItem( UThread* ut, GWidget* wp )
+{
+    EX_PTR;
+    if( listw_validRow( ut, ep, ep->selRow + 1 ) )
+    {
+        ++ep->selRow;
+        listw_layout( wp );
+    }
+}
+
+
+static void listw_selectPrevItem( GWidget* wp )
+{
+    EX_PTR;
+    if( ep->selRow > 0 )
+    {
+        --ep->selRow;
+        listw_layout( wp );
+    }
+}
+
+
 //#define CCELL(N)     (cblk->ptr.cell + N)
 
 static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
@@ -132,8 +154,6 @@ static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             break;
 
         case GLV_EVENT_RESIZE:
-            break;
-        case GLV_EVENT_CLOSE:
             break;
 */
         case GLV_EVENT_BUTTON_DOWN:
@@ -174,52 +194,27 @@ static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 */
         case GLV_EVENT_WHEEL:
             if( ev->y < 0 )
-            {
-                if( listw_validRow( ut, ep, ep->selRow + 1 ) )
-                {
-                    ++ep->selRow;
-                    listw_layout( wp );
-                }
-            }
+                listw_selectNextItem( ut, wp );
             else
-            {
-                if( ep->selRow > 0 )
-                {
-                    --ep->selRow;
-                    listw_layout( wp );
-                }
-            }
+                listw_selectPrevItem( wp );
             break;
-/*
+
         case GLV_EVENT_KEY_DOWN:
-            cell = CCELL( CI_TWIDGETPROTO_KEY_DOWN );
-            goto key_handler;
+            switch( ev->code )
+            {
+                case KEY_Up:
+                    listw_selectPrevItem( wp );
+                    return;
+                case KEY_Down:
+                    listw_selectNextItem( ut, wp );
+                    return;
+            }
+            // Fall through...
 
         case GLV_EVENT_KEY_UP:
-            cell = CCELL( CI_TWIDGETPROTO_KEY_UP );
-key_handler:
-            ur_initType(val, UT_INT);
-            ur_int(val) = ev->code;
-
-            cell = selectKeyHandler( ut, cell, ev->code );
-            if( ! cell )
-                return;
+            gui_ignoreEvent( ev );
             break;
-*/
-        default:
-            return;
     }
-
-/*
-    if( ur_is(cell, UT_BLOCK) )
-    {
-        UR_S_GROW;
-        if( UR_EVAL_OK == ur_eval( ut, cell->series.n, 0 ) )
-        {
-            UR_S_DROP;
-        }
-    }
-*/
 }
 
 

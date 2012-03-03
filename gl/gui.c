@@ -403,7 +403,7 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
 #define CCELL(N)     ur_ctxCell(ctx,N)
 
     if( ! wp->eventCtxN )
-        return;
+        goto ignore;
 
     ctx = ur_buffer( wp->eventCtxN );
     val = ur_ctxCell( ctx, EI_EVENT );
@@ -422,6 +422,10 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
             break;
 */
         case GLV_EVENT_RESIZE:
+            cell = CCELL( EI_RESIZE );
+            if( ! ur_is(cell, UT_BLOCK) )
+                return;
+
             // coord elements: x, y, width, height
             ur_setId(val, UT_COORD);
             val->coord.len  = 4;
@@ -429,39 +433,47 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
             val->coord.n[1] = wp->area.y;
             val->coord.n[2] = event->x;
             val->coord.n[3] = event->y;
-
-            cell = CCELL( EI_RESIZE );
             break;
 
         case GLV_EVENT_CLOSE:
-            ur_setId(val, UT_NONE);
-
             cell = CCELL( EI_CLOSE );
+            if( ! ur_is(cell, UT_BLOCK) )
+                return;
+
+            ur_setId(val, UT_NONE);
             break;
 
         case GLV_EVENT_BUTTON_DOWN:
+            cell = CCELL( EI_MOUSE_DOWN );
+            if( ! ur_is(cell, UT_BLOCK) )
+                goto ignore;
+
             // coord elements: x, y, button
             ur_setId(val, UT_COORD);
             val->coord.len  = 3;
             val->coord.n[0] = event->x - wp->area.x;
             val->coord.n[1] = event->y - wp->area.y;
             val->coord.n[2] = mapButton( event->code );
-
-            cell = CCELL( EI_MOUSE_DOWN );
             break;
 
         case GLV_EVENT_BUTTON_UP:
+            cell = CCELL( EI_MOUSE_UP );
+            if( ! ur_is(cell, UT_BLOCK) )
+                goto ignore;
+
             // coord elements: x, y, button
             ur_setId(val, UT_COORD);
             val->coord.len  = 3;
             val->coord.n[0] = event->x - wp->area.x;
             val->coord.n[1] = event->y - wp->area.y;
             val->coord.n[2] = mapButton( event->code );
-
-            cell = CCELL( EI_MOUSE_UP );
             break;
 
         case GLV_EVENT_MOTION:
+            cell = CCELL( EI_MOUSE_MOVE );
+            if( ! ur_is(cell, UT_BLOCK) )
+                goto ignore;
+
             // coord elements: x, y, dx, dy, btn-mask
             ur_setId(val, UT_COORD);
             val->coord.len  = 5;
@@ -471,15 +483,15 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
             val->coord.n[2] = glEnv.mouseDeltaX;
             val->coord.n[3] = glEnv.mouseDeltaY;
             val->coord.n[4] = event->state;
-
-            cell = CCELL( EI_MOUSE_MOVE );
             break;
 
         case GLV_EVENT_WHEEL:
+            cell = CCELL( EI_MOUSE_WHEEL );
+            if( ! ur_is(cell, UT_BLOCK) )
+                goto ignore;
+
             ur_setId(val, UT_INT);
             ur_int(val) = event->y;
-
-            cell = CCELL( EI_MOUSE_WHEEL );
             break;
 
         case GLV_EVENT_KEY_DOWN:
@@ -489,20 +501,24 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
         case GLV_EVENT_KEY_UP:
             cell = CCELL( EI_KEY_UP );
 key_handler:
-            ur_setId(val, UT_INT);
-            ur_int(val) = event->code;
-
             cell = selectKeyHandler( ut, cell, event->code );
             if( ! cell )
-                return;
+                goto ignore;
+
+            ur_setId(val, UT_INT);
+            ur_int(val) = event->code;
             break;
 
         default:
             return;
     }
 
-    if( ur_is(cell, UT_BLOCK) )
-        gui_doBlock( ut, cell );
+    gui_doBlock( ut, cell );
+    return;
+
+ignore:
+
+    gui_ignoreEvent( event );
 }
 
 
@@ -758,7 +774,7 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
         case GLV_EVENT_BUTTON_UP:
         case GLV_EVENT_WHEEL:
             if( (cw = ep->mouseFocus) )
-                goto dispatch;
+                goto dispatch_used;
             break;
 
         case GLV_EVENT_MOTION:
@@ -774,20 +790,20 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                         gui_setMouseFocus( ep, cw2 );
                         cw = cw2;
                     }
-                    goto dispatch;
+                    goto dispatch_used;
                 }
             }
 
             cw = childAt( wp, ev );
             gui_setMouseFocus( ep, cw );
             if( cw )
-                goto dispatch;
+                goto dispatch_used;
             break;
 
         case GLV_EVENT_KEY_DOWN:
         case GLV_EVENT_KEY_UP:
             if( (cw = ep->keyFocus) )
-                goto dispatch;
+                goto dispatch_used;
             break;
 
         case GLV_EVENT_FOCUS_IN:
@@ -798,14 +814,34 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             cw = ep->mouseFocus;
             if( cw )
                 goto dispatch;
-            break;
+            return;
     }
+
+dispatch_ctx:
+
     eventContextDispatch( ut, wp, ev );
     return;
 
 dispatch:
 
     cw->wclass->dispatch( ut, cw, ev );
+    return;
+
+dispatch_used:
+
+    cw->wclass->dispatch( ut, cw, ev );
+    if( ev->type & 0x1000 )
+    {
+        gui_acceptEvent( ev );
+        do
+        {
+            cw = cw->parent;
+            if( cw == wp )
+                goto dispatch_ctx;
+        }
+        while( cw->flags & GW_DISABLED );
+        goto dispatch_used;
+    }
 }
 
 
