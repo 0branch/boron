@@ -45,6 +45,7 @@ typedef struct
     uint16_t dpSwitch;
     uint16_t editPos;
     uint16_t editEndPos;    // Selected text.
+    uint16_t newCursorX;
     uint8_t  state;
 }
 LineEdit;
@@ -57,9 +58,15 @@ LineEdit;
 #define LEDIT_APV           4
 #define LEDIT_ATTR_SIZE     (LEDIT_APV * sizeof(GLfloat))
 
-#define ledit_hasChanged    (wp->flags & GW_FLAG_USER1)
-#define ledit_setChanged    wp->flags |= GW_FLAG_USER1
-#define ledit_clrChanged    wp->flags &= ~GW_FLAG_USER1
+#define MARGIN_L    8
+#define MARGIN_B    4
+
+#define flagged(wf)   (wp->flags & wf)
+#define setFlag(wf)   wp->flags |= wf
+#define clrFlag(wf)   wp->flags &= ~wf
+
+#define CHANGED         GW_FLAG_USER1
+#define NEW_CURSORX     GW_FLAG_USER2
 
 
 static UIndex ledit_vbo( UThread* ut, int maxChars )
@@ -110,7 +117,7 @@ static GWidget* ledit_make( UThread* ut, UBlockIter* bi,
             goto bad_string;
 
         ep = (LineEdit*) gui_allocWidget( sizeof(LineEdit), wclass );
-        ep->wid.flags |= GW_FLAG_USER1;     // ledit_setChanged
+        ep->wid.flags |= CHANGED;
 
         //ep->state = LEDIT_STATE_DISPLAY;
         ep->strN     = arg->series.buf;
@@ -184,10 +191,16 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                 ep->state = LEDIT_STATE_EDIT;
                 gui_setKeyFocus( wp );
 
-                if( ev->code == GLV_BUTTON_MIDDLE )
+                if( ev->code == GLV_BUTTON_LEFT )
+                {
+                    // Don't have access to font here so just notify render.
+                    ep->newCursorX = ev->x;
+                    setFlag( NEW_CURSORX );
+                }
+                else // if( ev->code == GLV_BUTTON_MIDDLE )
                 {
                     ledit_paste( ut, ep );
-                    ledit_setChanged;
+                    setFlag( CHANGED );
                 }
             }
             break;
@@ -210,13 +223,13 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                         if( len > 0 )
                         {
                             ur_arrErase( str, ep->editPos, len );
-                            ledit_setChanged;
+                            setFlag( CHANGED );
                         }
                     }
                     else if( ev->code == KEY_v )
                     {
                         ledit_paste( ut, ep );
-                        ledit_setChanged;
+                        setFlag( CHANGED );
                     }
                     break;
                 }
@@ -230,7 +243,7 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                         if( ep->editPos > 0 )
                         {
                             --ep->editPos;
-                            ledit_setChanged;
+                            setFlag( CHANGED );
                         }
                         break;
 
@@ -238,18 +251,18 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                         if( ep->editPos < str->used )
                         {
                             ++ep->editPos;
-                            ledit_setChanged;
+                            setFlag( CHANGED );
                         }
                         break;
 
                     case KEY_Home:
                         ep->editPos = 0;
-                        ledit_setChanged;
+                        setFlag( CHANGED );
                         break;
 
                     case KEY_End:
                         ep->editPos = str->used;
-                        ledit_setChanged;
+                        setFlag( CHANGED );
                         break;
 
                     case KEY_Insert:
@@ -259,7 +272,7 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                         if( ep->editPos < str->used )
                         {
                             ur_arrErase( str, ep->editPos, 1 );
-                            ledit_setChanged;
+                            setFlag( CHANGED );
                         }
                         break;
 
@@ -268,7 +281,7 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                         {
                             --ep->editPos;
                             ur_arrErase( str, ep->editPos, 1 );
-                            ledit_setChanged;
+                            setFlag( CHANGED );
                         }
                         break;
 
@@ -291,7 +304,7 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                                 else
                                     str->ptr.b[ ep->editPos ] = key;
                                 ++ep->editPos;
-                                ledit_setChanged;
+                                setFlag( CHANGED );
                             }
                             else
                             {
@@ -403,7 +416,7 @@ static void ledit_layout( GWidget* wp )
 
     dp_endSwitch( gDPC, ep->dpSwitch, ep->state );
 
-    ledit_setChanged;
+    setFlag( CHANGED );
 
 #if 0
     rc = style + CI_STYLE_EDITOR_CURSOR;
@@ -446,13 +459,28 @@ static void ledit_render( GWidget* wp )
         str = ur_buffer( ep->strN );
         buf = vbo_bufIds( ur_buffer(ep->vboN) );
 
+        if( flagged( NEW_CURSORX ) )
+        {
+            int pos;
+            clrFlag( NEW_CURSORX );
+            pos = txf_charAtPixel( tf, str->ptr.b, str->ptr.b + str->used,
+                                   ep->newCursorX - wp->area.x - MARGIN_L );
+            if( pos < 0 )
+                pos = (ep->newCursorX > wp->area.x + MARGIN_L) ? str->used : 0;
+            if( pos != ep->editPos )
+            {
+                ep->editPos = pos;
+                setFlag( CHANGED );
+            }
+        }
+
         glEnableClientState( GL_TEXTURE_COORD_ARRAY );
 
         glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
 
-        if( ledit_hasChanged )
+        if( flagged( CHANGED ) )
         {
-            ledit_clrChanged;
+            clrFlag( CHANGED );
             fdata = (float*) glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY );
             if( fdata )
             {
@@ -460,9 +488,10 @@ static void ledit_render( GWidget* wp )
                 int xpos = txf_width(tf, str->ptr.b,
                                          str->ptr.b + ep->editPos );
 
+                // FIXME: UVs require black pixels at upper-left of texture.
                 fdata[0] = 0.003f;
                 fdata[1] = 0.0f;  //95f;
-                fdata[2] = (GLfloat) (wp->area.x + xpos + 8);
+                fdata[2] = (GLfloat) (wp->area.x + xpos + MARGIN_L);
                 fdata[3] = (GLfloat) wp->area.y;
 
                 fdata[4] = 0.003f;
@@ -474,7 +503,8 @@ static void ledit_render( GWidget* wp )
 
                 fdata += LEDIT_APV * 2;
 
-                vbo_drawTextInit( &ds, tf, wp->area.x + 8, wp->area.y + 4 );
+                vbo_drawTextInit( &ds, tf, wp->area.x + MARGIN_L,
+                                           wp->area.y + MARGIN_B );
 
                 ep->drawn = 6 * vbo_drawText( &ds, fdata, fdata + 2, LEDIT_APV,
                                           str->ptr.b, str->ptr.b + str->used );

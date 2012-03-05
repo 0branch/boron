@@ -62,6 +62,8 @@ extern int  txf_kerning( const TexFont*, const TexFontGlyph* left,
 extern void txf_swap( TexFont* );
 extern void txf_moveGlyphs( TexFont*, int dx, int dy );
 extern int  txf_width( const TexFont*, const uint8_t* it, const uint8_t* end );
+extern int  txf_charAtPixel( const TexFont*, const uint8_t* it,
+                             const uint8_t* end, int x );
 extern int  txf_lineSpacing( const TexFont* );
 
 #ifdef __cplusplus

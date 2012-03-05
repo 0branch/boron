@@ -548,6 +548,51 @@ int txf_width( const TexFont* tf, const uint8_t* it, const uint8_t* end )
 }
 
 
+/*
+   Returns character index under x or -1 if x is not inside the string area.
+*/
+int txf_charAtPixel( const TexFont* tf, const uint8_t* it, const uint8_t* end,
+                     int x )
+{
+    const uint8_t* start = it;
+    TexFontGlyph* prev = 0;
+    TexFontGlyph* tgi;
+    int width = 0;
+
+    if( x < 0 )
+        return -1;
+
+    while( it != end )
+    {
+        if( *it == '\n' )
+            break;
+        if( *it == ' ' )
+        {
+            tgi = txf_glyph( tf, ' ' );
+            if( tgi )
+                width += tgi->advance;
+            prev = 0;
+        }
+        else
+        {
+            tgi = txf_glyph( tf, *it );
+            if( tgi )
+            {
+                width += tgi->advance;
+                if( prev )
+                    width += txf_kerning( tf, prev, tgi );
+                prev = tgi;
+            }
+        }
+        if( x <= width )
+            return it - start;
+        ++it;
+    }
+
+    return -1;
+}
+
+
 int txf_lineSpacing( const TexFont* tf )
 {
     return tf->max_ascent + (tf->max_ascent / 2);
