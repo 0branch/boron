@@ -930,6 +930,38 @@ CFUNC( cfunc_move )
 }
 
 
+/*-cf-
+    resize
+        widget      widget!
+        area        coord!
+    return: unset!
+*/
+CFUNC( cfunc_resize )
+{
+    UCell* a2 = a1 + 1;
+    int x, y;
+    (void) ut;
+
+    if( ur_is(a1, UT_WIDGET) && ur_is(a2, UT_COORD) )
+    {
+        GWidget* wp = ur_widgetPtr( a1 );
+        if( a2->coord.len > 3 )
+        {
+            x = a2->coord.n[2];
+            y = a2->coord.n[3];
+        }
+        else
+        {
+            x = a2->coord.n[0];
+            y = a2->coord.n[1];
+        }
+        gui_resize( wp, x, y );
+    }
+    ur_setId(res, UT_UNSET);
+    return UR_OK;
+}
+
+
 static int _convertUnits( UThread* ut, const UCell* a1, UCell* res,
                           double conv )
 {
@@ -2301,6 +2333,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_show,        "show wid" );
     addCFunc( cfunc_hide,        "hide wid" );
     addCFunc( cfunc_move,        "move wid pos /center" );
+    addCFunc( cfunc_resize,      "resize wid a" );
     addCFunc( cfunc_text_size,   "text-size f text" );
     addCFunc( uc_handle_events,  "handle-events wid /wait" );
     addCFunc( uc_clear_color,    "clear-color color" );

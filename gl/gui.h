@@ -166,6 +166,7 @@ void     gui_appendChild( GWidget* parent, GWidget* child );
 void     gui_enable( GWidget*, int active );
 void     gui_show( GWidget*, int show );
 void     gui_move( GWidget*, int x, int y );
+void     gui_resize( GWidget*, int w, int h );
 int      gui_widgetContains( const GWidget*, int x, int y );
 UCell*   gui_style( UThread* );
 void     gui_initRectCoord( UCell* cell, GWidget*, UAtom what );

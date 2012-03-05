@@ -172,6 +172,26 @@ void gui_initRectCoord( UCell* cell, GWidget* w, UAtom what )
 }
 
 
+static int limitX( int x, const GRect* area )
+{
+    int right;
+    if( x < area->x )
+        return area->x;
+    right = area->x + area->w - 1;
+    return (x > right) ? right : x;
+}
+
+
+static int limitY( int y, const GRect* area )
+{
+    int top;
+    if( y < area->y )
+        return area->y;
+    top = area->y + area->h - 1;
+    return (y > top) ? top : y;
+}
+
+
 //----------------------------------------------------------------------------
 
 
@@ -892,24 +912,6 @@ static void root_render( GWidget* wp )
 {
     GWidget* it;
 
-#if 0
-    if( ! (glEnv.guiStyle = gui_style( glEnv.guiUT )) )
-        return;
-#endif
-#if 0
-    if( wp->flags & GW_UPDATE_LAYOUT )
-    {
-        wp->flags &= ~GW_UPDATE_LAYOUT;
-
-        {
-        GLViewEvent me;
-        INIT_EVENT( me, GLV_EVENT_RESIZE, 0, 0, wp->area.w, wp->area.h );
-        wp->wclass->dispatch( glEnv.guiUT, wp, &me );
-        //wc->layout( glEnv.guiUT, wp );
-        }
-    }
-#endif
-
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->render( it );
     EACH_END
@@ -1445,8 +1447,9 @@ static void window_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             if( wp->flags & WINDOW_DRAG )
             {
                 EX_PTR;
-                ep->transX = ev->x - ep->dragX;
-                ep->transY = ev->y - ep->dragY;
+                const GRect* area = &wp->parent->area;
+                ep->transX = limitX(ev->x, area) - ep->dragX;
+                ep->transY = limitY(ev->y, area) - ep->dragY;
                 return;
             }
             break;
@@ -1807,6 +1810,17 @@ void gui_move( GWidget* wp, int x, int y )
     wp->area.x = x;
     wp->area.y = y;
     markLayoutDirty( wp );
+}
+
+
+void gui_resize( GWidget* wp, int w, int h )
+{
+    if( w != wp->area.w || h != wp->area.h )
+    {
+        GLViewEvent me;
+        INIT_EVENT( me, GLV_EVENT_RESIZE, 0, 0, w, h );
+        wp->wclass->dispatch( glEnv.guiUT, wp, &me );
+    }
 }
 
 
