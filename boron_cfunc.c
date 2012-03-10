@@ -1036,11 +1036,11 @@ CFUNC(cfunc_reserve)
 CFUNC(cfunc_does)
 {
     UCellFunc* cell = (UCellFunc*) res;
-    (void) ut;
+    UIndex bodyN = ur_blkClone( ut, a1->series.buf );   // gc!
 
     ur_setId(cell, UT_FUNC);        // Sets argCount, localCount to 0.
     cell->argBufN   = UR_INVALID_BUF;
-    cell->m.f.bodyN = a1->series.buf;
+    cell->m.f.bodyN = bodyN;
     cell->m.f.sigN  = UR_INVALID_BUF;
     return UR_OK;
 }
@@ -1060,6 +1060,7 @@ CFUNC(cfunc_func)
     UBuffer ctx;
     UBuffer optCtx;
     UBuffer* body;
+    UIndex bodyN;
     UCellFunc* fc = (UCellFunc*) res;
 
     if( ! ur_is(a1, UT_BLOCK) || ! ur_is(a2, UT_BLOCK) )
@@ -1068,27 +1069,26 @@ CFUNC(cfunc_func)
                          "func expected block! for spec & body" );
     }
 
-    // Check that we can bind to body before we create temporary contexts.
-    if( ! (body = ur_bufferSerM(a2)) )
-        return UR_THROW;
-
     ur_ctxInit( &ctx, 0 );
     ur_ctxInit( &optCtx, 0 );
 
+    bodyN = ur_blkClone( ut, a2->series.buf );      // gc!
+
     ur_setId(fc, UT_FUNC);
     fc->argBufN   = UR_INVALID_BUF;
-    fc->m.f.bodyN = a2->series.buf;
+    fc->m.f.bodyN = bodyN;
     fc->m.f.sigN  = a1->series.buf;
 
     // Assign after fc fully initialized to handle recycle.
-    fc->argBufN = boron_makeArgProgram( ut, a1, &ctx, &optCtx, fc );
+    // Body block is held since fc is the result.
+    fc->argBufN = boron_makeArgProgram( ut, a1, &ctx, &optCtx, fc );    // gc!
 
     {
     UBindTarget bt;
 
-    bt.ctxN = fc->m.f.bodyN;
+    bt.ctxN = bodyN;
     bt.self = UR_INVALID_ATOM;
-    body = ur_bufferSerM(a2);       // Re-aquire
+    body = ur_buffer( bt.ctxN );
 
     if( ctx.used )
     {

@@ -30,16 +30,14 @@ print f 5
 
 
 print "---- recursion"
-factorial: func [x]
-[
+factorial: func [x] [
     if lt? x 2 [return 1]
     mul x factorial sub x 1
 ]
 print factorial 30
 
-fibonacci: func [x]
-[
-	if lt? x 3 [return 1]
+fibonacci: func [x] [
+    if lt? x 3 [return 1]
     add  fibonacci sub x 1  fibonacci sub x 2
 ]
 print fibonacci 25  ;1000000
@@ -125,3 +123,23 @@ oat: func [a int! /opt b string!] [
 ]
 print oat 4
 print oat/opt 4 "opt-b"
+
+
+print "---- generator"
+fgen: func[x] [
+    get in context [
+        v: x
+        f: does [print v]
+    ] 'f
+]
+a: fgen 2
+b: fgen 3
+a
+b
+
+fc: context [v: 1 f: does [print v]]
+a: make fc [v: 2]
+b: make fc [v: 3]
+a/f
+b/f
+
