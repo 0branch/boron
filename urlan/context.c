@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2011 Karl Robillard
+  Copyright 2009-2012 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -19,10 +19,10 @@
 /*
   UBuffer members:
     type        UT_CONTEXT
-    elemSize    Unused
-    form        Recursion marker
-    flags       Sorted flag
-    used        Number of words used
+    elemSize    Recursion marker
+    form        Sorted count (first half)
+    flags       Sorted count (second half)
+    used        Number of words used (sorted + unsorted)
     ptr.cell    Cell values
     ptr.i[-1]   Number of words available
 */
@@ -32,10 +32,22 @@
 #include "urlan_atoms.h"
 
 
-#define SEARCH_LEN      5
-#define SORTED(buf)     buf->flags
+#define SEARCH_LEN      2
 #define ENTRIES(buf)    ((UAtomEntry*) (buf->ptr.cell + ur_avail(buf)))
 #define FORWARD         8
+
+
+typedef struct
+{
+    uint8_t     type;
+    uint8_t     recursion;
+    uint16_t    sorted;
+    UIndex      used;
+    UCell*      cell;
+}
+UContext;
+
+#define CC(buf) ((UContext*) buf)
 
 
 /** \struct UBindTarget
@@ -213,16 +225,18 @@ UBuffer* ur_ctxClone( UThread* ut, const UBuffer* src, UCell* cell )
     // Save src members; src will be invalid after ur_makeContextCell.
     UCell* srcCells = src->ptr.cell;
     UAtomEntry* srcEntries = ENTRIES(src);
+    int sorted = CC(src)->sorted;
     int size = src->used;
 
-    UBuffer* nc = ur_makeContextCell( ut, size, cell );
+    UBuffer* nc = ur_makeContextCell( ut, size, cell );     // gc!
     UIndex hold = ur_hold( cell->context.buf );
 
     memCpy( ENTRIES(nc), srcEntries, size * sizeof(UAtomEntry) );
+    CC(nc)->sorted = sorted;
     nc->used = size;
-    ur_deepCopyCells( ut, nc->ptr.cell, srcCells, size );
+    ur_deepCopyCells( ut, nc->ptr.cell, srcCells, size );   // gc!
 
-    nc = ur_buffer( cell->series.buf );     // Re-aquire
+    nc = ur_buffer( cell->context.buf );        // Re-aquire
     ur_ctxSort( nc );
     ur_bind( ut, nc, nc, UR_BIND_SELF );
     ur_release( hold );
@@ -241,11 +255,18 @@ UBuffer* ur_ctxClone( UThread* ut, const UBuffer* src, UCell* cell )
 */
 UBuffer* ur_ctxMirror( UThread* ut, const UBuffer* src, UCell* cell )
 {
-    UBuffer* nc = ur_makeContextCell( ut, src->used, cell );
+    // Save src members; src will be invalid after ur_makeContextCell.
+    UCell* srcCells = src->ptr.cell;
+    UAtomEntry* srcEntries = ENTRIES(src);
+    int sorted = CC(src)->sorted;
+    int size = src->used;
 
-    memCpy( nc->ptr.cell, src->ptr.cell, src->used * sizeof(UCell) );
-    memCpy( ENTRIES(nc), ENTRIES(src), src->used * sizeof(UAtomEntry) );
-    nc->used = src->used;
+    UBuffer* nc = ur_makeContextCell( ut, size, cell );     // gc!
+
+    memCpy( ENTRIES(nc), srcEntries, size * sizeof(UAtomEntry) );
+    CC(nc)->sorted = sorted;
+    nc->used = size;
+    memCpy( nc->ptr.cell, srcCells, size * sizeof(UCell) );
 
     return nc;
 }
@@ -267,27 +288,6 @@ void ur_ctxSetWords( UBuffer* ctx, const UCell* it, const UCell* end )
         ++it;
     }
 }
-
-
-#if 0
-/**
-  Add all the words and values in one context to another.
-  This can be used to clone a context if the destination is empty.
-
-  \param dest   Destination context.
-  \param src    Source context.
-*/
-void ur_ctxAppend( UBuffer* dest, const UBuffer* src )
-{
-    int sused = src->used;
-
-    ur_ctxReserve( ctx, usedB );
-    memCpy( ctx->ptr.cell, src->ptr.cell, usedB * sizeof(UCell) );
-    memCpy( ctx->ptr.b + (availA * sizeof(UCell),
-            ENTRIES(buf),
-            usedB * sizeof(UAtomEntry) );
-}
-#endif
 
 
 /**
@@ -376,35 +376,6 @@ int ur_atomsSearch( const UAtomEntry* entries, int count, UAtom atom )
 
 
 /**
-  Find word in context by atom.
-  If the context is not sorted then a linear search will be done.
-
-  \param cxt    Initialized context which has at least one word.
-  \param atom   Atom of word to find.
-
-  \return  Word index or -1 if not found.
-*/
-int ur_ctxLookupNoSort( const UBuffer* ctx, UAtom atom )
-{
-    const UAtomEntry* went = ENTRIES(ctx);
-
-    if( (ctx->used < SEARCH_LEN) || (! SORTED(ctx)) )
-    {
-        const UAtomEntry* it  = went;
-        const UAtomEntry* end = went + ctx->used;
-        while( it != end )
-        {
-            if( it->atom == atom )
-                return it->index;
-            ++it;
-        }
-        return -1;
-    }
-    return ur_atomsSearch( went, ctx->used, atom );
-}
-
-
-/**
   Append word to context.  This should only be called if the word is known
   to not already exist in the context.
 
@@ -430,8 +401,6 @@ int ur_ctxAppendWord( UBuffer* ctx, UAtom atom )
     went->atom  = atom;
     went->index = wrdN;
 
-    SORTED(ctx) = 0;
-
     return wrdN;
 }
 
@@ -450,8 +419,8 @@ int ur_ctxAddWordI( UBuffer* ctx, UAtom atom )
 {
     if( ctx->used )
     {
-        int wrdN = ur_ctxLookupNoSort( ctx, atom );
-        if( wrdN > -1 )
+        int wrdN = ur_ctxLookup( ctx, atom );
+        if( wrdN >= 0 )
             return wrdN;
     }
     return ur_ctxAppendWord( ctx, atom );
@@ -512,7 +481,7 @@ void ur_atomsSort( UAtomEntry* entries, int low, int high )
 
 
 /**
-  Sort the internal context search table so ur_ctxLookup() can be used.
+  Sort the internal context search table so ur_ctxLookup() is faster.
   If the context is already sorted then nothing is done.
   Each time new words are appended to the context it will become un-sorted.
 
@@ -522,11 +491,25 @@ void ur_atomsSort( UAtomEntry* entries, int low, int high )
 */
 UBuffer* ur_ctxSort( UBuffer* ctx )
 {
-    if( ! SORTED(ctx) )
+    int used = ctx->used;
+    if( used > SEARCH_LEN && CC(ctx)->sorted != used )
     {
-        if( ctx->used )
-            ur_atomsSort( ENTRIES(ctx), 0, ctx->used - 1 );
-        SORTED(ctx) = 1;
+      //printf( "KR ctxSort %p %d,%d\n", (void*) ctx, used, CC(ctx)->sorted );
+        ur_atomsSort( ENTRIES(ctx), 0, used - 1 );
+        CC(ctx)->sorted = used;
+    }
+    return ctx;
+}
+
+
+UBuffer* ur_ctxSortU( UBuffer* ctx, int unsorted )
+{
+    int used = ctx->used;
+    if( used > SEARCH_LEN && (CC(ctx)->sorted + unsorted) < used )
+    {
+      //printf( "KR ctxSort %p %d,%d\n", (void*) ctx, used, CC(ctx)->sorted );
+        ur_atomsSort( ENTRIES(ctx), 0, used - 1 );
+        CC(ctx)->sorted = used;
     }
     return ctx;
 }
@@ -545,22 +528,23 @@ UBuffer* ur_ctxSort( UBuffer* ctx )
 const UBuffer* ur_sortedContext( UThread* ut, const UCell* cell )
 {
     UBuffer* ctx;
-    UIndex n = cell->series.buf;
+    UIndex n = cell->context.buf;
+    int used;
 
     // Same as ur_bufferSeries().
     ctx = ur_isShared(n) ? ut->env->dataStore.ptr.buf - n
                          : ut->dataStore.ptr.buf + n;
-    if( (ctx->used < SEARCH_LEN) || SORTED(ctx) )
-        return ctx;
-
-    if( ur_isShared(n) )
+    used = ctx->used;
+    if( used > SEARCH_LEN && CC(ctx)->sorted != used )
     {
-        ur_error( ut, UR_ERR_INTERNAL, "Shared context %d is not sorted", n );
-        return 0;
+        if( ur_isShared(n) )
+        {
+            ur_error(ut, UR_ERR_INTERNAL, "Shared context %d is not sorted", n);
+            return 0;
+        }
+        ur_atomsSort( ENTRIES(ctx), 0, used - 1 );
+        CC(ctx)->sorted = used;
     }
-
-    ur_atomsSort( ENTRIES(ctx), 0, ctx->used - 1 );
-    SORTED(ctx) = 1;
     return ctx;
 }
 
@@ -568,51 +552,30 @@ const UBuffer* ur_sortedContext( UThread* ut, const UCell* cell )
 /**
   Find word in context by atom.
 
-  The internal context search table must sorted with ur_ctxSort() or
-  ur_sortedContext() before ur_ctxLookup is called.
-
-  \param ctx    Initialized and sorted context buffer.
+  \param cxt    Initialized context buffer.
   \param atom   Atom of word to find.
 
   \return  Word index or -1 if not found.
 */
 int ur_ctxLookup( const UBuffer* ctx, UAtom atom )
 {
-    const UAtomEntry* went;
+    const UAtomEntry* went = ENTRIES(ctx);
+    int sorted = CC(ctx)->sorted;
+    int i;
 
-    if( ctx->used < SEARCH_LEN )
+    i = ur_atomsSearch( went, sorted, atom );
+    if( i < 0 && ctx->used > sorted )
     {
-        if( ctx->used )
+        const UAtomEntry* it  = went + sorted;
+        const UAtomEntry* end = went + ctx->used;
+        while( it != end )
         {
-            const UAtomEntry* it;
-            const UAtomEntry* end;
-
-            it = went = ENTRIES(ctx);
-            end = it + ctx->used;
-            while( it != end )
-            {
-                if( it->atom == atom )
-                    return it->index;
-                ++it;
-            }
+            if( it->atom == atom )
+                return it->index;
+            ++it;
         }
-        return -1;
     }
-    else
-    {
-        went = ENTRIES(ctx);
-        if( ! SORTED(ctx) )
-        {
-#if 0
-            ur_atomsSort( went, 0, ctx->used - 1 );
-            SORTED(ctx) = 1;
-#else
-            assert( 0 && "Context is not sorted" );
-            return -1;
-#endif
-        }
-        return ur_atomsSearch( went, ctx->used, atom );
-    }
+    return i;
 }
 
 

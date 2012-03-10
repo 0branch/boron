@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2011 Karl Robillard
+  Copyright 2009-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -893,6 +893,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     UCell* cell;
 
     ctx = ur_threadContext( ut );
+    ur_ctxReserve( ctx, 512 );
 
     cell = ur_ctxAddWord( ctx, atoms[0] );
     ur_setId(cell, UT_NONE);
@@ -907,6 +908,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     }
 
     _addDatatypeWords( ut, UT_BI_COUNT + dtCount );
+    ur_ctxSort( ur_threadContext( ut ) );
 
 
     // Add C functions.
@@ -1478,7 +1480,7 @@ traceError:
 }
 
 
-static void boron_bindDefaultB( UThread* ut, UIndex blkN )
+static void _bindDefaultB( UThread* ut, UIndex blkN )
 {
     UBlockIterM bi;
     int type;
@@ -1497,7 +1499,7 @@ static void boron_bindDefaultB( UThread* ut, UIndex blkN )
         {
             if( threadCtx->used )
             {
-                wrdN = ur_ctxLookupNoSort( threadCtx, ur_atom(bi.it) );
+                wrdN = ur_ctxLookup( threadCtx, ur_atom(bi.it) );
                 if( wrdN > -1 )
                     goto assign;
             }
@@ -1540,7 +1542,7 @@ assign:
         else if( ur_isBlockType(type) )
         {
             if( ! ur_isShared( bi.it->series.buf ) )
-                boron_bindDefaultB( ut, bi.it->series.buf );
+                _bindDefaultB( ut, bi.it->series.buf );
         }
         /*
         else if( type >= UT_BI_COUNT )
@@ -1552,20 +1554,15 @@ assign:
 }
 
 
+extern UBuffer* ur_ctxSortU( UBuffer*, int unsorted );
+
 /**
   Bind block in thread dataStore to default contexts.
 */
 void boron_bindDefault( UThread* ut, UIndex blkN )
 {
-#if 0
-    {
-    UBuffer* ctx = ur_threadContext(ut);
-    ur_ctxSetWords( ctx, bi.it, bi.end );
-    ur_ctxSort( ctx );
-    }
-#endif
-
-    boron_bindDefaultB( ut, blkN );
+    ur_ctxSortU( ur_threadContext( ut ), 16 );
+    _bindDefaultB( ut, blkN );
 }
 
 

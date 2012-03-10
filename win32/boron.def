@@ -127,7 +127,7 @@ EXPORTS
     ur_ctxAddWordI          @125
     ur_ctxAddWord           @126
     ur_ctxWordAtoms         @127
-    ur_ctxLookupNoSort      @128
+;   ur_ctxLookupNoSort      @128
     ur_ctxLookup            @129
     ur_sortedContext        @130
     ur_vecInit              @131

@@ -4301,7 +4301,7 @@ static void context_print( UThread* ut, const UBuffer* buf, UBuffer* str,
 }
 
 
-#define ur_ctxRecursion(buf)    (buf)->form
+#define ur_ctxRecursion(buf)    (buf)->elemSize
 
 #define ur_printRecurseEnd(cell,ctxb) \
     if( ! ur_isShared(cell->context.buf) ) \

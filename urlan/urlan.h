@@ -572,9 +572,9 @@ int      ur_ctxAppendWord( UBuffer*, UAtom atom );
 int      ur_ctxAddWordI( UBuffer*, UAtom atom );
 UCell*   ur_ctxAddWord( UBuffer*, UAtom atom );
 void     ur_ctxWordAtoms( const UBuffer*, UAtom* atoms );
-int      ur_ctxLookupNoSort( const UBuffer*, UAtom atom );
 int      ur_ctxLookup( const UBuffer*, UAtom atom );
 const UBuffer* ur_sortedContext( UThread*, const UCell* );
+#define  ur_ctxLookupNoSort ur_ctxLookup
 #define  ur_ctxCell(c,n)    ((c)->ptr.cell + n)
 
 void     ur_vecInit( UBuffer*, int form, int elemSize, int size );
