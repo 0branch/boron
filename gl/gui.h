@@ -59,7 +59,10 @@ enum ContextIndexStyle
     CI_STYLE_EDITOR_CURSOR, // Draw list
     CI_STYLE_LIST_HEADER,   // Draw list
     CI_STYLE_LIST_ITEM,     // Draw list
-    CI_STYLE_LIST_ITEM_SELECTED // Draw list
+    CI_STYLE_LIST_ITEM_SELECTED, // Draw list
+    CI_STYLE_SLIDER_SIZE,   // coord!
+    CI_STYLE_SLIDER,        // Draw list
+    CI_STYLE_SLIDER_GROOVE  // Draw list
 };
 
 
@@ -76,6 +79,7 @@ typedef struct
 UCellWidget;
 
 
+#define GW_MAX_DIM      0x7fff
 #define GW_FIXED        0
 #define GW_WEIGHTED     1
 #define GW_EXPANDING    2
@@ -182,12 +186,16 @@ void     gui_grabMouse( GWidget*, int keyFocus );
 void     gui_ungrabMouse( GWidget* );
 int      gui_hasFocus( GWidget* );
 UIndex   gui_parentDrawProg( GWidget* );
+int      gui_limitX( int x, const GRect* );
+int      gui_limitY( int y, const GRect* );
 
 void widget_free( GWidget* );
 void widget_markChildren( UThread*, GWidget* );
 void widget_dispatch( UThread*, GWidget*, const GLViewEvent* );
 void widget_renderNul( GWidget* );
 void widget_renderChildren( GWidget* );
+#define widget_markNul      0
+#define widget_layoutNul    widget_renderNul
 
 
 #endif /*GUI_H*/

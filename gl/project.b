@@ -77,6 +77,7 @@ lib %boron-gl [
         %widget_label.c
         %widget_lineedit.c
         %widget_list.c
+        %widget_slider.c
     ]
 ]
 

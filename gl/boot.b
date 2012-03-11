@@ -48,6 +48,9 @@ gui-style-proto: context [
     list-header:
     list-item:
     list-item-selected:
+    slider-size:
+    slider:
+    slider-groove:
         none
 ]
 

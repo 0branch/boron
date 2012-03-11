@@ -100,12 +100,14 @@ DPCompiler* ur_beginDP( DPCompiler* );
 int  ur_compileDP( UThread*, const UCell* blkCell, int handleError );
 void ur_endDP( UThread*, UBuffer*, DPCompiler* prev );
 void ur_setDPSwitch( UThread*, UIndex resN, DPSwitch sid, int n );
-
+void ur_setTransXY( UThread*, UIndex resN, DPSwitch sid, float x, float y );
 
 DPSwitch dp_beginSwitch( DPCompiler*, int count );
 void     dp_endCase( DPCompiler*, DPSwitch sid );
 void     dp_endSwitch( DPCompiler*, DPSwitch sid, uint16_t n );
 
+DPSwitch dp_beginTransXY( DPCompiler*, float x, float y );
+void     dp_endTransXY( DPCompiler* );
 
 void vbo_initTextIndices( uint16_t* ip, int idx, int glyphCount );
 /*

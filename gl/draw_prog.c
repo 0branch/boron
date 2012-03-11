@@ -98,6 +98,7 @@ enum DPOpcode
     DP_PUSH,
     DP_POP,
     DP_TRANSLATE_WORD,      // blkN index
+    DP_TRANSLATE_XY,        // x y
     DP_ROTATE_X,            // angle
     DP_ROTATE_Y,            // angle
     DP_ROTATE_Z,            // angle
@@ -116,7 +117,6 @@ enum DPOpcode
     DP_SAMPLES_END,         // blkN index
     DP_LIGHT,               // blkN
     DP_READ_PIXELS,         // blkN index pos dim
-    DP_79,
     DP_80,
     DP_81, //--
     DP_82,
@@ -165,6 +165,14 @@ typedef struct
     */
 }
 DPHeader;
+
+
+typedef union
+{
+    float f;
+    uint32_t i;
+}
+Number;
 
 
 #define dp_byteCode(ph) ((uint32_t*) (((char*) ph) + ph->progIndex))
@@ -371,6 +379,15 @@ static void emitDPArg( DPCompiler* emit, uint32_t arg )
         emit->args[ emit->argCount++ ] = arg;
     else
         *dp_addArgs( emit, 1 ) = arg;
+}
+
+
+/*
+  Return offset in bytecode of next argument.
+*/
+static int nextArgPosition( DPCompiler* emit )
+{
+    return emit->inst.used + 1 + emit->argCount;
 }
 
 
@@ -1171,7 +1188,8 @@ void dp_endSwitch( DPCompiler* emit, DPSwitch sid, uint16_t caseN )
 
 
 /*
-  \param n   Which switch to take.  Zero based.
+  \param sid    Switch id returned from dp_beginSwitch().
+  \param caseN  Which switch to take.  Zero based.
 */
 void dp_setSwitch( DPHeader* dp, DPSwitch sid, uint16_t caseN )
 {
@@ -1179,6 +1197,46 @@ void dp_setSwitch( DPHeader* dp, DPSwitch sid, uint16_t caseN )
     if( caseN < sp[1] )
         sp[0] = caseN + 2;
 }
+
+
+/*--------------------------------------------------------------------------*/
+
+
+DPSwitch dp_beginTransXY( DPCompiler* emit, float x, float y )
+{
+    Number nx, ny;
+    DPSwitch sid;
+
+    emitOp( DP_PUSH );
+    sid = nextArgPosition( emit );
+    nx.f = x;
+    ny.f = y;
+    emitOp2( DP_TRANSLATE_XY, nx.i, ny.i );
+
+    return sid;
+}
+
+
+void dp_endTransXY( DPCompiler* emit )
+{
+    emitOp( DP_POP );
+}
+
+
+void ur_setTransXY( UThread* ut, UIndex resN, DPSwitch sid, float x, float y )
+{
+    DPHeader* dp = (DPHeader*) ur_buffer(resN)->ptr.v;
+    if( dp )
+    {
+        float* sp = (float*) (dp_byteCode(dp) + sid);
+        sp[0] = x;
+        sp[1] = y;
+        //dp_setTransXY( dp, sid, x, y );
+    }
+}
+
+
+/*--------------------------------------------------------------------------*/
 
 
 // Allow only normal, block-bound words so we can emit just 2 numbers.
@@ -1339,14 +1397,6 @@ static const UCell* dp_value( UThread* ut, const UCell* cell )
     return cell;
 }
 #endif
-
-
-typedef union
-{
-    float f;
-    uint32_t i;
-}
-Number;
 
 
 #define INC_PC \
@@ -3031,6 +3081,15 @@ dispatch:
                               val->vec3.xyz[1],
                               val->vec3.xyz[2] );
             }
+        }
+            break;
+
+        case DP_TRANSLATE_XY:
+        {
+            Number x, y;
+            x.i = *pc++;
+            y.i = *pc++;
+            glTranslatef( x.f, y.f, 0.0f );
         }
             break;
 

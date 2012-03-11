@@ -49,8 +49,6 @@ extern int boron_doVoid( UThread* ut, const UCell* blkC );
 
 //#define REPORT_LAYOUT   1
 
-#define MAX_DIM     0x7fff
-
 
 #define IGNORES_INPUT(wp)   (wp->flags & (GW_DISABLED | GW_NO_INPUT))
 
@@ -172,7 +170,7 @@ void gui_initRectCoord( UCell* cell, GWidget* w, UAtom what )
 }
 
 
-static int limitX( int x, const GRect* area )
+int gui_limitX( int x, const GRect* area )
 {
     int right;
     if( x < area->x )
@@ -182,7 +180,7 @@ static int limitX( int x, const GRect* area )
 }
 
 
-static int limitY( int y, const GRect* area )
+int gui_limitY( int y, const GRect* area )
 {
     int top;
     if( y < area->y )
@@ -193,12 +191,6 @@ static int limitY( int y, const GRect* area )
 
 
 //----------------------------------------------------------------------------
-
-
-#define no_mark     0
-#define no_layout   widget_renderNul
-#define no_render   widget_renderNul
-#define no_dispatch widget_dispatch
 
 
 void widget_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
@@ -320,7 +312,7 @@ static GWidget* expand_make( UThread* ut, UBlockIter* bi,
 static void expand_sizeHint( GWidget* wp, GSizeHint* size )
 {
     size->minW    = size->minH    = wp->expandMin;
-    size->maxW    = size->maxH    = MAX_DIM;
+    size->maxW    = size->maxH    = GW_MAX_DIM;
     size->weightX = size->weightY = 1;
     size->policyX = size->policyY = GW_EXPANDING;
 }
@@ -1020,8 +1012,8 @@ static void hbox_sizeHint( GWidget* wp, GSizeHint* size )
 
     size->minW    = ep->marginL + ep->marginR;
     size->minH    = marginH;
-    size->maxW    = MAX_DIM;
-    size->maxH    = MAX_DIM;
+    size->maxW    = GW_MAX_DIM;
+    size->maxH    = GW_MAX_DIM;
     size->weightX = 2;
     size->weightY = 2;
     size->policyX = GW_FIXED;
@@ -1211,8 +1203,8 @@ static void vbox_sizeHint( GWidget* wp, GSizeHint* size )
 
     size->minW    = marginW;
     size->minH    = ep->marginT + ep->marginB;
-    size->maxW    = MAX_DIM;
-    size->maxH    = MAX_DIM;
+    size->maxW    = GW_MAX_DIM;
+    size->maxH    = GW_MAX_DIM;
     size->weightX = 2;
     size->weightY = 2;
     size->policyX = GW_WEIGHTED;
@@ -1448,8 +1440,8 @@ static void window_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             {
                 EX_PTR;
                 const GRect* area = &wp->parent->area;
-                ep->transX = limitX(ev->x, area) - ep->dragX;
-                ep->transY = limitY(ev->y, area) - ep->dragY;
+                ep->transX = gui_limitX(ev->x, area) - ep->dragX;
+                ep->transY = gui_limitY(ev->y, area) - ep->dragY;
                 return;
             }
             break;
@@ -1557,7 +1549,7 @@ GWidgetClass wclass_root =
 {
     "root",
     root_make,          widget_free,        root_mark,
-    root_dispatch,      root_sizeHint,      no_layout,
+    root_dispatch,      root_sizeHint,      widget_layoutNul,
     root_render,        eventContextSelect,
     0, 0
 };
@@ -1567,7 +1559,7 @@ GWidgetClass wclass_hbox =
 {
     "hbox",
     box_make,               widget_free,        widget_markChildren,
-    no_dispatch,            hbox_sizeHint,      hbox_layout,
+    widget_dispatch,        hbox_sizeHint,      hbox_layout,
     widget_renderChildren,  gui_areaSelect,
     0, 0
 };
@@ -1577,7 +1569,7 @@ GWidgetClass wclass_vbox =
 {
     "vbox",
     box_make,               widget_free,        widget_markChildren,
-    no_dispatch,            vbox_sizeHint,      vbox_layout,
+    widget_dispatch,        vbox_sizeHint,      vbox_layout,
     widget_renderChildren,  gui_areaSelect,
     0, 0
 };
@@ -1596,9 +1588,9 @@ GWidgetClass wclass_window =
 GWidgetClass wclass_expand =
 {
     "expand",
-    expand_make,        widget_free,        no_mark,
-    no_dispatch,        expand_sizeHint,    no_layout,
-    no_render,          gui_areaSelect,
+    expand_make,        widget_free,        widget_markNul,
+    widget_dispatch,    expand_sizeHint,    widget_layoutNul,
+    widget_renderNul,   gui_areaSelect,
     0, 0
 };
 
@@ -1608,6 +1600,7 @@ extern GWidgetClass wclass_checkbox;
 extern GWidgetClass wclass_label;
 extern GWidgetClass wclass_lineedit;
 extern GWidgetClass wclass_list;
+extern GWidgetClass wclass_slider;
 /*
     "console",
     "option",
@@ -1619,7 +1612,7 @@ extern GWidgetClass wclass_list;
 
 void gui_addStdClasses()
 {
-    GWidgetClass* classes[ 10 ];
+    GWidgetClass* classes[ 11 ];
 
     classes[0]  = &wclass_root;
     classes[1]  = &wclass_expand;
@@ -1631,8 +1624,9 @@ void gui_addStdClasses()
     classes[7]  = &wclass_label;
     classes[8]  = &wclass_lineedit;
     classes[9]  = &wclass_list;
+    classes[10] = &wclass_slider;
 
-    gui_addWidgetClasses( classes, 10 );
+    gui_addWidgetClasses( classes, 11 );
 }
 
 
