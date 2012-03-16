@@ -219,7 +219,21 @@ emit-funcs: func [funcs | f] [
 ]
 
 
-emit read/text %doc/func_ref_head.html
+current-date: func [| cd] [
+    cd: to-string now/date
+    rejoin [
+        pick [Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec]
+            to-int slice cd 5,2
+        ' ' slice cd 8,2
+        ' ' slice cd 4
+    ]
+]
+
+
+rhead: read/text %doc/func_ref_head.html
+change find/last rhead "0.2.2" replace/all to-string environs/version ',' '.'
+change find/last rhead "Nov 20 2011" current-date
+emit rhead
 
 emit {<div class="contents topic" id="contents">
 <p class="topic-title first">Contents</p>
