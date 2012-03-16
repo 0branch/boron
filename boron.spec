@@ -10,10 +10,10 @@ Group: Development/Languages
 Source: boron-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
 %if 0%{?mandriva_version} 
-#BuildRequires: cmake libbzip2_1-devel
-BuildRequires: cmake zlib1-devel
+#BuildRequires: libbzip2_1-devel
+BuildRequires: zlib1-devel
 %else
-BuildRequires: cmake zlib-devel
+BuildRequires: zlib-devel
 %endif
 
 %description
@@ -25,7 +25,7 @@ domain specific languages embedded in C/C++ applications.
 %setup -q -n %{name}-%{version}
 
 %build
-cmake .
+./configure --thread --timecode
 make
 
 %install
@@ -59,5 +59,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/boron/bignum.h
 
 %changelog
+* Fri Mar 16 2012 Karl Robillard <wickedsmoke@users.sf.net>
+  - No longer using cmake.
 * Fri Dec  4 2009 Karl Robillard <wickedsmoke@users.sf.net>
   - Initial package release.

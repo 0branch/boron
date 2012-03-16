@@ -3,16 +3,15 @@
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo "Configuration Options:"
   echo "  -h, --help      Display this help and exit"
-  echo "  --cmake         Use cmake to build Makefile"
-  echo "  --m2            Use m2 to build Makefile (default)"
-  echo "  --make          Generate simple Makefile"
-  echo -e "\nOptional Features:"
+  echo "  --cleanA        Remove boronA and build files"
+  echo -e "\nRemove Standard Features:"
   echo "  --no-checksum   Remove the checksum function"
   echo "  --no-compress   Remove the compress function"
   echo "  --no-execute    Remove the execute function"
   echo "  --no-random     Remove the random function"
   echo "  --no-readline   Remove console editing and history"
   echo "  --no-socket     Remove the socket port"
+  echo -e "\nAdd Optional Features:"
   echo "  --assemble      Enable assemble function (requires libjit)"
   echo "  --bzip2         Use bzip2 for compress instead of zlib"
   echo "  --gnu-readline  Use GNU Readline for console editing and history"
@@ -21,7 +20,8 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   exit
 fi
 
-MAKE=m2
+
+CLEAN_A=0
 CFG_ASSEM=0
 CFG_CHECKSUM=1
 CFG_COMPRESS=zlib
@@ -34,12 +34,8 @@ CFG_THREAD=0
 
 for opt in "$@"; do
   case $opt in
-    --cmake)
-      MAKE=cmake ;;
-    --m2)
-      MAKE=m2 ;;
-    --make)
-      MAKE=make ;;
+    --cleanA)
+      CLEAN_A=1 ;;
     --no-checksum)
       CFG_CHECKSUM=0 ;;
     --no-compress)
@@ -69,95 +65,79 @@ for opt in "$@"; do
   esac
 done
 
-if [ $MAKE = cmake ]; then
-if command -v cmake >/dev/null; then
-  echo "Building Makefile with cmake"
-  echo "FIXME: Configuration options are NOT applied when using cmake!"
-  cmake .
-  exit
-else
-  echo "cmake does not exist. Try --m2 or --make."
-  exit 1
-fi
-fi
-
-if [ $MAKE = m2 ]; then
-if command -v m2 >/dev/null; then
-  echo "Generating project.config"
-  rm -f project.config
-
-  function m2-word {
-    if [ $2 = 0 ]; then
-      echo "$1: false" >> project.config
-    else
-      echo "$1: '$2" >> project.config
-    fi
-  }
-  function m2-logic {
-    if [ $2 = 0 ]; then
-      echo "$1: false" >> project.config
-    else
-      echo "$1: true" >> project.config
-    fi
-  }
-
-  m2-logic "assemble" $CFG_ASSEM
-  m2-logic "checksum" $CFG_CHECKSUM
-  m2-word  "compress" $CFG_COMPRESS
-  m2-logic "execute"  $CFG_EXECUTE
-  m2-logic "random"   $CFG_RANDOM
-  m2-word  "readline" $CFG_READLINE
-  m2-logic "socket"   $CFG_SOCKET
-  m2-logic "timecode" $CFG_TIMECODE
-  m2-logic "thread"   $CFG_THREAD
-
-  echo "Building Makefile with m2"
-  m2
-  exit
-else
-  echo "m2 does not exist. Try --cmake or --make."
-  exit 1
-fi
-fi
 
 if command -v gcc >/dev/null; then
-  echo "Generating simple Makefile for a static binary."
+  rm -f MakefileA configure.log
 
-  echo "CHECKSUM=$CFG_CHECKSUM" >Makefile
-  echo "COMPRESS=$CFG_COMPRESS" >>Makefile
-  echo "EXECUTE=$CFG_EXECUTE" >>Makefile
-  echo "RANDOM=$CFG_RANDOM" >>Makefile
-  echo "READLINE=$CFG_READLINE" >>Makefile
-  echo "SOCKET=$CFG_SOCKET" >>Makefile
-  echo "TIMECODE=$CFG_TIMECODE" >>Makefile
-  echo "THREAD=$CFG_THREAD" >>Makefile
-  echo -e "\nCFLAGS=-Iurlan -Isupport -I. -std=gnu99 -pedantic -Wall -W -O3" >>Makefile
-  echo "LIBS=-lm" >>Makefile
-  echo "OBJS=env.o array.o binary.o block.o coord.o date.o \\" >>Makefile
-  echo "	path.o string.o context.o gc.o serialize.o tokenize.o \\" >>Makefile
-  echo "	bignum.o vector.o parse_binary.o parse_block.o \\" >>Makefile
-  echo "	parse_string.o \\" >>Makefile
-  echo "	support/str.o support/mem_util.o support/quickSortIndex.o \\" >>Makefile
-  echo "	unix/os.o \\" >>Makefile
-  echo "	boron.o boron_console.o port_file.o" >>Makefile
-  echo -e "\nifeq (\$(CHECKSUM),1)\n  CFLAGS+=-DCONFIG_CHECKSUM\nendif" >>Makefile
-  echo -e "ifeq (\$(COMPRESS),zlib)\n  CFLAGS+=-DCONFIG_COMPRESS=1\n  LIBS+=-lz\nendif" >>Makefile
-  echo -e "ifeq (\$(COMPRESS),bzip2)\n  CFLAGS+=-DCONFIG_COMPRESS=2\n  LIBS+=-lbz2\nendif" >>Makefile
-  echo -e "ifeq (\$(EXECUTE),1)\n  CFLAGS+=-DCONFIG_EXECUTE\nendif" >>Makefile
-  echo -e "ifeq (\$(RANDOM),1)\n  CFLAGS+=-DCONFIG_RANDOM\n  OBJS+=support/well512.o\nendif" >>Makefile
-  echo -e "ifeq (\$(READLINE),gnu)\n  CFLAGS+=-DCONFIG_READLINE\n  LIBS+=-lreadline -lhistory\nendif" >>Makefile
-  echo -e "ifeq (\$(READLINE),linenoise)\n  CFLAGS+=-DCONFIG_LINENOISE\n  OBJS+=support/linenoise.o\nendif" >>Makefile
-  echo -e "ifeq (\$(SOCKET),1)\n  CFLAGS+=-DCONFIG_SOCKET\n  OBJS+=port_socket.o\nendif" >>Makefile
-  echo -e "ifeq (\$(TIMECODE),1)\n  CFLAGS+=-DCONFIG_TIMECODE\nendif" >>Makefile
-  echo -e "ifeq (\$(THREAD),1)\n  CFLAGS+=-DCONFIG_THREAD\n  OBJS+=port_thread.o\n  LIBS+=-lpthread\nendif" >>Makefile
-  echo -e "\nboron: \$(OBJS)\n\tgcc \$^ -o \$@ \$(LIBS)" >>Makefile
-  echo -e "\n%.o: %.c\n\tgcc -c \$(CFLAGS) \$< -o \$@" >>Makefile
-  echo -e "\n%.o: urlan/%.c\n\tgcc -c \$(CFLAGS) \$< -o \$@" >>Makefile
-  echo -e "\n.PHONY: clean\nclean:\n\trm -f boron \$(OBJS)" >>Makefile
+  function emit {
+    echo -e $1 >> MakefileA
+  }
 
-  echo "Type 'make' to build Boron."
-  exit
+  emit "\nCFLAGS=-Iurlan -Isupport -I. -std=gnu99 -pedantic -Wall -W -O3"
+  emit "LIBS=-lm"
+  emit "OBJS=env.o array.o binary.o block.o coord.o date.o path.o \\"
+  emit "	string.o context.o gc.o serialize.o tokenize.o bignum.o \\"
+  emit "	vector.o parse_binary.o parse_block.o parse_string.o \\"
+  emit "	support/str.o support/mem_util.o support/quickSortIndex.o \\"
+  emit "	unix/os.o boron.o boron_console.o port_file.o"
+  emit "\nboronA: \$(OBJS)\n\tgcc \$^ -o \$@ \$(LIBS)"
+  emit "\n%.o: %.c\n\tgcc -c \$(CFLAGS) \$< -o \$@"
+  emit "\n%.o: urlan/%.c\n\tgcc -c \$(CFLAGS) \$< -o \$@"
+  emit "\n.PHONY: clean\nclean:\n\trm -f boronA \$(OBJS)"
+
+  if [ $CLEAN_A = 1 ]; then
+    make -f MakefileA clean
+    rm -f MakefileA
+    exit 0
+  fi
+
+  echo "Generating boronA binary to run m2"
+  if ! make -f MakefileA >> configure.log 2>&1 ; then
+    cat configure.log
+    exit 1
+  fi
+else
+  echo "No compiler found; no Makefile generated."
+  exit 1
 fi
 
-echo "No compiler found; no Makefile generated."
-exit 1
+
+echo "Generating project.config"
+rm -f project.config
+
+function m2-word {
+if [ $2 = 0 ]; then
+  echo "$1: false" >> project.config
+else
+  echo "$1: '$2" >> project.config
+fi
+}
+function m2-logic {
+if [ $2 = 0 ]; then
+  echo "$1: false" >> project.config
+else
+  echo "$1: true" >> project.config
+fi
+}
+
+m2-logic "assemble" $CFG_ASSEM
+m2-logic "checksum" $CFG_CHECKSUM
+m2-word  "compress" $CFG_COMPRESS
+m2-logic "execute"  $CFG_EXECUTE
+m2-logic "random"   $CFG_RANDOM
+m2-word  "readline" $CFG_READLINE
+m2-logic "socket"   $CFG_SOCKET
+m2-logic "timecode" $CFG_TIMECODE
+m2-logic "thread"   $CFG_THREAD
+
+
+echo "Building Makefile with m2"
+case `uname -s` in
+  Darwin)
+    M2T=m2_macx.b ;;
+  SunOS)
+    M2T=m2_sun.b ;;
+  *)
+    M2T=m2_linux.b ;;
+esac
+./boronA -s scripts/m2/m2 -t scripts/m2/$M2T
