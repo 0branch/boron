@@ -1406,11 +1406,34 @@ int date_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+int date_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
+                  int op )
+{
+    UCell tmp;
+
+    if( ur_is(a, UT_INT) )
+    {
+        ur_int(&tmp) = ur_int(a);
+        a = &tmp;
+        goto set_days;
+    }
+    else if( ur_is(b, UT_INT) )
+    {
+        ur_int(&tmp) = ur_int(b);
+        b = &tmp;
+set_days:
+        ur_setId(&tmp, UT_INT);
+        ur_int(&tmp) *= 86400;
+    }
+    return decimal_operate( ut, a, b, res, op );
+}
+
+
 UDatatype dt_date =
 {
     "date!",
     date_make,              date_make,              unset_copy,
-    time_compare,           unset_operate,          unset_select,
+    time_compare,           date_operate,           unset_select,
     date_toString,          date_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
