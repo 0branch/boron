@@ -224,21 +224,30 @@ int ur_readDir( UThread* ut, const char* filename, UCell* res )
 static void argumentList( char* cp, char** argv, int maxArg )
 {
     int prevWhite = 1;
+    int quotes = 0;
     int argc = 0;
 
     while( *cp != '\0' )
     {
         if( *cp == ' ' || *cp == '\t' || *cp == '\n' )
         {
-            *cp = '\0';
-            prevWhite = 1;
+            if( ! quotes )
+            {
+                *cp = '\0';
+                prevWhite = 1;
+            }
+        }
+        else if( *cp == '"' )
+        {
+            if( quotes )
+                *cp = '\0';
+            quotes ^= 1;
         }
         else if( prevWhite )
         {
             prevWhite = 0;
             argv[ argc ] = cp;
-            ++argc;
-            if( argc == maxArg )
+            if( ++argc == maxArg )
                 goto term;
         }
         ++cp;
