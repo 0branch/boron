@@ -400,16 +400,16 @@ m2: context
 		replace/all uppercase copy name '-' '_'
 	]
 
-	exe: func [{Builds executable rule.} basename blk]
-	[
+	; Builds executable rule.
+	exe: func [basename blk] [
 		add_target (make exe_target [
 				uc_name: var-name name: basename
 				cfg: copy configuration
 			]) blk
 	]
 
-	lib: func [{Builds static library rule.} basename blk]
-	[
+	; Builds static library rule.
+	lib: func [basename blk] [
 		add_target (make lib_target [
 				uc_name: join "LIB_" var-name name: basename
 				cfg: copy configuration
@@ -418,11 +418,16 @@ m2: context
 		append static_lib_targets reduce [basename ct/output_file]
 	]
 
-	shlib: func [{Builds shared library rule.} basename blk]
-	[
+	; Builds shared library rule.
+	shlib: func [basename blk | ver] [
+		if block? basename [
+			ver: second basename
+			basename: first basename
+		]
 		add_target (make shlib_target [
 				uc_name: join "SLIB_" var-name name: basename
 				cfg: copy configuration
+				version: ver
 			]) blk
 	]
 
@@ -440,7 +445,7 @@ m2: context
 			dist: to-text dep
 			; Trim twice to remove any newline from last command.
 			rule_commands: replace/all trim trim/indent commands '^/' "^/^-"
-			rule_text: does copy/deep [
+			rule_text: does [
 				emit [eol output_file ": " dist {^/^-} rule_commands eol]
 			]
 		]

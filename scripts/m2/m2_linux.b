@@ -218,11 +218,37 @@ lib_target: make exe_target [
 
 
 shlib_target: make exe_target [
+    version: lib_full: lib_m: lib_base: none
+    _exe_rule: _exe_clean: none
+
     configure: does [
-        output_file: rejoin [output_dir "lib" name ".so"]
+        lib_full: rejoin ["lib" name ".so"]
+        if version [
+            lib_base: lib_full
+            lib_m:    rejoin [lib_base '.' first version]
+            lib_full: rejoin [
+                ; Handles any number of version elements.
+                lib_base '.' replace/all to-string version ',' '.'
+            ]
+        ]
+        output_file: join output_dir lib_full
         do config
         cflags {-fPIC}
         lflags {-shared}
+        if version [
+            lflags join {-Wl,-soname,} lib_m
+
+            _exe_rule: :rule_text
+            rule_text: does [
+                _exe_rule
+                emit rejoin ["^-ln -sf " lib_full ' ' lib_m    '^/'
+                             "^-ln -sf " lib_full ' ' lib_base '^/']
+            ]
+            _exe_clean: :clean
+            clean: does [
+                rejoin [slice _exe_clean -1 ' ' lib_m ' ' lib_base eol]
+            ]
+        ]
     ]
 ]
 
