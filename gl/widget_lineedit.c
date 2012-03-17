@@ -97,36 +97,48 @@ static UIndex ledit_vbo( UThread* ut, int maxChars )
 
 
 /*
-    line-edit word!/string!
+    line-edit word!/string! <max-chars>
 */
 static GWidget* ledit_make( UThread* ut, UBlockIter* bi,
                             const GWidgetClass* wclass )
 {
-    if( (bi->end - bi->it) > 1 )
+    LineEdit* ep;
+    int maxChars = 32;
+    const UCell* str;
+    const UCell* arg = bi->it + 1;
+
+    if( arg == bi->end )
+        goto bad_string;
+    if( ur_is(arg, UT_WORD) )
     {
-        LineEdit* ep;
-        const UCell* arg = bi->it + 1;
-
-        if( ur_is(arg, UT_WORD) )
-        {
-            arg = ur_wordCellM( ut, arg );
-            if( ! arg )
-                return 0;
-        }
-        if( ! ur_is(arg, UT_STRING) )
-            goto bad_string;
-
-        ep = (LineEdit*) gui_allocWidget( sizeof(LineEdit), wclass );
-        ep->wid.flags |= CHANGED;
-
-        //ep->state = LEDIT_STATE_DISPLAY;
-        ep->strN     = arg->series.buf;
-        ep->maxChars = 40;
-        ep->vboN     = ledit_vbo( ut, ep->maxChars );
-
-        bi->it += 2;
-        return (GWidget*) ep;
+        str = ur_wordCellM( ut, arg );
+        if( ! str )
+            return 0;
     }
+    else
+    {
+        str = arg;
+    }
+    if( ! ur_is(str, UT_STRING) )
+        goto bad_string;
+
+    ++arg;
+    if( arg != bi->end && ur_is(arg, UT_INT) )
+    {
+        maxChars = ur_int(arg);
+        ++arg;
+    }
+
+    ep = (LineEdit*) gui_allocWidget( sizeof(LineEdit), wclass );
+    ep->wid.flags |= CHANGED;
+
+    //ep->state = LEDIT_STATE_DISPLAY;
+    ep->strN     = str->series.buf;
+    ep->maxChars = maxChars;
+    ep->vboN     = ledit_vbo( ut, maxChars );
+
+    bi->it = arg;
+    return (GWidget*) ep;
 
 bad_string:
     ur_error( ut, UR_ERR_SCRIPT, "line-edit expected string!" );
@@ -336,12 +348,10 @@ activate:
 static void ledit_sizeHint( GWidget* wp, GSizeHint* size )
 {
     UCell* rc;
-    UBuffer* str;
     TexFont* tf;
     UCell* style = glEnv.guiStyle;
     UThread* ut  = glEnv.guiUT;
     EX_PTR;
-    int width;
 
     rc = style + CI_STYLE_BUTTON_SIZE;
     if( ur_is(rc, UT_COORD) )
@@ -363,18 +373,15 @@ static void ledit_sizeHint( GWidget* wp, GSizeHint* size )
     size->policyX = GW_EXPANDING;
     size->policyY = GW_FIXED;
 
-    if( ep->strN )
+    tf = ur_texFontV( ut, style + CI_STYLE_EDIT_FONT );
+    if( tf )
     {
-        str = ur_buffer( ep->strN );
-        tf = ur_texFontV( ut, style + CI_STYLE_EDIT_FONT );
-        if( tf )
-        {
-            width = txf_width( tf, str->ptr.b, str->ptr.b + str->used );
-            if( width > size->minW )
-                size->minW += width;
-            if( size->maxW < size->minW )
-                size->maxW = size->minW;
-        }
+        TexFontGlyph* glyph = txf_glyph( tf, 'W' );
+        int width = ep->maxChars * (glyph ? glyph->width : 9);
+        if( width > size->minW )
+            size->minW += width;
+        if( size->maxW < size->minW )
+            size->maxW = size->minW;
     }
 }
 

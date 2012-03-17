@@ -90,12 +90,14 @@ static GWidget* slider_make( UThread* ut, UBlockIter* bi,
     ep->state = BTN_STATE_UP;
     if( type == UT_COORD )
     {
+        ep->data.i.val =
         ep->data.i.min = arg->coord.n[0];
         ep->data.i.max = arg->coord.n[1];
         ep->dataType = UT_INT;
     }
     else
     {
+        ep->data.f.val =
         ep->data.f.min = arg->vec3.xyz[0];
         ep->data.f.max = arg->vec3.xyz[1];
         ep->dataType = UT_DECIMAL;
