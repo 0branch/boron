@@ -3431,6 +3431,10 @@ CFUNC(cfunc_make_dir)
     {
         UBuffer* bin = ur_buffer( BT->tempN );
         char* path = boron_cpath( ut, a1, bin );
+
+        if( ! boron_requestAccess( ut, "Make directory \"%s\"", path ) )
+            return UR_THROW;
+
         if( CFUNC_OPTIONS & OPT_MAKE_DIR_ALL )
         {
             if( ! _makeDirParents( ut, path, path + bin->used ) )
