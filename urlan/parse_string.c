@@ -476,7 +476,7 @@ repeat:
 
     if( rit == rend )
     {
-        ur_error( PARSE_ERR, "Enexpected end of parse rule" );
+        ur_error( PARSE_ERR, "Unexpected end of parse rule" );
         goto parse_err;
     }
     else
