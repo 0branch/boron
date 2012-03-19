@@ -468,6 +468,7 @@ static UCell* _tokenizePath( UThread* ut, UBuffer* blk,
 
     cell = ur_blkAppendNew( blk, UT_UNSET );       // Unset in case of GC.
 
+    // TODO: Handle UR_INVALID_ATOM.
     atom = ur_internAtom( ut, it, ew );
     if( atom < UT_MAX )
     {
@@ -1195,14 +1196,20 @@ alpha:
                         syntaxErrorT( "Unexpected colon" );
                     }
                     cell = ur_blkAppendNew( BLOCK, UT_SETWORD );
-                    ur_setWordUnbound( cell, ur_internAtom( ut, token, it ) );
+                    mode = ur_internAtom( ut, token, it );
+                    if( mode == UR_INVALID_ATOM )
+                        goto error;
+                    ur_setWordUnbound( cell, mode );
                     ++it;
                 }
                 else
                 {
 word:
                     cell = ur_blkAppendNew( BLOCK, mode );
-                    ur_setWordUnbound( cell, ur_internAtom( ut, token, it ) );
+                    mode = ur_internAtom( ut, token, it );
+                    if( mode == UR_INVALID_ATOM )
+                        goto error;
+                    ur_setWordUnbound( cell, mode );
                 }
                 goto set_sol;
 

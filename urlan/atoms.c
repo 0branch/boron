@@ -118,8 +118,13 @@ static void _rebuildAtomHash( UBuffer* buf )
 
 /*
   This must be called inside LOCK_GLOBAL/UNLOCK_GLOBAL.
+
+  \param ut     If non-zero, then ur_error() is called when the atom tables
+                are full.
+
+  \return UR_INVALID_ATOM if atom tables are full.
 */
-static UAtom _internAtom( UBuffer* atoms, UBuffer* names,
+static UAtom _internAtom( UThread* ut, UBuffer* atoms, UBuffer* names,
                           const uint8_t* str, const uint8_t* end )
 {
     uint8_t* cp;
@@ -213,8 +218,9 @@ static UAtom _internAtom( UBuffer* atoms, UBuffer* names,
     {
         // Atom table size is fixed so read only access does not need to be
         // locked.  When the table is full, we are finished.
-        assert( 0 && "Atom table is full" );
-        return 0;       // TODO: Report fatal error
+        if( ut )
+            ur_error( ut, UR_ERR_INTERNAL, "Atom table is full" );
+        return UR_INVALID_ATOM;
     }
     node = table + atoms->used;
     ++atoms->used;
@@ -226,8 +232,9 @@ static UAtom _internAtom( UBuffer* atoms, UBuffer* names,
 #if 1
     if( (names->used + len + 1) > ur_avail(names) )
     {
-        assert( 0 && "Atom name buffer is full" );
-        return 0;       // TODO: Report fatal error
+        if( ut )
+            ur_error( ut, UR_ERR_INTERNAL, "Atom name buffer is full" );
+        return UR_INVALID_ATOM;
     }
 #else
     ur_arrayReserve( names, sizeof(char), names->used + len + 1 );

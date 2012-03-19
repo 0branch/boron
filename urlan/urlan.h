@@ -133,7 +133,7 @@ enum UrlanErrorType
 
 #define UR_INVALID_BUF  0
 #define UR_INVALID_HOLD -1
-#define UR_INVALID_ATOM -1
+#define UR_INVALID_ATOM 0xffff
 
 
 typedef int32_t     UIndex;
@@ -354,7 +354,7 @@ typedef struct
     const UBuffer* ctx;
     UIndex ctxN;
     int bindType;
-    int self;
+    UAtom self;
 }
 UBindTarget;
 

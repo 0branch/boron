@@ -728,6 +728,8 @@ int port_make( UThread* ut, const UCell* from, UCell* res )
                 if( cp[0] == ':' && cp[1] == '/' && cp[2] == '/' )
                 {
                     name = ur_internAtom( ut, url, cp );
+                    if( name == UR_INVALID_ATOM )
+                        return UR_THROW;
                     break;
                 }
             }

@@ -1760,6 +1760,8 @@ int word_makeType( UThread* ut, const UCell* from, UCell* res, int ntype )
             atom = ur_internAtom( ut, tmp.ptr.c, tmp.ptr.c + tmp.used );
             ur_strFree( &tmp );
         }
+        if( atom == UR_INVALID_ATOM )
+            return UR_THROW;
 set_atom:
         ur_setId(res, ntype);
         ur_setWordUnbound(res, atom);

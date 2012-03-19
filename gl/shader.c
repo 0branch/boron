@@ -163,6 +163,8 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
         pi->type     = type;
         pi->location = glGetUniformLocation( shad.program, name );
         pi->name     = ur_internAtom( ut, name, name + length );
+        if( pi->name == UR_INVALID_ATOM )
+            return UR_THROW;
 
         ++pi;
     }

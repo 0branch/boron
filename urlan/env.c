@@ -257,14 +257,14 @@ static void _addDT( UEnv* env, int id, const UDatatype* dt )
         const char* end = dt->name;
         while( *end != '\0' )
             ++end;
-        _internAtom( &env->atomTable, &env->atomNames,
+        _internAtom( 0, &env->atomTable, &env->atomNames,
                      (uint8_t*) dt->name, (uint8_t*)end );
     }
     else
     {
         reserved[ sizeof(reserved) - 3 ] = '0' + (id / 10);
         reserved[ sizeof(reserved) - 2 ] = '0' + (id % 10);
-        _internAtom( &env->atomTable, &env->atomNames,
+        _internAtom( 0, &env->atomTable, &env->atomNames,
                      reserved, reserved + (sizeof(reserved) - 1) );
     }
     env->types[ id ] = dt;
@@ -559,7 +559,7 @@ int ur_datatypeCount( UThread* ut )
   \param it   Start of word.
   \param end  End of word.
 
-  \return Atom of word.
+  \return Atom of word or UR_INVALID_ATOM if an error was generated.
 */
 UAtom ur_internAtom( UThread* ut, const char* it, const char* end )
 {
@@ -567,7 +567,7 @@ UAtom ur_internAtom( UThread* ut, const char* it, const char* end )
     UEnv* env = ut->env;
 
     LOCK_GLOBAL
-    atom = _internAtom( &env->atomTable, &env->atomNames,
+    atom = _internAtom( ut, &env->atomTable, &env->atomNames,
                         (uint8_t*) it, (uint8_t*) end );
     UNLOCK_GLOBAL
 
@@ -598,7 +598,7 @@ UAtom* ur_internAtoms( UThread* ut, const char* words, UAtom* atoms )
     {
         cp = str_skipWhite( cp );
         end = str_toWhite( cp );
-        *atoms++ = _internAtom( table, names, (uint8_t*) cp, (uint8_t*) end );
+        *atoms++ = _internAtom( 0, table, names, (uint8_t*)cp, (uint8_t*)end );
         cp = end;
     }
 

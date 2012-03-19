@@ -540,6 +540,8 @@ void boron_addCFunc( UThread* ut, BoronCFunc func, const char* sig )
     if( cp == end )
         return;
     atom = ur_internAtom( ut, cp, end );
+    if( atom == UR_INVALID_ATOM )
+        return;
 
     cell = (UCellFunc*) ur_ctxAddWord( ur_threadContext(ut), atom );
 
