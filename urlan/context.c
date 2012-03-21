@@ -559,10 +559,15 @@ const UBuffer* ur_sortedContext( UThread* ut, const UCell* cell )
 */
 int ur_ctxLookup( const UBuffer* ctx, UAtom atom )
 {
-    const UAtomEntry* went = ENTRIES(ctx);
-    int sorted = CC(ctx)->sorted;
+    const UAtomEntry* went;
+    int sorted;
     int i;
 
+    if( ! ctx->used )
+        return -1;
+
+    went = ENTRIES(ctx);
+    sorted = CC(ctx)->sorted;
     i = ur_atomsSearch( went, sorted, atom );
     if( i < 0 && ctx->used > sorted )
     {
