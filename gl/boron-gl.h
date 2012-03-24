@@ -134,6 +134,7 @@ struct GLEnv
     GWidget* eventWidget;
     UThread* guiUT;
     UCell*   guiStyle;          // For GWidget layout & render.
+    UBuffer tmpBin;
     UBuffer tmpStr;
     UBuffer widgetClasses;
     UBuffer rootWidgets;

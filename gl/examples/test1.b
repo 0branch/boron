@@ -74,6 +74,9 @@ font-dl: draw-list [
     blend trans
     shader text-sh
     text 10,300 "Hello World!"
+
+    text 10,280 "Zoom: "
+    text /*10,280*/ :zoom
 ]
 
 demo-exec draw-list [

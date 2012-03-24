@@ -24,7 +24,7 @@
 #include "geo.h"
 
 
-#define DP_MAX_ARGS    4    // Maximum arguments per instruction.
+#define DP_MAX_ARGS    5    // Maximum arguments per instruction.
 #define DP_MAX_VBUF    3
 
 typedef struct
@@ -59,7 +59,7 @@ typedef struct
     UIndex   shaderResN;
     GLfloat  penX;
     GLfloat  penY;
-    Geometry tgeo;
+    Geometry tgeo;      // Textured geometry.
 }
 DPCompiler;
 
@@ -84,6 +84,7 @@ typedef struct
 {
     GLuint samplesQueryId;
     GLuint currentProgram;
+    TexFont* font;
 }
 DPState;
 

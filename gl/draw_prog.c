@@ -117,8 +117,8 @@ enum DPOpcode
     DP_SAMPLES_END,         // blkN index
     DP_LIGHT,               // blkN
     DP_READ_PIXELS,         // blkN index pos dim
-    DP_80,
-    DP_81, //--
+    DP_FONT,                // blkN
+    DP_TEXT_WORD,           // blkN index aoff x y (then DP_DRAW_TRIS_I)
     DP_82,
     DP_83,
     DP_84,
@@ -174,6 +174,8 @@ typedef union
 }
 Number;
 
+
+#define MAX_DYNAMIC_TEXT_LEN    20
 
 #define dp_byteCode(ph) ((uint32_t*) (((char*) ph) + ph->progIndex))
 
@@ -712,6 +714,32 @@ static void genIndices( UThread* ut, DPCompiler* emit )
 }
 
 
+// Allow only normal, block-bound words so we can emit just 2 numbers.
+static UIndex _wordBlock( const UCell* cell )
+{
+    int bind = ur_binding( cell );
+    if( bind == UR_BIND_THREAD || bind == UR_BIND_ENV )
+        return cell->word.ctx;
+    return UR_INVALID_BUF;
+}
+
+
+static int emitWordOp( DPCompiler* emit, const UCell* cell, int opcode )
+{
+    if( ur_is(cell, UT_WORD) || ur_is(cell, UT_GETWORD) )
+    {
+        UIndex blkN = _wordBlock( cell );
+        if( blkN != UR_INVALID_BUF )
+        {
+            refBlock( emit, blkN );
+            emitOp2( opcode, blkN, cell->word.index );
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
 /*--------------------------------------------------------------------------*/
 
 
@@ -802,6 +830,19 @@ static void compileGeo( const Geometry* geo, DPCompiler* emit )
 
 
 /*--------------------------------------------------------------------------*/
+
+
+/*
+void vbo_setAttrComp( float* attr, int count, int stride, float value )
+{
+    float* end = attr + (count * stride);
+    while( attr != end )
+    {
+        *attr = value;
+        attr += stride;
+    }
+}
+*/
 
 
 void vbo_initTextIndices( uint16_t* ip, int idx, int glyphCount )
@@ -919,6 +960,7 @@ int vbo_drawText( DrawTextState* ds,
     tp += stride; \
     vp[0] = x; \
     vp[1] = y; \
+    vp[2] = 0.0f; \
     vp += stride
 
                 VB_GLYPH_ATTR( min_s, min_t, gx,      gy );
@@ -998,13 +1040,7 @@ void dp_drawText( DPCompiler* emit, TexFont* tf,
         emit->penY = ds.y;
 
         // Zero vertices Z.
-        attr += geo->vertOff + 2;
-        len = cc * 4;
-        while( len-- )
-        {
-            *attr = 0.0f;
-            attr += geo->attrSize;
-        }
+        //vbo_setAttrComp(attr + geo->vertOff + 2, cc * 4, geo->attrSize, 0.0f);
 
         geo->attr.used += cc * 4 * geo->attrSize;
 
@@ -1017,12 +1053,38 @@ void dp_drawText( DPCompiler* emit, TexFont* tf,
 }
 
 
-void dp_drawTextCell( DPCompiler* emit, UThread* ut, TexFont* tf,
-                      const UCell* cell, UAtom sel, const UCell* area )
+static void dp_emitTextWord( DPCompiler* emit, const UCell* wordC )
+{
+    //float* attr;
+    Geometry* geo = &emit->tgeo;
+    int indexOffset = geo->idx.used;
+    int attrOffset = geo->attr.used;
+    int startIndex = geo_vertCount( geo );
+    int maxLen = MAX_DYNAMIC_TEXT_LEN;
+
+    geo->flags |= GEOM_DYN_ATTR;
+
+    geo_addVerts( geo, maxLen * 4 );
+    //vbo_setAttrComp(attr + geo->vertOff + 2, maxLen * 4, geo->attrSize, 0.0f);
+    vbo_initTextIndices( geo_addIndices(geo, maxLen * 6), startIndex, maxLen );
+
+    emitOp1( DP_FONT, emit->fontN );
+    emitWordOp( emit, wordC, DP_TEXT_WORD );
+    emitDPArg( emit, attrOffset * sizeof(GLfloat) );
+    emitDPArg( emit, *((uint32_t*) &emit->penX) );
+    emitDPArg( emit, *((uint32_t*) &emit->penY) );
+    emitOp2( DP_DRAW_TRIS_I, 0, indexOffset * sizeof(uint16_t) );
+}
+
+
+/*
+   Sets bi->it and bi->end to string data.
+   The bi->buf member is not set.
+   Uses glEnv.tmpStr.
+*/
+static void dp_toString( UThread* ut, const UCell* cell, UBinaryIter* bi )
 {
     UBuffer* str;
-    uint8_t* cpA;
-    uint8_t* cpB;
 
     if( ur_isStringType( ur_type(cell) ) )
     {
@@ -1030,31 +1092,37 @@ void dp_drawTextCell( DPCompiler* emit, UThread* ut, TexFont* tf,
         ur_seriesSlice( ut, &si, cell );
         if( si.buf->form == UR_ENC_LATIN1 )
         {
-            cpA = si.buf->ptr.b + si.it;
-            cpB = si.buf->ptr.b + si.end;
+            bi->it  = si.buf->ptr.b + si.it;
+            bi->end = si.buf->ptr.b + si.end;
+            return;
         }
-        else
-        {
-            str = &glEnv.tmpStr;
-            str->used = 0;
-            ur_strAppend( str, si.buf, si.it, si.end );
-            goto setcp;
-        }
+        str = &glEnv.tmpStr;
+        str->used = 0;
+        ur_strAppend( str, si.buf, si.it, si.end );
     }
     else
     {
         str = &glEnv.tmpStr;
         str->used = 0;
         ur_toStr( ut, cell, str, 0 );
-setcp:
-        cpA = str->ptr.b;
-        cpB = cpA + str->used;
     }
+    bi->it  = str->ptr.b;
+    bi->end = str->ptr.b + str->used;
+}
+
+
+void dp_drawTextCell( DPCompiler* emit, UThread* ut, const UCell* cell,
+                      UAtom sel, const UCell* area )
+{
+    UBinaryIter bi;
+    TexFont* tf = (TexFont*) ur_buffer(emit->fontN)->ptr.v; 
+
+    dp_toString( ut, cell, &bi );
 
     if( sel && area )
     {
         const int16_t* rect = area->coord.n;
-        int w = txf_width( tf, cpA, cpB );
+        int w = txf_width( tf, bi.it, bi.end );
 
         if( sel == UR_ATOM_CENTER )
             emit->penX += rect[0] + ((rect[2] - w) >> 1);
@@ -1066,7 +1134,7 @@ setcp:
         emit->penY += rect[1] + ((rect[3] - tf->max_ascent) >> 1);
     }
 
-    dp_drawText( emit, tf, cpA, cpB );
+    dp_drawText( emit, tf, bi.it, bi.end );
 }
 
 
@@ -1237,32 +1305,6 @@ void ur_setTransXY( UThread* ut, UIndex resN, DPSwitch sid, float x, float y )
 
 
 /*--------------------------------------------------------------------------*/
-
-
-// Allow only normal, block-bound words so we can emit just 2 numbers.
-static UIndex _wordBlock( const UCell* cell )
-{
-    int bind = ur_binding( cell );
-    if( bind == UR_BIND_THREAD || bind == UR_BIND_ENV )
-        return cell->word.ctx;
-    return UR_INVALID_BUF;
-}
-
-
-static int emitWordOp( DPCompiler* emit, const UCell* cell, int opcode )
-{
-    if( ur_is(cell, UT_WORD) || ur_is(cell, UT_GETWORD) )
-    {
-        UIndex blkN = _wordBlock( cell );
-        if( blkN != UR_INVALID_BUF )
-        {
-            refBlock( emit, blkN );
-            emitOp2( opcode, blkN, cell->word.index );
-            return 1;
-        }
-    }
-    return 0;
-}
 
 
 static void dp_init( DPCompiler* gpc )
@@ -1859,9 +1901,10 @@ bad_quad:
                 if( emit->fontN )
                 {
                     dp_tgeoInit( emit );
-                    dp_drawTextCell( emit, ut,
-                            (TexFont*) ur_buffer(emit->fontN)->ptr.v, val,
-                            option, area ); 
+                    if( ur_is(val, UT_GETWORD) )
+                        dp_emitTextWord( emit, val );
+                    else
+                        dp_drawTextCell( emit, ut, val, option, area ); 
                 }
                 else
                 {
@@ -2394,6 +2437,7 @@ void ur_initDrawState( DPState* state )
 {
     state->samplesQueryId = 0;
     state->currentProgram = 0;
+    state->font = 0;
 }
 
 
@@ -3293,6 +3337,57 @@ dispatch:
                 }
             }
             pc += 2;
+        }
+            break;
+
+        case DP_FONT:
+            ds->font = ur_buffer( *pc++ )->ptr.v;
+            break;
+
+        case DP_TEXT_WORD:
+        {
+            UBinaryIter bi;
+            int cc;
+            PC_WORD( blk, val );
+            int attrOffset = *pc++;
+            GLfloat* pen = (GLfloat*) pc;
+            pc += 2;
+
+            dp_toString( ut, val, &bi );
+            cc = bi.end - bi.it;
+            if( cc > 0 )
+            {
+                DrawTextState dts;
+                GLfloat* attr;
+                //GLenum err;
+
+                if( cc > MAX_DYNAMIC_TEXT_LEN )
+                {
+                    cc = MAX_DYNAMIC_TEXT_LEN;
+                    bi.end = bi.it + MAX_DYNAMIC_TEXT_LEN;
+                }
+
+                // Change following DP_DRAW_TRIS_I count.
+                *pc = cc * 6;
+
+                cc *= 4 * 5 * sizeof(GLfloat);
+                ur_binReserve( &glEnv.tmpBin, cc );
+                attr = glEnv.tmpBin.ptr.f;
+                vbo_drawTextInit( &dts, ds->font, pen[0], pen[1] );
+                vbo_drawText( &dts,
+                              // geo->uvOff, geo->vertOff, geo->attrSize,
+                              attr + 0, attr + 2, 5,
+                              bi.it, bi.end );
+                glBufferSubData( GL_ARRAY_BUFFER, attrOffset, cc, attr );
+                /*
+                err = glGetError();
+                if( err != GL_NO_ERROR )
+                {
+                    return ur_error( ut, UR_ERR_INTERNAL,
+                                     (const char*) gluErrorString( err ) );
+                }
+                */
+            }
         }
             break;
 

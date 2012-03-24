@@ -2428,6 +2428,7 @@ cleanup:
     glid_startup();
     //gui_init( &glEnv.gui, ut );
 
+    ur_binInit( &glEnv.tmpBin, 0 );
     ur_strInit( &glEnv.tmpStr, UR_ENC_LATIN1, 0 );
     ur_ctxInit( &glEnv.widgetClasses, 0 );
     ur_arrInit( &glEnv.rootWidgets, sizeof(GWidget*), 0 );
@@ -2442,6 +2443,7 @@ void boron_freeEnvGL( UThread* ut )
 {
     if( ut )
     {
+        ur_binFree( &glEnv.tmpBin );
         ur_strFree( &glEnv.tmpStr );
         ur_ctxFree( &glEnv.widgetClasses );
         {

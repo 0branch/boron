@@ -37,7 +37,9 @@ Primitives;
 //#define GEOM_NORMALS  0x01
 //#define GEOM_TEXTURE  0x02
 //#define GEOM_COLORS   0x04
-#define GEOM_INSIDE   0x08
+#define GEOM_INSIDE     0x08
+#define GEOM_DYN_ATTR   0x10
+#define GEOM_DYN_IDX    0x20
 
 typedef struct
 {
@@ -45,12 +47,12 @@ typedef struct
     UBuffer idx;
     UBuffer prim;
     GLuint buf[2];
-    int flags;
-    int attrSize;
-    int vertOff;
-    int normOff;
-    int colorOff;
-    int uvOff;
+    uint16_t flags;
+    int16_t attrSize;
+    int16_t vertOff;
+    int16_t normOff;
+    int16_t colorOff;
+    int16_t uvOff;
 }
 Geometry;
 

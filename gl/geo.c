@@ -161,7 +161,8 @@ void geo_bufferData( const Geometry* geo )
         glBindBuffer( GL_ARRAY_BUFFER, geo->buf[0] );
         glBufferData( GL_ARRAY_BUFFER,
                       sizeof(float) * geo->attr.used, geo->attr.ptr.f,
-                      GL_STATIC_DRAW );
+                      (geo->flags & GEOM_DYN_ATTR) ? GL_DYNAMIC_DRAW
+                                                   : GL_STATIC_DRAW );
     }
 
     if( geo->idx.used )
@@ -169,7 +170,8 @@ void geo_bufferData( const Geometry* geo )
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, geo->buf[1] );
         glBufferData( GL_ELEMENT_ARRAY_BUFFER,
                       sizeof(uint16_t) * geo->idx.used, geo->idx.ptr.v,
-                      GL_STATIC_DRAW );
+                      (geo->flags & GEOM_DYN_IDX) ? GL_DYNAMIC_DRAW
+                                                  : GL_STATIC_DRAW );
     }
 }
 
