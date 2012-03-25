@@ -106,6 +106,8 @@ static int binary_construct( UThread* ut, const UCell* blkC, const UCell* binC )
                         return UR_THROW;
                     if( ur_is(cell, UT_INT) )
                         ur_binAppendInt( bin, ur_int(cell), size, bigEndian );
+                    else if( ur_is(cell, UT_BINARY) )
+                        goto con_bin;
                     else if( ur_is(cell, UT_BLOCK) )
                         goto con_blk;
                     else
@@ -115,6 +117,17 @@ static int binary_construct( UThread* ut, const UCell* blkC, const UCell* binC )
         else if( ur_is(bi.it, UT_INT) )
         {
             ur_binAppendInt( bin, ur_int(bi.it), size, bigEndian );
+        }
+        else if( ur_is(bi.it, UT_BINARY) )
+        {
+            cell = bi.it;
+con_bin:
+            {
+            UBinaryIter b2;
+            ur_binSlice( ut, &b2, cell );
+            if( b2.end > b2.it )
+                ur_binAppendData( bin, b2.it, b2.end - b2.it );
+            }
         }
         else if( ur_is(bi.it, UT_BLOCK) )
         {
