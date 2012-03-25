@@ -659,7 +659,7 @@ int boron_addCFuncS( UThread* ut, BoronCFunc* funcTable,
 
 static const char setupScript[] =
     "environs: make context! [\n"
-    "  version: 0,2,4\n"
+    "  version: 0,2,5\n"
     "  os: '" OS_WORD " arch: '" ARCH_WORD " big-endian: " ARCH_BIG
     "]\n"
     "q: :quit  yes: true  no: false\n"
