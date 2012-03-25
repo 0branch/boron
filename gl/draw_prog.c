@@ -97,6 +97,7 @@ enum DPOpcode
     DP_COLOR_WORD,          // blkN index
     DP_PUSH,
     DP_POP,
+    DP_TRANSLATE,           // x y z
     DP_TRANSLATE_WORD,      // blkN index
     DP_TRANSLATE_XY,        // x y
     DP_ROTATE_X,            // angle
@@ -119,7 +120,6 @@ enum DPOpcode
     DP_READ_PIXELS,         // blkN index pos dim
     DP_FONT,                // blkN
     DP_TEXT_WORD,           // blkN index aoff x y (then DP_DRAW_TRIS_I)
-    DP_82,
     DP_83,
     DP_84,
     DP_85,
@@ -1449,6 +1449,13 @@ static const UCell* dp_value( UThread* ut, const UCell* cell )
     INC_PC \
     PC_VALUE(val)
 
+#define scriptError(msg) \
+    ur_error( ut, UR_ERR_SCRIPT, msg ); \
+    goto error
+
+#define typeError(msg) \
+    ur_error( ut, UR_ERR_TYPE, msg ); \
+    goto error
 
 #define SA_VERT    0x01
 #define SA_NORM    0x02
@@ -1520,8 +1527,7 @@ comp_op:
 #endif
                     else
                     {
-                        ur_error(ut, UR_ERR_SCRIPT, "call expected draw-prog!");
-                        goto error;
+                        typeError( "call expected draw-prog!" );
                     }
                 }
                 break;
@@ -1576,8 +1582,7 @@ image_next:
                 }
                 else
                 {
-                    ur_error( ut, UR_ERR_SCRIPT, "image expected texture!" );
-                    goto error;
+                    typeError( "image expected texture!" );
                 }
             }
                 break;
@@ -1602,9 +1607,7 @@ image_next:
                         cop = DP_COLOR4;
                     else
                     {
-                        ur_error( ut, UR_ERR_SCRIPT,
-                                  "color expected int!/coord!/vec3!" );
-                        goto error;
+                        typeError( "color expected int!/coord!/vec3!" );
                     }
                     emitOp1( cop, color );
                 }
@@ -1711,9 +1714,7 @@ bad_prim:
                 else
                 {
 bad_sphere:
-                    ur_error( ut, UR_ERR_SCRIPT,
-                              "sphere expected radius slices,stacks" );
-                    goto error;
+                    scriptError( "sphere expected radius slices,stacks" );
                 }
                 _sphere( emit, radius, slices, stacks, "ntv", 0 );
             }
@@ -1744,8 +1745,7 @@ bad_sphere:
                 if( ! ur_is(ts, UT_COORD) )
                 {
 bad_quad:
-                    ur_error( ut, UR_ERR_TYPE, "quad expected coord!" );
-                    goto error;
+                    typeError( "quad expected coord!" );
                 }
                 INC_PC
                 PC_VALUE(tc);
@@ -1778,8 +1778,7 @@ bad_quad:
                 }
                 else
                 {
-                    ur_error( ut, UR_ERR_SCRIPT, "camera expected context!" );
-                    goto error;
+                    typeError( "camera expected context!" );
                 }
                 break;
 
@@ -1787,8 +1786,7 @@ bad_quad:
                 INC_PC
                 if( ! ur_is(pc, UT_BLOCK) )
                 {
-                    ur_error( ut, UR_ERR_SCRIPT, "light expected block!" );
-                    goto error;
+                    typeError( "light expected block!" );
                 }
                 refBlock( emit, pc->series.buf );
                 emitOp1( DP_LIGHT, pc->series.buf );
@@ -1803,8 +1801,18 @@ bad_quad:
                 break;
 
             case DOP_TRANSLATE:
-                INC_PC
-                emitWordOp( emit, pc, DP_TRANSLATE_WORD );
+                INC_PC_VALUE(val)
+                if( ur_is(val, UT_VEC3) )
+                {
+                    emitDPInst( emit, DP_TRANSLATE, 3,
+                                *((uint32_t*) &val->vec3.xyz[0]),
+                                *((uint32_t*) &val->vec3.xyz[1]),
+                                *((uint32_t*) &val->vec3.xyz[2]) );
+                }
+                else if( ! emitWordOp( emit, val, DP_TRANSLATE_WORD ) )
+                {
+                    typeError( "translate expected vec3!/get-word!" );
+                }
                 break;
 
             case DOP_ROTATE:    // rotate axis word! angle decimal!/int!
@@ -1860,8 +1868,7 @@ bad_quad:
                 }
                 else
                 {
-                    ur_error( ut, UR_ERR_TYPE, "font expected font!" );
-                    goto error;
+                    typeError( "font expected font!" );
                 }
                 break;
 
@@ -1875,9 +1882,7 @@ bad_quad:
                 {
                     if( ! ur_is(val, UT_COORD) || (val->coord.len < 4) )
                     {
-                        ur_error( ut, UR_ERR_TYPE,
-                                  "text expected area coord!" );
-                        goto error;
+                        typeError( "text expected area coord!" );
                     }
                     area = val;
                     emit->penX = 0.0f;
@@ -1908,8 +1913,7 @@ bad_quad:
                 }
                 else
                 {
-                    ur_error( ut, UR_ERR_SCRIPT, "font is unset for text" );
-                    goto error;
+                    scriptError( "font is unset for text" );
                 }
             }
                 break;
@@ -1934,8 +1938,7 @@ bad_quad:
                     sh = shaderContext( ut, val, &blk );
                     if( ! sh )
                     {
-                        ur_error( ut, UR_ERR_SCRIPT, "invalid shader" );
-                        goto error;
+                        scriptError( "invalid shader" );
                     }
                     if( blk )
                     {
@@ -1962,8 +1965,7 @@ bad_quad:
                 INC_PC
                 if( ! ur_is(pc, UT_WORD) )
                 {
-                    ur_error( ut, UR_ERR_TYPE, "uniform expected word! name" );
-                    goto error;
+                    typeError( "uniform expected word! name" );
                 }
                 name = ur_atom(pc);
                 INC_PC_VALUE(val)
@@ -2035,16 +2037,13 @@ bad_quad:
                 }
                 if( ! attach )
                 {
-                    ur_error( ut, UR_ERR_SCRIPT,
-                    "framebuffer-tex expected int!/color/depth attachment" );
-                    goto error;
+                    typeError( "framebuffer-tex expected"
+                               " int!/color/depth attachment" );
                 }
                 INC_PC
                 if( ! emitWordOp( emit, pc, DP_FRAMEBUFFER_TEX_WORD ) )
                 {
-                    ur_error( ut, UR_ERR_SCRIPT,
-                              "framebuffer-tex expected texture word!" );
-                    goto error;
+                    typeError( "framebuffer-tex expected texture word!" );
                 }
                 emitDPArg( emit, attach );
             }
@@ -2059,8 +2058,7 @@ bad_quad:
                 }
                 else
                 {
-                    ur_error( ut, UR_ERR_SCRIPT, "shadow-begin expected fbo!" );
-                    goto error;
+                    typeError( "shadow-begin expected fbo!" );
                 }
                 break;
 
@@ -2074,9 +2072,7 @@ bad_quad:
                 if( ! ur_is(pc, UT_WORD) )
                 {
 samples_err:
-                    ur_error( ut, UR_ERR_SCRIPT,
-                              "samples-query expected word! block!" );
-                    goto error;
+                    typeError( "samples-query expected word! block!" );
                 }
                 val = pc;
                 INC_PC
@@ -2103,9 +2099,7 @@ samples_err:
                 PC_VALUE(val)
                 if( ! ur_is(val, UT_BLOCK) )
                 {
-                    ur_error( ut, UR_ERR_SCRIPT,
-                              "buffer expected attribute block!" );
-                    goto error;
+                    typeError( "buffer expected attribute block!" );
                 }
                 keyN = val->series.buf;
 
@@ -2115,9 +2109,7 @@ samples_err:
                 {
                     if( emit->vbufCount == DP_MAX_VBUF )
                     {
-                        ur_error( ut, UR_ERR_SCRIPT,
-                                  "Vertex buffer limit exceeded" );
-                        goto error;
+                        scriptError( "Vertex buffer limit exceeded" );
                     }
 
                     vbuf = emit->vbuf + emit->vbufCount;
@@ -2152,9 +2144,7 @@ samples_err:
                 }
                 else
                 {
-                    ur_error( ut, UR_ERR_SCRIPT,
-                              "buffer expected vector!/vertex-buffer!" );
-                    goto error;
+                    typeError( "buffer expected vector!/vertex-buffer!" );
                 }
             }
                 break;
@@ -2177,9 +2167,8 @@ samples_err:
                     case UR_ATOM_BURN:  op = DP_BLEND_BURN;  break;
                     case UR_ATOM_TRANS: op = DP_BLEND_TRANS; break;
                     default:
-                        ur_error( ut, UR_ERR_SCRIPT,
-                              "blend expected word! (on off add burn trans)" );
-                        goto error;
+                        typeError( "blend expected word!"
+                                   " (on off add burn trans)" );
                 }
                 emitOp( op );
             }
@@ -2221,15 +2210,13 @@ samples_err:
                 INC_PC
                 if( ! ur_is(pc, UT_COORD) )
                 {
-                    ur_error( ut, UR_ERR_SCRIPT, "read-pixels expected rect" );
-                    goto error;
+                    scriptError( "read-pixels expected rect" );
                 }
                 rect = pc;
                 INC_PC
                 if( ! emitWordOp( emit, pc, DP_READ_PIXELS ) )
                 {
-                    ur_error( ut, UR_ERR_SCRIPT, "read-pixels expected word!" );
-                    goto error;
+                    typeError( "read-pixels expected word!" );
                 }
                 emitDPArg( emit, *((uint32_t*)  rect->coord.n) );
                 emitDPArg( emit, *((uint32_t*) (rect->coord.n + 2)) );
@@ -2260,8 +2247,7 @@ samples_err:
         else
         {
 bad_inst:
-            ur_error( ut, UR_ERR_SCRIPT, "Invalid draw-prog instruction" );
-            goto error;
+            scriptError( "Invalid draw-prog instruction" );
         }
         ++pc;
     }
@@ -3114,6 +3100,16 @@ dispatch:
 
         case DP_POP:
             glPopMatrix();
+            break;
+
+        case DP_TRANSLATE:
+        {
+            Number x, y, z;
+            x.i = *pc++;
+            y.i = *pc++;
+            z.i = *pc++;
+            glTranslatef( x.f, y.f, z.f );
+        }
             break;
 
         case DP_TRANSLATE_WORD:
