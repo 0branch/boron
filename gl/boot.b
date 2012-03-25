@@ -3,7 +3,6 @@
 
 camera: context [
     orient:   none          ; matrix
-    position: none
     viewport: 0,0,640,480   ; x,y,width,height
     fov:  65.0
     near:  0.1
@@ -14,6 +13,11 @@ ortho-cam: make camera [
     fov: 'ortho
     near: -100.0
     far:   100.0
+]
+
+orbit-cam: make camera [
+    orbit:     0.0, 0.0, 10.0   ; azimuth, elevation, dist (angles in radians)
+    focal-pnt: 0.0, 0.0, 0.0
 ]
 
 

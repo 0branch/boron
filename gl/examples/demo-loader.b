@@ -30,7 +30,7 @@ demo-window: [
         mouse-move: [
             ;probe event
             ifn eq? 0 and event/5 mouse-lb [
-                view-cam/turntable event/3 event/4
+                turntable view-cam mul 0.5,-0.5 slice event 2,2
             ]
         ]
         mouse-wheel: [
@@ -45,28 +45,13 @@ view-cam: make camera [
     fov:   60.0
     near:   1.0
     far: 9000.0
-    viewport: display-area ;20,20,200,200
+    viewport: display-area
     orient: make-matrix 0.0, 0.0, 15.0
 
-    azimuth: to-radians 90.0
-    elev:    0.0
-    dist:   15.0
+    orbit: 1.570796, 0.0, 15.0
     focal-pnt: 0.0, 0.0, 0.0
 
-    turntable: func [dx dy | ced] [
-        azimuth: add azimuth to-radians mul dx  0.5
-        elev: limit add elev to-radians mul dy -0.5  -1.53938 1.53938
-
-       ;print ["azim-elev:" to-degrees azimuth to-degrees elev]
-
-        ced: mul cos elev dist
-        orient/13: add focal-pnt/1 mul ced  cos azimuth
-        orient/14: add focal-pnt/2 mul dist sin elev
-        orient/15: add focal-pnt/3 mul ced  sin azimuth
-
-        look-at orient focal-pnt
-    ]
-    turntable 0 0
+    turntable self 0,0
 ]
 
 demo-exec: func [dl /update | window] [

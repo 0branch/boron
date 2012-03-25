@@ -1063,6 +1063,30 @@ CFUNC( cfunc_limit )
 }
 
 
+static void _matrixLookAt( float* mat, const float* focalPnt )
+{
+    float* right = mat;
+    float* up    = mat + 4;
+    float* zv    = mat + 8;
+
+    zv[0] = zv[4] - focalPnt[0];
+    zv[1] = zv[5] - focalPnt[1];
+    zv[2] = zv[6] - focalPnt[2];
+    ur_normalize( zv );
+
+    up[0] = 0.0;
+    up[1] = 1.0;
+    up[2] = 0.0;
+
+    ur_cross( up, zv, right );
+    ur_normalize( right );
+
+    // Recompute up to make perpendicular to right & zv.
+    ur_cross( zv, right, up );
+    ur_normalize( up );
+}
+
+
 /*-cf-
     look-at
         matrix vector!
@@ -1074,41 +1098,97 @@ CFUNC( cfunc_look_at )
 {
     UCell* a2 = a1 + 1;
     UBuffer* mat;
-    float* right;
-    float* up;
-    float* zv;
 
     if( ur_is(a1, UT_VECTOR) && ur_is(a2, UT_VEC3) )
     {
         mat = ur_bufferSerM( a1 );
         if( ! mat )
             return UR_THROW;
-
-        right = mat->ptr.f;
-        up    = mat->ptr.f + 4;
-        zv    = mat->ptr.f + 8;
-
-        zv[0] = zv[4] - a2->vec3.xyz[0];
-        zv[1] = zv[5] - a2->vec3.xyz[1];
-        zv[2] = zv[6] - a2->vec3.xyz[2];
-        ur_normalize( zv );
-
-        up[0] = 0.0;
-        up[1] = 1.0;
-        up[2] = 0.0;
-
-        ur_cross( up, zv, right );
-        ur_normalize( right );
-
-        // Recompute up to make perpendicular to right & zv.
-        ur_cross( zv, right, up );
-        ur_normalize( up );
-
+        _matrixLookAt( mat->ptr.f, a2->vec3.xyz );
         *res = *a1;
         return UR_OK;
     }
 
     return ur_error( ut, UR_ERR_TYPE, "look-at expected vector! and vec3!" );
+}
+
+
+const UBuffer* _cameraOrientMatrix( UThread* ut, const UBuffer* ctx )
+{
+    const UCell* cell = ur_ctxCell( ctx, CAM_CTX_ORIENT );
+    if( ur_is(cell, UT_VECTOR) )
+    {
+        const UBuffer* arr = ur_bufferSer( cell );
+        if( (arr->form == UR_ATOM_F32) && (arr->used == 16) )
+            return arr;
+    }
+    return 0;
+}
+
+
+/*-cf-
+    turntable
+        camera      context!
+        delta       azim,elev  coord!/vec3!
+    return: Transformed camera.
+    group: math
+*/
+CFUNC( cfunc_turntable )
+{
+    UBuffer* ctx;
+    const UCell* a2 = a1 + 1;
+    const UBuffer* mat;
+    UCell* orbit;
+    UCell* focus;
+    double dx, dy;
+    double elev;
+    double ced;
+
+    if( ur_is(a2, UT_VEC3) )
+    {
+        dx = a2->vec3.xyz[0];
+        dy = a2->vec3.xyz[1];
+    }
+    else
+    {
+        dx = (double) a2->coord.n[0];
+        dy = (double) a2->coord.n[1];
+    }
+
+    if( ! ur_is(a1, UT_CONTEXT) )
+        goto bad_cam;
+    if( ! (ctx = ur_bufferSerM( a1 )) )
+        return UR_THROW;
+    if( ctx->used < CAM_CTX_ORBIT_COUNT )
+        goto bad_cam;
+
+    orbit = ur_ctxCell(ctx, CAM_CTX_ORBIT);
+    focus = ur_ctxCell(ctx, CAM_CTX_FOCAL_PNT);
+    if( ! ur_is(orbit, UT_VEC3) || ! ur_is(focus, UT_VEC3) )
+        goto bad_cam;
+    if( ! (mat = _cameraOrientMatrix( ut, ctx )) )
+        goto bad_cam;
+
+    orbit->vec3.xyz[0] += degToRad(dx);
+    elev = orbit->vec3.xyz[1] + degToRad(dy);
+    if( elev < -1.53938 )
+        elev = -1.53938;
+    else if( elev > 1.53938 )
+        elev = 1.53938;
+    orbit->vec3.xyz[1] = elev;
+
+    ced = cos( elev ) * orbit->vec3.xyz[2];
+    mat->ptr.f[12] = focus->vec3.xyz[0] + (ced * cos(orbit->vec3.xyz[0]));
+    mat->ptr.f[13] = focus->vec3.xyz[1] + (orbit->vec3.xyz[2] * sin(elev));
+    mat->ptr.f[14] = focus->vec3.xyz[2] + (ced * sin(orbit->vec3.xyz[0]));
+
+    _matrixLookAt( mat->ptr.f, focus->vec3.xyz );
+
+    *res = *a1;
+    return UR_OK;
+
+bad_cam:
+    return ur_error( ut, UR_ERR_TYPE, "turntable expected orbit-cam" );
 }
 
 
@@ -1603,6 +1683,7 @@ extern GLdouble number_d( const UCell* cell );
 static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
 {
     const UCell* cell;
+    const UBuffer* mat;
     float fov;
     float w, h;
     int i;
@@ -1625,15 +1706,10 @@ static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
             h = (float) cell->coord.n[3];
             ur_perspective( cam->proj, fov, w / h, cam->near, cam->far );
 
-            cell = ur_ctxCell( ctx, CAM_CTX_ORIENT );
-            if( ur_is(cell, UT_VECTOR) )
+            if( (mat = _cameraOrientMatrix( ut, ctx )) )
             {
-                const UBuffer* arr = ur_bufferSer( cell );
-                if( (arr->form == UR_ATOM_F32) && (arr->used == 16) )
-                {
-                    ur_matrixInverse( cam->orient, arr->ptr.f );
-                    return 1;
-                }
+                ur_matrixInverse( cam->orient, mat->ptr.f );
+                return 1;
             }
         }
     }
@@ -2351,6 +2427,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_to_radians,  "to-radians n" );
     addCFunc( cfunc_limit,       "limit n min max" );
     addCFunc( cfunc_look_at,     "look-at a b" );
+    addCFunc( cfunc_turntable,   "turntable c a" );
     addCFunc( cfunc_lerp,        "lerp a b f" );
     addCFunc( cfunc_curve_at,    "curve-at a b" );
     addCFunc( cfunc_animate,     "animate a time" );
