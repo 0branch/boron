@@ -1170,12 +1170,16 @@ CFUNC( cfunc_turntable )
         goto bad_cam;
 
     orbit->vec3.xyz[0] += degToRad(dx);
-    elev = orbit->vec3.xyz[1] + degToRad(dy);
-    if( elev < -1.53938 )
-        elev = -1.53938;
-    else if( elev > 1.53938 )
-        elev = 1.53938;
-    orbit->vec3.xyz[1] = elev;
+    elev = orbit->vec3.xyz[1];
+    if( dy )
+    {
+        elev += degToRad(dy);
+        if( elev < -1.53938 )
+            elev = -1.53938;
+        else if( elev > 1.53938 )
+            elev = 1.53938;
+        orbit->vec3.xyz[1] = elev;
+    }
 
     ced = cos( elev ) * orbit->vec3.xyz[2];
     mat->ptr.f[12] = focus->vec3.xyz[0] + (ced * cos(orbit->vec3.xyz[0]));
