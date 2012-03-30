@@ -233,10 +233,16 @@ static jit_label_t* _asmLabel( Assembler* as, UAtom name )
 }
 
 
+/*
+  Returns zero and throws error if next value is invalid.
+*/
 static jit_value_t _asmNextValue( const Assembler* as, UBlockIter* bi )
 {
     if( ++bi->it == bi->end )
+    {
+        ur_error( as->ut, UR_ERR_SCRIPT, "Missing assembly operand" );
         return 0;
+    }
     switch( ur_type(bi->it) )
     {
         case UT_CHAR:
@@ -251,6 +257,8 @@ static jit_value_t _asmNextValue( const Assembler* as, UBlockIter* bi )
         case UT_WORD:
         {
             const UCell* arg;
+            jit_value_t local;
+
             for( arg = as->argStart; arg != as->argEnd; ++arg )
             {
                 if( ur_equal( as->ut, arg, bi->it ) )
@@ -259,21 +267,36 @@ static jit_value_t _asmNextValue( const Assembler* as, UBlockIter* bi )
                                                 (arg - as->argStart) / 2 );
                 }
             }
+
+            local = _asmLocalValue( &as->locals, ur_atom(bi->it) );
+            if( local )
+                return local;
+
+            arg = ur_wordCell( as->ut, bi->it );
+            if( ! arg )
+                return 0;
+            switch( ur_type(arg) )
+            {
+                case UT_LOGIC:
+                case UT_CHAR:
+                    return jit_value_create_nint_constant( as->jf,
+                                jit_type_ubyte, ur_int(arg) );
+                case UT_INT:
+                    return jit_value_create_nint_constant( as->jf,
+                                jit_type_int, ur_int(arg) );
+                case UT_DECIMAL:
+                    return jit_value_create_float64_constant( as->jf,
+                                jit_type_float64, ur_decimal(arg) );
+            }
         }
-            return _asmLocalValue( &as->locals, ur_atom(bi->it) );
+            break;
 
         case UT_OPTION:
             return as->t;       // /r (previous result)
     }
+
+    ur_error( as->ut, UR_ERR_SCRIPT, "Invalid assembly operand" );
     return 0;
-}
-
-
-static int _asmNextValue2( const Assembler* as, UBlockIter* bi,
-                           jit_value_t* val )
-{
-    return (val[0] = _asmNextValue( as, bi )) &&
-           (val[1] = _asmNextValue( as, bi ));
 }
 
 
@@ -301,7 +324,7 @@ CFUNC(cfunc_assemble)
     Assembler as;
     UBlockIter bi;
     int opcode;
-    int returnKind;
+    int returnKind = JIT_TYPE_INVALID;
     jit_context_t jc = (jit_context_t) BT->jit;
     jit_function_t jf;
     jit_type_t jtype;
@@ -384,12 +407,7 @@ bad_sig:
             {
                 case INS_RETURN:
                     if( ! (val[0] = _asmNextValue( &as, &bi )) )
-                    {
-bad_val:
-                        ur_error( ut, UR_ERR_SCRIPT,
-                                  "Invalid assembly operand" );
                         goto trace_abandon;
-                    }
                     jit_insn_return( jf, val[0] );
                     as.t = 0;
                     break;
@@ -431,7 +449,7 @@ bad_val:
                 case INS_SIN:
                 case INS_SQRT:
                     if( ! (val[0] = _asmNextValue( &as, &bi )) )
-                        goto bad_val;
+                        goto trace_abandon;
                     as.t = _asmIns1[ opcode - INS_DUP ]( jf, val[0] );
                     break;
 
@@ -454,8 +472,10 @@ bad_val:
                 case INS_SHL:
                 case INS_SHR:
                 case INS_POW:
-                    if( ! _asmNextValue2( &as, &bi, val ) )
-                        goto bad_val;
+                    if( ! (val[0] = _asmNextValue( &as, &bi )) )
+                        goto trace_abandon;
+                    if( ! (val[1] = _asmNextValue( &as, &bi )) )
+                        goto trace_abandon;
                     as.t = _asmIns2[ opcode - INS_EQ ]( jf, val[0], val[1] );
                     break;
 
