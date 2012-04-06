@@ -92,7 +92,7 @@ syn match	boronSpecialChar contained "%\d\+"
 " Operators
 " Math operators
 "syn match       boronMathOperator  "\(\*\{1,2}\|+\|-\|/\{1,2}\)"
-syn keyword      boronMathFunction  add div mul sub
+syn keyword      boronMathFunction  add div mul sub mod
 "syn keyword     boronMathFunction  abs absolute add arccosine arcsine arctangent cosine
 "syn keyword     boronMathFunction  divide exp log-10 log-2 log-e max maximum min
 "syn keyword     boronMathFunction  minimum multiply negate power random remainder sine

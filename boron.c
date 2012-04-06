@@ -951,6 +951,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_sub,     "sub a b" );
     addCFunc( cfunc_mul,     "mul a b" );
     addCFunc( cfunc_div,     "div a b" );
+    addCFunc( cfunc_mod,     "mod a b" );
     addCFunc( cfunc_and,     "and a b" );
     addCFunc( cfunc_or,      "or a b" );
     addCFunc( cfunc_xor,     "xor a b" );

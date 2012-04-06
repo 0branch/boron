@@ -771,10 +771,18 @@ CFUNC(name) { \
     return: Quotient of a divided by b.
     group: math
 */
+/*-cf-
+    mod
+        a   int!/decimal!/coord!
+        b   int!/decimal!/coord!
+    return: Remainder of a divided by b.
+    group: math
+*/
 OPER_FUNC( cfunc_add, UR_OP_ADD )
 OPER_FUNC( cfunc_sub, UR_OP_SUB )
 OPER_FUNC( cfunc_mul, UR_OP_MUL )
 OPER_FUNC( cfunc_div, UR_OP_DIV )
+OPER_FUNC( cfunc_mod, UR_OP_MOD )
 
 
 /*-cf-
