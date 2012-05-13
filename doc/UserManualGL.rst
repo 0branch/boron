@@ -2,7 +2,7 @@
     Boron-GL User Manual
 ==============================
 
-:Version:   0.1.11
+:Version:   0.2.4
 :Date:      |date|
 
 .. sectnum::
@@ -203,7 +203,9 @@ Draws a box given minimum and maximum extents.
 Internally, a vertex buffer with normals & texture coordinates is created.
 ::
 
-    box vec3! vec3!
+    box
+        min   int!/decimal!/vec3!
+        max   int!/decimal!/vec3!
 
 
 Blend
@@ -392,8 +394,9 @@ Draws a sphere.
 Internally, a vertex buffer with normals & texture coordinates is created.
 ::
 
-    sphere radius slices,stacks
-
+    sphere
+        radius          int!/decimal!
+        slices,stacks   coord!
 
 Text
 ----
