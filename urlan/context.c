@@ -222,25 +222,29 @@ void ur_deepCopyCells( UThread* ut, UCell* dest, const UCell* src, int count )
 */
 UBuffer* ur_ctxClone( UThread* ut, const UBuffer* src, UCell* cell )
 {
-    // Save src members; src will be invalid after ur_makeContextCell.
-    UCell* srcCells = src->ptr.cell;
-    UAtomEntry* srcEntries = ENTRIES(src);
-    int sorted = CC(src)->sorted;
-    int size = src->used;
+    if( src->used )
+    {
+        // Save src members; src will be invalid after ur_makeContextCell.
+        UCell* srcCells = src->ptr.cell;
+        UAtomEntry* srcEntries = ENTRIES(src);
+        int sorted = CC(src)->sorted;
+        int size = src->used;
 
-    UBuffer* nc = ur_makeContextCell( ut, size, cell );     // gc!
-    UIndex hold = ur_hold( cell->context.buf );
+        UBuffer* nc = ur_makeContextCell( ut, size, cell );     // gc!
+        UIndex hold = ur_hold( cell->context.buf );
 
-    memCpy( ENTRIES(nc), srcEntries, size * sizeof(UAtomEntry) );
-    CC(nc)->sorted = sorted;
-    nc->used = size;
-    ur_deepCopyCells( ut, nc->ptr.cell, srcCells, size );   // gc!
+        memCpy( ENTRIES(nc), srcEntries, size * sizeof(UAtomEntry) );
+        CC(nc)->sorted = sorted;
+        nc->used = size;
+        ur_deepCopyCells( ut, nc->ptr.cell, srcCells, size );   // gc!
 
-    nc = ur_buffer( cell->context.buf );        // Re-aquire
-    ur_ctxSort( nc );
-    ur_bind( ut, nc, nc, UR_BIND_SELF );
-    ur_release( hold );
-    return nc;
+        nc = ur_buffer( cell->context.buf );        // Re-aquire
+        ur_ctxSort( nc );
+        ur_bind( ut, nc, nc, UR_BIND_SELF );
+        ur_release( hold );
+        return nc;
+    }
+    return ur_makeContextCell( ut, 0, cell );
 }
 
 
