@@ -1,8 +1,8 @@
 #!/usr/bin/boron -s
 /*
 	M2 - A meta-make tool
-	Copyright 2001-2011 Karl Robillard
-	Version 1.1.0
+	Copyright 2001-2012 Karl Robillard
+	Version 1.1.1
 
 	TODO:
 		* Remove files outside the build directory from dist rule.
@@ -602,33 +602,31 @@ included_files: func [
    */
 	file  file!/string! "File to check for #include statements"
 	paths block!        "Paths to check for included files"
-	| blk tmp
+	| blk tmp out
 ][
-	blk: make block! 0
+	out: make block! 0
 
 	ifn exists? file [
 		print ["included_files:" file "not found"]
-		return blk
+		return out
 	]
 
-	get-includes read-buf file ct/defines blk
-
-	blk: intersect blk blk   ; Removes duplicates.
+	get-includes read-buf file ct/defines out
+	blk: intersect out out   ; Removes duplicates.
 
 	if debug_include [print ["Finding include files for" file] probe blk]
 
+	clear out
 	forall blk [
-		tmp: find_include_file blk/1 paths
+		tmp: find_include_file first blk paths
 		either tmp [
-			blk/1: tmp
+			append out tmp
 		][
 			print rejoin
-				["included_files: " blk/1 " (from " file ") not found!"]
-			remove blk
-			blk: prev blk
+				["included_files: " first blk " (from " file ") not found!"]
 		]
 	]
-	head blk
+	out
 ]
 
 
