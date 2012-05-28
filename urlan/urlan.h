@@ -1,7 +1,7 @@
 #ifndef URLAN_H
 #define URLAN_H
 /*
-  Copyright 2009,2010,2011 Karl Robillard
+  Copyright 2009,2010,2011,2012 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -30,8 +30,8 @@
 #endif
 
 
-#define UR_VERSION_STR  "0.2.4"
-#define UR_VERSION      0x000204
+#define UR_VERSION_STR  "0.2.5"
+#define UR_VERSION      0x000205
 
 
 enum UrlanDataType
@@ -128,6 +128,17 @@ enum UrlanErrorType
     UR_ERR_ACCESS,          /**< Problem accessing external resources. */
     UR_ERR_INTERNAL,        /**< Fatal internal problem. */
     UR_ERR_COUNT
+};
+
+
+enum UrlanVectorType
+{
+    UR_VEC_I16 = 66,        /* Currently the same as atoms. */
+    UR_VEC_U16,
+    UR_VEC_I32,
+    UR_VEC_U32,
+    UR_VEC_F32,
+    UR_VEC_F64
 };
 
 
@@ -577,7 +588,9 @@ const UBuffer* ur_sortedContext( UThread*, const UCell* );
 #define  ur_ctxLookupNoSort ur_ctxLookup
 #define  ur_ctxCell(c,n)    ((c)->ptr.cell + n)
 
-void     ur_vecInit( UBuffer*, int form, int elemSize, int size );
+UIndex   ur_makeVector( UThread*, enum UrlanVectorType, int size );
+UBuffer* ur_makeVectorCell( UThread*, enum UrlanVectorType, int size, UCell* );
+void     ur_vecInit( UBuffer*, int type, int elemSize, int size );
 
 void     ur_arrInit( UBuffer*, int size, int count );
 void     ur_arrReserve( UBuffer*, int count );

@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2011 Karl Robillard
+  Copyright 2009-2012 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -29,6 +29,7 @@
 
 static int ur_vecFormElemSize( UAtom form )
 {
+    // NOTE: UrlanVectorType will not be atom values in the future.
     switch( form )
     {
         case UR_ATOM_I16:
@@ -52,34 +53,67 @@ static int ur_vecFormElemSize( UAtom form )
 /**
   Initialize buffer to type UT_VECTOR.
 
-  \param form       Form.
-  \param elemSize   Byte size of each element.  May be zero if form is a
-                    standard type (UR_ATOM_U32, UR_ATOM_F32, etc.).
+  \param type       Normally an UrlanVectorType (UT_VEC_I32, UR_VEC_F32, etc.).
+  \param elemSize   Byte size of each element.  May be zero if type is an
+                    UrlanVectorType.
   \param size       Number of elements to reserve.
 */
-void ur_vecInit( UBuffer* buf, int form, int elemSize, int size )
+void ur_vecInit( UBuffer* buf, int type, int elemSize, int size )
 {
     if( ! elemSize )
-        elemSize = ur_vecFormElemSize( form );
+        elemSize = ur_vecFormElemSize( type );
 
     ur_arrInit( buf, elemSize, size );
     buf->type = UT_VECTOR;
-    buf->form = form;
+    buf->form = type;
 }
 
 
-UIndex ur_makeVector( UThread* ut, UAtom type, int size )
+/**
+  Generate a single vector buffer.
+
+  If you need multiple buffers then ur_genBuffers() should be used.
+
+  The caller must create a UCell for this block in a held block before the
+  next ur_recycle() or else it will be garbage collected.
+
+  \param type   Element type (UT_VEC_U16, UT_VEC_I32, UT_VEC_F32, etc.).
+  \param size   Number of elements to reserve.
+
+  \return  Buffer id of block.
+*/
+UIndex ur_makeVector( UThread* ut, enum UrlanVectorType type, int size )
 {
     UIndex bufN;
-    int esize;
+    ur_genBuffers( ut, 1, &bufN );
+    ur_vecInit( ur_buffer( bufN ), type, ur_vecFormElemSize( type ), size );
+    return bufN;
+}
 
-    esize = ur_vecFormElemSize( type );
-    if( ! esize )
-        return UR_INVALID_BUF;
+
+/**
+  Generate a single vector and set cell to reference it.
+
+  \param type   Element type (UT_VEC_U16, UT_VEC_I32, UT_VEC_F32, etc.).
+  \param size   Number of elements to reserve.
+  \param cell   Cell to initialize.
+
+  \return  Pointer to vector buffer.
+*/
+UBuffer* ur_makeVectorCell( UThread* ut, enum UrlanVectorType type, int size,
+                            UCell* cell )
+{
+    UBuffer* buf;
+    UIndex bufN;
 
     ur_genBuffers( ut, 1, &bufN );
-    ur_vecInit( ur_buffer( bufN ), type, esize, size );
-    return bufN;
+    buf = ur_buffer( bufN );
+    ur_vecInit( buf, type, ur_vecFormElemSize( type ), size );
+
+    ur_setId( cell, UT_VECTOR );
+    ur_setSeries( cell, bufN, 0 );
+
+    return buf;
 }
 
 
@@ -93,20 +127,20 @@ void ur_vecAppend( UBuffer* dest, const UBuffer* src, UIndex start, UIndex end )
             ur_arrReserve( dest, dest->used + len );
             switch( dest->form )
             {
-            case UR_ATOM_I16:
-            case UR_ATOM_U16:
+            case UR_VEC_I16:
+            case UR_VEC_U16:
                 memCpy( dest->ptr.u16 + dest->used, src->ptr.u16 + start,
                         len * sizeof(uint16_t) );
                 break;
 
-            case UR_ATOM_I32:
-            case UR_ATOM_U32:
-            case UR_ATOM_F32:
+            case UR_VEC_I32:
+            case UR_VEC_U32:
+            case UR_VEC_F32:
                 memCpy( dest->ptr.u32 + dest->used, src->ptr.u32 + start,
                         len * sizeof(uint32_t) );
                 break;
 
-            case UR_ATOM_F64:
+            case UR_VEC_F64:
                 memCpy( dest->ptr.d + dest->used, src->ptr.d + start,
                         len * sizeof(double) );
                 break;
@@ -117,22 +151,22 @@ void ur_vecAppend( UBuffer* dest, const UBuffer* src, UIndex start, UIndex end )
 }
 
 
-int vector_make( UThread* ut, const UCell* from, UCell* res )
+static int vector_make( UThread* ut, const UCell* from, UCell* res )
 {
     UAtom atom;
-    UIndex bufN;
+    int esize;
 
     if( ! ur_is(from, UT_WORD) )
         return ur_error( ut, UR_ERR_TYPE, "make vector! expected word!" );
-    atom = ur_atom(from);
 
-    bufN = ur_makeVector( ut, atom, 0 );
-    if( bufN == UR_INVALID_BUF )
+    // NOTE: UrlanVectorType will not be atom values in the future.
+    atom = ur_atom(from);
+    esize = ur_vecFormElemSize( atom );
+    if( ! esize )
         return ur_error( ut, UR_ERR_SCRIPT, "Invalid vector! type %s",
                          ur_atomCStr( ut, atom ) );
 
-    ur_setId(res, UT_VECTOR);
-    ur_setSeries(res, bufN, 0);
+    ur_makeVectorCell( ut, atom, 0, res );
     return UR_OK;
 }
 
@@ -140,37 +174,29 @@ int vector_make( UThread* ut, const UCell* from, UCell* res )
 void vector_copy( UThread* ut, const UCell* from, UCell* res )
 {
     USeriesIter si;
-    UIndex n;
+    UBuffer* buf;
 
     ur_seriesSlice( ut, &si, from );
-    n = ur_makeVector( ut, si.buf->form, 0 );       // Invalidates si.buf.
-    ur_vecAppend( ur_buffer(n), ur_bufferSer(from), si.it, si.end );
-
-    ur_setId( res, UT_VECTOR );
-    ur_setSeries( res, n, 0 );
+    buf = ur_makeVectorCell( ut, si.buf->form, 0, res ); // Invalidates si.buf.
+    ur_vecAppend( buf, ur_bufferSer(from), si.it, si.end );
 }
 
 
 int vector_convert( UThread* ut, const UCell* from, UCell* res )
 {
     UBuffer* buf;
-    UIndex bufN;
 
     if( ur_is(from, UT_INT) )
     {
-        bufN = ur_makeVector( ut, UR_ATOM_I32, 1 );
-        buf = ur_buffer( bufN );
+        buf = ur_makeVectorCell( ut, UR_VEC_I32, 1, res );
         buf->ptr.i[ 0 ] = ur_int(from);
 init:
         buf->used = 1;
-        ur_setId(res, UT_VECTOR);
-        ur_setSeries(res, bufN, 0);
         return UR_OK;
     }
     else if( ur_is(from, UT_DECIMAL) )
     {
-        bufN = ur_makeVector( ut, UR_ATOM_F32, 1 );
-        buf = ur_buffer( bufN );
+        buf = ur_makeVectorCell( ut, UR_VEC_F32, 1, res );
         buf->ptr.f[ 0 ] = ur_decimal(from);
         goto init;
     }
@@ -231,13 +257,13 @@ void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 
     ur_seriesSlice( ut, &si, cell );
 
-    if( (si.buf->form != UR_ATOM_I32) && (si.buf->form != UR_ATOM_F32) )
+    if( (si.buf->form != UR_VEC_I32) && (si.buf->form != UR_VEC_F32) )
         ur_strAppendCStr( str, ur_atomCStr( ut, si.buf->form ) );
     ur_strAppendCStr( str, "#[" );
 
     switch( si.buf->form )
     {
-        case UR_ATOM_I16:
+        case UR_VEC_I16:
             ur_foreach( si )
             {
                 ur_strAppendInt( str, si.buf->ptr.i16[ si.it ] ); 
@@ -245,7 +271,7 @@ void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
             }
             break;
 
-        case UR_ATOM_U16:
+        case UR_VEC_U16:
             ur_foreach( si )
             {
                 ur_strAppendInt( str, si.buf->ptr.u16[ si.it ] ); 
@@ -253,8 +279,8 @@ void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
             }
             break;
 
-        case UR_ATOM_I32:
-        case UR_ATOM_U32:
+        case UR_VEC_I32:
+        case UR_VEC_U32:
             ur_foreach( si )
             {
                 ur_strAppendInt( str, si.buf->ptr.i[ si.it ] ); 
@@ -262,7 +288,7 @@ void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
             }
             break;
 
-        case UR_ATOM_F32:
+        case UR_VEC_F32:
             ur_foreach( si )
             {
                 ur_strAppendDouble( str, si.buf->ptr.f[ si.it ] ); 
@@ -270,7 +296,7 @@ void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
             }
             break;
 
-        case UR_ATOM_F64:
+        case UR_VEC_F64:
             ur_foreach( si )
             {
                 ur_strAppendDouble( str, si.buf->ptr.d[ si.it ] ); 
@@ -299,28 +325,28 @@ void vector_pick( const UBuffer* buf, UIndex n, UCell* res )
     {
         switch( buf->form )
         {
-            case UR_ATOM_I16:
+            case UR_VEC_I16:
                 ur_setId(res, UT_INT);
                 ur_int(res) = buf->ptr.i16[ n ];
                 break;
 
-            case UR_ATOM_U16:
+            case UR_VEC_U16:
                 ur_setId(res, UT_INT);
                 ur_int(res) = buf->ptr.u16[ n ];
                 break;
 
-            case UR_ATOM_I32:
-            case UR_ATOM_U32:
+            case UR_VEC_I32:
+            case UR_VEC_U32:
                 ur_setId(res, UT_INT);
                 ur_int(res) = buf->ptr.i[ n ];
                 break;
 
-            case UR_ATOM_F32:
+            case UR_VEC_F32:
                 ur_setId(res, UT_DECIMAL);
                 ur_decimal(res) = buf->ptr.f[ n ];
                 break;
 
-            case UR_ATOM_F64:
+            case UR_VEC_F64:
                 ur_setId(res, UT_DECIMAL);
                 ur_decimal(res) = buf->ptr.d[ n ];
                 break;
@@ -341,8 +367,8 @@ int vector_pickFloatV( const UBuffer* buf, UIndex n, float* fv, int count )
 
     switch( buf->form )
     {
-        case UR_ATOM_I16:
-        case UR_ATOM_U16:
+        case UR_VEC_I16:
+        case UR_VEC_U16:
         {
             int16_t* it  = buf->ptr.i16 + n;
             int16_t* end = it + count;
@@ -351,8 +377,8 @@ int vector_pickFloatV( const UBuffer* buf, UIndex n, float* fv, int count )
         }
             break;
 
-        case UR_ATOM_I32:
-        case UR_ATOM_U32:
+        case UR_VEC_I32:
+        case UR_VEC_U32:
         {
             int32_t* it  = buf->ptr.i + n;
             int32_t* end = it + count;
@@ -361,7 +387,7 @@ int vector_pickFloatV( const UBuffer* buf, UIndex n, float* fv, int count )
         }
             break;
 
-        case UR_ATOM_F32:
+        case UR_VEC_F32:
         {
             float* it  = buf->ptr.f + n;
             float* end = it + count;
@@ -370,7 +396,7 @@ int vector_pickFloatV( const UBuffer* buf, UIndex n, float* fv, int count )
         }
             break;
 
-        case UR_ATOM_F64:
+        case UR_VEC_F64:
         {
             double* it  = buf->ptr.d + n;
             double* end = it + count;
@@ -387,21 +413,21 @@ static void vector_pokeInt( UBuffer* buf, UIndex n, int32_t val )
 {
     switch( buf->form )
     {
-        case UR_ATOM_I16:
-        case UR_ATOM_U16:
+        case UR_VEC_I16:
+        case UR_VEC_U16:
             buf->ptr.i16[ n ] = val;
             break;
 
-        case UR_ATOM_I32:
-        case UR_ATOM_U32:
+        case UR_VEC_I32:
+        case UR_VEC_U32:
             buf->ptr.i[ n ] = val;
             break;
 
-        case UR_ATOM_F32:
+        case UR_VEC_F32:
             buf->ptr.f[ n ] = (float) val;
             break;
 
-        case UR_ATOM_F64:
+        case UR_VEC_F64:
             buf->ptr.d[ n ] = (double) val;
             break;
     }
@@ -412,21 +438,21 @@ static void vector_pokeDouble( UBuffer* buf, UIndex n, double val )
 {
     switch( buf->form )
     {
-        case UR_ATOM_I16:
-        case UR_ATOM_U16:
+        case UR_VEC_I16:
+        case UR_VEC_U16:
             buf->ptr.i16[ n ] = (int) val;
             break;
 
-        case UR_ATOM_I32:
-        case UR_ATOM_U32:
+        case UR_VEC_I32:
+        case UR_VEC_U32:
             buf->ptr.i[ n ] = (int) val;
             break;
 
-        case UR_ATOM_F32:
+        case UR_VEC_F32:
             buf->ptr.f[ n ] = (float) val;
             break;
 
-        case UR_ATOM_F64:
+        case UR_VEC_F64:
             buf->ptr.d[ n ] = val;
             break;
     }
@@ -441,8 +467,8 @@ static void vector_pokeFloatV( UBuffer* buf, UIndex n,
 
     switch( buf->form )
     {
-        case UR_ATOM_I16:
-        case UR_ATOM_U16:
+        case UR_VEC_I16:
+        case UR_VEC_U16:
         {
             int16_t* it  = buf->ptr.i16 + n;
             int16_t* end = it + count;
@@ -451,8 +477,8 @@ static void vector_pokeFloatV( UBuffer* buf, UIndex n,
         }
             break;
 
-        case UR_ATOM_I32:
-        case UR_ATOM_U32:
+        case UR_VEC_I32:
+        case UR_VEC_U32:
         {
             int32_t* it  = buf->ptr.i + n;
             int32_t* end = it + count;
@@ -461,7 +487,7 @@ static void vector_pokeFloatV( UBuffer* buf, UIndex n,
         }
             break;
 
-        case UR_ATOM_F32:
+        case UR_VEC_F32:
         {
             float* it  = buf->ptr.f + n;
             float* end = it + count;
@@ -470,7 +496,7 @@ static void vector_pokeFloatV( UBuffer* buf, UIndex n,
         }
             break;
 
-        case UR_ATOM_F64:
+        case UR_VEC_F64:
         {
             double* it  = buf->ptr.d + n;
             double* end = it + count;
@@ -712,8 +738,8 @@ int vector_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 
     switch( buf->form )
     {
-        case UR_ATOM_I16:
-        case UR_ATOM_U16:
+        case UR_VEC_I16:
+        case UR_VEC_U16:
         {
             const uint16_t* it = buf->ptr.u16;
             uint32_t n;
@@ -728,8 +754,8 @@ int vector_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
         }
             break;
 
-        case UR_ATOM_I32:
-        case UR_ATOM_U32:
+        case UR_VEC_I32:
+        case UR_VEC_U32:
         {
             const uint32_t* it = buf->ptr.u32;
             uint32_t n;
@@ -745,7 +771,7 @@ int vector_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
             break;
 #if 0
         // Need to comapare floats with tolerance?
-        case UR_ATOM_F32:
+        case UR_VEC_F32:
         {
             const float* it = buf->ptr.f;
             double n;
@@ -760,7 +786,7 @@ int vector_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
         }
             break;
 
-        case UR_ATOM_F64:
+        case UR_VEC_F64:
         {
             const double* it = buf->ptr.d;
             double n;

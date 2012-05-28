@@ -1119,7 +1119,7 @@ const UBuffer* _cameraOrientMatrix( UThread* ut, const UBuffer* ctx )
     if( ur_is(cell, UT_VECTOR) )
     {
         const UBuffer* arr = ur_bufferSer( cell );
-        if( (arr->form == UR_ATOM_F32) && (arr->used == 16) )
+        if( (arr->form == UR_VEC_F32) && (arr->used == 16) )
             return arr;
     }
     return 0;
@@ -1810,7 +1810,7 @@ bad_camera:
         float* vpnt;
 
         ur_seriesSlice( ut, &si, a1 + 2 );
-        if( si.buf->form != UR_ATOM_F32 )
+        if( si.buf->form != UR_VEC_F32 )
             goto bad_vector;
 
         vpnt = si.buf->ptr.f;
@@ -2047,7 +2047,7 @@ float* ur_matrixM( UThread* ut, const UCell* cell )
         UBuffer* mat = ur_bufferSerM( cell );
         if( ! mat )
             return 0;
-        if( (mat->form == UR_ATOM_F32) && (mat->used >= 16) )
+        if( (mat->form == UR_VEC_F32) && (mat->used >= 16) )
             return mat->ptr.f;
     }
     ur_error( ut, UR_ERR_TYPE, "Expected matrix vector!" );

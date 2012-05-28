@@ -30,7 +30,6 @@
 #endif
 
 extern double ur_stringToDate( const char*, const char*, const char** );
-extern UIndex ur_makeVector( UThread*, UAtom type, int size );
 
 #define isDigit(v)     (('0' <= v) && (v <= '9'))
 
@@ -843,13 +842,10 @@ invalid_bin:
                 else if( *it == '[' )
                 {
                     UBuffer* buf;
-                    UIndex tn;
                     token = 0;
 
-                    tn = ur_makeVector( ut, UR_ATOM_I32, 0 );
-                    cell = ur_blkAppendNew( BLOCK, UT_VECTOR );
-                    buf = ur_buffer( tn );
-                    ur_setSeries( cell, tn, 0 );
+                    cell = ur_blkAppendNew( BLOCK, UT_UNSET );
+                    buf = ur_makeVectorCell( ut, UR_VEC_I32, 0, cell );
 
                     ++it;
                     SCAN_LOOP
@@ -865,12 +861,12 @@ vector_white:
                                     {
                                         if( *cp++ == '.' )
                                         {
-                                            buf->form = UR_ATOM_F32;
+                                            buf->form = UR_VEC_F32;
                                             break;
                                         }
                                     }
                                 }
-                                if( buf->form == UR_ATOM_I32 )
+                                if( buf->form == UR_VEC_I32 )
                                 {
                                     ur_arrAppendInt32( buf, (int32_t)
                                         str_toInt64( token, it, 0 ) );

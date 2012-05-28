@@ -1673,7 +1673,7 @@ image_next:
                 if( ur_is(val, UT_VECTOR) )
                 {
                     const UBuffer* vec = ur_bufferSer(val);
-                    if( vec->form != UR_ATOM_I32 )
+                    if( vec->form != UR_VEC_I32 )
                         goto bad_prim;
                     if( ! genPrimitives( ut, emit, dpOp, 0, val ) )
                         goto error;
@@ -2487,7 +2487,7 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
         if( ur_is(val, UT_VECTOR) )
         {
             const UBuffer* arr = ur_bufferSer(val);
-            if( (arr->form == UR_ATOM_F32) && (arr->used == 16) )
+            if( (arr->form == UR_VEC_F32) && (arr->used == 16) )
             {
                 // glLoadTransposeMatrixf() could be used in GL 2.0?
                 //_cameraMatrix = arr->ptr.f;
@@ -3273,7 +3273,7 @@ dispatch:
                         used = blk->used;
 
                     // Poke query results into result vector!
-                    if( blk->form == UR_ATOM_I32 )
+                    if( blk->form == UR_VEC_I32 )
                     {
                         int32_t* it  = blk->ptr.i;
                         int32_t* end = it + used;
@@ -3283,7 +3283,7 @@ dispatch:
                             *it++ = samples;
                         }
                     }
-                    else if( blk->form == UR_ATOM_F32 )
+                    else if( blk->form == UR_VEC_F32 )
                     {
                         float* it  = blk->ptr.f;
                         float* end = it + used;

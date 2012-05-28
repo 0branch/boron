@@ -378,7 +378,7 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
                     else if( ur_is(val, UT_VECTOR) )
                     {
                         const UBuffer* buf = ur_bufferSer(val);
-                        if( buf->form == UR_ATOM_F32 )
+                        if( buf->form == UR_VEC_F32 )
                         {
                             type = GL_FLOAT;
                             def.pixels = ur_bufferSer(val)->ptr.f;
@@ -1191,7 +1191,7 @@ int vbo_make( UThread* ut, const UCell* from, UCell* res )
     else if( ur_is(from, UT_VECTOR) )
     {
         const UBuffer* buf = ur_bufferSer(from);
-        if( buf->form == UR_ATOM_F32 )
+        if( buf->form == UR_VEC_F32 )
         {
             n = ur_makeVbo( ut, usage, buf->used, buf->ptr.f, 0, NULL );
             goto build;
