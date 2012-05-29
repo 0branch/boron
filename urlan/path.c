@@ -195,6 +195,8 @@ int ur_setPath( UThread* ut, const UCell* path, const UCell* src )
                         if( ! node )
                             goto err;
                     }
+                    else
+                        goto err;
                 }
                 else
                 {
