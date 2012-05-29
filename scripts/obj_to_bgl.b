@@ -96,8 +96,8 @@ write-geo: func [
             prin "^/buffer "
             prin select [
                 'vn  "[vertex normal]"
-                'vt  "[vertex texture/2]"
-                'vtn "[vertex texture/2 normal]"
+                'vt  "[vertex texture 2]"
+                'vtn "[vertex texture 2 normal]"
                 'v   "[vertex]"
             ] key
             print " #["
@@ -125,7 +125,7 @@ write-geo: func [
             vtn [
                 loop vcount [
                     a: skip geo/verts   mul 3 vi/1
-                    b: skip geo/uvs     mul 3 vi/2
+                    b: skip geo/uvs     mul 2 vi/2
                     c: skip geo/normals mul 3 vi/3
                     vi: skip vi 3
                     print [' ' a/1 a/2 a/3  b/1 sub 1.0 b/2  c/1 c/2 c/3]
