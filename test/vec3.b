@@ -31,3 +31,13 @@ b: poke b 2 5.5
 b: poke b 3 6.6
 probe a
 probe b
+
+
+print "---- compare"
+foreach [n v] [
+    1.1    1.1,0
+    2.51   2.51,0
+    -45.0  -45.0,0
+][
+    print [n  eq? n first v  same? n first v]
+]

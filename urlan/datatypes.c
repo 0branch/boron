@@ -1008,6 +1008,14 @@ int decimal_make( UThread* ut, const UCell* from, UCell* res )
 #define MASK_DECIMAL    ((1 << UT_DECIMAL) | (1 << UT_TIME) | (1 << UT_DATE))
 #define ur_isDecimalType(T) ((1 << T) & MASK_DECIMAL)
 
+#define FLOAT_EPSILON   0.00000005960464477539062
+
+// Compare doubles which may have been floats (e.g. vec3! elements).
+static int float_equal( double a, double b )
+{
+    return a >= (b - FLOAT_EPSILON) && a <= (b + FLOAT_EPSILON);
+}
+
 
 int decimal_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 {
@@ -1023,14 +1031,14 @@ int decimal_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             if( ur_isDecimalType( ur_type(a) ) )
             {
                 if( ur_isDecimalType( ur_type(b) ) )
-                    return ur_decimal(a) == ur_decimal(b);
+                    return float_equal( ur_decimal(a), ur_decimal(b) );
                 else if( ur_isIntType( ur_type(b) ) )
-                    return ur_decimal(a) == ur_int(b);
+                    return float_equal( ur_decimal(a), ur_int(b) );
             }
             else
             {
                 if( ur_isIntType( ur_type(a) ) )
-                    return ((double) ur_int(a)) == ur_decimal(b);
+                    return float_equal( (double) ur_int(a), ur_decimal(b) );
             }
             break;
 
@@ -1299,7 +1307,7 @@ int time_compare( UThread* ut, const UCell* a, const UCell* b, int test )
         case UR_COMPARE_EQUAL:
         case UR_COMPARE_EQUAL_CASE:
             if( ur_type(a) == ur_type(b) )
-                return ur_decimal(a) == ur_decimal(b);
+                return float_equal( ur_decimal(a), ur_decimal(b) );
             break;
 
         case UR_COMPARE_ORDER:
