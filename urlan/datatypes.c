@@ -1008,7 +1008,7 @@ int decimal_make( UThread* ut, const UCell* from, UCell* res )
 #define MASK_DECIMAL    ((1 << UT_DECIMAL) | (1 << UT_TIME) | (1 << UT_DATE))
 #define ur_isDecimalType(T) ((1 << T) & MASK_DECIMAL)
 
-#define FLOAT_EPSILON   0.00000005960464477539062
+#define FLOAT_EPSILON   (0.00000005960464477539062 * 2.0)
 
 // Compare doubles which may have been floats (e.g. vec3! elements).
 static int float_equal( double a, double b )

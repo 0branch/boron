@@ -38,6 +38,7 @@ foreach [n v] [
     1.1    1.1,0
     2.51   2.51,0
     -45.0  -45.0,0
+    2.15   2.15,0
 ][
     print [n  eq? n first v  same? n first v]
 ]
