@@ -2380,18 +2380,6 @@ void ur_setDPSwitch( UThread* ut, UIndex resN, DPSwitch sid, int n )
 /*--------------------------------------------------------------------------*/
 
 
-struct ClientState
-{
-    int flags;
-    int attrCount;
-    int attr[4];
-};
-
-// Client State Array Flags
-#define CSA_NORMAL  0x01
-#define CSA_COLOR   0x02
-#define CSA_UV      0x04
-#define CSA_ATTR    0x08
 
 static void disableClientState( struct ClientState* cs )
 {
@@ -2421,6 +2409,9 @@ static void disableClientState( struct ClientState* cs )
 
 void ur_initDrawState( DPState* state )
 {
+    state->client.flags =
+    state->client.attrCount = 0;
+
     state->samplesQueryId = 0;
     state->currentProgram = 0;
     state->font = 0;
@@ -2657,14 +2648,18 @@ void dop_shadow_end()
 
 
 /*
+  \param ds     Parent draw program state.  May be zero.
+  \param n      Draw program buffer index.
+
   \return UR_OK/UR_THROW.
 */
 int ur_runDrawProg( UThread* ut, DPState* ds, UIndex n )
 {
-    struct ClientState state;
+    DPState state;
     DPHeader* ph;
     uint32_t* pc;
     uint32_t ops = 0;
+    char localState = 0;
 
 #define NEXT_OP     ops >>= 8
 
@@ -2672,24 +2667,28 @@ int ur_runDrawProg( UThread* ut, DPState* ds, UIndex n )
     UBuffer* blk = ur_buffer( *pc++ ); \
     UCell* val = blk->ptr.cell + *pc++
 
-    state.flags = 0;
-    state.attrCount = 0;
-
     ph = (DPHeader*) ur_buffer( n )->ptr.v;
     if( ! ph )
         return UR_OK;
     pc = dp_byteCode(ph); 
     ops = *pc++;
 
-    // NOTE: glDrawElements has been seen to segfault if non-existant
-    //       client arrays are enabled.
+    if( ! ds )
+    {
+        ds = &state;
+        ur_initDrawState( ds );
+        localState = 1;
 
-    glEnableClientState( GL_VERTEX_ARRAY );
-    /*
-    glEnableClientState( GL_NORMAL_ARRAY );
-    glEnableClientState( GL_COLOR_ARRAY );
-    glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-    */
+        // NOTE: glDrawElements has been seen to segfault if non-existant
+        //       client arrays are enabled.
+
+        glEnableClientState( GL_VERTEX_ARRAY );
+        /*
+        glEnableClientState( GL_NORMAL_ARRAY );
+        glEnableClientState( GL_COLOR_ARRAY );
+        glEnableClientState( GL_TEXTURE_COORD_ARRAY );
+        */
+    }
 
     while( 1 )
     {
@@ -2705,8 +2704,8 @@ dispatch:
             break;
 
         case DP_END:
-            if( state.flags )
-                disableClientState( &state );
+            if( localState && ds->client.flags )
+                disableClientState( &ds->client );
             return UR_OK;
 
         case DP_JMP:
@@ -2833,11 +2832,11 @@ dispatch:
         case DP_BIND_ARRAY:
             REPORT_1( "BIND_ARRAY %d\n", *pc );
 #if 1
-            if( state.flags )
+            if( ds->client.flags )
             {
-                disableClientState( &state );
-                state.flags = 0;
-                state.attrCount = 0;
+                disableClientState( &ds->client );
+                ds->client.flags = 0;
+                ds->client.attrCount = 0;
             }
 #endif
             glBindBuffer( GL_ARRAY_BUFFER, *pc++ );
@@ -2869,7 +2868,7 @@ dispatch:
             uint32_t stof = *pc++;
             REPORT_1( " NORMAL_OFFSET %08x\n", stof );
             glEnableClientState( GL_NORMAL_ARRAY );
-            state.flags |= CSA_NORMAL;
+            ds->client.flags |= CSA_NORMAL;
             glNormalPointer( GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
         }
             break;
@@ -2879,7 +2878,7 @@ dispatch:
             uint32_t stof = *pc++;
             REPORT_1( " COLOR_OFFSET %08x\n", stof );
             glEnableClientState( GL_COLOR_ARRAY );
-            state.flags |= CSA_COLOR;
+            ds->client.flags |= CSA_COLOR;
             glColorPointer( 3, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
         }
             break;
@@ -2889,7 +2888,7 @@ dispatch:
             uint32_t stof = *pc++;
             REPORT_1( " COLOR_OFFSET_4 %08x\n", stof );
             glEnableClientState( GL_COLOR_ARRAY );
-            state.flags |= CSA_COLOR;
+            ds->client.flags |= CSA_COLOR;
             glColorPointer( 4, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
         }
             break;
@@ -2899,7 +2898,7 @@ dispatch:
             uint32_t stof = *pc++;
             REPORT_1( " UV_OFFSET %08x\n", stof );
             glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-            state.flags |= CSA_UV;
+            ds->client.flags |= CSA_UV;
             glTexCoordPointer( 2, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
         }
             break;
@@ -2913,8 +2912,7 @@ dispatch:
             size = loc & 0xff;
             loc >>= 8;
             glEnableVertexAttribArray( loc );
-            state.flags |= CSA_ATTR;
-            state.attr[ state.attrCount++ ] = loc;
+            ds->client.attr[ ds->client.attrCount++ ] = loc;
             glVertexAttribPointer( loc, size, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
         }

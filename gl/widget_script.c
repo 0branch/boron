@@ -346,9 +346,7 @@ static void swidget_render( GWidget* wp )
     cell = ur_ctxCell( ctx, CI_DRAW );
     if( ur_is(cell, UT_DRAWPROG) )
     {
-        DPState ds;
-        ur_initDrawState( &ds );
-        ur_runDrawProg( ut, &ds, cell->series.buf );
+        ur_runDrawProg( ut, 0, cell->series.buf );
     }
 }
 

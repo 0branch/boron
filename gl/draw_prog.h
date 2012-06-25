@@ -80,8 +80,23 @@ struct DrawTextState
 
 typedef uint16_t    DPSwitch;
 
+
+struct ClientState
+{
+    uint16_t flags;
+    uint16_t attrCount;
+    int attr[4];
+};
+
+// Client State Array Flags
+#define CSA_NORMAL  0x01
+#define CSA_COLOR   0x02
+#define CSA_UV      0x04
+
+
 typedef struct
 {
+    struct ClientState client;
     GLuint samplesQueryId;
     GLuint currentProgram;
     TexFont* font;

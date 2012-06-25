@@ -1513,7 +1513,6 @@ static void window_layout( GWidget* wp )
 static void window_render( GWidget* wp )
 {
     EX_PTR;
-    DPState ds;
     int drag;
 
 
@@ -1533,8 +1532,7 @@ static void window_render( GWidget* wp )
         glTranslatef( (GLfloat) ep->transX, (GLfloat) ep->transY, 0.0f );
     }
 
-    ur_initDrawState( &ds );
-    ur_runDrawProg( glEnv.guiUT, &ds, ep->dp[0] );
+    ur_runDrawProg( glEnv.guiUT, 0, ep->dp[0] );
     widget_renderChildren( wp );
 
     if( drag )

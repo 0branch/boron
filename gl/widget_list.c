@@ -370,11 +370,9 @@ static void listw_layout( GWidget* wp )
 
 static void listw_render( GWidget* wp )
 {
-    DPState ds;
     EX_PTR;
 
-    ur_initDrawState( &ds );
-    ur_runDrawProg( glEnv.guiUT, &ds, ep->dp[0] );
+    ur_runDrawProg( glEnv.guiUT, 0, ep->dp[0] );
 }
 
 
