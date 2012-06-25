@@ -372,7 +372,7 @@ static void listw_render( GWidget* wp )
 {
     EX_PTR;
 
-    ur_runDrawProg( glEnv.guiUT, 0, ep->dp[0] );
+    ur_runDrawProg( glEnv.guiUT, ep->dp[0] );
 }
 
 

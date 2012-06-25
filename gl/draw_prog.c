@@ -2653,13 +2653,11 @@ void dop_shadow_end()
 
   \return UR_OK/UR_THROW.
 */
-int ur_runDrawProg( UThread* ut, DPState* ds, UIndex n )
+int ur_runDrawProg2( UThread* ut, DPState* ds, UIndex n )
 {
-    DPState state;
     DPHeader* ph;
     uint32_t* pc;
     uint32_t ops = 0;
-    char localState = 0;
 
 #define NEXT_OP     ops >>= 8
 
@@ -2672,23 +2670,6 @@ int ur_runDrawProg( UThread* ut, DPState* ds, UIndex n )
         return UR_OK;
     pc = dp_byteCode(ph); 
     ops = *pc++;
-
-    if( ! ds )
-    {
-        ds = &state;
-        ur_initDrawState( ds );
-        localState = 1;
-
-        // NOTE: glDrawElements has been seen to segfault if non-existant
-        //       client arrays are enabled.
-
-        glEnableClientState( GL_VERTEX_ARRAY );
-        /*
-        glEnableClientState( GL_NORMAL_ARRAY );
-        glEnableClientState( GL_COLOR_ARRAY );
-        glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-        */
-    }
 
     while( 1 )
     {
@@ -2704,8 +2685,6 @@ dispatch:
             break;
 
         case DP_END:
-            if( localState && ds->client.flags )
-                disableClientState( &ds->client );
             return UR_OK;
 
         case DP_JMP:
@@ -2724,7 +2703,7 @@ dispatch:
         case DP_RUN_PROGRAM:
             REPORT_1( "RUN_PROGRAM %d\n", pc[0] );
             {
-            if( ! ur_runDrawProg( ut, ds, *pc++ ) )
+            if( ! ur_runDrawProg2( ut, ds, *pc++ ) )
                 return UR_THROW;
             }
             break;
@@ -2734,7 +2713,7 @@ dispatch:
             PC_WORD( blk, val );
             if( ur_is(val, UT_DRAWPROG) )
             {
-                if( ! ur_runDrawProg( ut, ds, val->series.buf ) )
+                if( ! ur_runDrawProg2( ut, ds, val->series.buf ) )
                     return UR_THROW;
             }
             else if( ur_is(val, UT_WIDGET) )
@@ -3391,6 +3370,30 @@ dispatch:
         }
         NEXT_OP;
     }
+}
+
+
+int ur_runDrawProg( UThread* ut, UIndex n )
+{
+    DPState state;
+    int ok;
+
+    ur_initDrawState( &state );
+
+    // NOTE: glDrawElements has been seen to segfault if non-existant
+    //       client arrays are enabled.
+
+    glEnableClientState( GL_VERTEX_ARRAY );
+    /*
+    glEnableClientState( GL_NORMAL_ARRAY );
+    glEnableClientState( GL_COLOR_ARRAY );
+    glEnableClientState( GL_TEXTURE_COORD_ARRAY );
+    */
+
+    ok = ur_runDrawProg2( ut, &state, n );
+    if( state.client.flags )
+        disableClientState( &state.client );
+    return ok;
 }
 
 

@@ -1532,7 +1532,7 @@ static void window_render( GWidget* wp )
         glTranslatef( (GLfloat) ep->transX, (GLfloat) ep->transY, 0.0f );
     }
 
-    ur_runDrawProg( glEnv.guiUT, 0, ep->dp[0] );
+    ur_runDrawProg( glEnv.guiUT, ep->dp[0] );
     widget_renderChildren( wp );
 
     if( drag )

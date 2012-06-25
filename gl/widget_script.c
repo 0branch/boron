@@ -346,7 +346,7 @@ static void swidget_render( GWidget* wp )
     cell = ur_ctxCell( ctx, CI_DRAW );
     if( ur_is(cell, UT_DRAWPROG) )
     {
-        ur_runDrawProg( ut, 0, cell->series.buf );
+        ur_runDrawProg( ut, cell->series.buf );
     }
 }
 

@@ -2247,7 +2247,7 @@ CFUNC( cfunc_draw )
     (void) res;
     if( ur_is(a1, UT_DRAWPROG) )
     {
-        return ur_runDrawProg( ut, 0, a1->series.buf );
+        return ur_runDrawProg( ut, a1->series.buf );
     }
     else if( ur_is(a1, UT_WIDGET) )
     {

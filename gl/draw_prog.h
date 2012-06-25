@@ -110,7 +110,7 @@ UIndex ur_makeDrawProg( UThread* );
 void   ur_markDrawProg( UThread*, UIndex );
 void   dprog_destroy( UBuffer* );
 void   ur_initDrawState( DPState* );
-int    ur_runDrawProg( UThread*, DPState*, UIndex progN );
+int    ur_runDrawProg( UThread*, UIndex progN );
 
 DPCompiler* ur_beginDP( DPCompiler* );
 int  ur_compileDP( UThread*, const UCell* blkCell, int handleError );
