@@ -3350,6 +3350,7 @@ dispatch:
             {
                 DrawTextState dts;
                 GLfloat* attr;
+                int bytes;
                 //GLenum err;
 
                 if( cc > MAX_DYNAMIC_TEXT_LEN )
@@ -3358,18 +3359,18 @@ dispatch:
                     bi.end = bi.it + MAX_DYNAMIC_TEXT_LEN;
                 }
 
-                // Change following DP_DRAW_TRIS_I count.
-                *pc = cc * 6;
-
-                cc *= 4 * 5 * sizeof(GLfloat);
-                ur_binReserve( &glEnv.tmpBin, cc );
+                bytes = cc * (4 * 5 * sizeof(GLfloat));
+                ur_binReserve( &glEnv.tmpBin, bytes );
                 attr = glEnv.tmpBin.ptr.f;
                 vbo_drawTextInit( &dts, ds->font, pen[0], pen[1] );
-                vbo_drawText( &dts,
-                              // geo->uvOff, geo->vertOff, geo->attrSize,
-                              attr + 0, attr + 2, 5,
-                              bi.it, bi.end );
-                glBufferSubData( GL_ARRAY_BUFFER, attrOffset, cc, attr );
+                cc = vbo_drawText( &dts,
+                                   // geo->uvOff, geo->vertOff, geo->attrSize,
+                                   attr + 0, attr + 2, 5,
+                                   bi.it, bi.end );
+
+                *pc = cc * 6;   // Change the following DP_DRAW_TRIS_I count.
+
+                glBufferSubData( GL_ARRAY_BUFFER, attrOffset, bytes, attr );
                 /*
                 err = glGetError();
                 if( err != GL_NO_ERROR )
