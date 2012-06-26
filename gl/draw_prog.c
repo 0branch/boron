@@ -63,6 +63,7 @@ enum DPOpcode
     DP_COLOR_OFFSET_4,      // stof
     DP_UV_OFFSET,           // stof
     DP_ATTR_OFFSET,         // loc/size stof
+    DP_DRAW_ARR_POINTS,     // count
     DP_DRAW_POINTS,         // count
     DP_DRAW_LINES,          // count
     DP_DRAW_LINE_STRIP,     // count
@@ -120,7 +121,6 @@ enum DPOpcode
     DP_READ_PIXELS,         // blkN index pos dim
     DP_FONT,                // blkN
     DP_TEXT_WORD,           // blkN index aoff x y (then DP_DRAW_TRIS_I)
-    DP_83,
     DP_84,
     DP_85,
     DP_86,
@@ -588,16 +588,23 @@ static void dp_recordPrim( DPCompiler* emit, int dt, UIndex n )
 static int genPrimitives( UThread* ut, DPCompiler* emit, int primOpcode,
                           int elemCount, const UCell* idxVec )
 {
-    if( ! emit->buffersCreated )
+    GLuint buf[ DP_MAX_VBUF + 1 ];
+    DPBuffer* vbuf;
+    int bufCount;
+    int drawArrPoints;
+    int makeIndexBuf;
+    int i;
+
+
+    drawArrPoints = (primOpcode == DP_DRAW_POINTS) && elemCount;
+    makeIndexBuf = ! drawArrPoints && ! emit->indexBuf;
+
+    bufCount = emit->vbufCount;
+    if( makeIndexBuf )
+        ++bufCount;
+
+    if( bufCount )
     {
-        GLuint buf[ DP_MAX_VBUF + 1 ];
-        DPBuffer* vbuf;
-        int bufCount;
-        int i;
-
-        emit->buffersCreated = 1;
-
-        bufCount = 1 + emit->vbufCount;
         glGenBuffers( bufCount, buf );
         dp_addRef( emit, RES_GL_BUFFERS, bufCount, buf );
 
@@ -614,9 +621,18 @@ static int genPrimitives( UThread* ut, DPCompiler* emit, int primOpcode,
             if( ! emitBufferOffsets( ut, emit, ur_buffer( vbuf->keyN ) ) )
                 return 0;
         }
+        emit->vbufCount = 0;
+    }
 
+    if( makeIndexBuf )
+    {
         emit->indexBuf = buf[i];
         emitOp1( DP_BIND_ELEMENTS, buf[i] );
+    }
+    else if( drawArrPoints )
+    {
+        emitOp1( DP_DRAW_ARR_POINTS, elemCount );
+        return 1;
     }
 
     if( idxVec )
@@ -654,9 +670,8 @@ static int genPrimitives( UThread* ut, DPCompiler* emit, int primOpcode,
 /*
 static void bufferReset( DPCompiler* emit )
 {
-    emit->prim.used = 0;
+    emit->tgeo.used = 0;
     emit->vbufCount = 0;
-    emit->buffersCreated = 0;
     emit->indexCount = 0;
     emit->indexBuf = 0;
 }
@@ -2111,8 +2126,9 @@ samples_err:
                     {
                         scriptError( "Vertex buffer limit exceeded" );
                     }
-
                     vbuf = emit->vbuf + emit->vbufCount;
+                    ++emit->vbufCount;
+
                     switch( option )
                     {
                         case UR_ATOM_STREAM:
@@ -2127,8 +2143,6 @@ samples_err:
                     }
                     vbuf->keyN = keyN;
                     vbuf->vecN = val->series.buf;
-
-                    ++emit->vbufCount;
                 }
                 else if( ur_is(val, UT_VBO) )
                 {
@@ -2895,6 +2909,10 @@ dispatch:
             glVertexAttribPointer( loc, size, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
         }
+            break;
+
+        case DP_DRAW_ARR_POINTS:
+            glDrawArrays( GL_POINTS, 0, *pc++ );
             break;
 
         case DP_DRAW_POINTS:

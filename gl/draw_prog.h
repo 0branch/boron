@@ -47,7 +47,7 @@ typedef struct
     int      refCount;
     int      blkCount;
     int16_t  vbufCount;
-    int16_t  buffersCreated;
+    int16_t  _pad;
     uint32_t uid;       // Unique Id
     uint32_t ops;
     uint32_t args[ 4 * DP_MAX_ARGS ];
