@@ -62,8 +62,17 @@ void usage( const char* arg0 )
 #endif
             "  -e exp  Evaluate expression\n"
             "  -h      Show this help and exit\n"
+            "  -p      Disable prompt and exit on exception\n"
             "  -s      Disable security\n"
           );
+}
+
+
+int denyAccess( UThread* ut, const char* msg )
+{
+    (void) ut;
+    (void) msg;
+    return UR_ACCESS_DENY;
 }
 
 
@@ -101,7 +110,8 @@ int main( int argc, char** argv )
     UCell* val;
     int fileN = 0;
     int ret = 0;
-    int secure = 1;
+    char promptDisabled = 0;
+    char secure = 1;
 
 
     // Parse arguments.
@@ -133,6 +143,10 @@ int main( int argc, char** argv )
                         usage( argv[0] );
                         return 0;
 
+                    case 'p':
+                        promptDisabled = 1;
+                        break;
+
                     case 's':
                         secure = 0;
                         break;
@@ -161,7 +175,7 @@ usage_err:
     ur_freezeEnv( ut );
 
     if( secure )
-        boron_setAccessFunc( ut, requestAccess );
+        boron_setAccessFunc( ut, promptDisabled ? denyAccess : requestAccess );
 
     ur_strInit( &rstr, UR_ENC_UTF8, 0 );
 
@@ -203,10 +217,11 @@ usage_err:
                 *pos++ = ' ';
             }
             *pos++ = ']';
+            *pos++ = '\n';
         }
         else
         {
-            pos = str_copy( pos, "args: none " );
+            pos = str_copy( pos, "args: none\n" );
         }
 
         if( expression )
@@ -249,6 +264,9 @@ usage_err:
         printf( APPNAME " %s (%s)\n", BORON_VERSION_STR, __DATE__ );
 
 prompt:
+
+        if( promptDisabled )
+            goto cleanup;
 
 #ifdef CONFIG_READLINE
         rl_bind_key( '\t', rl_insert );     // Disable tab completion.

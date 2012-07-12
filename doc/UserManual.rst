@@ -81,6 +81,7 @@ Command Line Options
 ==========  ========================
 -e "*exp*"  Evaluate expression
 -h          Show help and exit
+-p          Disable prompt and exit on exception
 -s          Disable security
 ==========  ========================
 
