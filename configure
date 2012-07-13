@@ -85,14 +85,20 @@ if command -v gcc >/dev/null; then
   emit "\n%.o: urlan/%.c\n\tgcc -c \$(CFLAGS) \$< -o \$@"
   emit "\n.PHONY: clean\nclean:\n\trm -f boronA \$(OBJS)"
 
+  if which gmake >/dev/null 2>&1 ; then
+    MAKE=gmake
+  else
+    MAKE=make
+  fi
+  
   if [ $CLEAN_A = 1 ]; then
-    make -f MakefileA clean
+    $MAKE -f MakefileA clean
     rm -f MakefileA
     exit 0
   fi
 
   echo "Generating boronA binary to run m2"
-  if ! make -f MakefileA >> configure.log 2>&1 ; then
+  if ! $MAKE -f MakefileA >> configure.log 2>&1 ; then
     cat configure.log
     exit 1
   fi
@@ -131,7 +137,7 @@ m2-logic "timecode" $CFG_TIMECODE
 m2-logic "thread"   $CFG_THREAD
 
 
-echo "Building Makefile with m2"
+echo "Building GNU Makefile with m2"
 case `uname -s` in
   Darwin)
     M2T=m2_macx.b ;;

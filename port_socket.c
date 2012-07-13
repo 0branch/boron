@@ -43,6 +43,7 @@ static char* WSAGetLastErrorMessage()
 
 #include <errno.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <netdb.h>
 #include <fcntl.h>
 
