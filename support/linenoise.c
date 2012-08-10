@@ -102,18 +102,28 @@
  * This support based in part on work by Jon Griffiths.
  */
 
-#ifdef __MINGW32__
+#ifdef _WIN32 /* Windows platform, either MinGW or Visual Studio (MSVC) */
 #include <windows.h>
 #include <fcntl.h>
 #define USE_WINCONSOLE
+#ifdef __MINGW32__
+#define HAVE_UNISTD_H
+#else
+/* Microsoft headers don't like old POSIX names */
+#define strdup _strdup
+#define snprintf _snprintf
+#endif
 #else
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/poll.h>
 #define USE_TERMIOS
+#define HAVE_UNISTD_H
 #endif
 
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -121,7 +131,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include "linenoise.h"
 #ifdef USE_UTF8     //KR
@@ -464,16 +473,22 @@ static int check_special(int fd)
                 return SPECIAL_HOME;
         }
     }
-    if (c == '[' && c2 >= '1' && c2 <= '6') {
+    if (c == '[' && c2 >= '1' && c2 <= '8') {
         /* extended escape */
-        int c3 = fd_read_char(fd, 50);
-        if (c2 == '3' && c3 == '~') {
-            /* delete char under cursor */
-            return SPECIAL_DELETE;
+        c = fd_read_char(fd, 50);
+        if (c == '~') {
+            switch (c2) {
+                case '3':
+                    return SPECIAL_DELETE;
+                case '7':
+                    return SPECIAL_HOME;
+                case '8':
+                    return SPECIAL_END;
+            }
         }
-        while (c3 != -1 && c3 != '~') {
+        while (c != -1 && c != '~') {
             /* .e.g \e[12~ or '\e[11;2~   discard the complete sequence */
-            c3 = fd_read_char(fd, 50);
+            c = fd_read_char(fd, 50);
         }
     }
 
@@ -522,7 +537,7 @@ static void clearScreen(struct current *current)
 
 static void cursorToLeft(struct current *current)
 {
-    COORD pos = { 0, current->y };
+    COORD pos = { 0, (SHORT)current->y };
     DWORD n;
 
     FillConsoleOutputAttribute(current->outh,
@@ -532,15 +547,17 @@ static void cursorToLeft(struct current *current)
 
 static int outputChars(struct current *current, const char *buf, int len)
 {
-    COORD pos = { current->x, current->y };
-    WriteConsoleOutputCharacter(current->outh, buf, len, pos, 0);
+    COORD pos = { (SHORT)current->x, (SHORT)current->y };
+    DWORD n;
+	
+    WriteConsoleOutputCharacter(current->outh, buf, len, pos, &n);
     current->x += len;
     return 0;
 }
 
 static void outputControlChar(struct current *current, char ch)
 {
-    COORD pos = { current->x, current->y };
+    COORD pos = { (SHORT)current->x, (SHORT)current->y };
     DWORD n;
 
     FillConsoleOutputAttribute(current->outh, BACKGROUND_INTENSITY, 2, pos, &n);
@@ -550,7 +567,7 @@ static void outputControlChar(struct current *current, char ch)
 
 static void eraseEol(struct current *current)
 {
-    COORD pos = { current->x, current->y };
+    COORD pos = { (SHORT)current->x, (SHORT)current->y };
     DWORD n;
 
     FillConsoleOutputCharacter(current->outh, ' ', current->cols - current->x, pos, &n);
@@ -558,7 +575,7 @@ static void eraseEol(struct current *current)
 
 static void setCursorPos(struct current *current, int x)
 {
-    COORD pos = { x, current->y };
+    COORD pos = { (SHORT)x, (SHORT)current->y };
 
     SetConsoleCursorPosition(current->outh, pos);
     current->x = x;
@@ -986,8 +1003,9 @@ process_char:
                 free(history[history_len]);
                 return -1;
             }
-            /* Otherwise delete char to right of cursor */
-            if (remove_char(current, current->pos)) {
+            /* Otherwise fall through to delete char to right of cursor */
+        case SPECIAL_DELETE:
+            if (remove_char(current, current->pos) == 1) {
                 refreshLine(current->prompt, current);
             }
             break;
@@ -1173,27 +1191,15 @@ process_char:
                 refreshLine(current->prompt, current);
             }
             break;
-
-        case SPECIAL_DELETE:
-            if (remove_char(current, current->pos) == 1) {
-                refreshLine(current->prompt, current);
-            }
-            break;
+        case ctrl('A'): /* Ctrl+a, go to the start of the line */
         case SPECIAL_HOME:
             current->pos = 0;
             refreshLine(current->prompt, current);
             break;
+        case ctrl('E'): /* ctrl+e, go to the end of the line */
         case SPECIAL_END:
             current->pos = current->chars;
             refreshLine(current->prompt, current);
-            break;
-        default:
-            /* Only tab is allowed without ^V */
-            if (c == '\t' || c >= ' ') {
-                if (insert_char(current, current->pos, c) == 1) {
-                    refreshLine(current->prompt, current);
-                }
-            }
             break;
         case ctrl('U'): /* Ctrl+u, delete to beginning of line. */
             if (remove_chars(current, 0, current->pos)) {
@@ -1205,20 +1211,19 @@ process_char:
                 refreshLine(current->prompt, current);
             }
             break;
-        case ctrl('A'): /* Ctrl+a, go to the start of the line */
-            current->pos = 0;
-            refreshLine(current->prompt, current);
-            break;
-        case ctrl('E'): /* ctrl+e, go to the end of the line */
-            current->pos = current->chars;
-            refreshLine(current->prompt, current);
-            break;
         case ctrl('L'): /* Ctrl+L, clear screen */
-            /* clear screen */
             clearScreen(current);
             /* Force recalc of window size for serial terminals */
             current->cols = 0;
             refreshLine(current->prompt, current);
+            break;
+        default:
+            /* Only tab is allowed without ^V */
+            if (c == '\t' || c >= ' ') {
+                if (insert_char(current, current->pos, c) == 1) {
+                    refreshLine(current->prompt, current);
+                }
+            }
             break;
         }
     }
@@ -1272,6 +1277,12 @@ int linenoiseHistoryAdd(const char *line) {
         if (history == NULL) return 0;
         memset(history,0,(sizeof(char*)*history_max_len));
     }
+
+    /* do not insert duplicate lines into history */
+    if (history_len > 0 && strcmp(line, history[history_len - 1]) == 0) {
+        return 0;
+    }
+
     linecopy = strdup(line);
     if (!linecopy) return 0;
     if (history_len == history_max_len) {
