@@ -2011,27 +2011,53 @@ CFUNC(cfunc_skip)
 
 /*-cf-
     append
-        series  Series or context!
+        series      Series or context!
         value
-        /block  If series and value are blocks, push value as a single item.
+        /block      If series and value are blocks, push value as a single item.
+        /repeat     Repeat append.
+            count   int!
     return: Modified series or bound word!.
     group: series
 */
 CFUNC(cfunc_append)
 {
 #define OPT_APPEND_BLOCK    0x01
+#define OPT_APPEND_REPEAT   0x02
     UBuffer* buf;
+    const USeriesType* dt;
+    uint32_t opt;
     int type = ur_type(a1);
+    int count;
 
     if( ur_isSeriesType( type ) )
     {
         if( ! (buf = ur_bufferSerM(a1)) )
             return UR_THROW;
 
-        if( (type == UT_BLOCK) && (CFUNC_OPTIONS & OPT_APPEND_BLOCK) )
-            ur_blkPush( buf, a2 );
-        else if( ! SERIES_DT( type )->append( ut, buf, a2 ) )
-            return UR_THROW;
+        dt = SERIES_DT( type );
+        if( (opt = CFUNC_OPTIONS) )
+        {
+            count = (opt & OPT_APPEND_REPEAT) ? ur_int(a3) : 1;
+            if( (opt & OPT_APPEND_BLOCK) && (type == UT_BLOCK) )
+            {
+                while( --count >= 0 )
+                    ur_blkPush( buf, a2 );
+            }
+            else
+            {
+                while( --count >= 0 )
+                {
+                    if( ! dt->append( ut, buf, a2 ) )
+                        return UR_THROW;
+                }
+            }
+        }
+        else
+        {
+            if( ! dt->append( ut, buf, a2 ) )
+                return UR_THROW;
+        }
+
         *res = *a1;
         return UR_OK;
     }
@@ -2070,9 +2096,11 @@ CFUNC(cfunc_append)
     insert
         series
         value
-        /block          Insert block value as a single item.
-        /part           Insert only a limited number of elements from value.
+        /block      Insert block value as a single item.
+        /part       Insert only a limited number of elements from value.
             limit
+        /repeat     Repeat insertion.
+            count   int!
     return: Modified series.
     group: series
 */
@@ -2080,45 +2108,55 @@ CFUNC(cfunc_insert)
 {
 #define OPT_INSERT_BLOCK    0x01
 #define OPT_INSERT_PART     0x02
+#define OPT_INSERT_REPEAT   0x04
     UBuffer* buf;
+    const USeriesType* dt;
     uint32_t opt;
     UIndex part = INT32_MAX;
     int type = ur_type(a1);
+    int count = 1;
 
-    if( ur_isSeriesType( type ) )
+    if( ! ur_isSeriesType( type ) )
+        return errorType( "insert expected series" );
+
+    if( ! (buf = ur_bufferSerM(a1)) )
+        return UR_THROW;
+
+    if( (opt = CFUNC_OPTIONS) )
     {
-        if( ! (buf = ur_bufferSerM(a1)) )
-            return UR_THROW;
+        if( opt & OPT_INSERT_REPEAT )
+           count = ur_int(a1 + 3);
 
-        if( (opt = CFUNC_OPTIONS) )
+        if( (opt & OPT_INSERT_BLOCK) && (type == UT_BLOCK) )
         {
-            if( (opt & OPT_INSERT_BLOCK) && (type == UT_BLOCK) )
-            {
+            while( --count >= 0 )
                 ur_blkInsert( buf, a1->series.it, a2, 1 );
-                goto done;
-            }
-            else if( opt & OPT_INSERT_PART )
-            {
-                UCell* parg = a3;
-                if( ur_is(parg, UT_INT) )
-                    part = ur_int(parg);
-                else if( ur_isSeriesType( ur_type(parg) ) )
-                    part = parg->series.it - a1->series.it;
-                else
-                    return ur_error( ut, UR_ERR_TYPE,
-                                     "insert /part expected series or int!" );
-                if( part < 1 )
-                    goto done;
-            }
+            goto done;
         }
-
-        if( ! SERIES_DT( type )->insert( ut, buf, a1->series.it, a2, part ) )
-            return UR_THROW;
-done:
-        *res = *a1;
-        return UR_OK;
+        else if( opt & OPT_INSERT_PART )
+        {
+            UCell* parg = a3;
+            if( ur_is(parg, UT_INT) )
+                part = ur_int(parg);
+            else if( ur_isSeriesType( ur_type(parg) ) )
+                part = parg->series.it - a1->series.it;
+            else
+                return ur_error( ut, UR_ERR_TYPE,
+                                 "insert /part expected series or int!" );
+            if( part < 1 )
+                goto done;
+        }
     }
-    return errorType( "insert expected series" );
+
+    dt = SERIES_DT( type );
+    while( --count >= 0 )
+    {
+        if( ! dt->insert( ut, buf, a1->series.it, a2, part ) )
+            return UR_THROW;
+    }
+done:
+    *res = *a1;
+    return UR_OK;
 }
 
 
