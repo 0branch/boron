@@ -1403,12 +1403,18 @@ int boron_eval1( UThread* ut, UCell* blkC, UCell* res )
                 if( ur_is(scell, UT_SETWORD) )
                 {
                     if( ! ur_setWord( ut, scell, res ) )
+                    {
+                        --blkC->series.it;
                         goto traceError;
+                    }
                 }
                 else
                 {
                     if( ! ur_setPath( ut, scell, res ) )
+                    {
+                        --blkC->series.it;
                         goto traceError;
+                    }
                 }
             }
         }
