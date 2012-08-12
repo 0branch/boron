@@ -90,6 +90,9 @@ void dprog_mark( UThread* ut, UCell* cell )
 // UT_RASTER
 
 
+static const uint8_t _bytesPerPixel[ 4 ] = { 0, 1, 3, 4 };
+
+
 static int _rasterBinarySize( int format, int depth, int w, int h )
 {
     int size = depth / 8 * w * h;
@@ -122,6 +125,7 @@ UBuffer* ur_makeRaster( UThread* ut, int format, int w, int h, UCell* res )
     rh->depth  = 8;
     rh->width  = w;
     rh->height = h;
+    rh->bytesPerRow = _bytesPerPixel[ format ] * w;
 
     ur_setId( res, UT_RASTER );
     ur_setSeries( res, binN, 0 );
@@ -264,6 +268,8 @@ static void _texRast( TextureDef* tex, const RasterHead* rh )
             tex->format = GL_RGBA;
             break;
     }
+
+    glPixelStorei( GL_UNPACK_ALIGNMENT, (rh->bytesPerRow & 3) ? 1 : 4 );
 }
 
 
@@ -555,6 +561,8 @@ static void textureToRaster( UThread* ut, GLenum target, GLuint name,
     bin = ur_makeRaster( ut, UR_RAST_RGB, dim[0], dim[1], res );
     if( bin->ptr.b )
     {
+        int bpr = ur_ptr(RasterHead, bin)->bytesPerRow;
+        glPixelStorei( GL_PACK_ALIGNMENT, (bpr & 3) ? 1 : 4 );
         glGetTexImage( target, 0, GL_RGB, GL_UNSIGNED_BYTE, ur_rastElem(bin) );
     }
 }

@@ -75,7 +75,7 @@ typedef struct
     uint8_t  depth;
     uint16_t width;
     uint16_t height;
-    uint8_t  _pad[2];
+    uint16_t bytesPerRow;
     // Element data follows.
 }
 RasterHead;
