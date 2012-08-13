@@ -2,7 +2,7 @@
 #define BORON_GL_H
 /*
   Boron OpenGL Module
-  Copyright 2005-2011 Karl Robillard
+  Copyright 2005-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -168,7 +168,7 @@ UIndex ur_makeVbo( UThread*, GLenum attrUsage, int acount, float* attr,
 
 
 #define ur_rasterElements(rh)       (((char*) rh) + sizeof(RasterHead))
-#define ur_rasterBytesPerRow(rh)    (rh->width * ur_rasterElementSize(rh))
+#define ur_rasterBytesPerRow(rh)    rh->bytesPerRow
 
 #define ur_rastHead(c)      ((const RasterHead*) ur_bufferSer(c)->ptr.v)
 #define ur_rastHeadM(c)     ((RasterHead*) ur_bufferSer(c)->ptr.v)

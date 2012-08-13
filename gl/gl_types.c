@@ -1,5 +1,5 @@
 /*
-  Copyright 2010-2011 Karl Robillard
+  Copyright 2010-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -91,6 +91,12 @@ void dprog_mark( UThread* ut, UCell* cell )
 
 
 static const uint8_t _bytesPerPixel[ 4 ] = { 0, 1, 3, 4 };
+
+
+int ur_rasterElementSize( const RasterHead* r )
+{
+    return _bytesPerPixel[ r->format ];
+}
 
 
 static int _rasterBinarySize( int format, int depth, int w, int h )

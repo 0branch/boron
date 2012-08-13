@@ -1,6 +1,6 @@
 /*
   Boron OpenGL Module
-  Copyright 2008-2010 Karl Robillard
+  Copyright 2008-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -21,18 +21,6 @@
 
 #include "os.h"
 #include "boron-gl.h"
-
-
-int ur_rasterElementSize( const RasterHead* r )
-{
-    switch( r->format )
-    {
-        case UR_RAST_GRAY:  return 1;
-        case UR_RAST_RGB:   return 3;
-        case UR_RAST_RGBA:  return 4;
-    }
-    return 0;
-}
 
 
 struct BlitRect
