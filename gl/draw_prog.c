@@ -70,12 +70,14 @@ enum DPOpcode
     DP_DRAW_TRIS,           // count
     DP_DRAW_TRI_STRIP,      // count
     DP_DRAW_TRI_FAN,        // count
+    DP_DRAW_QUADS,          // count
     DP_DRAW_POINTS_I,       // count offset
     DP_DRAW_LINES_I,        // count offset
     DP_DRAW_LINE_STRIP_I,   // count offset
     DP_DRAW_TRIS_I,         // count offset
     DP_DRAW_TRI_STRIP_I,    // count offset
     DP_DRAW_TRI_FAN_I,      // count offset
+    DP_DRAW_QUADS_I,        // count offset
     DP_DEPTH_ON,
     DP_DEPTH_OFF,
     DP_BLEND_ON,
@@ -121,8 +123,6 @@ enum DPOpcode
     DP_READ_PIXELS,         // blkN index pos dim
     DP_FONT,                // blkN
     DP_TEXT_WORD,           // blkN index aoff x y (then DP_DRAW_TRIS_I)
-    DP_84,
-    DP_85,
     DP_86,
     DP_87,
     DP_88,
@@ -578,7 +578,7 @@ static void dp_recordPrim( DPCompiler* emit, int dt, UIndex n )
 
 
 /*
-  \param primOpcode    DP_DRAW_POINTS to DP_DRAW_TRI_FAN.
+  \param primOpcode    DP_DRAW_POINTS to DP_DRAW_QUADS.
   \param elemCount     Number of contiguous vertices to draw.
                        Zero if idxVec set.
   \param idxVec        Vertices to draw.
@@ -807,6 +807,9 @@ static void emitGeoPrim( const Primitives* it, DPCompiler* emit )
             break;
         case GL_TRIANGLE_FAN:
             opcode = DP_DRAW_TRI_FAN;
+            break;
+        case GL_QUADS:
+            opcode = DP_DRAW_QUADS;
             break;
         default:
             return;
@@ -1424,7 +1427,7 @@ static uint8_t _primOp[] =
     */
     DP_DRAW_POINTS, DP_DRAW_LINES,     DP_DRAW_LINE_STRIP,
     DP_DRAW_TRIS,   DP_DRAW_TRI_STRIP, DP_DRAW_TRI_FAN,
-    0, 0
+    DP_DRAW_QUADS,  0
 };
 
 
@@ -1680,7 +1683,7 @@ image_next:
             case DOP_TRI_STRIP:
             case DOP_TRI_FAN:
             case DOP_QUADS:
-            case DOP_QUAD_STRIP:
+            //case DOP_QUAD_STRIP:
             {
                 int dpOp = _primOp[ opcode - DOP_POINTS ];
                 INC_PC
@@ -2945,6 +2948,11 @@ dispatch:
             glDrawElements( GL_TRIANGLE_FAN, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
 
+        case DP_DRAW_QUADS:
+            REPORT_1( "DRAW_QUADS %d\n", pc[0] );
+            glDrawElements( GL_QUADS, *pc++, GL_UNSIGNED_SHORT, 0 );
+            break;
+
         case DP_DRAW_POINTS_I:
             REPORT_2( "DRAW_POINTS_I %d %d\n", pc[0], pc[1] );
             glDrawElements( GL_POINTS, pc[0], GL_UNSIGNED_SHORT,
@@ -2983,6 +2991,13 @@ dispatch:
         case DP_DRAW_TRI_FAN_I:
             REPORT_2( "DRAW_TRI_FAN_I %d %d\n", pc[0], pc[1] );
             glDrawElements( GL_TRIANGLE_FAN, pc[0], GL_UNSIGNED_SHORT,
+                            NULL + pc[1] );
+            pc += 2;
+            break;
+
+        case DP_DRAW_QUADS_I:
+            REPORT_2( "DRAW_QUADS_I %d %d\n", pc[0], pc[1] );
+            glDrawElements( GL_QUADS, pc[0], GL_UNSIGNED_SHORT,
                             NULL + pc[1] );
             pc += 2;
             break;
