@@ -323,6 +323,7 @@ void ur_ctxFree( UBuffer* buf )
         memFree( buf->ptr.b - FORWARD );
         buf->ptr.b = 0;
     }
+    CC(buf)->sorted = 0;
     buf->used = 0;
 }
 
