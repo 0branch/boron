@@ -1149,7 +1149,8 @@ void dp_drawTextCell( DPCompiler* emit, UThread* ut, const UCell* cell,
         else
             emit->penX += rect[0];
 
-        emit->penY += rect[1] + ((rect[3] - tf->max_ascent) >> 1);
+        if( rect[3] )
+            emit->penY += rect[1] + ((rect[3] - tf->max_ascent) >> 1);
     }
 
     dp_drawText( emit, tf, bi.it, bi.end );
