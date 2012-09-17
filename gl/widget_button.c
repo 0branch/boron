@@ -49,35 +49,27 @@ GButton;
 #define EX_PTR  GButton* ep = (GButton*) wp
 
 
+static const uint8_t button_args[] =
+{
+    GUIA_ARGW, UT_STRING,
+    GUIA_ARG,  UT_BLOCK,
+    GUIA_END
+};
+
 static GWidget* button_make( UThread* ut, UBlockIter* bi,
                              const GWidgetClass* wclass )
 {
-    if( (bi->end - bi->it) > 2 )
-    {
-        GButton* ep;
-        const UCell* arg = ++bi->it;
+    GButton* ep;
+    const UCell* arg[2];
 
-        if( ! ur_is(arg, UT_STRING) )
-            goto bad_string;
+    if( ! gui_parseArgs( ut, bi, wclass, button_args, arg ) )
+        return 0;
 
-        if( ! ur_is(arg + 1, UT_BLOCK) )
-        {
-            ur_error( ut, UR_ERR_SCRIPT, "button expected block! action" );
-            return 0;
-        }
-
-        ep = (GButton*) gui_allocWidget( sizeof(GButton), wclass );
-        ep->state   = BTN_STATE_UP;
-        ep->labelN  = arg[0].series.buf;
-        ep->actionN = arg[1].series.buf;
-
-        bi->it = arg + 2;
-        return (GWidget*) ep;
-    }
-
-bad_string:
-    ur_error( ut, UR_ERR_SCRIPT, "button expected string! text" );
-    return 0;
+    ep = (GButton*) gui_allocWidget( sizeof(GButton), wclass );
+    ep->state   = BTN_STATE_UP;
+    ep->labelN  = arg[0]->series.buf;
+    ep->actionN = arg[1]->series.buf;
+    return (GWidget*) ep;
 }
 
 

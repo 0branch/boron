@@ -190,6 +190,94 @@ int gui_limitY( int y, const GRect* area )
 }
 
 
+/*
+  Return non-zero if cell matches types.
+*/
+static int _matchMultTypes( const uint8_t* pc, const UCell* cell )
+{
+    const uint8_t* end = pc + 2 + pc[1];
+    for( pc += 2; pc != end; ++pc )
+    {
+        if( ur_is(cell, *pc) )
+            return 1;
+    }
+    return 0;
+}
+
+
+/*
+  Return UR_OK/UR_THROW.
+*/
+int gui_parseArgs( UThread* ut, UBlockIter* bi, const GWidgetClass* wc,
+                   const uint8_t* pc, const UCell** args )
+{
+    const UCell* command = bi->it++;
+    while( 1 )
+    {
+        switch( *pc )
+        {
+            case GUIA_ARG:
+            case GUIA_OPT:
+                if( bi->it != bi->end && ur_is(bi->it, pc[1]) )
+                    *args++ = bi->it++;
+                else if( *pc == GUIA_OPT )
+                    *args++ = 0;
+                else
+                    goto fail;
+                pc += 2;
+                break;
+
+            case GUIA_ARGM:
+            case GUIA_OPTM:
+                if( bi->it != bi->end && _matchMultTypes( pc, bi->it ) )
+                    *args++ = bi->it++;
+                else if( *pc == GUIA_OPTM )
+                    *args++ = 0;
+                else
+                    goto fail;
+                pc += 2 + pc[1];
+                break;
+
+            case GUIA_ARGW:
+                if( bi->it == bi->end )
+                    goto fail;
+                {
+                    const UCell* cell = bi->it;
+                    if( ur_is(cell, UT_WORD) )
+                    {
+                        if( ! (cell = ur_wordCell( ut, cell )) )
+                            return UR_THROW;
+                    }
+                    if( ! ur_is(cell, pc[1]) )
+                        goto fail;
+                    *args++ = cell;
+                    ++bi->it;
+                }
+                pc += 2;
+                break;
+
+            case GUIA_ANY:
+                if( bi->it == bi->end )
+                    goto fail;
+                *args++ = bi->it++;
+                ++pc;
+                break;
+
+            case GUIA_END:
+                return UR_OK;
+
+            default:
+                assert( 0 && "Invalid GWidget argument program" );
+                return UR_OK;
+        }
+    }
+
+fail:
+    return ur_error( ut, UR_ERR_SCRIPT, "Widget %s expected %s for argument %d",
+                     wc->name, ur_atomCStr(ut, pc[1]), bi->it - command );
+}
+
+
 //----------------------------------------------------------------------------
 
 
@@ -957,13 +1045,22 @@ static void setBoxMargins( Box* wd, const UCell* mc )
 }
 
 
+static const uint8_t box_args[] =
+{
+    GUIA_OPT,   UT_COORD,
+    GUIA_ARG,   UT_BLOCK,
+    GUIA_END
+};
+
 // box [margin coord!] block
 static GWidget* box_make( UThread* ut, UBlockIter* bi,
                           const GWidgetClass* wclass )
 {
     Box* ep;
-    const UCell* arg = bi->it;
+    const UCell* arg[ 2 ];
 
+    if( ! gui_parseArgs( ut, bi, wclass, box_args, arg ) )
+        return 0;
 
     ep = (Box*) gui_allocWidget( sizeof(Box), wclass );
 
@@ -975,29 +1072,15 @@ static GWidget* box_make( UThread* ut, UBlockIter* bi,
     ep->marginB = 0;
     ep->spacing = 8;
 
-
-    if( ++arg == bi->end )
-        goto arg_end;
-    if( ur_is(arg, UT_COORD) )
-    {
+    if( arg[0] )
         setBoxMargins( ep, arg );
-        if( ++arg == bi->end )
-            goto arg_end;
-    }
 
-    if( ur_is(arg, UT_BLOCK) )
+    if( ! gui_makeWidgets( ut, arg[1], (GWidget*) ep ) )
     {
-        if( ! gui_makeWidgets( ut, arg, (GWidget*) ep ) )
-        {
-            wclass->free( (GWidget*) ep );
-            return 0;
-        }
-        ++arg;
+        wclass->free( (GWidget*) ep );
+        return 0;
     }
 
-arg_end:
-
-    bi->it = arg;
     return (GWidget*) ep;
 }
 
@@ -1335,11 +1418,22 @@ GWindow;
 #define WINDOW_DRAG     GW_FLAG_USER2
 
 
+static const uint8_t window_args[] =
+{
+    GUIA_OPT,      UT_STRING,
+    GUIA_ANY,   //GUIA_ARGMW, 2, UT_BLOCK, UT_NONE,
+    GUIA_ARGW,     UT_BLOCK,
+    GUIA_END
+};
+
 static GWidget* window_make( UThread* ut, UBlockIter* bi,
                              const GWidgetClass* wclass )
 {
     GWindow* ep;
-    const UCell* arg = bi->it;
+    const UCell* arg[ 3 ];
+
+    if( ! gui_parseArgs( ut, bi, wclass, window_args, arg ) )
+        return 0;
 
     ep = (GWindow*) gui_allocWidget( sizeof(GWindow), wclass );
 
@@ -1357,35 +1451,21 @@ static GWidget* window_make( UThread* ut, UBlockIter* bi,
         wp->flags |= WINDOW_HBOX;
     */
 
-    if( ++arg == bi->end )
-        goto arg_end;
-    if( ur_is(arg, UT_STRING) )
+    if( arg[0] )
     {
-        ep->titleN = arg->series.buf;
+        ep->titleN = arg[0]->series.buf;
         //glv_setTitle( glEnv.view, boron_cstr( ut, arg, 0 ) );
     }
 
-    if( ++arg == bi->end )
-        goto arg_end;
-    if( ur_is(arg, UT_BLOCK) )
+    if( ur_is(arg[1], UT_BLOCK) )
     {
-        if( ! _installEventContext( ut, (GWidget*) ep, arg ) )
+        if( ! _installEventContext( ut, (GWidget*) ep, arg[1] ) )
             goto fail;
-        ep->wid.eventCtxN = arg->series.buf;
+        ep->wid.eventCtxN = arg[1]->series.buf;
     }
 
-    if( ++arg == bi->end )
-        goto arg_end;
-    if( ur_is(arg, UT_BLOCK) )
-    {
-        if( ! gui_makeWidgets( ut, arg, (GWidget*) ep ) )
-            goto fail;
-        ++arg;
-    }
-
-arg_end:
-    bi->it = arg;
-    return (GWidget*) ep;
+    if( gui_makeWidgets( ut, arg[2], (GWidget*) ep ) )
+        return (GWidget*) ep;
 
 fail:
     wclass->free( (GWidget*) ep );
@@ -1439,9 +1519,13 @@ static void window_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             if( wp->flags & WINDOW_DRAG )
             {
                 EX_PTR;
-                const GRect* area = &wp->parent->area;
-                ep->transX = gui_limitX(ev->x, area) - ep->dragX;
-                ep->transY = gui_limitY(ev->y, area) - ep->dragY;
+                const GRect* area;
+                if( wp->parent )
+                {
+                    area = &wp->parent->area;
+                    ep->transX = gui_limitX(ev->x, area) - ep->dragX;
+                    ep->transY = gui_limitY(ev->y, area) - ep->dragY;
+                }
                 return;
             }
             break;

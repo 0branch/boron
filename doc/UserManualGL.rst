@@ -62,6 +62,7 @@ Command Line Options
 -a          Disable audio
 -e "*exp*"  Evaluate expression
 -h          Show help and exit
+-p          Disable prompt and exit on exception
 -s          Disable security
 ==========  ========================
 
@@ -214,7 +215,8 @@ Blend
 Sets the blending mode using glBlendFunc_.
 ::
 
-    blend on/off/add/burn/trans
+    blend
+        mode    on/off/add/burn/trans
 
 =====  ======================
 Mode   Function
@@ -241,7 +243,8 @@ Sets the camera context.  glViewport_ is called and the ``GL_PROJECTION``
 and ``GL_MODELVIEW`` matrices are set.
 ::
 
-    camera context!
+    camera
+        which   context!
 
 
 Call
@@ -251,8 +254,8 @@ Calling a none! value does nothing and can be used to disable the display
 of an item.
 ::
 
-    call none!/draw-prog!/widget!
-    call get-word!
+    call
+        list    none!/draw-prog!/widget!/get-word!
 
 
 Clear
@@ -267,8 +270,8 @@ Color
 Sets the ``gl_Color`` for shaders.
 ::
 
-    color int!/coord!/vec3!
-    color get-word!
+    color
+        value   int!/coord!/vec3!/get-word!
 
 The following all set the color to red::
 
@@ -312,7 +315,8 @@ needed to generate quads; it does not actually emit any data into the compiled
 draw-prog.  The `shader`_ instruction must be used to specify the texture.
 ::
 
-    font font!
+    font
+        which   font!
 
 
 Image
@@ -373,8 +377,8 @@ Scale
 -----
 ::
 
-    scale decimal!
-    scale get-word!
+    scale
+        value   decimal!/get-word!
 
 
 Shader
@@ -384,7 +388,8 @@ Calls glUseProgram_, binds and enables any textures used,
 and calls glUniform_ for any variables.
 ::
 
-    shader shader!
+    shader
+        which   shader!
 
 
 Sphere
@@ -407,12 +412,22 @@ Draws quads for each character.
     text x,y string!
     text/center/right rect [x,y] string!
 
+Text Center
+~~~~~~~~~~~
+
+Using the *center* option centers the string horizontally and vertically within
+the *rect* argument.  To center only horizontally use a width (fourth value)
+of zero.
+
 
 Translate
 ---------
+
+Translate the model view matrix.
 ::
 
-    translate get-word!
+    translate
+        distance    vec3!/get-word!
 
 
 Uniform
@@ -422,13 +437,18 @@ Uniform
 Framebuffer
 -----------
 
-Calls glBindFramebuffer().
+Calls glBindFramebuffer_ with target GL_FRAMEBUFFER.  Pass zero to restore rendering to the display.
+::
+
+    framebuffer
+        which   fbo! or 0
 
 
 
 .. |date| date::
 .. _`function reference`: http://urlan.sf.net/boron/doc/func_ref_gl.html
 .. _glBindBuffer: http://www.opengl.org/sdk/docs/man/xhtml/glBindBuffer.xml
+.. _glBindFramebuffer: http://www.opengl.org/sdk/docs/man3/xhtml/glBindFramebuffer.xml
 .. _glBlendFunc: http://www.opengl.org/sdk/docs/man/xhtml/glBlendFunc.xml
 .. _glClear: http://www.opengl.org/sdk/docs/man/xhtml/glClear.xml
 .. _glColorMask: http://www.opengl.org/sdk/docs/man/xhtml/glColorMask.xml

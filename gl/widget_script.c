@@ -80,56 +80,57 @@ static void remapKeys( UThread* ut, const UCell* cell )
 
 extern int boron_doVoid( UThread* ut, const UCell* blkC );
 
+static const uint8_t swidget_args[] =
+{
+    GUIA_ARG,  UT_BLOCK,
+    GUIA_END
+};
+
 static GWidget* swidget_make( UThread* ut, UBlockIter* bi,
                               const GWidgetClass* wclass )
 {
-    if( (bi->end - bi->it) > 1 )
+    UAtom atoms[ CI_COUNT ];
+    UBuffer* blk;
+    UBuffer* ctx;
+    ScriptWidget* wp;
+    const UCell* arg;
+    int i;
+
+
+    if( ! gui_parseArgs( ut, bi, wclass, swidget_args, &arg ) )
+        return 0;
+
+    ur_internAtoms( ut,
+                    "area event key-down key-up mouse-move mouse-down\n"
+                    "mouse-up mouse-wheel close resize joystick\n"
+                    "draw",
+                    atoms );
+
+    wp = (ScriptWidget*) gui_allocWidget(sizeof(ScriptWidget), wclass);
+    wp->ctxN = ur_makeContext( ut, CI_COUNT );
+
+    ctx = ur_buffer( wp->ctxN );
+    for( i = 0; i < CI_COUNT; ++i )
+        ur_ctxAddWordI( ctx, atoms[i] );
+    ur_ctxSort( ctx );
+
+    blk = ur_bufferSerM( arg );
+    if( ! blk )
     {
-        ++bi->it;
-        if( ur_is(bi->it, UT_BLOCK) )
-        {
-            UAtom atoms[ CI_COUNT ];
-            UBuffer* blk;
-            UBuffer* ctx;
-            ScriptWidget* wp;
-            int i;
-
-            ur_internAtoms( ut,
-                            "area event key-down key-up mouse-move mouse-down\n"
-                            "mouse-up mouse-wheel close resize joystick\n"
-                            "draw",
-                            atoms );
-
-            wp = (ScriptWidget*) gui_allocWidget(sizeof(ScriptWidget), wclass);
-            wp->ctxN = ur_makeContext( ut, CI_COUNT );
-
-            ctx = ur_buffer( wp->ctxN );
-            for( i = 0; i < CI_COUNT; ++i )
-                ur_ctxAddWordI( ctx, atoms[i] );
-            ur_ctxSort( ctx );
-
-            blk = ur_bufferSerM( bi->it );
-            if( ! blk )
-            {
 cleanup:
-                memFree( wp );
-                return 0;
-            }
-            ur_bind( ut, blk, ctx, UR_BIND_THREAD );
-
-            if( boron_doVoid( ut, bi->it ) != UR_OK )
-                goto cleanup;
-
-            ctx = ur_buffer( wp->ctxN );    // Re-aquire
-            remapKeys( ut, ur_ctxCell( ctx, CI_KEY_DOWN ) );
-            remapKeys( ut, ur_ctxCell( ctx, CI_KEY_UP ) );
-
-            ++bi->it;
-            return (GWidget*) wp;
-        }
+        memFree( wp );
+        return 0;
     }
-    ur_error( ut, UR_ERR_SCRIPT, "script-widget expected block" );
-    return 0;
+    ur_bind( ut, blk, ctx, UR_BIND_THREAD );
+
+    if( boron_doVoid( ut, arg ) != UR_OK )
+        goto cleanup;
+
+    ctx = ur_buffer( wp->ctxN );    // Re-aquire
+    remapKeys( ut, ur_ctxCell( ctx, CI_KEY_DOWN ) );
+    remapKeys( ut, ur_ctxCell( ctx, CI_KEY_UP ) );
+
+    return (GWidget*) wp;
 }
 
 

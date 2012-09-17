@@ -35,28 +35,25 @@ GLabel;
 #define EX_PTR  GLabel* ep = (GLabel*) wp
 
 
+static const uint8_t label_args[] =
+{
+    GUIA_ARGW, UT_STRING,
+    GUIA_END
+};
+
 static GWidget* label_make( UThread* ut, UBlockIter* bi,
                             const GWidgetClass* wclass )
 {
-    if( (bi->end - bi->it) > 1 )
-    {
-        GLabel* ep;
-        const UCell* arg = ++bi->it;
+    GLabel* ep;
+    const UCell* arg;
 
-        if( ! ur_is(arg, UT_STRING) )
-            goto bad_text;
+    if( ! gui_parseArgs( ut, bi, wclass, label_args, &arg ) )
+        return 0;
 
-        ep = (GLabel*) gui_allocWidget( sizeof(GLabel), wclass );
-        ep->wid.flags |= GW_NO_INPUT;
-        ep->textN = arg->series.buf;
-
-        bi->it = arg + 1;
-        return (GWidget*) ep;
-    }
-
-bad_text:
-    ur_error( ut, UR_ERR_SCRIPT, "label expected string! text" );
-    return 0;
+    ep = (GLabel*) gui_allocWidget( sizeof(GLabel), wclass );
+    ep->wid.flags |= GW_NO_INPUT;
+    ep->textN = arg->series.buf;
+    return (GWidget*) ep;
 }
 
 

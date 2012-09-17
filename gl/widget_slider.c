@@ -70,6 +70,13 @@ GSlider;
 #define EX_PTR  GSlider* ep = (GSlider*) wp
 
 
+static const uint8_t slider_args[] =
+{
+    GUIA_ARGM, 2,   UT_COORD, UT_VEC3,
+    GUIA_OPT,       UT_BLOCK,
+    GUIA_END
+};
+
 /*
   slider min,max <action>
 */
@@ -77,48 +84,33 @@ static GWidget* slider_make( UThread* ut, UBlockIter* bi,
                              const GWidgetClass* wclass )
 {
     GSlider* ep;
-    int type;
-    const UCell* arg = bi->it;
+    const UCell* arg[2];
 
-    if( ++arg == bi->end )
-        goto bad_arg;
-    type = ur_type(arg);
-    if( type != UT_COORD && type != UT_VEC3 )
-        goto bad_arg;
+    if( ! gui_parseArgs( ut, bi, wclass, slider_args, arg ) )
+        return 0;
 
     ep = (GSlider*) gui_allocWidget( sizeof(GSlider), wclass );
     ep->state = BTN_STATE_UP;
-    if( type == UT_COORD )
+    if( ur_is(arg[0], UT_COORD) )
     {
         ep->data.i.val =
-        ep->data.i.min = arg->coord.n[0];
-        ep->data.i.max = arg->coord.n[1];
+        ep->data.i.min = arg[0]->coord.n[0];
+        ep->data.i.max = arg[0]->coord.n[1];
         ep->dataType = UT_INT;
     }
     else
     {
         ep->data.f.val =
-        ep->data.f.min = arg->vec3.xyz[0];
-        ep->data.f.max = arg->vec3.xyz[1];
+        ep->data.f.min = arg[0]->vec3.xyz[0];
+        ep->data.f.max = arg[0]->vec3.xyz[1];
         ep->dataType = UT_DECIMAL;
     }
 
     // Optional action block.
-    if( ++arg != bi->end )
-    {
-        if( ur_is(arg, UT_BLOCK) )
-        {
-            ep->actionN = arg->series.buf;
-            ++arg;
-        }
-    }
+    if( arg[1] )
+        ep->actionN = arg[1]->series.buf;
 
-    bi->it = arg;
     return (GWidget*) ep;
-
-bad_arg:
-    ur_error( ut, UR_ERR_SCRIPT, "slider expected min,max coord!/vec3!" );
-    return 0;
 }
 
 

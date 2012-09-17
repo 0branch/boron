@@ -96,6 +96,13 @@ static UIndex ledit_vbo( UThread* ut, int maxChars )
 }
 
 
+static const uint8_t ledit_args[] =
+{
+    GUIA_ARGW, UT_STRING,
+    GUIA_OPT,  UT_INT,
+    GUIA_END
+};
+
 /*
     line-edit word!/string! <max-chars>
 */
@@ -103,46 +110,30 @@ static GWidget* ledit_make( UThread* ut, UBlockIter* bi,
                             const GWidgetClass* wclass )
 {
     LineEdit* ep;
+    const UCell* arg[2];
     int maxChars = 32;
-    const UCell* str;
-    const UCell* arg = bi->it + 1;
 
-    if( arg == bi->end )
-        goto bad_string;
-    if( ur_is(arg, UT_WORD) )
-    {
-        str = ur_wordCellM( ut, arg );
-        if( ! str )
-            return 0;
-    }
-    else
-    {
-        str = arg;
-    }
-    if( ! ur_is(str, UT_STRING) )
-        goto bad_string;
+    if( ! gui_parseArgs( ut, bi, wclass, ledit_args, arg ) )
+        return 0;
 
-    ++arg;
-    if( arg != bi->end && ur_is(arg, UT_INT) )
+    if( ur_isShared( arg[0]->series.buf ) )
     {
-        maxChars = ur_int(arg);
-        ++arg;
+        ur_error( ut, UR_ERR_SCRIPT, "line-edit cannot modify shared string" );
+        return 0;
     }
+
+    if( arg[1] )
+        maxChars = ur_int(arg[1]);
 
     ep = (LineEdit*) gui_allocWidget( sizeof(LineEdit), wclass );
     ep->wid.flags |= CHANGED;
 
     //ep->state = LEDIT_STATE_DISPLAY;
-    ep->strN     = str->series.buf;
+    ep->strN     = arg[0]->series.buf;
     ep->maxChars = maxChars;
     ep->vboN     = ledit_vbo( ut, maxChars );
 
-    bi->it = arg;
     return (GWidget*) ep;
-
-bad_string:
-    ur_error( ut, UR_ERR_SCRIPT, "line-edit expected string!" );
-    return 0;
 }
 
 

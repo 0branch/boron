@@ -66,6 +66,18 @@ enum ContextIndexStyle
 };
 
 
+enum GUIArgumentOp
+{
+    GUIA_ARG,
+    GUIA_ARGM,
+    GUIA_ARGW,
+    GUIA_OPT,
+    GUIA_OPTM,
+    GUIA_ANY,
+    GUIA_END
+};
+
+
 #define ur_widgetPtr(c) ((UCellWidget*) (c))->wp
 
 typedef struct GWidget GWidget;
@@ -160,6 +172,8 @@ struct GWidget
 void gui_addWidgetClasses( GWidgetClass** classTable, int count );
 GWidgetClass* gui_widgetClass( UAtom name );
 int  gui_makeWidgets( UThread*, const UCell* blkC, GWidget* parent );
+int  gui_parseArgs( UThread*, UBlockIter*, const GWidgetClass*,
+                    const uint8_t* pc, const UCell** args );
 
 void gui_doBlock( UThread*, const UCell* );
 void gui_doBlockN( UThread*, UIndex );

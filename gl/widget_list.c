@@ -45,35 +45,32 @@ GList;
 #define EX_PTR  GList* ep = (GList*) wp
 
 
+static const uint8_t listw_args[] =
+{
+    GUIA_ARG,   UT_BLOCK,
+    GUIA_ARG,   UT_BLOCK,
+    GUIA_END
+};
+
 static GWidget* listw_make( UThread* ut, UBlockIter* bi,
                             const GWidgetClass* wclass )
 {
-    if( (bi->end - bi->it) > 2 )
-    {
-        GList* ep;
-        const UCell* arg = bi->it;
+    GList* ep;
+    const UCell* arg[2];
 
-        if( ! ur_is(arg + 1, UT_BLOCK) )
-            goto bad_arg;
-        if( ! ur_is(arg + 2, UT_BLOCK) )
-            goto bad_arg;
+    if( ! gui_parseArgs( ut, bi, wclass, listw_args, arg ) )
+        return 0;
 
-        ep = (GList*) gui_allocWidget( sizeof(GList), wclass );
+    ep = (GList*) gui_allocWidget( sizeof(GList), wclass );
 
-        ep->dp[0]      = ur_makeDrawProg( ut );
-        ep->selCol     = -1;
-        ep->selRow     = -1;
-        ep->itemHeight = 0;
-        ep->headerBlkN = arg[1].series.buf;
-        ep->dataBlkN   = arg[2].series.buf;
+    ep->dp[0]      = ur_makeDrawProg( ut );
+    ep->selCol     = -1;
+    ep->selRow     = -1;
+    ep->itemHeight = 0;
+    ep->headerBlkN = arg[0]->series.buf;
+    ep->dataBlkN   = arg[1]->series.buf;
 
-        bi->it += 3;
-        return (GWidget*) ep;
-    }
-
-bad_arg:
-    ur_error( ut, UR_ERR_SCRIPT, "list expected header and data blocks" );
-    return 0;
+    return (GWidget*) ep;
 }
 
 
