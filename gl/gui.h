@@ -171,7 +171,8 @@ struct GWidget
 
 void gui_addWidgetClasses( GWidgetClass** classTable, int count );
 GWidgetClass* gui_widgetClass( UAtom name );
-int  gui_makeWidgets( UThread*, const UCell* blkC, GWidget* parent );
+int  gui_makeWidgets( UThread*, const UCell* blkC, GWidget* parent,
+                      UCell* result );
 int  gui_parseArgs( UThread*, UBlockIter*, const GWidgetClass*,
                     const uint8_t* pc, const UCell** args );
 

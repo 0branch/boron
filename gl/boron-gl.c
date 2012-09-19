@@ -2271,7 +2271,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    64
+#define FA_COUNT    66
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -2279,6 +2279,7 @@ static void _createFixedAtoms( UThread* ut )
         "width height area rect raster texture\n"
         "gui-style value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
+        "parent child\n"
         "ambient diffuse specular pos shader vertex normal fragment\n"
         "default dynamic static stream left right center\n"
         "rgb rgba depth clamp nearest linear\n"

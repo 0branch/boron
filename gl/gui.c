@@ -651,10 +651,11 @@ static void ur_arrAppendPtr( UBuffer* arr, void* ptr )
 }
 
 
-static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent )
+static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
+                          UCell* res )
 {
     GWidgetClass* wclass;
-    GWidget* wp;
+    GWidget* wp = 0;
     const UCell* cell;
     const UCell* setWord = 0;
 
@@ -670,8 +671,29 @@ static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent )
             wclass = gui_widgetClass( ur_atom(bi->it) );
             if( ! wclass )
             {
-                return ur_error( ut, UR_ERR_SCRIPT, "unknown widget class '%s",
-                                 ur_wordCStr( bi->it ) );
+                if( ur_atom(bi->it) == UR_ATOM_PARENT )
+                {
+                    if( ++bi->it == bi->end )
+                    {
+                        return ur_error( ut, UR_ERR_SCRIPT,
+                                         "unexpected end of widget block" );
+                    }
+                    if( ur_is(bi->it, UT_WORD) )
+                    {
+                        if( ! (cell = ur_wordCell( ut, bi->it )) )
+                            return UR_THROW;
+                        if( ur_is(cell, UT_WIDGET) )
+                            parent = ur_widgetPtr(cell);
+                    }
+                    ++bi->it;
+                    continue;
+                }
+                else
+                {
+                    return ur_error( ut, UR_ERR_SCRIPT,
+                                     "unknown widget class '%s",
+                                     ur_wordCStr( bi->it ) );
+                }
             }
             wp = wclass->make( ut, bi, wclass );
             if( ! wp )
@@ -695,6 +717,19 @@ static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent )
         {
             return ur_error( ut, UR_ERR_TYPE,
                              "widget make expected name word! or set-word!" );
+        }
+    }
+
+    if( res )
+    {
+        if( wp )
+        {
+            ur_setId(res, UT_WIDGET);
+            ur_widgetPtr(res) = wp;
+        }
+        else
+        {
+            ur_setId(res, UT_NONE);
         }
     }
     return UR_OK;
@@ -732,7 +767,7 @@ static GWidget* root_make( UThread* ut, UBlockIter* bi,
         ++bi->it;
     }
 
-    if( ! _makeChildren( ut, bi, (GWidget*) ep ) )
+    if( ! _makeChildren( ut, bi, (GWidget*) ep, 0 ) )
         goto fail;
 
 #if 0
@@ -1075,7 +1110,7 @@ static GWidget* box_make( UThread* ut, UBlockIter* bi,
     if( arg[0] )
         setBoxMargins( ep, arg[0] );
 
-    if( ! gui_makeWidgets( ut, arg[1], (GWidget*) ep ) )
+    if( ! gui_makeWidgets( ut, arg[1], (GWidget*) ep, 0 ) )
     {
         wclass->free( (GWidget*) ep );
         return 0;
@@ -1464,7 +1499,7 @@ static GWidget* window_make( UThread* ut, UBlockIter* bi,
         ep->wid.eventCtxN = arg[1]->series.buf;
     }
 
-    if( gui_makeWidgets( ut, arg[2], (GWidget*) ep ) )
+    if( gui_makeWidgets( ut, arg[2], (GWidget*) ep, 0 ) )
         return (GWidget*) ep;
 
 fail:
@@ -1967,11 +2002,12 @@ GWidgetClass* gui_widgetClass( UAtom name )
 
   \return UR_OK/UR_THROW
 */
-int gui_makeWidgets( UThread* ut, const UCell* blkC, GWidget* parent )
+int gui_makeWidgets( UThread* ut, const UCell* blkC, GWidget* parent,
+                     UCell* result )
 {
     UBlockIter bi;
     ur_blkSlice( ut, &bi, blkC );
-    return _makeChildren( ut, &bi, parent );
+    return _makeChildren( ut, &bi, parent, result );
 }
 
 

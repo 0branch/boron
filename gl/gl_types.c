@@ -1402,15 +1402,9 @@ static int widget_make( UThread* ut, const UCell* from, UCell* res )
 {
     if( ur_is(from, UT_BLOCK) )
     {
-        int rcount = glEnv.rootWidgets.used;
-        if( ! gui_makeWidgets( ut, from, 0 ) )
+        if( ! gui_makeWidgets( ut, from, 0, res ) )
             return UR_THROW;
-        if( rcount < glEnv.rootWidgets.used )
-        {
-            ur_setId(res, UT_WIDGET);
-            ur_widgetPtr(res) = ((GWidget**) glEnv.rootWidgets.ptr.v)[rcount];
-            return UR_OK;
-        }
+        return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "widget make expected block" );
 }
