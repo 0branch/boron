@@ -608,4 +608,57 @@ CFUNC_PUB( cfunc_execute )
 #endif
 
 
+/*
+   nanosleep with interruption handling.
+*/
+static void _nsleep( const struct timespec* st )
+{
+    int rval;
+    struct timespec tv = *st;
+    do
+    {
+        rval = nanosleep( &tv, &tv );
+    }
+    while( (rval != 0) && (errno == EINTR) );
+}
+
+
+/*-cf-
+    sleep
+        time    int!/decimal!/time!
+    return: unset!
+
+    Delay for a number of seconds.
+*/
+CFUNC_PUB( cfunc_sleep )
+{
+    struct timespec stime;
+
+    switch( ur_type(a1) )
+    {
+        case UT_INT:
+            stime.tv_sec  = ur_int(a1);
+            stime.tv_nsec = 0;
+            break;
+
+        case UT_DECIMAL:
+        case UT_TIME:
+        {
+            double t = ur_decimal(a1);
+            stime.tv_sec  = (time_t) t;
+            stime.tv_nsec = (long) ((t - floor(t)) * 1000000000.0);
+        }
+            break;
+
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                             "sleep expected int!/decimal!/time!" );
+    }
+
+    _nsleep( &stime );
+    ur_setId(res, UT_UNSET);
+    return UR_OK;
+}
+
+
 /*EOF*/

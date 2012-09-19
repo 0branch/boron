@@ -827,6 +827,7 @@ extern CFUNC_PUB( cfunc_hostname );
 #ifdef CONFIG_EXECUTE
 extern CFUNC_PUB( cfunc_execute );
 #endif
+extern CFUNC_PUB( cfunc_sleep );
 
 
 /**
@@ -1061,6 +1062,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_serialize,  "serialize b" );
     addCFunc( cfunc_unserialize,"unserialize b" );
     addCFunc( cfunc_construct,  "construct s b" );
+    addCFunc( cfunc_sleep,      "sleep n" );
     addCFunc( cfunc_wait,       "wait b" );
     // CFUNC_TABLE_END
 #endif
@@ -1069,7 +1071,6 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_hostname,   "hostname p" );
 #endif
 #ifdef CONFIG_THREAD
-    addCFunc( cfunc_sleep,      "sleep n" );
     addCFunc( cfunc_thread,     "thread body /port" );
 #endif
 #ifdef CONFIG_CHECKSUM
