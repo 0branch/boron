@@ -1073,7 +1073,7 @@ static GWidget* box_make( UThread* ut, UBlockIter* bi,
     ep->spacing = 8;
 
     if( arg[0] )
-        setBoxMargins( ep, arg );
+        setBoxMargins( ep, arg[0] );
 
     if( ! gui_makeWidgets( ut, arg[1], (GWidget*) ep ) )
     {
