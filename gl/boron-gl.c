@@ -2257,6 +2257,21 @@ CFUNC( cfunc_draw )
 }
 
 
+CFUNC_PUB( cfunc_free );
+
+// Override Boron free.
+CFUNC( cfunc_freeGL )
+{
+    if( ur_is(a1, UT_WIDGET) )
+    {
+        gui_freeWidgetDefer( ur_widgetPtr( a1 ) );
+        ur_setId(res, UT_UNSET);
+        return UR_OK;
+    }
+    return cfunc_free( ut, a1, res );
+}
+
+
 static char _bootScript[] =
 #include "boot.c"
     ;
@@ -2461,6 +2476,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_project_point, "project-point a b pnt" );
     addCFunc( cfunc_set_matrix,  "set-matrix m q" );
 
+    boron_overrideCFunc( ut, "free", cfunc_freeGL );
 
     if( ! boron_doCStr( ut, _bootScript, sizeof(_bootScript) - 1 ) )
         return UR_THROW;

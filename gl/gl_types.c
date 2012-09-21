@@ -1470,13 +1470,21 @@ static void widget_recycle( UThread* ut, int phase )
 static void widget_mark( UThread* ut, UCell* cell )
 {
     GWidget* wp = ur_widgetPtr(cell);
-    wp = gui_root( wp );
-    if( wp && (wp->flags & GW_RECYCLE) )
+    if( wp->flags & GW_DESTRUCT )
     {
-        GMarkFunc func = wp->wclass->mark;
-        if( func )
-            func( ut, wp );
-        wp->flags &= ~GW_RECYCLE;
+        ur_setId(cell, UT_NONE);
+        ur_widgetPtr(cell) = 0;
+    }
+    else
+    {
+        wp = gui_root( wp );
+        if( wp && (wp->flags & GW_RECYCLE) )
+        {
+            GMarkFunc func = wp->wclass->mark;
+            if( func )
+                func( ut, wp );
+            wp->flags &= ~GW_RECYCLE;
+        }
     }
 }
 

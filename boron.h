@@ -105,6 +105,7 @@ extern "C" {
 UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount );
 void     boron_freeEnv( UThread* );
 void     boron_addCFunc( UThread*, BoronCFunc func, const char* sig );
+void     boron_overrideCFunc( UThread*, const char* name, BoronCFunc func );
 void     boron_addPortDevice( UThread*, const UPortDevice*, UAtom name );
 UBuffer* boron_makePort( UThread*, const UPortDevice*, void* ext, UCell* res );
 void     boron_setAccessFunc( UThread*, int (*func)( UThread*, const char* ) );

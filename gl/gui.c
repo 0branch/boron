@@ -121,6 +121,7 @@ void gui_freeWidget( GWidget* wp )
 {
     if( wp )
     {
+        //printf( "KR freeWidget %p\n", wp );
         gui_removeFocus( wp );
         _freeWidget( wp );
     }
@@ -791,6 +792,25 @@ static void root_mark( UThread* ut, GWidget* wp )
 }
 
 
+static void _removeFocus( GUIRoot* ui, GWidget* wp )
+{
+    GWidget* it;
+
+    if( ui->mouseFocus == wp )
+    {
+        ui->mouseFocus = 0;
+        if( ui->mouseGrabbed )
+            ui->mouseGrabbed = 0;
+    }
+    if( ui->keyFocus == wp )
+        ui->keyFocus = 0;
+
+    EACH_CHILD( wp, it )
+        _removeFocus( ui, it );
+    EACH_END
+}
+
+
 GWidgetClass wclass_root;
 #define isRoot(ui)      ((ui)->wid.wclass == &wclass_root)
 
@@ -798,16 +818,7 @@ static void gui_removeFocus( GWidget* wp )
 {
     GUIRoot* ui = (GUIRoot*) gui_root( wp );
     if( isRoot(ui) )
-    {
-        if( ui->mouseFocus == wp )
-        {
-            ui->mouseFocus = 0;
-            if( ui->mouseGrabbed )
-                ui->mouseGrabbed = 0;
-        }
-        if( ui->keyFocus == wp )
-            ui->keyFocus = 0;
-    }
+        _removeFocus( ui, wp );
 }
 
 
@@ -1864,6 +1875,26 @@ void gui_unlink( GWidget* wp )
                 break;
             }
         }
+    }
+}
+
+
+/*
+  Hide widget, remove it from any parent, and mark it to be freed on
+  the next recycle.
+*/
+void gui_freeWidgetDefer( GWidget* wp )
+{
+    // NOTE: widget_mark() will remove any references during recycle.
+    if( wp )
+    {
+        gui_removeFocus( wp );
+        if( wp->parent )
+        {
+            gui_unlink( wp );
+            ur_arrAppendPtr( &glEnv.rootWidgets, wp );
+        }
+        wp->flags |= GW_HIDDEN | GW_DISABLED | GW_DESTRUCT;
     }
 }
 

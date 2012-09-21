@@ -143,6 +143,7 @@ struct GWidgetClass
 #define GW_RECYCLE       0x0008
 #define GW_NO_SPACE      0x0010
 #define GW_NO_INPUT      0x0020
+#define GW_DESTRUCT      0x0040
 #define GW_FLAG_USER1    0x0100
 #define GW_FLAG_USER2    0x0200
 #define GW_FLAG_USER3    0x0400
@@ -181,6 +182,7 @@ void gui_doBlockN( UThread*, UIndex );
 
 GWidget* gui_allocWidget( int size, const GWidgetClass* );
 void     gui_freeWidget( GWidget* );
+void     gui_freeWidgetDefer( GWidget* );
 void     gui_appendChild( GWidget* parent, GWidget* child );
 void     gui_enable( GWidget*, int active );
 void     gui_show( GWidget*, int show );

@@ -4823,7 +4823,7 @@ CFUNC(cfunc_cpu_cycles)
 
     Clear series and free its memory buffer or close port.
 */
-CFUNC(cfunc_free)
+CFUNC_PUB(cfunc_free)
 {
     UBuffer* buf;
     int type = ur_type(a1);

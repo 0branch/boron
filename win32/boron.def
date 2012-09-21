@@ -157,3 +157,5 @@ EXPORTS
     find_pattern_ic_uint8_t @155
     find_pattern_uint16_t   @156
     find_pattern_ic_uint16_t    @157
+    boron_overrideCFunc     @158
+    cfunc_free              @159

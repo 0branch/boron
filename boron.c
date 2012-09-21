@@ -622,6 +622,19 @@ int boron_addCFuncS( UThread* ut, BoronCFunc* funcTable,
 #endif
 
 
+void boron_overrideCFunc( UThread* ut, const char* name, BoronCFunc func )
+{
+    UBuffer* ctx = ur_threadContext( ut );
+    int n = ur_ctxLookup( ctx, ur_internAtom( ut, name, name + strLen(name) ) );
+    if( n > -1 )
+    {
+        UCell* cell = ur_ctxCell( ctx, n );
+        if( ur_is(cell, UT_CFUNC) )
+            ur_funcFunc(cell) = func;
+    }
+}
+
+
 // OS_WORD should be the same as the uname operating system name.
 #if defined(__APPLE__)
 #define OS_WORD "Darwin"
