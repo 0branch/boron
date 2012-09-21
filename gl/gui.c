@@ -659,6 +659,7 @@ static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
     GWidget* wp = 0;
     const UCell* cell;
     const UCell* setWord = 0;
+    UAtom atom;
 
 
     while( bi->it != bi->end )
@@ -669,10 +670,11 @@ static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
         }
         else if( ur_is(bi->it, UT_WORD) )
         {
-            wclass = gui_widgetClass( ur_atom(bi->it) );
+            atom = ur_atom( bi->it );
+            wclass = gui_widgetClass( atom );
             if( ! wclass )
             {
-                if( ur_atom(bi->it) == UR_ATOM_PARENT )
+                if( atom == UR_ATOM_PARENT )
                 {
                     if( ++bi->it == bi->end )
                     {
@@ -685,6 +687,18 @@ static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
                             return UR_THROW;
                         if( ur_is(cell, UT_WIDGET) )
                             parent = ur_widgetPtr(cell);
+                    }
+                    ++bi->it;
+                    continue;
+                }
+                else if( atom == UR_ATOM_CENTER )
+                {
+                    if( wp && parent )
+                    {
+                        glEnv.guiStyle = gui_style( glEnv.guiUT );
+                        wp->wclass->layout( wp );
+                        gui_move( wp, (parent->area.w - wp->area.w) / 2,
+                                      (parent->area.h - wp->area.h) / 2 );
                     }
                     ++bi->it;
                     continue;
