@@ -900,30 +900,52 @@ CFUNC( cfunc_hide )
 /*-cf-
     move
         widget      widget!
-        position    coord!
+        position    coord!/widget!
         /center
     return: unset!
 */
 CFUNC( cfunc_move )
 {
+#define OPT_MOVE_CENTER  0x01
     UCell* a2 = a1 + 1;
+    GWidget* wp;
+    GRect* area = 0;
     int x, y;
-    (void) ut;
 
-    if( ur_is(a1, UT_WIDGET) && ur_is(a2, UT_COORD) )
+    if( ur_is(a1, UT_WIDGET) )
     {
-        GWidget* wp = ur_widgetPtr( a1 );
-        if( (CFUNC_OPTIONS & 1) && (a2->coord.len > 3) )
+        if( ur_is(a2, UT_WIDGET) )
         {
-            x = (a2->coord.n[2] - wp->area.w) / 2;
-            y = (a2->coord.n[3] - wp->area.h) / 2;
+            GWidget* aw = ur_widgetPtr( a2 );
+            area = &aw->area;
         }
-        else
+        else if( ur_is(a2, UT_COORD) )
         {
-            x = a2->coord.n[0];
-            y = a2->coord.n[1];
+            if( (CFUNC_OPTIONS & OPT_MOVE_CENTER) && (a2->coord.len < 4) )
+            {
+                return ur_error( ut, UR_ERR_SCRIPT,
+                                 "move/center coord! requires four elements" );
+            }
+            area = (GRect*) a2->coord.n;
         }
-        gui_move( wp, x, y );
+
+        if( area )
+        {
+            wp = ur_widgetPtr( a1 );
+            assert( sizeof(a2->coord.n[0]) == sizeof(wp->area.x) );
+
+            if( CFUNC_OPTIONS & OPT_MOVE_CENTER )
+            {
+                x = (area->w - wp->area.w) / 2;
+                y = (area->h - wp->area.h) / 2;
+            }
+            else
+            {
+                x = area->x;
+                y = area->y;
+            }
+            gui_move( wp, x, y );
+        }
     }
     ur_setId(res, UT_UNSET);
     return UR_OK;
@@ -2286,7 +2308,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    66
+#define FA_COUNT    67
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -2294,7 +2316,7 @@ static void _createFixedAtoms( UThread* ut )
         "width height area rect raster texture\n"
         "gui-style value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
-        "parent child\n"
+        "root parent child\n"
         "ambient diffuse specular pos shader vertex normal fragment\n"
         "default dynamic static stream left right center\n"
         "rgb rgba depth clamp nearest linear\n"

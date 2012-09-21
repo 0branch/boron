@@ -1410,6 +1410,32 @@ static int widget_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+static int widget_compare( UThread* ut, const UCell* a, const UCell* b,
+                           int test )
+{
+    (void) ut;
+    switch( test )
+    {
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ur_type(a) != ur_type(b) )
+                break;
+            // Fall through...
+
+        case UR_COMPARE_SAME:
+            if( ur_widgetPtr(a) == ur_widgetPtr(b) )
+                return 1;
+            break;
+
+        case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
+            // Could sort by depth in child hierarchy.
+            break;
+    }
+    return 0;
+}
+
+
 static const UCell*
 widget_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
 {
@@ -1417,6 +1443,25 @@ widget_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
     {
         GWidget* wp = ur_widgetPtr(cell);
         UAtom atom = ur_atom(sel);
+        if( atom == UR_ATOM_PARENT )
+        {
+            if( wp->parent )
+            {
+                ur_setId(res, UT_WIDGET);
+                ur_widgetPtr(res) = wp->parent;
+            }
+            else
+            {
+                ur_setId(res, UT_NONE);
+            }
+            return res;
+        }
+        else if( atom == UR_ATOM_ROOT )
+        {
+            ur_setId(res, UT_WIDGET);
+            ur_widgetPtr(res) = gui_root( wp );
+            return res;
+        }
         return wp->wclass->select( wp, atom, res ) ? res : 0;
     }
     ur_error( ut, UR_ERR_SCRIPT, "widget select expected word!" );
@@ -1561,7 +1606,7 @@ UDatatype gl_types[] =
   {
     "widget!",
     widget_make,            unset_make,             unset_copy,
-    unset_compare,          unset_operate,          widget_select,
+    widget_compare,         unset_operate,          widget_select,
     unset_toString,         unset_toText,
     widget_recycle,         widget_mark,            unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
