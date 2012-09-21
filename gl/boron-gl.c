@@ -2273,7 +2273,8 @@ CFUNC( cfunc_draw )
     }
     else if( ur_is(a1, UT_WIDGET) )
     {
-        //gui_render( &glEnv.gui, ur_int(tos) );
+        GWidget* wp = ur_widgetPtr(a1);
+        wp->wclass->render( wp );
     }
     return UR_OK;
 }

@@ -1052,6 +1052,17 @@ static void root_render( GWidget* wp )
 {
     GWidget* it;
 
+    if( wp->eventCtxN )
+    {
+        UThread* ut = glEnv.guiUT;
+        const UBuffer* ctx = ur_buffer( wp->eventCtxN );
+        const UCell* cell = ur_ctxCell( ctx, EI_DRAW );
+        if( ur_is(cell, UT_DRAWPROG) )
+        {
+            ur_runDrawProg( ut, cell->series.buf );
+        }
+    }
+
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->render( it );
     EACH_END
