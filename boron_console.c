@@ -58,7 +58,7 @@ void usage( const char* arg0 )
     printf( "Usage: %s [options] [script] [arguments]\n\n", arg0 );
     printf( "Options:\n"
 #ifdef BORON_GL
-            "  -audio  Disable audio\n"
+            "  -a      Disable audio\n"
 #endif
             "  -e exp  Evaluate expression\n"
             "  -h      Show this help and exit\n"
@@ -125,36 +125,41 @@ int main( int argc, char** argv )
             arg = argv[i];
             if( arg[0] == '-' )
             {
-                switch( arg[1] )
+                // Handle concatenated option characters.  This is useful for
+                // shell sha-bang invocation which may only pass one argument.
+                for( ++arg; *arg != '\0'; ++arg )
                 {
+                    switch( *arg )
+                    {
 #ifdef BORON_GL
-                    case 'a':
-                        setenv( "BORON_GL_AUDIO", "0", 1 );
-                        break;
+                        case 'a':
+                            setenv( "BORON_GL_AUDIO", "0", 1 );
+                            break;
 #endif
-                    case 'e':
-                        if( ++i >= argc )
-                            goto usage_err;
-                        fileN = -i;
-                        i = argc;
-                        break;
+                        case 'e':
+                            if( ++i >= argc )
+                                goto usage_err;
+                            fileN = -i;
+                            i = argc;
+                            break;
 
-                    case 'h':
-                        usage( argv[0] );
-                        return 0;
+                        case 'h':
+                            usage( argv[0] );
+                            return 0;
 
-                    case 'p':
-                        promptDisabled = 1;
-                        break;
+                        case 'p':
+                            promptDisabled = 1;
+                            break;
 
-                    case 's':
-                        secure = 0;
-                        break;
+                        case 's':
+                            secure = 0;
+                            break;
 
-                    default:
+                        default:
 usage_err:
-                        usage( argv[0] );
-                        return 64;      // EX_USAGE
+                            usage( argv[0] );
+                            return 64;      // EX_USAGE
+                    }
                 }
             }
             else
