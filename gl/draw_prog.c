@@ -3384,7 +3384,11 @@ dispatch:
                                    attr + 0, attr + 2, 5,
                                    bi.it, bi.end );
 
-                *pc = cc * 6;   // Change the following DP_DRAW_TRIS_I count.
+                // Change the following DP_DRAW_TRIS_I count.
+                if( (uint8_t) (ops >> 8) == DP_DRAW_TRIS_I )
+                    pc[0] = cc * 6;
+                else
+                    pc[1] = cc * 6;
 
                 glBufferSubData( GL_ARRAY_BUFFER, attrOffset, bytes, attr );
                 /*
