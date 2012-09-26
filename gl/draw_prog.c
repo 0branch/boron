@@ -1348,7 +1348,7 @@ static void dp_free( DPCompiler* gpc )
 }
 
 
-static void dp_tgeoInit( DPCompiler* emit )
+void dp_tgeoInit( DPCompiler* emit )
 {
     UBuffer* attr = &emit->tgeo.attr;
     if( ur_testAvail(attr) )
@@ -2689,6 +2689,8 @@ int ur_runDrawProg2( UThread* ut, DPState* ds, UIndex n )
     pc = dp_byteCode(ph); 
     ops = *pc++;
 
+    REPORT_2( "\ndraw_prog %d %d\n", n, *pc );
+
     while( 1 )
     {
 dispatch:
@@ -2703,9 +2705,11 @@ dispatch:
             break;
 
         case DP_END:
+            REPORT( "END\n" );
             return UR_OK;
 
         case DP_JMP:
+            REPORT_1( "JMP %d\n", *((int*) pc) );
             pc += *((int*) pc);
             ops = *pc++;
             goto dispatch;
@@ -2713,6 +2717,7 @@ dispatch:
         case DP_SWITCH:
         {
             uint16_t* sp = (uint16_t*) pc;
+            REPORT_2( "SWITCH %ld %d\n", pc - dp_byteCode(ph), *sp );
             pc += sp[ *sp ];
             ops = *pc++;
         }

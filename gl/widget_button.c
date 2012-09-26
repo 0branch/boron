@@ -274,6 +274,8 @@ static void button_sizeHint( GWidget* wp, GSizeHint* size )
 }
 
 
+void dp_tgeoInit( DPCompiler* );
+
 static void button_layout( GWidget* wp )
 {
     UCell* rc;
@@ -296,6 +298,11 @@ static void button_layout( GWidget* wp )
 
 
     // Compile draw lists.
+
+    // Make sure the tgeo vertex buffers are bound before the switch.
+    // Otherwise only the first case would emit the code to do it. 
+    // NOTE: This assumes the button draw programs actually use tgeo.
+    dp_tgeoInit( gDPC );
 
     ep->dpSwitch = dp_beginSwitch( gDPC, 2 );
 
