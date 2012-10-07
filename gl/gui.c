@@ -286,7 +286,7 @@ void widget_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
     (void) ut;
     (void) wp;
-    (void) ev;
+    gui_ignoreEvent( ev );
 }
 
 
@@ -1063,6 +1063,14 @@ static void root_render( GWidget* wp )
         }
     }
 
+    if( wp->flags & GW_UPDATE_LAYOUT )
+    {
+        wp->flags &= ~GW_UPDATE_LAYOUT;
+        EACH_SHOWN_CHILD( wp, it )
+            it->flags |= GW_UPDATE_LAYOUT;
+        EACH_END
+    }
+
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->render( it );
     EACH_END
@@ -1519,7 +1527,7 @@ static GWidget* window_make( UThread* ut, UBlockIter* bi,
 
     /* TODO: Support path?
     if( ur_sel(arg) == UR_ATOM_HBOX )
-        wp->flags |= WINDOW_HBOX;
+        ep->wid.flags |= WINDOW_HBOX;
     */
 
     if( arg[0] )
@@ -1698,6 +1706,98 @@ static void window_render( GWidget* wp )
 //----------------------------------------------------------------------------
 
 
+static const uint8_t overlay_args[] =
+{
+    GUIA_ARG,   UT_WORD,
+    GUIA_OPT,   UT_COORD,
+    GUIA_ARG,   UT_BLOCK,
+    GUIA_END
+};
+
+static GWidget* overlay_make( UThread* ut, UBlockIter* bi,
+                              const GWidgetClass* wclass )
+{
+    GWindow* ep;
+    const UCell* arg[ 3 ];
+
+    if( ! gui_parseArgs( ut, bi, wclass, overlay_args, arg ) )
+        return 0;
+
+    ep = (GWindow*) gui_allocWidget( sizeof(GWindow), wclass );
+
+    ep->dp[0] = ur_makeDrawProg( ut );
+
+    if( ur_wordCStr( arg[0] )[ 0 ] == 'h' )
+        ep->wid.flags |= WINDOW_HBOX;
+
+    if( arg[1] )
+        setBoxMargins( (Box*) ep, arg[1] );
+
+    if( gui_makeWidgets( ut, arg[2], (GWidget*) ep, 0 ) )
+        return (GWidget*) ep;
+
+    wclass->free( (GWidget*) ep );
+    return 0;
+}
+
+
+static void overlay_mark( UThread* ut, GWidget* wp )
+{
+    EX_PTR;
+
+    ur_markBuffer( ut, ep->dp[0] );
+    widget_markChildren( ut, wp );
+}
+
+
+static void overlay_layout( GWidget* wp )
+{
+    EX_PTR;
+    DPCompiler* save;
+    DPCompiler dpc;
+    UCell* rc;
+    UCell* style = glEnv.guiStyle;
+    UThread* ut = glEnv.guiUT;
+
+
+    save = ur_beginDP( &dpc );
+
+    rc = style + CI_STYLE_START_DL;
+    if( ur_is(rc, UT_BLOCK) )
+        ur_compileDP( ut, rc, 1 );
+
+    wp->area = wp->parent->area;
+
+    if( wp->flags & WINDOW_HBOX )
+        hbox_layout( wp );
+    else
+        vbox_layout( wp );
+
+    ur_endDP( ut, ur_buffer(ep->dp[0]), save );
+}
+
+
+static void overlay_render( GWidget* wp )
+{
+    EX_PTR;
+
+    if( ! (glEnv.guiStyle = gui_style( glEnv.guiUT )) )
+        return;
+
+    if( wp->flags & GW_UPDATE_LAYOUT )
+    {
+        wp->flags &= ~GW_UPDATE_LAYOUT;
+        overlay_layout( wp );
+    }
+
+    ur_runDrawProg( glEnv.guiUT, ep->dp[0] );
+    widget_renderChildren( wp );
+}
+
+
+//----------------------------------------------------------------------------
+
+
 GWidgetClass wclass_root =
 {
     "root",
@@ -1738,6 +1838,16 @@ GWidgetClass wclass_window =
 };
 
 
+GWidgetClass wclass_overlay =
+{
+    "overlay",
+    overlay_make,       widget_free,        overlay_mark,
+    widget_dispatch,    window_sizeHint,    overlay_layout,
+    overlay_render,     gui_areaSelect,
+    0, 0
+};
+
+
 GWidgetClass wclass_expand =
 {
     "expand",
@@ -1765,21 +1875,22 @@ extern GWidgetClass wclass_slider;
 
 void gui_addStdClasses()
 {
-    GWidgetClass* classes[ 11 ];
+    GWidgetClass* classes[ 12 ];
 
     classes[0]  = &wclass_root;
     classes[1]  = &wclass_expand;
     classes[2]  = &wclass_hbox;
     classes[3]  = &wclass_vbox;
     classes[4]  = &wclass_window;
-    classes[5]  = &wclass_button;
-    classes[6]  = &wclass_checkbox;
-    classes[7]  = &wclass_label;
-    classes[8]  = &wclass_lineedit;
-    classes[9]  = &wclass_list;
-    classes[10] = &wclass_slider;
+    classes[5]  = &wclass_overlay;
+    classes[6]  = &wclass_button;
+    classes[7]  = &wclass_checkbox;
+    classes[8]  = &wclass_label;
+    classes[9]  = &wclass_lineedit;
+    classes[10] = &wclass_list;
+    classes[11] = &wclass_slider;
 
-    gui_addWidgetClasses( classes, 11 );
+    gui_addWidgetClasses( classes, 12 );
 }
 
 
@@ -1794,7 +1905,8 @@ UIndex gui_parentDrawProg( GWidget* wp )
     while( wp->parent )
     {
         wp = wp->parent;
-        if( wp->wclass == &wclass_window )
+        if( wp->wclass == &wclass_window ||
+            wp->wclass == &wclass_overlay )
             return ((GWindow*) wp)->dp[0];
     }
     return UR_INVALID_BUF;
