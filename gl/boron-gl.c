@@ -1639,6 +1639,35 @@ CFUNC( cfunc_blit )
 }
 
 
+UBuffer* makeDistanceField( UThread* ut, const RasterHead* src,
+                            int (*inside)( uint8_t*, void* ), void* user,
+                            double scale, UCell* res );
+
+static int _insideMask( uint8_t* pix, void* user )
+{
+    uint32_t img = pix[0] << 16 | pix[1] << 8 | pix[2];
+    uint32_t mask = *((uint32_t*) user);
+    return img != mask;
+}
+
+/*-cf-
+    make-sdf
+        src     raster!
+        mask    int!
+        scale   decimal!
+    return: New signed distance field raster.
+    group: data
+*/
+CFUNC( cfunc_make_sdf )
+{
+    uint32_t mask = ur_int(a1 + 1);
+    const UCell* scale = a1 + 2;
+    makeDistanceField( ut, ur_rastHead(a1), _insideMask, &mask,
+                       ur_decimal(scale), res );
+    return UR_OK;
+}
+
+
 /*-cf-
     move-glyphs
         font    font!
@@ -2485,6 +2514,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_point_in,    "point-in a pnt" );
     addCFunc( cfunc_pick_point,  "pick-point a c pnt pos" );
     addCFunc( cfunc_change_vbo,  "change-vbo a b n" );
+    addCFunc( cfunc_make_sdf,    "make-sdf rast raster! m int! b decimal!" );
     addCFunc( uc_gl_extensions,  "gl-extensions" );
     addCFunc( uc_gl_version,     "gl-version" );
     addCFunc( uc_gl_max_textures,"gl-max-textures" );

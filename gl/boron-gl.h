@@ -167,7 +167,7 @@ UIndex ur_makeVbo( UThread*, GLenum attrUsage, int acount, float* attr,
                    int icount, uint16_t* indices );
 
 
-#define ur_rasterElements(rh)       (((char*) rh) + sizeof(RasterHead))
+#define ur_rasterElements(rh)       (((uint8_t*) rh) + sizeof(RasterHead))
 #define ur_rasterBytesPerRow(rh)    rh->bytesPerRow
 
 #define ur_rastHead(c)      ((const RasterHead*) ur_bufferSer(c)->ptr.v)
