@@ -1,5 +1,5 @@
 /*
-  Copyright 2005-2011 Karl Robillard
+  Copyright 2005-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -386,10 +386,34 @@ static const float* _cellToVec( const UCell* cell, float* tmp )
     {
         tmp[0] = (float) cell->coord.n[0];
         tmp[1] = (float) cell->coord.n[1];
-        tmp[2] = (float) cell->coord.n[2];
+        tmp[2] = (cell->coord.len > 2) ? (float) cell->coord.n[2] : 0.0f;
         return tmp;
     }
     return 0;
+}
+
+
+/*-cf-
+    distance
+        a   coord!/vec3!
+        b   coord!/vec3!
+    return: Distance between points.
+    group: math
+*/
+CFUNC( cfunc_distance )
+{
+    float tmp[6];
+    const float* va;
+    const float* vb;
+
+    if( (va = _cellToVec( a1, tmp )) &&
+        (vb = _cellToVec( a1 + 1, tmp + 3 )) )
+    {
+        ur_setId(res, UT_DECIMAL);
+        ur_decimal(res) = (double) ur_distance( va, vb );
+        return UR_OK;
+    }
+    return ur_error( ut, UR_ERR_TYPE, "distance expected coord!/vec3!" );
 }
 
 

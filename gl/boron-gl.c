@@ -1,6 +1,6 @@
 /*
   Boron OpenGL Module
-  Copyright 2005-2011 Karl Robillard
+  Copyright 2005-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -2523,6 +2523,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     //addCFunc( uc_perlin,         "perlin" );
     */
     addCFunc( cfunc_shadowmap,   "shadowmap size" );
+    addCFunc( cfunc_distance,    "distance a b" );
     addCFunc( cfunc_dot,         "dot a b" );
     addCFunc( cfunc_cross,       "cross a b" );
     addCFunc( cfunc_normalize,   "normalize vec" );
