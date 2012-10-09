@@ -1999,8 +1999,7 @@ void gui_unlink( GWidget* wp )
     GWidget* parent = wp->parent;
     if( parent )
     {
-        wp->parent = 0;
-        prev = 0;
+        wp->parent = prev = 0;
         for( it = parent->child; it; it = it->next )
         {
             if( it == wp )
@@ -2011,6 +2010,7 @@ void gui_unlink( GWidget* wp )
                     parent->child = wp->next;
                 break;
             }
+            prev = it;
         }
     }
 }
