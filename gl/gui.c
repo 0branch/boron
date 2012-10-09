@@ -45,6 +45,7 @@
 
 extern void block_markBuf( UThread* ut, UBuffer* buf );
 extern int boron_doVoid( UThread* ut, const UCell* blkC );
+//void gui_dumpWidget( const GWidget* wp, int indent );
 
 
 //#define REPORT_LAYOUT   1
@@ -762,6 +763,8 @@ typedef struct
     GWidget  wid;
     GWidget* keyFocus;
     GWidget* mouseFocus;
+    GLViewEvent lastMotion;
+    char     motionTracking;
 }
 GUIRoot;
 
@@ -772,6 +775,8 @@ static GWidget* root_make( UThread* ut, UBlockIter* bi,
     GUIRoot* ep = (GUIRoot*) gui_allocWidget( sizeof(GUIRoot), wclass );
     ep->keyFocus = ep->mouseFocus = 0;
     ep->mouseGrabbed = 0;
+    ep->lastMotion.type = 0;
+    ep->motionTracking = 0;
 
     if( ++bi->it == bi->end )
         goto done;
@@ -854,7 +859,7 @@ static void gui_setMouseFocus( GUIRoot* ui, GWidget* wp )
         sendFocusEvent( ui->mouseFocus, GLV_EVENT_FOCUS_OUT );
         ui->mouseFocus = wp;
         sendFocusEvent( wp, GLV_EVENT_FOCUS_IN );
-        //printf( "KR focus %s\n", wp ? wp->wclass->name : "NUL" );
+        //printf( "KR mouse focus %s\n", wp ? wp->wclass->name : "NUL" );
     }
 }
 
@@ -916,24 +921,34 @@ int gui_hasFocus( GWidget* wp )
   Returns child of wp under event x,y or zero if no active child contains
   the point.
 */
-static GWidget* activeChildAt( GWidget* wp, const GLViewEvent* ev )
+static GWidget* activeChildAt( GWidget* wp, const GLViewEvent* ev,
+                               int childrenOverlap )
 {
     GWidget* it;
-    EACH_SHOWN_CHILD( wp, it )
+    GWidget* top = 0;
+
+    EACH_CHILD( wp, it )
+        // If a widget is disabled so are all it's children.
+        if( it->flags & (GW_HIDDEN | GW_DISABLED) )
+            continue;
         if( gui_widgetContains( it, ev->x, ev->y ) )
         {
-            // If a widget is disabled so are all it's children.
-            if( it->flags & GW_DISABLED )
-                break;
-            wp = activeChildAt( it, ev );
-            if( wp && ! IGNORES_INPUT(wp) )
-                return wp;
-            if( IGNORES_INPUT(it) )
-                break;
-            return it;
+            top = it;
+            if( ! childrenOverlap )
+                goto found;
         }
     EACH_END
-    return 0;
+
+    if( top )
+    {
+found:
+        wp = activeChildAt( top, ev, 0 );
+        if( wp && ! IGNORES_INPUT(wp) )
+            return wp;
+        if( IGNORES_INPUT(top) )
+            top = 0;
+    }
+    return top;
 }
 
 
@@ -961,46 +976,58 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
         //case GLV_EVENT_CLOSE:
 
         case GLV_EVENT_BUTTON_DOWN:
+            ++ep->motionTracking;
+            if( ep->lastMotion.type == GLV_EVENT_MOTION )
+            {
+                cw = activeChildAt( wp, &ep->lastMotion, 1 );
+                gui_setMouseFocus( ep, cw );
+                ep->lastMotion.type = 0;
+            }
+            if( (cw = ep->mouseFocus) )
+                goto dispatch_used;
+            break;
+
         case GLV_EVENT_BUTTON_UP:
+            --ep->motionTracking;
+            // Fall through...
+
         case GLV_EVENT_WHEEL:
             if( (cw = ep->mouseFocus) )
                 goto dispatch_used;
             break;
 
         case GLV_EVENT_MOTION:
-            if( (cw = ep->mouseFocus) )
+            if( ep->mouseGrabbed && (cw = ep->mouseFocus) )
+                goto dispatch;
+            if( ! ep->motionTracking )
             {
-                if( ep->mouseGrabbed )
-                    goto dispatch;
-                if( gui_widgetContains( cw, ev->x, ev->y ) )
-                {
-                    GWidget* cw2 = activeChildAt( cw, ev );
-                    if( cw2 )
-                    {
-                        gui_setMouseFocus( ep, cw2 );
-                        cw = cw2;
-                    }
-                    goto dispatch_used;
-                }
+                ep->lastMotion = *ev;
+                return;
             }
-
-            cw = activeChildAt( wp, ev );
+            /*
+            cw = activeChildAt( wp, ev, 1 );
             gui_setMouseFocus( ep, cw );
             if( cw )
                 goto dispatch_used;
+            */
             break;
 
         case GLV_EVENT_KEY_DOWN:
+#if 0
+            if( ev->code == XK_Find )
+                gui_dumpWidget( wp, 0 );
+#endif
         case GLV_EVENT_KEY_UP:
             if( (cw = ep->keyFocus) )
                 goto dispatch_used;
             break;
 
         case GLV_EVENT_FOCUS_IN:
-            ep->mouseFocus = activeChildAt( wp, ev );
+            ep->mouseFocus = activeChildAt( wp, ev, 1 );
             // Fall through...
 
         case GLV_EVENT_FOCUS_OUT:
+            ep->motionTracking = 0;
             cw = ep->mouseFocus;
             if( cw )
                 goto dispatch;
