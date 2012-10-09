@@ -1,6 +1,6 @@
 /*
   Boron OpenGL GUI
-  Copyright 2011 Karl Robillard
+  Copyright 2011-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -180,6 +180,21 @@ static void ledit_paste( UThread* ut, LineEdit* wd )
 }
 
 
+static void ledit_setState( UThread* ut, LineEdit* ep, int state )
+{
+    if( ep->state != state )
+    {
+        ep->state = state;
+        if( ep->dpSwitch )
+        {
+            UIndex resN = gui_parentDrawProg( &ep->wid );
+            if( resN != UR_INVALID_BUF )
+                ur_setDPSwitch( ut, resN, ep->dpSwitch, state );
+        }
+    }
+}
+
+
 static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
     EX_PTR;
@@ -191,7 +206,7 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             if( (ev->code == GLV_BUTTON_LEFT) ||
                 (ev->code == GLV_BUTTON_MIDDLE) )
             {
-                ep->state = LEDIT_STATE_EDIT;
+                ledit_setState( ut, ep, LEDIT_STATE_EDIT );
                 gui_setKeyFocus( wp );
 
                 if( ev->code == GLV_BUTTON_LEFT )
@@ -324,7 +339,10 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             break;
 
         case GLV_EVENT_FOCUS_IN:
+            break;
+
         case GLV_EVENT_FOCUS_OUT:
+            ledit_setState( ut, ep, LEDIT_STATE_DISPLAY );
             break;
     }
     return;
@@ -377,6 +395,8 @@ static void ledit_sizeHint( GWidget* wp, GSizeHint* size )
 }
 
 
+void dp_tgeoInit( DPCompiler* );
+
 static void ledit_layout( GWidget* wp )
 {
     UCell* style = glEnv.guiStyle;
@@ -399,6 +419,11 @@ static void ledit_layout( GWidget* wp )
 
     if( ! gDPC )
         return;
+
+    // Make sure the tgeo vertex buffers are bound before the switch.
+    // Otherwise only the first case would emit the code to do it. 
+    // NOTE: This assumes the button draw programs actually use tgeo.
+    dp_tgeoInit( gDPC );
 
     ep->dpSwitch = dp_beginSwitch( gDPC, 2 );
 
