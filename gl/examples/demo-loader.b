@@ -15,14 +15,59 @@ clear-color 0.1,0.3,0.8
 
 zoom: 1.0
 
+controls: context [
+    con: none
+    value:
+    vinc: 0.0
+
+    set 'demo-controls func [blk] [con: blk link]
+
+    link: does [
+        value: do pick con 4
+        vinc:  div sub third con second con 20.0
+        print [first con value]
+    ]
+    adj: func [inc] [
+        value: limit add value inc second con third con
+        assign
+    ]
+    assign: does [
+        set pick con 4 value
+        print [first con value]
+    ]
+
+    next: does [if con [con: skip/wrap con 4 link]]
+    inc:  does [if con [adj vinc]]
+    dec:  does [if con [adj negate vinc]]
+    min:  does [if con [value: second con assign]]
+    max:  does [if con [value: third  con assign]]
+
+    report: does [
+        if con [
+            print "Controls:"
+            foreach [name a b path] head con [
+                print ["  " name do path]
+            ]
+        ]
+    ]
+]
+
 demo-window: [
     root [
         close: [quit]
         key-down: [
-            esc [quit]
-            r   [recycle]
-            f9  [throw 'reload]
-            f10 [
+            esc  [quit]
+
+            tab  [controls/next]
+            up   [controls/inc]
+            down [controls/dec]
+            home [controls/min]
+            end  [controls/max]
+            c    [controls/report]
+
+            r    [recycle]
+            f9   [throw 'reload]
+            f10  [
                 save-png %snapshot.png display-snapshot
                 print "Saved snapshot.png"
             ]
