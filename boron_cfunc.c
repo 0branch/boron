@@ -412,7 +412,7 @@ CFUNC(cfunc_do)
 
 /*-cf-
     set
-        words   word!/lit-word!/block!
+        words   word!/lit-word!/block!/path!
         values
     return: unset!
     group: data
@@ -428,8 +428,11 @@ CFUNC(cfunc_set)
         if( ! (cell = ur_wordCellM(ut, a1)) )
             return UR_THROW;
         *cell = *a2;
-        ur_setId(res, UT_UNSET);
-        return UR_OK;
+    }
+    else if( ur_is(a1, UT_PATH) )
+    {
+        if( ! ur_setPath( ut, a1, a2 ) )
+            return UR_THROW;
     }
     else if( ur_is(a1, UT_BLOCK) )
     {
@@ -464,10 +467,13 @@ CFUNC(cfunc_set)
                 }
             }
         }
-        ur_setId(res, UT_UNSET);
-        return UR_OK;
     }
-    return ur_error( ut, UR_ERR_TYPE, "set expected word!/block!" );
+    else
+    {
+        return ur_error( ut, UR_ERR_TYPE, "set expected word!/block!/path!" );
+    }
+    ur_setId(res, UT_UNSET);
+    return UR_OK;
 }
 
 
