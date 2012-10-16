@@ -241,6 +241,7 @@ typedef struct
     const void* pixels;
     int    width;
     int    height;
+    int    mipmap;
     GLenum format;
     GLint  comp;
     GLint  wrap;
@@ -312,6 +313,71 @@ static void _texCoord( TextureDef* tex, const UCell* cell )
 }
 
 
+static int _textureKeyword( UAtom name, TextureDef* def )
+{
+    switch( name )
+    {
+        case UR_ATOM_CLAMP:
+            def->wrap = GL_CLAMP;
+            break;
+
+        case UR_ATOM_REPEAT:
+            def->wrap = GL_REPEAT;
+            break;
+
+        case UR_ATOM_NEAREST:
+            def->min_filter = GL_NEAREST;
+            def->mag_filter = GL_NEAREST;
+            break;
+
+        case UR_ATOM_LINEAR:
+            def->min_filter = GL_LINEAR;
+            def->mag_filter = GL_LINEAR;
+            break;
+
+        case UR_ATOM_MIPMAP:
+            def->mipmap = 1;
+            break;
+
+        case UR_ATOM_GRAY:
+            def->comp   = 1;
+            def->format = GL_LUMINANCE;
+            break;
+
+        case UR_ATOM_RGB:
+            def->comp   = 3;
+            def->format = GL_RGB;
+            break;
+
+        case UR_ATOM_RGBA:
+            def->comp   = 4;
+            def->format = GL_RGBA;
+            break;
+
+        case UR_ATOM_F32:
+            switch( def->comp )
+            {
+                case 1:
+                    def->comp = GL_LUMINANCE32F_ARB;
+                    break;
+                case 3:
+                    def->comp = GL_RGB32F_ARB;
+                    //def.comp = GL_RGB16F_ARB;
+                    break;
+                case 4:
+                    def->comp = GL_RGBA32F_ARB;
+                    //def.comp = GL_RGBA16F_ARB;
+                    break;
+            }
+            break;
+
+        default:
+            return 0;
+    }
+    return 1;
+}
+
+
 /*
   texture! raster
   texture! coord   ; 2D Texture
@@ -327,11 +393,11 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
     TextureDef def;
     GLuint name;
     GLenum type = GL_UNSIGNED_BYTE;
-    int mipmap = 0;
     UIndex rastN = 0;
     GLenum target = GL_TEXTURE_2D;
 
 
+    def.mipmap     = 0;
     def.wrap       = GL_REPEAT;
     def.min_filter = GL_NEAREST_MIPMAP_LINEAR;
     def.mag_filter = GL_LINEAR;
@@ -366,6 +432,8 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
             switch( ur_type(bi.it) )
             {
                 case UT_WORD:
+                    if( _textureKeyword( ur_atom(bi.it), &def ) )
+                        break;
                     val = ur_wordCell( ut, bi.it );
                     if( ! val )
                         return UR_THROW;
@@ -404,61 +472,10 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
                     break;
 
                 case UT_LITWORD:
-                    switch( ur_atom( bi.it ) )
+                    if( ! _textureKeyword( ur_atom(bi.it), &def ) )
                     {
-                        case UR_ATOM_CLAMP:
-                            def.wrap = GL_CLAMP;
-                            break;
-
-                        case UR_ATOM_REPEAT:
-                            def.wrap = GL_REPEAT;
-                            break;
-
-                        case UR_ATOM_NEAREST:
-                            def.min_filter = GL_NEAREST;
-                            def.mag_filter = GL_NEAREST;
-                            break;
-
-                        case UR_ATOM_LINEAR:
-                            def.min_filter = GL_LINEAR;
-                            def.mag_filter = GL_LINEAR;
-                            break;
-
-                        case UR_ATOM_MIPMAP:
-                            mipmap = 1;
-                            break;
-
-                        case UR_ATOM_GRAY:
-                            def.comp   = 1;
-                            def.format = GL_LUMINANCE;
-                            break;
-
-                        case UR_ATOM_RGB:
-                            def.comp   = 3;
-                            def.format = GL_RGB;
-                            break;
-
-                        case UR_ATOM_RGBA:
-                            def.comp   = 4;
-                            def.format = GL_RGBA;
-                            break;
-
-                        case UR_ATOM_F32:
-                            switch( def.comp )
-                            {
-                                case 1:
-                                    def.comp = GL_LUMINANCE32F_ARB;
-                                    break;
-                                case 3:
-                                    def.comp = GL_RGB32F_ARB;
-                                    //def.comp = GL_RGB16F_ARB;
-                                    break;
-                                case 4:
-                                    def.comp = GL_RGBA32F_ARB;
-                                    //def.comp = GL_RGBA16F_ARB;
-                                    break;
-                            }
-                            break;
+                        return ur_error( ut, UR_ERR_TYPE,
+                                         "Invalid texture! keyword" );
                     }
                     break;
 
@@ -489,7 +506,7 @@ build:
 
     if( target == GL_TEXTURE_2D )
     {
-        if( mipmap )
+        if( def.mipmap )
         {
             gluBuild2DMipmaps( GL_TEXTURE_2D, def.comp, def.width, def.height,
                                def.format, type, def.pixels );
@@ -508,7 +525,7 @@ build:
     }
     else
     {
-        if( mipmap )
+        if( def.mipmap )
         {
             gluBuild1DMipmaps( GL_TEXTURE_1D, def.comp, def.width,
                                def.format, type, def.pixels );
