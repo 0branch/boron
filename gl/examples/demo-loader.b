@@ -18,53 +18,59 @@ zoom: 1.0
 controls: context [
     con: none
     value:
-    vinc: 0.0
+    vmin: vmax: vinc: 0.0
 
     set 'demo-controls func [blk] [con: blk link]
 
     link: does [
-        value: do pick con 4
-        vinc:  div sub third con second con 20.0
+        value: do third con
+        tmp: second con
+        vmin: first  tmp
+        vmax: second tmp
+        vinc: third  tmp
         print [first con value]
     ]
     adj: func [inc] [
-        value: limit add value inc second con third con
+        value: limit add value inc vmin vmax
         assign
     ]
     assign: does [
-        set pick con 4 value
+        set third con value
         print [first con value]
     ]
 
-    next: does [if con [con: skip/wrap con 4 link]]
+    prev: does [if con [con: skip/wrap con -3 link]]
+    next: does [if con [con: skip/wrap con  3 link]]
     inc:  does [if con [adj vinc]]
     dec:  does [if con [adj negate vinc]]
-    min:  does [if con [value: second con assign]]
-    max:  does [if con [value: third  con assign]]
+    min:  does [if con [value: vmin assign]]
+    max:  does [if con [value: vmax assign]]
 
     report: does [
         if con [
             print "Controls:"
-            foreach [name a b path] head con [
+            foreach [name range path] head con [
                 print ["  " name do path]
             ]
         ]
+    ]
+
+    keys: [
+        left  [dec]
+        right [inc]
+        up    [prev]
+        down  [next]
+        home  [min]
+        end   [max]
+        c     [report]
     ]
 ]
 
 demo-window: [
     root [
         close: [quit]
-        key-down: [
+        key-down: append copy controls/keys [
             esc  [quit]
-
-            tab  [controls/next]
-            up   [controls/inc]
-            down [controls/dec]
-            home [controls/min]
-            end  [controls/max]
-            c    [controls/report]
-
             r    [recycle]
             f9   [throw 'reload]
             f10  [
