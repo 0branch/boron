@@ -1775,7 +1775,8 @@ static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
 /*
   http://www.opengl.org/wiki/GluProject_and_gluUnProject_code
 */
-static int projectPoint( const float* pnt, const Camera* cam, float* windowPos )
+static int projectPoint( const float* pnt, const Camera* cam, float* windowPos,
+                         int dropNear )
 {
     float tmp[7];
     float w;
@@ -1798,9 +1799,16 @@ static int projectPoint( const float* pnt, const Camera* cam, float* windowPos )
     w = -tmp[2];    // Last row of projection matrix is always [0 0 -1 0].
 
     // Do perspective division to normalize between -1 and 1.
-    //if( w == 0.0 )
-    if( w < cam->near )
+    if( w == 0.0 )
         return 0;
+    if( w < cam->near )
+    {
+        if( dropNear )
+            return 0;
+        if( w < 0.0 )
+            w = -w;
+    }
+
     w = 1.0 / w;
     tmp[4] *= w;
     tmp[5] *= w;
@@ -1880,7 +1888,7 @@ bad_camera:
 
         for( si.end -= 2; si.it < si.end; si.it += stride )
         {
-            if( ! projectPoint( vpnt + si.it, &cam, pnt ) )
+            if( ! projectPoint( vpnt + si.it, &cam, pnt, 1 ) )
                 continue;
             //printf( "KR point %d %f,%f\n", si.it, pnt[0], pnt[1] );
 
@@ -1911,6 +1919,59 @@ bad_vector:
         ur_setId(res, UT_NONE);
     }
     return UR_OK;
+}
+
+
+/*-cf-
+    project-point
+        pnt vec3!
+        a   vec3!/context!
+        b   vec3!
+    return: Point projected onto line or screen.
+    group: math
+
+    To project the point onto a line pass vec3! end points for a and b.
+
+    If 'a is a camera context! then the point will be projected onto the
+    camera's viewport.
+*/
+CFUNC( cfunc_project_point )
+{
+    const UCell* a = a1 + 1;
+    const UCell* b = a1 + 2;
+    float* rp = res->vec3.xyz;
+
+    // TODO: Support projection onto plane (a: vec3! b: decimal!)
+
+    if( ! ur_is(a1, UT_VEC3) )
+    {
+        return ur_error( ut, UR_ERR_TYPE,
+                         "project-point expected vec3! point" );
+    }
+
+    ur_setId(res, UT_VEC3);
+
+    if( ur_is(a, UT_VEC3) && ur_is(b, UT_VEC3) )
+    {
+        const float* pnt = a1->vec3.xyz;
+        ur_lineToPoint( a->vec3.xyz, b->vec3.xyz, pnt, rp );
+        rp[0] = pnt[0] - rp[0];
+        rp[1] = pnt[1] - rp[1];
+        rp[2] = pnt[2] - rp[2];
+        return UR_OK;
+    }
+    else if( ur_is(a, UT_CONTEXT) )
+    {
+        Camera cam;
+        if( cameraData( ut, ur_bufferSer( a ), &cam ) )
+        {
+            if( ! projectPoint( a1->vec3.xyz, &cam, rp, 0 ) )
+                rp[0] = rp[1] = rp[2] = -1.0f;
+            return UR_OK;
+        }
+    }
+    return ur_error( ut, UR_ERR_TYPE,
+                     "project-point expexted line vec3! or camera context!" );
 }
 
 
@@ -2527,7 +2588,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_dot,         "dot a b" );
     addCFunc( cfunc_cross,       "cross a b" );
     addCFunc( cfunc_normalize,   "normalize vec" );
-    addCFunc( cfunc_project_point, "project-point a b pnt" );
+    addCFunc( cfunc_project_point, "project-point pnt a b" );
     addCFunc( cfunc_set_matrix,  "set-matrix m q" );
 
     boron_overrideCFunc( ut, "free", cfunc_freeGL );

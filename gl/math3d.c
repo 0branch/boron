@@ -487,34 +487,6 @@ CFUNC( cfunc_normalize )
 }
 
 
-/*-cf-
-    project-point
-        a   vec3!
-        b   vec3!
-        pnt vec3!
-    return: Point projected onto line a-b.
-    group: math
-*/
-CFUNC( cfunc_project_point )
-{
-    const UCell* b = a1 + 1;
-
-    if( ur_is(a1, UT_VEC3) && ur_is(b, UT_VEC3) && ur_is(a1+2, UT_VEC3) )
-    {
-        const float* pnt = a1[2].vec3.xyz;
-        float* rp = res->vec3.xyz;
-
-        ur_setId(res, UT_VEC3);
-        ur_lineToPoint( a1->vec3.xyz, b->vec3.xyz, pnt, rp );
-        rp[0] = pnt[0] - rp[0];
-        rp[1] = pnt[1] - rp[1];
-        rp[2] = pnt[2] - rp[2];
-        return UR_OK;
-    }
-    return ur_error( ut, UR_ERR_TYPE, "project-point expected vec3!" );
-}
-
-
 #if 0
 /*_cf-
     set-stride
