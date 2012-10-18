@@ -352,19 +352,61 @@ static int areaUpdate( GWidget* wp, GRect* rect )
 
 extern CFUNC_PUB(cfunc_key_code);
 
-void gui_remapKeys( UThread* ut, const UCell* cell )
+#define keyModMask     number.id._pad0
+#define KEY_MOD_COUNT  3
+
+static uint16_t glvModifierMask[ KEY_MOD_COUNT ] =
+{
+    GLV_MASK_ALT,
+    GLV_MASK_CTRL,
+    GLV_MASK_SHIFT
+};
+
+static void _remapKeys( UThread* ut, const UCell* cell, const UAtom* modAtom )
 {
     if( ur_is(cell, UT_BLOCK) && (! ur_isShared(cell->series.buf)) )
     {
         UBlockIterM bi;
+        UCell* out;
+        int i;
+        int mod = 0;
+
         ur_blkSliceM( ut, &bi, cell );
+        out = bi.it;
+
         ur_foreach( bi )
         {
-            // Skip code blocks and previously mapped keys (ints).
             if( ur_is(bi.it, UT_BLOCK) || ur_is(bi.it, UT_INT) )
+            {
+                // Skip code blocks and previously mapped keys (ints).
+                if( bi.it != out )
+                    *out = *bi.it;
+                ++out;
                 continue;
-            cfunc_key_code( ut, bi.it, bi.it );
+            }
+
+            if( ur_is(bi.it, UT_WORD) )
+            {
+                UAtom atom = ur_atom(bi.it);
+                for( i = 0; i < KEY_MOD_COUNT; ++i )
+                {
+                    if( atom == modAtom[i] )
+                    {
+                        mod |= glvModifierMask[i];
+                        break;
+                    }
+                }
+                if( i != KEY_MOD_COUNT )
+                    continue;
+            }
+
+            cfunc_key_code( ut, bi.it, out );
+            out->keyModMask = mod;
+            //printf( "KR code %5d mod 0x%x\n", ur_int(out), mod );
+            mod = 0;
+            ++out;
         }
+        bi.buf->used = out - bi.buf->ptr.cell;
     }
 }
 
@@ -433,7 +475,7 @@ enum EventContextIndex
 
 static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC )
 {
-    UAtom atoms[ EI_COUNT ];
+    UAtom atoms[ EI_COUNT + KEY_MOD_COUNT ];
     UBuffer* blk;
     UBuffer* ctx;
     int i;
@@ -441,7 +483,8 @@ static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC )
 
     ur_internAtoms( ut, "event key-down key-up\n"
                     "mouse-move mouse-down mouse-up mouse-wheel\n"
-                    "close resize joystick draw",
+                    "close resize joystick draw\n"
+                    "alt ctrl shift",
                     atoms );
 
     wp->eventCtxN = ur_makeContext( ut, EI_COUNT );
@@ -460,8 +503,8 @@ static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC )
         return UR_THROW;
 
     ctx = ur_buffer( wp->eventCtxN );   // Re-aquire
-    gui_remapKeys( ut, ur_ctxCell( ctx, EI_KEY_DOWN ) );
-    gui_remapKeys( ut, ur_ctxCell( ctx, EI_KEY_UP ) );
+    _remapKeys( ut, ur_ctxCell( ctx, EI_KEY_DOWN ), atoms + EI_COUNT );
+    _remapKeys( ut, ur_ctxCell( ctx, EI_KEY_UP   ), atoms + EI_COUNT );
     return UR_OK;
 }
 
@@ -495,7 +538,11 @@ static int mapButton( int code )
 }
 
 
-static const UCell* selectKeyHandler( UThread* ut, const UCell* cell, int code )
+/*
+  Select event handler from block created by _remapKeys().
+*/
+static const UCell* selectKeyHandler( UThread* ut, const UCell* cell,
+                                      int code, int state )
 {
     if( ur_is(cell, UT_BLOCK) )
     {
@@ -508,7 +555,11 @@ static const UCell* selectKeyHandler( UThread* ut, const UCell* cell, int code )
         while( bi.it != bi.end )
         {
             if( ur_int(bi.it) == code )
-                return bi.it + 1;
+            {
+                int mod = bi.it->keyModMask;
+                if( ! mod || ((mod & state) == mod) )
+                    return bi.it + 1;
+            }
             bi.it += 2;
         }
     }
@@ -624,7 +675,7 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
         case GLV_EVENT_KEY_UP:
             cell = CCELL( EI_KEY_UP );
 key_handler:
-            cell = selectKeyHandler( ut, cell, event->code );
+            cell = selectKeyHandler( ut, cell, event->code, event->state );
             if( ! cell )
                 goto ignore;
 
