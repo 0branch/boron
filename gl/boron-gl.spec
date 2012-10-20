@@ -9,7 +9,7 @@ Packager: <wickedsmoke@users.sf.net>
 Group: Development/Languages
 Source: boron-%{version}.tar.gz
 BuildRoot: %{_tmppath}/boron-%{version}-build
-%if 0%{?fedora_version}
+%if 0%{?fedora_version} || 0%{?rhel_version} || 0%{?centos_version}
 BuildRequires: libglv0 boron mesa-libGL-devel mesa-libGLU-devel freetype-devel openal-devel libvorbis-devel libpng-devel libXxf86vm-devel
 %endif
 %if 0%{?mandriva_version}
