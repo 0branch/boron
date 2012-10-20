@@ -28,8 +28,9 @@ and OpenAL.
 %setup -q -n boron-%{version}
 
 %build
-boron -s scripts/m2/m2 -t scripts/m2/m2_linux.b -o gl/Makefile gl/project.b
-make -C gl
+cd gl
+boron -s ../scripts/m2/m2 -t ../scripts/m2/m2_linux.b
+make
 
 %install
 rm -rf $RPM_BUILD_ROOT

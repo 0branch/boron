@@ -310,7 +310,7 @@ TexFont* txf_build( const char* file, int index, const uint8_t* codes,
     FT_Face face;
     FT_Error error;
     FT_GlyphSlot glyph;
-    FT_Size size;
+    //FT_Size size;
     FT_F26Dot6 start_x;
     FT_F26Dot6 step_y;
     int x, y;
@@ -356,7 +356,7 @@ TexFont* txf_build( const char* file, int index, const uint8_t* codes,
         goto cleanup;
 
     glyph = face->glyph;
-    size  = face->size;
+    //size  = face->size;
 
 
     // Count glyphs and find the high & low.
