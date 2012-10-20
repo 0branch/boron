@@ -1,7 +1,7 @@
 #ifndef BORON_H
 #define BORON_H
 /*
-  Copyright 2009-2011 Karl Robillard
+  Copyright 2009-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -23,8 +23,8 @@
 #include "urlan.h"
 
 
-#define BORON_VERSION_STR  "0.2.5"
-#define BORON_VERSION      0x000205
+#define BORON_VERSION_STR  "0.2.6"
+#define BORON_VERSION      0x000206
 
 
 enum BoronDataType

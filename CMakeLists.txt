@@ -73,7 +73,7 @@ add_library(boron-lib SHARED
 )
 
 set_target_properties(boron-lib PROPERTIES
-   VERSION 0.2.4
+   VERSION 0.2.6
    SOVERSION 0
    OUTPUT_NAME "boron")
 
