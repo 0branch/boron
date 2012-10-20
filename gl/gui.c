@@ -747,6 +747,15 @@ static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
                 {
                     if( wp && parent )
                     {
+                        const UCell* nv = bi->it + 1;
+                        if( (nv != bi->end) && ur_is(nv, UT_DECIMAL) )
+                        {
+                            double percent = ur_decimal(nv);
+                            // Expecting layout to change area if too small.
+                            wp->area.w = (int16_t) (parent->area.w * percent);
+                            wp->area.h = (int16_t) (parent->area.h * percent);
+                            ++bi->it;
+                        }
                         glEnv.guiStyle = gui_style( glEnv.guiUT );
                         wp->wclass->layout( wp );
                         gui_move( wp, (parent->area.w - wp->area.w) / 2,
@@ -1202,6 +1211,37 @@ static void setBoxMargins( Box* wd, const UCell* mc )
 }
 
 
+static GWidget* box_make2( UThread* ut, const GWidgetClass* wclass,
+                           const UCell* margin, const UCell* child,
+                           const UCell* grid )
+{
+    Box* ep = (Box*) gui_allocWidget( sizeof(Box), wclass );
+
+    ep->wid.flags |= GW_NO_INPUT;
+    ep->marginL = 0;
+    ep->marginT = 0;
+    ep->marginR = 0;
+    ep->marginB = 0;
+    ep->spacing = 8;
+
+    if( grid )
+    {
+        ep->rows = grid->coord.n[1];
+        ep->cols = grid->coord.n[0];
+    }
+
+    if( margin )
+        setBoxMargins( ep, margin );
+
+    if( ! gui_makeWidgets( ut, child, (GWidget*) ep, 0 ) )
+    {
+        wclass->free( (GWidget*) ep );
+        return 0;
+    }
+    return (GWidget*) ep;
+}
+
+
 static const uint8_t box_args[] =
 {
     GUIA_OPT,   UT_COORD,
@@ -1213,32 +1253,10 @@ static const uint8_t box_args[] =
 static GWidget* box_make( UThread* ut, UBlockIter* bi,
                           const GWidgetClass* wclass )
 {
-    Box* ep;
     const UCell* arg[ 2 ];
-
     if( ! gui_parseArgs( ut, bi, wclass, box_args, arg ) )
         return 0;
-
-    ep = (Box*) gui_allocWidget( sizeof(Box), wclass );
-
-    ep->wid.flags |= GW_NO_INPUT;
-
-    ep->marginL = 0;
-    ep->marginT = 0;
-    ep->marginR = 0;
-    ep->marginB = 0;
-    ep->spacing = 8;
-
-    if( arg[0] )
-        setBoxMargins( ep, arg[0] );
-
-    if( ! gui_makeWidgets( ut, arg[1], (GWidget*) ep, 0 ) )
-    {
-        wclass->free( (GWidget*) ep );
-        return 0;
-    }
-
-    return (GWidget*) ep;
+    return box_make2( ut, wclass, arg[0], arg[1], 0 );
 }
 
 
@@ -1548,6 +1566,215 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
             it->wclass->layout( it );
 #endif
         ++hint;
+    EACH_END
+}
+
+
+//----------------------------------------------------------------------------
+
+
+static const uint8_t grid_args[] =
+{
+    GUIA_ARG,   UT_COORD,
+    GUIA_OPT,   UT_COORD,
+    GUIA_ARG,   UT_BLOCK,
+    GUIA_END
+};
+
+// grid cols,rows [margin coord!] block
+static GWidget* grid_make( UThread* ut, UBlockIter* bi,
+                           const GWidgetClass* wclass )
+{
+    const UCell* arg[ 3 ];
+    if( ! gui_parseArgs( ut, bi, wclass, grid_args, arg ) )
+        return 0;
+    return box_make2( ut, wclass, arg[1], arg[2], arg[0] );
+}
+
+
+static int grid_stats( GWidget* wp, int cols, int16_t* colMin, int16_t* rowMin,
+                       int16_t* colPol, int16_t* rowPol )
+{
+    GSizeHint cs;
+    GWidget* it;
+    int count = 0;
+    int row = 0;
+    int col = 0;
+
+    EACH_SHOWN_CHILD( wp, it )
+        it->wclass->sizeHint( it, &cs );
+        if( ! (it->flags & GW_NO_SPACE) )   // cs.minH != 0
+            ++count;
+
+        if( rowMin[ row ] < cs.minH )
+            rowMin[ row ] = cs.minH;
+        if( colMin[ col ] < cs.minW )
+            colMin[ col ] = cs.minW;
+
+        if( colPol )
+        {
+            if( colPol[ col ] < cs.policyX )
+                colPol[ col ] = cs.policyX;
+        }
+        if( rowPol )
+        {
+            if( rowPol[ row ] < cs.policyY )
+                rowPol[ row ] = cs.policyY;
+        }
+
+        if( ++col == cols )
+        {
+            col = 0;
+            ++row;
+        }
+    EACH_END
+
+    return count;
+}
+
+
+static int _int16Sum( const int16_t* it, int n )
+{
+    const int16_t* end = it + n;
+    for( n = 0; it != end; ++it )
+        n += *it;
+    return n;
+}
+
+
+static void grid_sizeHint( GWidget* wp, GSizeHint* size )
+{
+    EX_PTR;
+    int16_t colMin[32];
+    int16_t* rowMin;
+    int cells = ep->cols + ep->rows;
+
+    assert( cells < 32 );
+    memset( colMin, 0, sizeof(int16_t) * cells );
+    rowMin = colMin + ep->cols;
+
+    size->minW    = ep->marginL + ep->marginR;
+    size->minH    = ep->marginT + ep->marginB;
+    size->maxW    = GW_MAX_DIM;
+    size->maxH    = GW_MAX_DIM;
+    size->weightX = 2;
+    size->weightY = 2;
+    size->policyX = GW_WEIGHTED;
+    size->policyY = GW_WEIGHTED;
+
+    grid_stats( wp, ep->cols, colMin, rowMin, 0, 0 );
+    size->minW += _int16Sum( colMin, ep->cols );
+    size->minH += _int16Sum( rowMin, ep->rows );
+
+    if( ep->cols > 1 )
+        size->minW += (ep->cols - 1) * ep->spacing;
+    if( ep->rows > 1 )
+        size->minH += (ep->rows - 1) * ep->spacing;
+}
+
+
+static void _distributeSpace( int16_t* val, int16_t* pol, int n, int space )
+{
+    int div, rem, i;
+    int total = _int16Sum( val, n );
+    if( total < space )
+    {
+        int resizable = 0;
+        for( i = 0; i < n; ++i )
+        {
+            if( pol[i] != GW_FIXED )
+                ++resizable;
+        }
+        if( ! resizable )
+            return;
+        space -= total;
+        div = space / resizable;
+        rem = space % resizable;
+        for( i = 0; i < n; ++i )
+        {
+            if( pol[i] == GW_FIXED )
+                continue;
+            val[i] += div;
+            if( rem )
+            {
+                --rem;
+                ++val[i];
+            }
+        }
+    }
+}
+
+
+static void grid_layout( GWidget* wp )
+{
+    EX_PTR;
+    GWidget* it;
+    GSizeHint cs;
+    GRect cr;
+    int16_t colMin[64];
+    int16_t* colPol;
+    int16_t* rowMin;
+    int16_t* rowPol;
+    int cells = ep->cols * 2 + ep->rows * 2;
+    int row, col;
+    int sx = wp->area.x + ep->marginL;
+    int sy = wp->area.y + ep->marginT;
+
+    assert( cells < 64 );
+    memset( colMin, 0, sizeof(int16_t) * cells );
+    colPol = colMin + ep->cols;
+    rowMin = colPol + ep->cols;
+    rowPol = rowMin + ep->rows;
+
+    grid_stats( wp, ep->cols, colMin, rowMin, colPol, rowPol );
+    _distributeSpace( colMin, colPol, ep->cols,
+                      wp->area.w - (ep->marginL + ep->marginR) -
+                      ((ep->cols - 1) * ep->spacing) );
+    _distributeSpace( rowMin, rowPol, ep->rows,
+                      wp->area.h - (ep->marginT + ep->marginB) -
+                      ((ep->rows - 1) * ep->spacing) );
+
+    row = col = 0;
+    EACH_SHOWN_CHILD( wp, it )
+        it->wclass->sizeHint( it, &cs );
+
+        cr.x = sx + _int16Sum( colMin, col );
+        if( col )
+            cr.x += (col - 1) * ep->spacing;
+
+        cr.y = sy + _int16Sum( rowMin, row );
+        if( row )
+            cr.y += (row - 1) * ep->spacing;
+
+        if( cs.policyX == GW_FIXED )
+        {
+            cr.w = cs.minW;
+            cr.x += (colMin[ col ] - cs.minW) / 2;
+        }
+        else
+            cr.w = colMin[ col ];
+
+        if( cs.policyY == GW_FIXED )
+        {
+            cr.h = cs.minH;
+            cr.y += (rowMin[ row ] - cs.minH) / 2;
+        }
+        else
+            cr.h = rowMin[ row ];
+
+#ifdef REPORT_LAYOUT
+        printf( "KR grid layout  id %d  class %d  %d,%d,%d,%d\n",
+                it.id, it->classId, cr.x, cr.y, cr.w, cr.h );
+#endif
+        // Always call layout to recompile DL.
+        it->area = cr;
+        it->wclass->layout( it );
+
+        if( ++col == ep->cols )
+        {
+            col = 0;
+            ++row;
+        }
     EACH_END
 }
 
@@ -1906,6 +2133,16 @@ GWidgetClass wclass_vbox =
 };
 
 
+GWidgetClass wclass_grid =
+{
+    "grid",
+    grid_make,              widget_free,        widget_markChildren,
+    widget_dispatch,        grid_sizeHint,      grid_layout,
+    widget_renderChildren,  gui_areaSelect,
+    0, 0
+};
+
+
 GWidgetClass wclass_window =
 {
     "window",
@@ -1953,22 +2190,23 @@ extern GWidgetClass wclass_slider;
 
 void gui_addStdClasses()
 {
-    GWidgetClass* classes[ 12 ];
+    GWidgetClass* classes[ 13 ];
 
     classes[0]  = &wclass_root;
     classes[1]  = &wclass_expand;
     classes[2]  = &wclass_hbox;
     classes[3]  = &wclass_vbox;
-    classes[4]  = &wclass_window;
-    classes[5]  = &wclass_overlay;
-    classes[6]  = &wclass_button;
-    classes[7]  = &wclass_checkbox;
-    classes[8]  = &wclass_label;
-    classes[9]  = &wclass_lineedit;
-    classes[10] = &wclass_list;
-    classes[11] = &wclass_slider;
+    classes[4]  = &wclass_grid;
+    classes[5]  = &wclass_window;
+    classes[6]  = &wclass_overlay;
+    classes[7]  = &wclass_button;
+    classes[8]  = &wclass_checkbox;
+    classes[9]  = &wclass_label;
+    classes[10] = &wclass_lineedit;
+    classes[11] = &wclass_list;
+    classes[12] = &wclass_slider;
 
-    gui_addWidgetClasses( classes, 12 );
+    gui_addWidgetClasses( classes, 13 );
 }
 
 
