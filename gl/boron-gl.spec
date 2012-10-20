@@ -1,6 +1,6 @@
 Summary: Boron with OpenGL extensions
 Name: boron-gl
-Version: 0.1.11
+Version: 0.2.6
 Release: 1
 License: LGPLv3+
 # Vendor:
@@ -10,13 +10,13 @@ Group: Development/Languages
 Source: boron-%{version}.tar.gz
 BuildRoot: %{_tmppath}/boron-%{version}-build
 %if 0%{?fedora_version}
-BuildRequires: cmake libglv0 boron mesa-libGL-devel mesa-libGLU-devel freetype-devel openal-devel freealut-devel libvorbis-devel libpng-devel libXxf86vm-devel
+BuildRequires: libglv0 boron mesa-libGL-devel mesa-libGLU-devel freetype-devel openal-devel libvorbis-devel libpng-devel libXxf86vm-devel
 %endif
 %if 0%{?mandriva_version}
-BuildRequires: cmake libglv0 boron libmesagl1-devel libmesaglu1-devel freetype2-devel libopenal0-devel libfreealut0-devel libvorbis-devel libpng-devel libbzip2_1-devel
+BuildRequires: libglv0 boron libmesagl1-devel libmesaglu1-devel freetype2-devel libopenal0-devel libvorbis-devel libpng-devel libbzip2_1-devel
 %endif
 %if 0%{?suse_version}
-BuildRequires: cmake libglv0 boron Mesa-devel freetype2-devel openal-devel freealut-devel libvorbis-devel libpng-devel
+BuildRequires: libglv0 boron Mesa-devel freetype2-devel openal-devel libvorbis-devel libpng-devel
 %endif
 
 %description
@@ -28,15 +28,15 @@ and OpenAL.
 %setup -q -n boron-%{version}
 
 %build
-cmake ./gl
-make
+boron -s scripts/m2/m2 -t scripts/m2/m2_linux.b -o gl/Makefile gl/project.b
+make -C gl
 
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT%{_bindir}
 mkdir -p $RPM_BUILD_ROOT%{_includedir}/boron
 mkdir -p $RPM_BUILD_ROOT%{_libdir}
-install -s -m 755 boron-gl $RPM_BUILD_ROOT/%{_bindir}
+install -s -m 755 gl/boron-gl $RPM_BUILD_ROOT/%{_bindir}
 mkdir include
 sed -e "s~\"urlan.h\"~<boron/urlan.h>~" gl/gui.h >include/gui.h
 sed -e "s~\"boron.h\"~<boron/boron.h>~" -e "s~\"gui.h\"~<boron/gui.h>~" -e "s~\"TexFont.h\"~<boron/TexFont.h>~" gl/boron-gl.h >include/boron-gl.h
@@ -44,7 +44,7 @@ install -m 644 include/boron-gl.h  $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 644 include/gui.h $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 644 gl/gl_atoms.h $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 644 gl/TexFont.h  $RPM_BUILD_ROOT%{_includedir}/boron
-install -m 644 -s libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}
+install -m 755 -s gl/libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}
 ln -s libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron-gl.so
 ln -s libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron-gl.so.0
 
@@ -64,5 +64,5 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/boron/TexFont.h
 
 %changelog
-* Mon Apr 04 2011 Karl Robillard <wickedsmoke@users.sf.net>
+* Sat Oct 20 2012 Karl Robillard <wickedsmoke@users.sf.net>
   - Initial package release.

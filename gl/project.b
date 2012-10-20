@@ -1,8 +1,8 @@
 
 default [
     warn
-    debug
-;   release
+   ;debug
+    release
     objdir %obj
 
     include_from [
@@ -13,7 +13,7 @@ default [
     ;macx [universal]
 ]
 
-lib %boron-gl [
+shlib [%boron-gl 0,2,6] [
    ;cflags {-DNO_AUDIO}
 
     linux [
