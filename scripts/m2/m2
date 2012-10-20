@@ -300,7 +300,7 @@ m2: context
 	;------------------------------------------------------------------
 	; Used in template file.
 
-	eol: '^/' 
+	eol: '^/'
 	emit: func [data] [append output_buf reduce data]
 
 	dist_files: func [| str obj] [
@@ -325,6 +325,7 @@ m2: context
 		if exists? file [do file]
 	]
 
+	bsd:
 	linux:
 	macx:
 	sun:
