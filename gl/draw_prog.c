@@ -593,7 +593,7 @@ static int genPrimitives( UThread* ut, DPCompiler* emit, int primOpcode,
     int bufCount;
     int drawArrPoints;
     int makeIndexBuf;
-    int i;
+    int i = 0;
 
 
     drawArrPoints = (primOpcode == DP_DRAW_POINTS) && elemCount;
@@ -2017,8 +2017,11 @@ bad_quad:
                             break;
 
                         case UT_DECIMAL:
-                            emitOp2( DP_UNIFORM_1F, loc,
-                                     (GLfloat) ur_decimal(val));
+                        {
+                            Number n;
+                            n.f = ur_decimal(val);
+                            emitOp2( DP_UNIFORM_1F, loc, n.i );
+                        }
                             break;
 
                         case UT_VEC3:
@@ -2813,14 +2816,14 @@ dispatch:
             break;
 
         case DP_UNIFORM_1F:
-            REPORT_2( "UNIFORM_1F %d %d\n", pc[0], pc[1] );
+            REPORT_2( "UNIFORM_1F %d %f\n", pc[0], *((GLfloat*) (pc+1)) );
             glUniform1f( pc[0], *((GLfloat*) (pc+1)) );
             pc += 2;
             break;
 
         case DP_UNIFORM_3F:
-            REPORT_1( "UNIFORM_3F %d\n", pc[0] );
-            glUniform3fv( pc[0], 3, (GLfloat*) (pc+1) );
+            REPORT_2( "UNIFORM_3F %d %f ...\n", pc[0], *((GLfloat*) (pc+1)) );
+            glUniform3fv( pc[0], 1, (GLfloat*) (pc+1) );
             pc += 4;
             break;
 
