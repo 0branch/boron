@@ -518,33 +518,62 @@ int txf_width( const TexFont* tf, const uint8_t* it, const uint8_t* end )
     TexFontGlyph* prev = 0;
     TexFontGlyph* tgi;
     int width = 0;
+    int ch;
 
     while( it != end )
     {
-        if( *it == '\n' )
+        ch = *it++;
+        if( ch == '\n' )
             break;
-        if( *it == ' ' )
+        tgi = txf_glyph( tf, ch );
+        if( ch == ' ' )
         {
-            tgi = txf_glyph( tf, ' ' );
             if( tgi )
                 width += tgi->advance;
             prev = 0;
         }
-        else
+        else if( tgi )
         {
-            tgi = txf_glyph( tf, *it );
-            if( tgi )
-            {
-                width += tgi->advance;
-                if( prev )
-                    width += txf_kerning( tf, prev, tgi );
-                prev = tgi;
-            }
+            width += tgi->advance;
+            if( prev )
+                width += txf_kerning( tf, prev, tgi );
+            prev = tgi;
         }
-        ++it;
     }
 
     return width;
+}
+
+
+/*
+   Returns pixel width & height of text bounding rectangle.
+*/
+void txf_pixelSize( const TexFont* tf, const uint8_t* it, const uint8_t* end,
+                    int* size )
+{
+    int n;
+    int ls = txf_lineSpacing( tf );
+    int w = 0;
+    int h = tf->max_ascent;
+
+    while( it != end )
+    {
+        n = txf_width( tf, it, end );
+        if( w < n )
+            w = n;
+        while( it != end )
+        {
+            n = *it++;
+            if( n == '\n' )
+            {
+                h += ls;
+                break;
+            }
+        }
+    }
+
+    size[0] = w;
+    size[1] = h;
 }
 
 
@@ -558,15 +587,17 @@ int txf_charAtPixel( const TexFont* tf, const uint8_t* it, const uint8_t* end,
     TexFontGlyph* prev = 0;
     TexFontGlyph* tgi;
     int width = 0;
+    int ch;
 
     if( x < 0 )
         return -1;
 
     while( it != end )
     {
-        if( *it == '\n' )
+        ch = *it;
+        if( ch == '\n' )
             break;
-        if( *it == ' ' )
+        if( ch == ' ' )
         {
             tgi = txf_glyph( tf, ' ' );
             if( tgi )
@@ -575,7 +606,7 @@ int txf_charAtPixel( const TexFont* tf, const uint8_t* it, const uint8_t* end,
         }
         else
         {
-            tgi = txf_glyph( tf, *it );
+            tgi = txf_glyph( tf, ch );
             if( tgi )
             {
                 width += tgi->advance;

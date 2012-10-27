@@ -304,16 +304,18 @@ CFUNC( cfunc_text_size )
     if( ur_is(a1, UT_FONT) && ur_is(a1+1, UT_STRING) )
     {
         USeriesIter si;
+        int size[2];
         TexFont* tf = ur_texFontV( ut, a1 );
         if( tf )
         {
             ur_seriesSlice( ut, &si, a1+1 );
+            txf_pixelSize( tf, si.buf->ptr.b + si.it,
+                               si.buf->ptr.b + si.end, size );
 
             ur_setId(res, UT_COORD);
             res->coord.len = 2;
-            res->coord.n[0] = txf_width( tf, si.buf->ptr.b + si.it,
-                                             si.buf->ptr.b + si.end );
-            res->coord.n[1] = txf_lineSpacing( tf );
+            res->coord.n[0] = size[0];
+            res->coord.n[1] = size[1];
             return UR_OK;
         }
     }
