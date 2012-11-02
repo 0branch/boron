@@ -1240,11 +1240,58 @@ void bignum_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 }
 
 
+int bignum_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
+                    int op )
+{
+    UCell tmp;
+
+    if( ur_isIntType( ur_type(a) ) )
+    {
+        bignum_seti( &tmp, ur_int(a) );
+        a = &tmp;
+    }
+    else if( ur_is(a, UT_DECIMAL) )
+    {
+        bignum_setd( &tmp, ur_decimal(a) );
+        a = &tmp;
+    }
+    else if( ur_isIntType( ur_type(b) ) )
+    {
+        bignum_seti( &tmp, ur_int(b) );
+        b = &tmp;
+    }
+    else if( ur_is(b, UT_DECIMAL) )
+    {
+        bignum_setd( &tmp, ur_decimal(b) );
+        b = &tmp;
+    }
+    else if( ! ur_is(a, UT_BIGNUM) || ! ur_is(b, UT_BIGNUM) )
+        goto unset;
+
+    ur_setId(res, UT_BIGNUM);
+    switch( op )
+    {
+        case UR_OP_ADD:
+            bignum_add( a, b, res );
+            return UR_OK;
+        case UR_OP_SUB:
+            bignum_sub( a, b, res );
+            return UR_OK;
+        case UR_OP_MUL:
+            bignum_mul( a, b, res );
+            return UR_OK;
+    }
+
+unset:
+    return unset_operate( ut, a, b, res, op );
+}
+
+
 UDatatype dt_bignum =
 {
     "bignum!",
     bignum_make,            bignum_make,            unset_copy,
-    unset_compare,          unset_operate,          unset_select,
+    unset_compare,          bignum_operate,         unset_select,
     bignum_toString,        bignum_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
