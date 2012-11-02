@@ -593,7 +593,7 @@ static int genPrimitives( UThread* ut, DPCompiler* emit, int primOpcode,
     int bufCount;
     int drawArrPoints;
     int makeIndexBuf;
-    int i;
+    int i = 0;
 
 
     drawArrPoints = (primOpcode == DP_DRAW_POINTS) && elemCount;
@@ -1019,7 +1019,8 @@ int vbo_drawText( DrawTextState* ds,
 
 
 /*
-   Draws triangles at current pen position.
+   Draws triangles at the current pen position, where penY is the baseline
+   of the first line of text.
    The pen is moved to the end of text.
 */
 void dp_drawText( DPCompiler* emit, TexFont* tf,
@@ -1140,17 +1141,25 @@ void dp_drawTextCell( DPCompiler* emit, UThread* ut, const UCell* cell,
     if( sel && area )
     {
         const int16_t* rect = area->coord.n;
-        int w = txf_width( tf, bi.it, bi.end );
+        int size[2];
+
+        txf_pixelSize( tf, bi.it, bi.end, size );
+        //printf( "KR text size: %d,%d h: %d\n", size[0], size[1], rect[3] );
 
         if( sel == UR_ATOM_CENTER )
-            emit->penX += rect[0] + ((rect[2] - w) >> 1);
+            emit->penX += rect[0] + ((rect[2] - size[0]) >> 1);
         else if( sel == UR_ATOM_RIGHT )
-            emit->penX += rect[0] + rect[2] - w;
+            emit->penX += rect[0] + rect[2] - size[0];
         else
             emit->penX += rect[0];
 
         if( rect[3] )
-            emit->penY += rect[1] + ((rect[3] - tf->max_ascent) >> 1);
+        {
+            // Center vertically.
+            if( size[1] > tf->max_ascent )
+                size[1] = -size[1] + tf->max_ascent;
+            emit->penY += rect[1] + ((rect[3] - size[1]) >> 1);
+        }
     }
 
     dp_drawText( emit, tf, bi.it, bi.end );
@@ -2017,8 +2026,11 @@ bad_quad:
                             break;
 
                         case UT_DECIMAL:
-                            emitOp2( DP_UNIFORM_1F, loc,
-                                     (GLfloat) ur_decimal(val));
+                        {
+                            Number n;
+                            n.f = ur_decimal(val);
+                            emitOp2( DP_UNIFORM_1F, loc, n.i );
+                        }
                             break;
 
                         case UT_VEC3:
@@ -2813,14 +2825,14 @@ dispatch:
             break;
 
         case DP_UNIFORM_1F:
-            REPORT_2( "UNIFORM_1F %d %d\n", pc[0], pc[1] );
+            REPORT_2( "UNIFORM_1F %d %f\n", pc[0], *((GLfloat*) (pc+1)) );
             glUniform1f( pc[0], *((GLfloat*) (pc+1)) );
             pc += 2;
             break;
 
         case DP_UNIFORM_3F:
-            REPORT_1( "UNIFORM_3F %d\n", pc[0] );
-            glUniform3fv( pc[0], 3, (GLfloat*) (pc+1) );
+            REPORT_2( "UNIFORM_3F %d %f ...\n", pc[0], *((GLfloat*) (pc+1)) );
+            glUniform3fv( pc[0], 1, (GLfloat*) (pc+1) );
             pc += 4;
             break;
 
