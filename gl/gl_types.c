@@ -90,56 +90,6 @@ void dprog_mark( UThread* ut, UCell* cell )
 // UT_RASTER
 
 
-static const uint8_t _bytesPerPixel[ 4 ] = { 0, 1, 3, 4 };
-
-
-int ur_rasterElementSize( const RasterHead* r )
-{
-    return _bytesPerPixel[ r->format ];
-}
-
-
-static int _rasterBinarySize( int format, int depth, int w, int h )
-{
-    int size = depth / 8 * w * h;
-    if( format == UR_RAST_RGB )
-        size *= 3;
-    else if( format == UR_RAST_RGBA )
-        size *= 4;
-    return size + sizeof(RasterHead);
-}
-
-
-/**
-  \return Binary index and initialied res.  If binp is non-zero, it is set.
-*/
-UBuffer* ur_makeRaster( UThread* ut, int format, int w, int h, UCell* res )
-{
-    UIndex binN;
-    UBuffer* bin;
-    RasterHead* rh;
-    int size;
-
-
-    size = _rasterBinarySize( format, 8, w, h );
-    binN = ur_makeBinary( ut, size );
-    bin = ur_buffer( binN );
-    bin->used = size;
-
-    rh = (RasterHead*) bin->ptr.v;
-    rh->format = format;
-    rh->depth  = 8;
-    rh->width  = w;
-    rh->height = h;
-    rh->bytesPerRow = _bytesPerPixel[ format ] * w;
-
-    ur_setId( res, UT_RASTER );
-    ur_setSeries( res, binN, 0 );
-
-    return bin;
-}
-
-
 /*
   width,height,bytes-per-pixel
 */
