@@ -1,6 +1,6 @@
 /*
   Boron OpenAL Module
-  Copyright 2005-2011 Karl Robillard
+  Copyright 2005-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -19,9 +19,6 @@
 */
 
 
-//#define USE_ALUT    1
-
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -29,31 +26,23 @@
 
 #include <OpenAL/al.h>
 #include <OpenAL/alc.h>
-#ifdef USE_ALUT
-#include <ALUT/alut.h>
-#endif
 
 #elif defined(_WIN32)
 
 #include <al.h>
 #include <alc.h>
-#ifdef USE_ALUT
-#include <alut.h>
-#endif
 
 #else
 
 #include <AL/al.h>
 #include <AL/alc.h>
-#ifdef USE_ALUT
-#include <AL/alut.h>
-#include <time.h>
-#endif
 
 #endif
 
+#ifndef __ANDROID__
 #include <vorbis/codec.h>
 #include <vorbis/vorbisfile.h>
+#endif
 #include "os.h"
 #include "boron.h"
 #include "audio.h"
@@ -82,13 +71,12 @@ static OSMutex _musicMutex;
 static OSMutex _acmdMutex;
 static UBuffer _acmd;
 
-#ifndef USE_ALUT
 static ALCdevice*  _adevice  = 0;
 static ALCcontext* _acontext = 0;
-#endif
 static ALuint _asource[ SOURCE_COUNT ];
 
 
+#ifndef __ANDROID__
 #define MUSIC_BUFFERS       3
 static ALuint  _musicSource = 0;
 static ALfloat _musicGain = 1.0f;
@@ -177,7 +165,45 @@ enum AudioCommand
 
 #define SLEEP_MS    32
 
-static void aud_update();
+/**
+  Called periodically (once per frame) to drive sound engine.
+*/
+static void aud_update()
+{
+    if( _musicSource )
+    {
+        if( _bgStream )
+        {
+            ALint processed;
+            ALuint freeBuf;
+
+            alGetSourcei( _musicSource, AL_BUFFERS_PROCESSED, &processed );
+
+            //if( processed ) printf( "KR proc %d\n", processed );
+
+            while( processed )
+            {
+                alSourceUnqueueBuffers( _musicSource, 1, &freeBuf );
+                //printf( "   buf %d\n", freeBuf );
+
+                if( _readOgg( freeBuf, &_vf, _vinfo ) )
+                {
+                    alSourceQueueBuffers( _musicSource, 1, &freeBuf );
+                }
+                else
+                {
+                    printf( "KR audioUpdate - end of stream\n" );
+                    ov_clear( &_vf );   // Closes _bgStream for us.
+                    _bgStream = 0;
+                    break;
+                }
+
+                --processed;
+            }
+        }
+    }
+}
+
 
 #ifdef _WIN32
 static DWORD WINAPI audioThread( LPVOID arg )
@@ -244,6 +270,7 @@ static void aud_command( int cmd, int data )
         ur_arrAppendInt32( &_acmd, data );
     mutexUnlock( _acmdMutex );
 }
+#endif
 
 
 /**
@@ -252,22 +279,19 @@ static void aud_command( int cmd, int data )
 */
 int aud_startup()
 {
-#ifdef _WIN32
+#if defined(_WIN32) && defined(MUSIC_BUFFERS)
     DWORD winId;
 #endif
 
-#ifdef USE_ALUT
-    if( alutInit( 0, 0 ) == AL_FALSE )
-        return 0;
-#else
     _adevice = alcOpenDevice( 0 );
     if( ! _adevice )
         return 0;
     _acontext = alcCreateContext( _adevice, 0 );
     alcMakeContextCurrent( _acontext );
-#endif
 
     alGenSources( SOURCE_COUNT, _asource );
+
+#ifdef MUSIC_BUFFERS
     alGenBuffers( MUSIC_BUFFERS, _musicBuffers );
 
     _audioUp = AUDIO_AL_UP;
@@ -303,6 +327,10 @@ mutex0_fail:
     //ur_arrFree( &_acmd );
     aud_shutdown();
     return 0;
+#else
+    _audioUp = AUDIO_AL_UP;
+    return 1;
+#endif
 }
 
 
@@ -314,6 +342,7 @@ static void _stopMusic();
 */
 void aud_shutdown()
 {
+#ifdef MUSIC_BUFFERS
     if( _audioUp == AUDIO_THREAD_UP )
     {
         aud_command( CMD_QUIT, -1 );
@@ -327,99 +356,21 @@ void aud_shutdown()
 
         ur_arrFree( &_acmd );
     }
+#endif
 
     if( _audioUp )
     {
         _stopMusic();
 
         alDeleteSources( SOURCE_COUNT, _asource );
+#ifdef MUSIC_BUFFERS
         alDeleteBuffers( MUSIC_BUFFERS, _musicBuffers );
+#endif
 
-#ifdef USE_ALUT
-        alutExit();
-#else
-        // Could not use alutExit() on my box (FC3/Shuttle XPC) since
-        // alcMakeContextCurrent(0) -> _alLockMixerPause() will hangup.
         alcDestroyContext( _acontext );
         alcCloseDevice( _adevice );
-#endif
+
         _audioUp = AUDIO_DOWN;
-    }
-}
-
-
-/**
-  Called periodically (once per frame) to drive sound engine.
-*/
-static void aud_update()
-{
-#if 0
-    static Millisec prev = 0;
-    Millisec now, diff;
-    now = osNow();
-    diff = now - prev;
-    prev = now;
-    if( diff > (16 * 5) )
-        printf( "%ld\n", diff );
-#endif
-
-    if( _musicSource )
-    {
-#if 0
-        ALint sourcestate;
-        alGetSourcei( _musicSource, AL_SOURCE_STATE, &sourcestate );
-        if( sourcestate != AL_PLAYING )
-        {
-            if( _bgStream )
-            {
-                // The music source will stop playing when the buffers
-                // have been emptied.  This can easily occur if the X11 window
-                // is moved vigorously around or a long load happens between
-                // audioUpdate() calls.
-
-                printf( "KR audioUpdate - _musicSource not playing!\n" );
-
-                // For some reason this solution causes the stream quality
-                // to degrade (noise and echos occur).
-                _startMusic();
-            }
-            else
-            {
-                _stopMusic();
-            }
-            return;
-        }
-#endif
-
-        if( _bgStream )
-        {
-            ALint processed;
-            ALuint freeBuf;
-
-            alGetSourcei( _musicSource, AL_BUFFERS_PROCESSED, &processed );
-
-            //if( processed ) printf( "KR proc %d\n", processed );
-
-            while( processed )
-            {
-                alSourceUnqueueBuffers( _musicSource, 1, &freeBuf );
-                //printf( "   buf %d\n", freeBuf );
-
-                if( _readOgg( freeBuf, &_vf, _vinfo ) )
-                {
-                    alSourceQueueBuffers( _musicSource, 1, &freeBuf );
-                }
-                else
-                {
-                    printf( "KR audioUpdate - end of stream\n" );
-                    ov_clear( &_vf );   // Closes _bgStream for us.
-                    _bgStream = 0;
-                    break;
-                }
-
-                --processed;
-            }
-        }
     }
 }
 
@@ -610,6 +561,8 @@ void osStopSound( int id )
 #endif
 
 
+#ifdef MUSIC_BUFFERS
+
 static void _stopMusic()
 {
     if( _musicSource )
@@ -683,18 +636,6 @@ void aud_stopMusic()
 /*
   \param vol    0.0 to 1.0
 */
-void aud_setSoundVolume( float vol )
-{
-    if( _audioUp )
-    {
-        alListenerf( AL_GAIN, vol );
-    }
-}
-
-
-/*
-  \param vol    0.0 to 1.0
-*/
 void aud_setMusicVolume( float vol )
 {
     //ALfloat gain;
@@ -707,6 +648,27 @@ void aud_setMusicVolume( float vol )
         if( _musicSource )
             alSourcef( _musicSource, AL_GAIN, _musicGain );
         mutexUnlock( _musicMutex );
+    }
+}
+
+#else
+
+static void _stopMusic() {}
+void aud_playMusic( const char* file ) { (void) file; }
+void aud_stopMusic() {}
+void aud_setMusicVolume( float vol ) { (void) vol; }
+
+#endif
+
+
+/*
+  \param vol    0.0 to 1.0
+*/
+void aud_setSoundVolume( float vol )
+{
+    if( _audioUp )
+    {
+        alListenerf( AL_GAIN, vol );
     }
 }
 
