@@ -71,21 +71,53 @@ GSlider;
 #define EX_PTR  GSlider* ep = (GSlider*) wp
 
 
+static void slider_setValue( GSlider* ep, const UCell* cell )
+{
+    if( ep->dataType == UT_INT )
+    {
+        if( ur_is(cell, UT_INT) )
+        {
+            struct ValueI* da = &ep->data.i;
+            int32_t n = ur_int(cell);
+            if( n < da->min )
+                n = da->min;
+            else if( n > da->max )
+                n = da->max;
+            da->val = n;
+        }
+    }
+    else
+    {
+        if( ur_is(cell, UT_DECIMAL) )
+        {
+            struct ValueF* da = &ep->data.f;
+            float n = (float) ur_decimal(cell);
+            if( n < da->min )
+                n = da->min;
+            else if( n > da->max )
+                n = da->max;
+            da->val = n;
+        }
+    }
+}
+
+
 static const uint8_t slider_args[] =
 {
-    GUIA_ARGM, 2,   UT_COORD, UT_VEC3,
-    GUIA_OPT,       UT_BLOCK,
+    GUIA_ARGM, 2, UT_COORD, UT_VEC3,
+    GUIA_ARGW, 2, UT_INT,   UT_DECIMAL,
+    GUIA_OPT,     UT_BLOCK,
     GUIA_END
 };
 
 /*
-  slider min,max <action>
+  slider min,max init <action>
 */
 static GWidget* slider_make( UThread* ut, UBlockIter* bi,
                              const GWidgetClass* wclass )
 {
     GSlider* ep;
-    const UCell* arg[2];
+    const UCell* arg[3];
 
     if( ! gui_parseArgs( ut, bi, wclass, slider_args, arg ) )
         return 0;
@@ -107,9 +139,11 @@ static GWidget* slider_make( UThread* ut, UBlockIter* bi,
         ep->dataType = UT_DECIMAL;
     }
 
+    slider_setValue( ep, arg[1] );
+
     // Optional action block.
-    if( arg[1] )
-        ep->actionN = arg[1]->series.buf;
+    if( arg[2] )
+        ep->actionN = arg[2]->series.buf;
 
     return (GWidget*) ep;
 }
@@ -295,6 +329,7 @@ static void slider_layout( GWidget* wp )
     UCell* style = glEnv.guiStyle;
     UThread* ut = glEnv.guiUT;
     EX_PTR;
+    int moveW;
     //int horiz = (ep->orient == HSLIDER);
 
     if( ! gDPC )
@@ -304,6 +339,18 @@ static void slider_layout( GWidget* wp )
 
     rc = style + CI_STYLE_SLIDER_SIZE;
     ep->knobWidth = rc->coord.n[0];
+
+    moveW = ep->wid.area.w - ep->knobWidth;
+    if( ep->dataType == UT_INT )
+    {
+        ep->tx = (moveW * (ep->data.i.val - ep->data.i.min)) /
+                 (ep->data.i.max - ep->data.i.min);
+    }
+    else
+    {
+        ep->tx = (int16_t) ((moveW * (ep->data.f.val - ep->data.f.min)) /
+                            (ep->data.f.max - ep->data.f.min));
+    }
 
 
     // Set draw list variables.

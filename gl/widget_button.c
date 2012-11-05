@@ -51,8 +51,8 @@ GButton;
 
 static const uint8_t button_args[] =
 {
-    GUIA_ARGW, UT_STRING,
-    GUIA_ARG,  UT_BLOCK,
+    GUIA_ARGW, 1, UT_STRING,
+    GUIA_ARG,     UT_BLOCK,
     GUIA_END
 };
 

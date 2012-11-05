@@ -236,13 +236,14 @@ int gui_parseArgs( UThread* ut, UBlockIter* bi, const GWidgetClass* wc,
                 else if( *pc == GUIA_OPTM )
                     *args++ = 0;
                 else
-                    goto fail;
+                    goto fail_mult;
                 pc += 2 + pc[1];
                 break;
 
             case GUIA_ARGW:
+            //case GUIA_OPTW:
                 if( bi->it == bi->end )
-                    goto fail;
+                    goto fail_end;
                 {
                     const UCell* cell = bi->it;
                     if( ur_is(cell, UT_WORD) )
@@ -250,17 +251,17 @@ int gui_parseArgs( UThread* ut, UBlockIter* bi, const GWidgetClass* wc,
                         if( ! (cell = ur_wordCell( ut, cell )) )
                             return UR_THROW;
                     }
-                    if( ! ur_is(cell, pc[1]) )
-                        goto fail;
+                    if( ! _matchMultTypes( pc, cell ) )
+                        goto fail_mult;
                     *args++ = cell;
                     ++bi->it;
                 }
-                pc += 2;
+                pc += 2 + pc[1];
                 break;
 
             case GUIA_ANY:
                 if( bi->it == bi->end )
-                    goto fail;
+                    goto fail_end;
                 *args++ = bi->it++;
                 ++pc;
                 break;
@@ -275,8 +276,16 @@ int gui_parseArgs( UThread* ut, UBlockIter* bi, const GWidgetClass* wc,
     }
 
 fail:
-    return ur_error( ut, UR_ERR_SCRIPT, "Widget %s expected %s for argument %d",
+    return ur_error( ut, UR_ERR_TYPE, "Widget %s expected %s for argument %d",
                      wc->name, ur_atomCStr(ut, pc[1]), bi->it - command );
+
+fail_mult:
+    return ur_error( ut, UR_ERR_TYPE, "Widget %s argument %d is invalid",
+                     wc->name, bi->it - command );
+
+fail_end:
+    return ur_error( ut, UR_ERR_SCRIPT, "Widget %s missing argument %d",
+                     wc->name, bi->it - command );
 }
 
 
@@ -1805,8 +1814,8 @@ GWindow;
 static const uint8_t window_args[] =
 {
     GUIA_OPT,      UT_STRING,
-    GUIA_ANY,   //GUIA_ARGMW, 2, UT_BLOCK, UT_NONE,
-    GUIA_ARGW,     UT_BLOCK,
+    GUIA_ARGW, 2,  UT_BLOCK, UT_NONE,
+    GUIA_ARGW, 1,  UT_BLOCK,
     GUIA_END
 };
 

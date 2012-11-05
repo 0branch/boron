@@ -98,8 +98,8 @@ static UIndex ledit_vbo( UThread* ut, int maxChars )
 
 static const uint8_t ledit_args[] =
 {
-    GUIA_ARGW, UT_STRING,
-    GUIA_OPT,  UT_INT,
+    GUIA_ARGW, 1, UT_STRING,
+    GUIA_OPT,     UT_INT,
     GUIA_END
 };
 

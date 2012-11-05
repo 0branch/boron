@@ -37,7 +37,7 @@ GLabel;
 
 static const uint8_t label_args[] =
 {
-    GUIA_ARGW, UT_STRING,
+    GUIA_ARGW, 1, UT_STRING,
     GUIA_END
 };
 
