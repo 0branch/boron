@@ -58,6 +58,7 @@ typedef struct
     } data;
     UIndex   actionN;
     //DPSwitch dpSwitch;
+    int16_t  knobWidth;
     int16_t  tx;
     DPSwitch dpTrans;
     uint8_t  state;
@@ -145,10 +146,12 @@ static void slider_setState( UThread* ut, GSlider* ep, int state )
 static int slider_adjust( GSlider* ep, int adj )
 {
     int nx = ep->tx + adj;
+    int moveW = ep->wid.area.w - ep->knobWidth;
+
     if( nx < 0 )
         nx = 0;
-    else if( nx > ep->wid.area.w )
-        nx = ep->wid.area.w;
+    else if( nx > moveW )
+        nx = moveW;
     if( ep->tx != nx )
     {
         ep->tx = nx;
@@ -157,13 +160,13 @@ static int slider_adjust( GSlider* ep, int adj )
         {
             struct ValueI* da = &ep->data.i;
             da->val = da->min +
-                      (ep->tx * (da->max - da->min) / ep->wid.area.w );
+                      (ep->tx * (da->max - da->min) / moveW );
         }
         else
         {
             struct ValueF* da = &ep->data.f;
             da->val = da->min +
-                      (ep->tx * (da->max - da->min) / ep->wid.area.w );
+                      (ep->tx * (da->max - da->min) / moveW );
         }
 
         return 1;
@@ -263,8 +266,6 @@ activate:
 static void slider_sizeHint( GWidget* wp, GSizeHint* size )
 {
     UCell* rc;
-    //EX_PTR;
-    //UThread* ut = glEnv.guiUT;
     (void) wp;
 
     rc = glEnv.guiStyle + CI_STYLE_SLIDER_SIZE;
@@ -298,6 +299,12 @@ static void slider_layout( GWidget* wp )
 
     if( ! gDPC )
         return;
+
+    // Get slider knob width.
+
+    rc = style + CI_STYLE_SLIDER_SIZE;
+    ep->knobWidth = rc->coord.n[0];
+
 
     // Set draw list variables.
 
