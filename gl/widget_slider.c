@@ -300,7 +300,7 @@ activate:
 static void slider_sizeHint( GWidget* wp, GSizeHint* size )
 {
     UCell* rc;
-    (void) wp;
+    EX_PTR;
 
     rc = glEnv.guiStyle + CI_STYLE_SLIDER_SIZE;
     if( ur_is(rc, UT_COORD) )
@@ -314,12 +314,26 @@ static void slider_sizeHint( GWidget* wp, GSizeHint* size )
         size->minH = 20;
     }
 
-    size->maxW    = GW_MAX_DIM;
-    size->maxH    = size->minH;
-    size->weightX = 2;
-    size->weightY = 1;
-    size->policyX = GW_EXPANDING;
-    size->policyY = GW_FIXED;
+    if( ep->orient == HSLIDER )
+    {
+        size->minW = 100;
+        size->maxW = GW_MAX_DIM;
+        size->maxH = size->minH;
+        size->weightX = 2;
+        size->weightY = 1;
+        size->policyX = GW_EXPANDING;
+        size->policyY = GW_FIXED;
+    }
+    else
+    {
+        size->minH = 100;
+        size->maxW = size->minW;
+        size->maxH = GW_MAX_DIM;
+        size->weightX = 1;
+        size->weightY = 2;
+        size->policyX = GW_FIXED;
+        size->policyY = GW_EXPANDING;
+    }
 }
 
 

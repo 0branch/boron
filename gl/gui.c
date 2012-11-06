@@ -1727,7 +1727,7 @@ static void grid_layout( GWidget* wp )
     int cells = ep->cols * 2 + ep->rows * 2;
     int row, col;
     int sx = wp->area.x + ep->marginL;
-    int sy = wp->area.y + ep->marginT;
+    int sy = wp->area.y + wp->area.h - ep->marginT;
 
     assert( cells < 64 );
     memset( colMin, 0, sizeof(int16_t) * cells );
@@ -1751,9 +1751,9 @@ static void grid_layout( GWidget* wp )
         if( col )
             cr.x += (col - 1) * ep->spacing;
 
-        cr.y = sy + _int16Sum( rowMin, row );
+        cr.y = sy - _int16Sum( rowMin, row + 1 );
         if( row )
-            cr.y += (row - 1) * ep->spacing;
+            cr.y -= (row - 1) * ep->spacing;
 
         if( cs.policyX == GW_FIXED )
         {
