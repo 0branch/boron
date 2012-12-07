@@ -1727,17 +1727,19 @@ bad_prim:
                 int slices, stacks;
 
                 INC_PC
-                if( ur_is(pc, UT_DECIMAL) )
-                    radius = (float) ur_decimal(pc);
-                else if( ur_is(pc, UT_INT) )
-                    radius = (float) ur_int(pc);
+                PC_VALUE(val)
+                if( ur_is(val, UT_DECIMAL) )
+                    radius = (float) ur_decimal(val);
+                else if( ur_is(val, UT_INT) )
+                    radius = (float) ur_int(val);
                 else
                     goto bad_sphere;
                 INC_PC
-                if( ur_is(pc, UT_COORD) )
+                PC_VALUE(val)
+                if( ur_is(val, UT_COORD) )
                 {
-                    slices = pc->coord.n[0];
-                    stacks = pc->coord.n[1];
+                    slices = val->coord.n[0];
+                    stacks = val->coord.n[1];
                 }
                 else
                 {
