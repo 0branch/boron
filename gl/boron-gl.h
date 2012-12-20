@@ -140,7 +140,6 @@ struct GLEnv
     UBuffer tmpStr;
     UBuffer widgetClasses;
     UBuffer rootWidgets;
-    GLint   maxTextureUnits;
     int     mouseDeltaX;
     int     mouseDeltaY;
     int     prevMouseX;

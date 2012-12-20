@@ -2134,7 +2134,7 @@ CFUNC( uc_gl_version )
 
 /*-cf-
     gl-max-textures
-    return: GL_MAX_TEXTURE_UNITS int!
+    return: GL_MAX_TEXTURE_IMAGE_UNITS int!
     group: gl
 */
 CFUNC( uc_gl_max_textures )
@@ -2143,7 +2143,7 @@ CFUNC( uc_gl_max_textures )
     (void) ut;
     (void) a1;
 
-    glGetIntegerv( GL_MAX_TEXTURE_UNITS, &count );
+    glGetIntegerv( GL_MAX_TEXTURE_IMAGE_UNITS, &count );
 
     ur_setId(res, UT_INT);
     ur_int(res) = count;
@@ -2509,7 +2509,6 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     // Initialize glEnv before boron_makeEnv() since the datatype recycle
     // methods will get called.
 
-    glEnv.maxTextureUnits = 0;
     glEnv.view = 0;
     glEnv.guiUT = 0;
     glEnv.prevMouseX = MOUSE_UNSET;
@@ -2628,8 +2627,6 @@ cleanup:
         fprintf( stderr, "OpenGL 2.0 required\n" );
         goto cleanup;
     }
-
-    glGetIntegerv( GL_MAX_TEXTURE_UNITS, &glEnv.maxTextureUnits );
 
     // A non-zero guiUT is our indicator that the GL context has been created.
     glEnv.guiUT = ut;
