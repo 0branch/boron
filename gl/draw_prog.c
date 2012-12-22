@@ -31,6 +31,10 @@
 #include "shader.h"
 #include "geo.h"
 #include "quat.h"
+#ifdef GL_ES_VERSION_2_0
+#include "es_compat.h"
+#endif
+
 
 extern int boron_doBlock( UThread* ut, const UCell* ec, UCell* res );
 
@@ -808,9 +812,11 @@ static void emitGeoPrim( const Primitives* it, DPCompiler* emit )
         case GL_TRIANGLE_FAN:
             opcode = DP_DRAW_TRI_FAN;
             break;
+#ifndef GL_ES_VERSION_2_0 
         case GL_QUADS:
             opcode = DP_DRAW_QUADS;
             break;
+#endif
         default:
             return;
     }
@@ -1597,11 +1603,16 @@ image_next:
                     }
                     else
                     {
+#ifdef GL_ES_VERSION_2_0
+                        scriptError
+                            ( "image cannot get texture! size with GLES2" );
+#else
                         glBindTexture( GL_TEXTURE_2D, ur_texId(val) );
                         glGetTexLevelParameterfv( GL_TEXTURE_2D, 0,
                                                   GL_TEXTURE_WIDTH, &w );
                         glGetTexLevelParameterfv( GL_TEXTURE_2D, 0,
                                                   GL_TEXTURE_HEIGHT, &h );
+#endif
                     }
 
                     dp_tgeoInit( emit );
@@ -2416,13 +2427,14 @@ void ur_setDPSwitch( UThread* ut, UIndex resN, DPSwitch sid, int n )
 static void disableClientState( struct ClientState* cs )
 {
     int f = cs->flags;
+#ifndef GL_ES_VERSION_2_0
     if( f & CSA_NORMAL )
         glDisableClientState( GL_NORMAL_ARRAY );
     if( f & CSA_COLOR )
         glDisableClientState( GL_COLOR_ARRAY );
     if( f & CSA_UV )
         glDisableClientState( GL_TEXTURE_COORD_ARRAY );
-
+#endif
     for( f = 0; f < cs->attrCount; ++f )
         glDisableVertexAttribArray( cs->attr[ f ] );
 }
@@ -2453,12 +2465,12 @@ void ur_initDrawState( DPState* state )
 /*--------------------------------------------------------------------------*/
 
 
-GLdouble number_d( const UCell* cell )
+double number_d( const UCell* cell )
 {
     if( ur_is(cell, UT_DECIMAL) )
         return ur_decimal(cell);
     if( ur_is(cell, UT_INT) )
-        return (GLdouble) ur_int(cell);
+        return (double) ur_int(cell);
     return 0.0;
 }
 
@@ -2468,9 +2480,9 @@ GLdouble number_d( const UCell* cell )
 void dop_camera( UThread* ut, UIndex ctxValBlk )
 {
     GLfloat mat[16];
-    GLdouble w, h;
-    GLdouble fov;
-    GLdouble near, far;
+    double w, h;
+    double fov;
+    double near, far;
     const UCell* val;
     const UBuffer* blk = ur_bufferE( ctxValBlk );
     const UCell* ctxCells = blk->ptr.cell;
@@ -2485,8 +2497,8 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
                     val->coord.n[2],
                     val->coord.n[3] );
 
-        w = (GLdouble) val->coord.n[2];
-        h = (GLdouble) val->coord.n[3];
+        w = (double) val->coord.n[2];
+        h = (double) val->coord.n[3];
 
         glMatrixMode( GL_PROJECTION );
 
@@ -2547,6 +2559,7 @@ static void _lightEn( GLenum light, const UCell* cell )
 }
 
 
+#ifndef GL_ES_VERSION_2_0
 void dop_light( UThread* ut, const UCell* val, int light )
 {
     if( ur_is(val, UT_LOGIC) )
@@ -2597,9 +2610,10 @@ void dop_light( UThread* ut, const UCell* val, int light )
         }
     }
 }
+#endif
 
 
-#if 1
+#ifndef GL_ES_VERSION_2_0
 //#define SHADOW_BACK_FACES   1
 
 static GLfloat lightViewMatrix[ 16 ];
@@ -2867,7 +2881,10 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " VERTEX_OFFSET %08x\n", stof );
+#ifdef GL_ES_VERSION_2_0
+#else
             glVertexPointer( 3, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
+#endif
         }
             break;
 
@@ -2875,7 +2892,10 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " VERTEX_OFFSET_4 %08x\n", stof );
+#ifdef GL_ES_VERSION_2_0
+#else
             glVertexPointer( 4, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
+#endif
         }
             break;
 
@@ -2883,9 +2903,20 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " NORMAL_OFFSET %08x\n", stof );
+#ifdef GL_ES_VERSION_2_0
+            /*
+            size = loc & 0xff;
+            loc >>= 8;
+            glEnableVertexAttribArray( loc );
+            ds->client.attr[ ds->client.attrCount++ ] = loc;
+            glVertexAttribPointer( loc, size, GL_FLOAT, GL_FALSE,
+                                   stof & 0xff, NULL + (stof >> 8) );
+            */
+#else
             glEnableClientState( GL_NORMAL_ARRAY );
             ds->client.flags |= CSA_NORMAL;
             glNormalPointer( GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
+#endif
         }
             break;
 
@@ -2893,9 +2924,12 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " COLOR_OFFSET %08x\n", stof );
+#ifdef GL_ES_VERSION_2_0
+#else
             glEnableClientState( GL_COLOR_ARRAY );
             ds->client.flags |= CSA_COLOR;
             glColorPointer( 3, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
+#endif
         }
             break;
 
@@ -2903,9 +2937,12 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " COLOR_OFFSET_4 %08x\n", stof );
+#ifdef GL_ES_VERSION_2_0
+#else
             glEnableClientState( GL_COLOR_ARRAY );
             ds->client.flags |= CSA_COLOR;
             glColorPointer( 4, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
+#endif
         }
             break;
 
@@ -2913,9 +2950,12 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " UV_OFFSET %08x\n", stof );
+#ifdef GL_ES_VERSION_2_0
+#else
             glEnableClientState( GL_TEXTURE_COORD_ARRAY );
             ds->client.flags |= CSA_UV;
             glTexCoordPointer( 2, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
+#endif
         }
             break;
 
@@ -2967,12 +3007,12 @@ dispatch:
             REPORT_1( "DRAW_TRI_FAN %d\n", pc[0] );
             glDrawElements( GL_TRIANGLE_FAN, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
-
+#ifndef GL_ES_VERSION_2_0 
         case DP_DRAW_QUADS:
             REPORT_1( "DRAW_QUADS %d\n", pc[0] );
             glDrawElements( GL_QUADS, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
-
+#endif
         case DP_DRAW_POINTS_I:
             REPORT_2( "DRAW_POINTS_I %d %d\n", pc[0], pc[1] );
             glDrawElements( GL_POINTS, pc[0], GL_UNSIGNED_SHORT,
@@ -3014,14 +3054,14 @@ dispatch:
                             NULL + pc[1] );
             pc += 2;
             break;
-
+#ifndef GL_ES_VERSION_2_0
         case DP_DRAW_QUADS_I:
             REPORT_2( "DRAW_QUADS_I %d %d\n", pc[0], pc[1] );
             glDrawElements( GL_QUADS, pc[0], GL_UNSIGNED_SHORT,
                             NULL + pc[1] );
             pc += 2;
             break;
-
+#endif
         case DP_DEPTH_ON:
             glEnable( GL_DEPTH_TEST );
             break;
@@ -3081,7 +3121,7 @@ dispatch:
         case DP_DEPTH_MASK_OFF:
             glDepthMask( GL_FALSE );
             break;
-
+#ifndef GL_ES_VERSION_2_0
         case DP_POINT_SIZE_ON:
             glEnable( GL_VERTEX_PROGRAM_POINT_SIZE );
             break;
@@ -3097,13 +3137,21 @@ dispatch:
         case DP_POINT_SPRITE_OFF:
             glDisable( GL_POINT_SPRITE );
             break;
-
+#endif
         case DP_COLOR3:
+#ifdef GL_ES_VERSION_2_0
+            pc++;
+#else
             glColor3ubv( (GLubyte*) pc++ );
+#endif
             break;
 
         case DP_COLOR4:
+#ifdef GL_ES_VERSION_2_0
+            pc++;
+#else
             glColor4ubv( (GLubyte*) pc++ );
+#endif
             break;
 #if 0
         case DP_COLOR3F:
@@ -3113,6 +3161,9 @@ dispatch:
 #endif
         case DP_COLOR_WORD:
         {
+#ifdef GL_ES_VERSION_2_0
+            pc += 2;
+#else
             uint8_t color[ 4 ];
             PC_WORD( blk, val );
             if( ur_is(val, UT_VEC3) )
@@ -3121,6 +3172,7 @@ dispatch:
                 glColor4ubv( color );
             else
                 glColor3ubv( color );
+#endif
         }
             break;
 
@@ -3263,6 +3315,7 @@ dispatch:
         }
             break;
 
+#ifndef GL_ES_VERSION_2_0
         case DP_SHADOW_BEGIN:
             dop_shadow_begin( *pc++ );
             break;
@@ -3365,6 +3418,7 @@ dispatch:
             pc += 2;
         }
             break;
+#endif
 
         case DP_FONT:
             ds->font = ur_buffer( *pc++ )->ptr.v;
@@ -3438,6 +3492,7 @@ int ur_runDrawProg( UThread* ut, UIndex n )
 
     ur_initDrawState( &state );
 
+#ifndef GL_ES_VERSION_2_0
     // NOTE: glDrawElements has been seen to segfault if non-existant
     //       client arrays are enabled.
 
@@ -3447,6 +3502,7 @@ int ur_runDrawProg( UThread* ut, UIndex n )
     glEnableClientState( GL_COLOR_ARRAY );
     glEnableClientState( GL_TEXTURE_COORD_ARRAY );
     */
+#endif
 
     ok = ur_runDrawProg2( ut, &state, n );
     if( state.client.flags )

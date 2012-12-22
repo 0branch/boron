@@ -497,6 +497,7 @@ static void ledit_render( GWidget* wp )
             }
         }
 
+#ifndef GL_ES_VERSION_2_0
         glEnableClientState( GL_TEXTURE_COORD_ARRAY );
 
         glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
@@ -546,6 +547,7 @@ static void ledit_render( GWidget* wp )
             glDrawElements( GL_LINES, 2, GL_UNSIGNED_SHORT, 0 );
 
         glDisableClientState( GL_TEXTURE_COORD_ARRAY );
+#endif
     }
 }
 

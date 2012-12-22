@@ -268,7 +268,7 @@ static int _textureKeyword( UAtom name, TextureDef* def )
     switch( name )
     {
         case UR_ATOM_CLAMP:
-            def->wrap = GL_CLAMP;
+            def->wrap = GL_CLAMP_TO_EDGE;
             break;
 
         case UR_ATOM_REPEAT:
@@ -304,6 +304,7 @@ static int _textureKeyword( UAtom name, TextureDef* def )
             def->format = GL_RGBA;
             break;
 
+#ifndef GL_ES_VERSION_2_0 
         case UR_ATOM_F32:
             switch( def->comp )
             {
@@ -320,6 +321,7 @@ static int _textureKeyword( UAtom name, TextureDef* def )
                     break;
             }
             break;
+#endif
 
         default:
             return 0;
@@ -363,12 +365,14 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
         _texCoord( &def, from );
         goto build;
     }
+#ifndef GL_ES_VERSION_2_0 
     else if( ur_is(from, UT_INT) )
     {
         target = GL_TEXTURE_1D;
         _texCoord( &def, from );
         goto build;
     }
+#endif
     else if( ur_is(from, UT_BLOCK) )
     {
         UBlockIter bi;
@@ -400,11 +404,13 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
                     {
                         _texCoord( &def, val );
                     }
+#ifndef GL_ES_VERSION_2_0 
                     else if( ur_is(val, UT_INT) )
                     {
                         target = GL_TEXTURE_1D;
                         _texCoord( &def, val );
                     }
+#endif
                     else if( ur_is(val, UT_VECTOR) )
                     {
                         const UBuffer* buf = ur_bufferSer(val);
@@ -428,12 +434,12 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
                                          "Invalid texture! keyword" );
                     }
                     break;
-
+#ifndef GL_ES_VERSION_2_0 
                 case UT_INT:
                     target = GL_TEXTURE_1D;
                     _texCoord( &def, bi.it );
                     break;
-
+#endif
                 case UT_COORD:
                     _texCoord( &def, bi.it );
                     break;
@@ -454,40 +460,33 @@ build:
     name = glid_genTexture();
     glBindTexture( target, name );
 
+#ifndef GL_ES_VERSION_2_0 
     if( target == GL_TEXTURE_2D )
+#endif
     {
-        if( def.mipmap )
-        {
-            gluBuild2DMipmaps( GL_TEXTURE_2D, def.comp, def.width, def.height,
-                               def.format, type, def.pixels );
-        }
-        else
-        {
-            // Ensure that a non-mipmap minifying filter is used.
-            // Using a mipmap filter can cause FBO format errors and textures
-            // to not appear.
-            if( def.min_filter != GL_NEAREST )
-                def.min_filter = GL_LINEAR;
+        glTexImage2D( GL_TEXTURE_2D, 0, def.comp, def.width, def.height,
+                      0, def.format, type, def.pixels );
+    }
+#ifndef GL_ES_VERSION_2_0 
+    else
+    {
+        glTexImage1D( GL_TEXTURE_1D, 0, def.comp, def.width,
+                      0, def.format, type, def.pixels );
+    }
+#endif
 
-            glTexImage2D( GL_TEXTURE_2D, 0, def.comp, def.width, def.height,
-                          0, def.format, type, def.pixels );
-        }
+    if( def.mipmap )
+    {
+        //glEnable( target );   // Needed with ATI drivers?
+        glGenerateMipmap( target );
     }
     else
     {
-        if( def.mipmap )
-        {
-            gluBuild1DMipmaps( GL_TEXTURE_1D, def.comp, def.width,
-                               def.format, type, def.pixels );
-        }
-        else
-        {
-            if( def.min_filter != GL_NEAREST )
-                def.min_filter = GL_LINEAR;
-
-            glTexImage1D( GL_TEXTURE_1D, 0, def.comp, def.width,
-                          0, def.format, type, def.pixels );
-        }
+        // Ensure that a non-mipmap minifying filter is used.
+        // Using a mipmap filter can cause FBO format errors and textures
+        // to not appear.
+        if( def.min_filter != GL_NEAREST )
+            def.min_filter = GL_LINEAR;
     }
 
     {
@@ -498,9 +497,6 @@ build:
                              (const char*) gluErrorString( err ) );
         }
     }
-
-    // GL_DECAL, GL_MODULATE, GL_REPLACE
-    //glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE );
 
     // GL_CLAMP, GL_CLAMP_TO_EDGE, GL_REPEAT.
     glTexParameteri( target, GL_TEXTURE_WRAP_S, def.wrap );
@@ -524,6 +520,12 @@ build:
 static void textureToRaster( UThread* ut, GLenum target, GLuint name,
                              UCell* res )
 {
+#ifdef GL_ES_VERSION_2_0 
+    (void) ut;
+    (void) target;
+    (void) name;
+    ur_setId(res, UT_NONE);
+#else
     UBuffer* bin;
     GLint dim[ 2 ];
 
@@ -538,6 +540,7 @@ static void textureToRaster( UThread* ut, GLenum target, GLuint name,
         glPixelStorei( GL_PACK_ALIGNMENT, (bpr & 3) ? 1 : 4 );
         glGetTexImage( target, 0, GL_RGB, GL_UNSIGNED_BYTE, ur_rastElem(bin) );
     }
+#endif
 }
 
 
@@ -897,6 +900,14 @@ void shader_mark( UThread* ut, UCell* cell )
 // UT_FBO
 
 
+#ifdef GL_ES_VERSION_2_0 
+#define GL_FRAMEBUFFER_COMPLETE_EXT GL_FRAMEBUFFER_COMPLETE
+#define GL_FRAMEBUFFER_UNSUPPORTED_EXT GL_FRAMEBUFFER_UNSUPPORTED
+#define GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT
+#define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS
+#endif
+
+
 const char* _framebufferStatus()
 {
     GLenum status;
@@ -915,7 +926,7 @@ const char* _framebufferStatus()
         case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
             return
             "Framebuffer incomplete, attached images must have same dimensions";
-
+#ifndef GL_ES_VERSION_2_0 
         case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
             return
             "Framebuffer incomplete, attached images must have same format";
@@ -925,7 +936,7 @@ const char* _framebufferStatus()
 
         case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
             return "Framebuffer incomplete, missing read buffer";
-
+#endif
         default:
             assert(0);
             return 0;
@@ -955,11 +966,16 @@ int fbo_make( UThread* ut, const UCell* from, UCell* res )
 
         if( sel == UR_ATOM_DEPTH )
         {
+#ifdef GL_ES_VERSION_2_0
+            return ur_error( ut, UR_ERR_SCRIPT,
+                "make depth framebuffer! cannot get texture! size with GLES2" );
+#else
             glBindTexture( GL_TEXTURE_2D, texName );
             glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,
                                       dim );
             glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT,
                                       dim + 1 );
+#endif
         }
     }
     else if( ur_is(from, UT_COORD) )

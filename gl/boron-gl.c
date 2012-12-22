@@ -455,7 +455,9 @@ CFUNC( uc_display_snap )
     {
         // Grab front buffer or we are likely to grab a blank screen
         // (since key input is done after glClear).
+#ifndef GL_ES_VERSION_2_0
         glReadBuffer( GL_FRONT );
+#endif
         glReadPixels( vp[0], vp[1], vp[2], vp[3], GL_RGB, GL_UNSIGNED_BYTE,
                       ur_rastElem(bin) );
     }
@@ -566,6 +568,7 @@ static int _keyCode( const char* cp, int len )
     else if( len == 2 )
     {
         if( strnequ( cp, "up", 2 ) ) code = KEY_Up;
+#ifdef KEY_F1
         else if( *cp == 'f' )
         {
             switch( cp[1] )
@@ -581,6 +584,7 @@ static int _keyCode( const char* cp, int len )
                 case '9': code = KEY_F9; break;
             }
         }
+#endif
     }
     else if( len == 3 )
     {
@@ -589,9 +593,11 @@ static int _keyCode( const char* cp, int len )
         else if( strnequ( cp, "tab", 3 ) ) code = KEY_Tab;
         else if( strnequ( cp, "end", 3 ) ) code = KEY_End;
         else if( strnequ( cp, "del", 3 ) ) code = KEY_Delete;
+#ifdef KEY_F1
         else if( strnequ( cp, "f10", 3 ) ) code = KEY_F10;
         else if( strnequ( cp, "f11", 3 ) ) code = KEY_F11;
         else if( strnequ( cp, "f12", 3 ) ) code = KEY_F12;
+#endif
     }
     else
     {
@@ -607,6 +613,7 @@ static int _keyCode( const char* cp, int len )
         else if( strnequ( cp, "num-lock", 8 ) ) code = KEY_Num_Lock;
         else if( strnequ( cp, "print",    5 ) ) code = KEY_Print;
         else if( strnequ( cp, "pause",    5 ) ) code = KEY_Pause;
+#ifdef KEY_KP_Up
         else if( *cp == 'k' )
         {
              if( strnequ( cp, "kp-8",     4 ) ) code = KEY_KP_Up;
@@ -632,6 +639,7 @@ static int _keyCode( const char* cp, int len )
         else if( strnequ( cp, "kp-enter", 6 ) ) code = KEY_KP_Equal;
         */
         }
+#endif
     }
 
     return code;
@@ -1732,7 +1740,15 @@ typedef struct
 Camera;
 
 
-extern GLdouble number_d( const UCell* cell );
+float number_f( const UCell* cell )
+{
+    if( ur_is(cell, UT_DECIMAL) )
+        return (float) ur_decimal(cell);
+    if( ur_is(cell, UT_INT) )
+        return (float) ur_int(cell);
+    return 0.0f;
+}
+
 
 /*
   Returns non-zero if ctx is a valid camera with a perspective projection.
@@ -1754,9 +1770,9 @@ static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
         for( i = 0; i < 4; ++i )
             cam->view[ i ] = (float) cell->coord.n[ i ];
 
-        cam->near = number_d( ur_ctxCell( ctx, CAM_CTX_NEAR ) );
-        cam->far  = number_d( ur_ctxCell( ctx, CAM_CTX_FAR ) );
-        fov       = number_d( ur_ctxCell( ctx, CAM_CTX_FOV ) );
+        cam->near = number_f( ur_ctxCell( ctx, CAM_CTX_NEAR ) );
+        cam->far  = number_f( ur_ctxCell( ctx, CAM_CTX_FAR ) );
+        fov       = number_f( ur_ctxCell( ctx, CAM_CTX_FOV ) );
         if( fov > 0.0 )
         {
             w = (float) cell->coord.n[2];
@@ -2321,10 +2337,12 @@ CFUNC( cfunc_shadowmap )
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+#ifndef GL_ES_VERSION_2_0
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE,
                                         GL_COMPARE_R_TO_TEXTURE );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC,
                                         GL_LEQUAL );
+#endif
         //glTexParameteri( GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE,
         //                 GL_INTENSITY );
 
@@ -2333,8 +2351,10 @@ CFUNC( cfunc_shadowmap )
         glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, fboName );
         glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT,
                  GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, texName, 0 );
+#ifndef GL_ES_VERSION_2_0
         glDrawBuffer( GL_NONE );
         glReadBuffer( GL_NONE );
+#endif
 
         if( (err = _framebufferStatus()) )
             return ur_error( ut, UR_ERR_INTERNAL, err );
@@ -2597,7 +2617,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     if( ! boron_doCStr( ut, _bootScript, sizeof(_bootScript) - 1 ) )
         return UR_THROW;
 
-#ifdef __linux__
+#if defined(__linux__) && ! defined(__ANDROID__)
     boron_addPortDevice( ut, &port_joystick,
                          ur_internAtom(ut, joyStr, joyStr + 8) );
 #endif

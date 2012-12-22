@@ -22,6 +22,8 @@
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
 #include <OpenGL/glext.h>
+#elif defined(__ANDROID__)
+#include <GLES2/gl2.h>
 #else
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
@@ -222,12 +224,14 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
                     ur_int( cval ) = 0;
                     break;
 
-                case GL_SAMPLER_1D:
                 case GL_SAMPLER_2D:
-                case GL_SAMPLER_3D:
                 case GL_SAMPLER_CUBE:
+#ifndef GL_ES_VERSION_2_0
+                case GL_SAMPLER_1D:
+                case GL_SAMPLER_3D:
                 case GL_SAMPLER_1D_SHADOW:
                 case GL_SAMPLER_2D_SHADOW:
+#endif
                     ur_setId( cval, UT_NONE );
                     ur_texId(cval) = 0;     // Expecting texture!.
                     break;
@@ -355,6 +359,7 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
 
             //case GL_INT_VEC4:
 
+#ifndef GL_ES_VERSION_2_0
             case GL_SAMPLER_1D:
                 glActiveTexture( GL_TEXTURE0 + texUnit );
                 glEnable( GL_TEXTURE_1D );
@@ -362,9 +367,12 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
                 glUniform1i( pi->location, texUnit );
                 ++texUnit;
                 break;
+#endif
 
             case GL_SAMPLER_2D:
+#ifndef GL_ES_VERSION_2_0
             case GL_SAMPLER_2D_SHADOW:
+#endif
                 glActiveTexture( GL_TEXTURE0 + texUnit );
                 glEnable( GL_TEXTURE_2D );
                 glBindTexture( GL_TEXTURE_2D, ur_texId(cval) );
@@ -392,12 +400,14 @@ int shaderTextureUnit( const Shader* sh, UAtom name )
     {
         switch( pi->type )
         {
-            case GL_SAMPLER_1D:
             case GL_SAMPLER_2D:
-            case GL_SAMPLER_3D:
             case GL_SAMPLER_CUBE:
+#ifndef GL_ES_VERSION_2_0
+            case GL_SAMPLER_1D:
+            case GL_SAMPLER_3D:
             case GL_SAMPLER_1D_SHADOW:
             case GL_SAMPLER_2D_SHADOW:
+#endif
                 if( pi->name == name )
                     return texUnit;
                 ++texUnit;

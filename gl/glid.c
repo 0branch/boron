@@ -1,6 +1,6 @@
 /*
   Boron OpenGL ID Collector
-  Copyright 2009-2010 Karl Robillard
+  Copyright 2009-2012 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -26,6 +26,12 @@
 
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
+#elif defined(__ANDROID__)
+#include <GLES2/gl2.h>
+#define glGenRenderbuffersEXT       glGenRenderbuffers
+#define glGenFramebuffersEXT        glGenFramebuffers
+#define glDeleteRenderbuffersEXT    glDeleteRenderbuffers
+#define glDeleteFramebuffersEXT     glDeleteFramebuffers
 #else
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>

@@ -83,9 +83,6 @@ static void buildFontTexture( RasterHead* img, GLuint id )
         glTexImage2D( GL_TEXTURE_2D, 0, comp, img->width, img->height, 0,
                       format, GL_UNSIGNED_BYTE, img + 1 );
     }
-
-
-    glTexEnvi( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE );
 }
 
 
