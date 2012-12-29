@@ -210,18 +210,18 @@ static void _texRast( TextureDef* tex, const RasterHead* rh )
     switch( rh->format )
     {
         case UR_RAST_GRAY:
-            tex->comp   = 1;
+            tex->comp   =
             tex->format = GL_LUMINANCE;
             break;
 
         case UR_RAST_RGB:
-            tex->comp   = 3;
+            tex->comp   =
             tex->format = GL_RGB;
             break;
 
         case UR_RAST_RGBA:
         default:
-            tex->comp   = 4;
+            tex->comp   =
             tex->format = GL_RGBA;
             break;
     }
@@ -244,19 +244,19 @@ static void _texCoord( TextureDef* tex, const UCell* cell )
     }
 
     tex->pixels = 0;
-    tex->comp   = 4;
+    tex->comp   =
     tex->format = GL_RGBA;
 
     if( cell->coord.len > 2 )
     {
         if( cell->coord.n[2] == 3 )
         {
-            tex->comp   = 3;
+            tex->comp   =
             tex->format = GL_RGB;
         }
         else if( cell->coord.n[2] == 1 )
         {
-            tex->comp   = 1;
+            tex->comp   =
             tex->format = GL_LUMINANCE;
         }
     }
@@ -290,17 +290,17 @@ static int _textureKeyword( UAtom name, TextureDef* def )
             break;
 
         case UR_ATOM_GRAY:
-            def->comp   = 1;
+            def->comp   =
             def->format = GL_LUMINANCE;
             break;
 
         case UR_ATOM_RGB:
-            def->comp   = 3;
+            def->comp   =
             def->format = GL_RGB;
             break;
 
         case UR_ATOM_RGBA:
-            def->comp   = 4;
+            def->comp   =
             def->format = GL_RGBA;
             break;
 
@@ -308,14 +308,14 @@ static int _textureKeyword( UAtom name, TextureDef* def )
         case UR_ATOM_F32:
             switch( def->comp )
             {
-                case 1:
+                case GL_LUMINANCE:
                     def->comp = GL_LUMINANCE32F_ARB;
                     break;
-                case 3:
+                case GL_RGB:
                     def->comp = GL_RGB32F_ARB;
                     //def.comp = GL_RGB16F_ARB;
                     break;
-                case 4:
+                case GL_RGBA:
                     def->comp = GL_RGBA32F_ARB;
                     //def.comp = GL_RGBA16F_ARB;
                     break;
@@ -475,6 +475,15 @@ build:
     }
 #endif
 
+    {
+        GLenum err = glGetError();
+        if( err != GL_NO_ERROR )
+        {
+            return ur_error( ut, UR_ERR_INTERNAL,
+                             (const char*) gluErrorString( err ) );
+        }
+    }
+
     if( def.mipmap )
     {
         //glEnable( target );   // Needed with ATI drivers?
@@ -487,15 +496,6 @@ build:
         // to not appear.
         if( def.min_filter != GL_NEAREST )
             def.min_filter = GL_LINEAR;
-    }
-
-    {
-        GLenum err = glGetError();
-        if( err != GL_NO_ERROR )
-        {
-            return ur_error( ut, UR_ERR_INTERNAL,
-                             (const char*) gluErrorString( err ) );
-        }
     }
 
     // GL_CLAMP, GL_CLAMP_TO_EDGE, GL_REPEAT.
