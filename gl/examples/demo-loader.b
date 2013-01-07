@@ -22,29 +22,55 @@ controls: context [
 
     set 'demo-controls func [blk] [con: blk link]
 
+    prev-con: does [if con [con: skip/wrap con -3 link]]
+    next-con: does [if con [con: skip/wrap con  3 link]]
+    inc: dec: min: max: none
+
     link: does [
         value: do third con
         tmp: second con
-        vmin: first  tmp
-        vmax: second tmp
-        vinc: third  tmp
+        set [inc dec min max] either block? tmp [
+            ifn vinc: find tmp value [
+                vinc: tmp
+            ]
+            block-funcs
+        ][
+            vmin: first  tmp
+            vmax: second tmp
+            vinc: third  tmp
+            number-funcs
+        ]
         print [first con value]
     ]
-    adj: func [inc] [
-        value: limit add value inc vmin vmax
-        assign
-    ]
+
     assign: does [
         set third con value
         print [first con value]
     ]
 
-    prev: does [if con [con: skip/wrap con -3 link]]
-    next: does [if con [con: skip/wrap con  3 link]]
-    inc:  does [if con [adj vinc]]
-    dec:  does [if con [adj negate vinc]]
-    min:  does [if con [value: vmin assign]]
-    max:  does [if con [value: vmax assign]]
+    block-adj: func [cmd] [
+        if con [
+            value: first vinc: do cmd
+            assign
+        ]
+    ]
+    block-funcs: reduce [
+        does [block-adj [skip/wrap vinc  1]]
+        does [block-adj [skip/wrap vinc -1]]
+        does [block-adj [head second con]]
+        does [block-adj [prev tail second con]]
+    ]
+
+    number-adj: func [inc] [
+        value: limit add value inc vmin vmax
+        assign
+    ]
+    number-funcs: reduce [
+        does [if con [number-adj vinc]]
+        does [if con [number-adj negate vinc]]
+        does [if con [value: vmin assign]]
+        does [if con [value: vmax assign]]
+    ]
 
     report: does [
         if con [
@@ -58,8 +84,8 @@ controls: context [
     keys: [
         left  [dec]
         right [inc]
-        up    [prev]
-        down  [next]
+        up    [prev-con]
+        down  [next-con]
         home  [min]
         end   [max]
         c     [report]
