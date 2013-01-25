@@ -3292,6 +3292,11 @@ CFUNC(cfunc_mold)
 }
 
 
+#ifdef __ANDROID__
+#undef stdout
+#define stdout  stderr
+#endif
+
 /*-cf-
     probe
         value

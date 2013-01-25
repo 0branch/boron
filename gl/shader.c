@@ -30,11 +30,14 @@
 #include <GL/glext.h>
 #endif
 
-
 #include "os.h"
 #include "boron-gl.h"
 #include "gl_atoms.h"
 #include "shader.h"
+
+#ifdef GL_ES_VERSION_2_0
+#include "es_compat.h"
+#endif
 
 
 static int printInfoLog( UThread* ut, GLuint obj, int prog )
@@ -64,8 +67,8 @@ static int printInfoLog( UThread* ut, GLuint obj, int prog )
     }
     else
     {
-        ur_error( ut, UR_ERR_SCRIPT, prog ? "glCompileShader failed"
-                                          : "glLinkProgram failed" );
+        ur_error( ut, UR_ERR_SCRIPT, prog ? "glLinkProgram failed"
+                                          : "glCompileShader failed" );
     }
     return UR_THROW;
 }
@@ -104,10 +107,25 @@ static int createShader( UThread* ut, Shader* sh,
     glAttachShader( sh->program, vertexObj );
     glAttachShader( sh->program, fragmentObj );
 
+#ifndef __ANDROID__
     // These will actually go away when the program is deleted.
     glDeleteShader( vertexObj );
     glDeleteShader( fragmentObj );
+#endif
 
+#if 0
+    glGetShaderiv( vertexObj, GL_DELETE_STATUS, &ok );
+    fprintf( stderr, "KR vertex delete %d\n", ok );
+    glGetShaderiv( fragmentObj, GL_DELETE_STATUS, &ok );
+    fprintf( stderr, "KR fragment delete %d\n", ok );
+#endif
+
+    /*
+    glBindAttribLocation( sh->program, 0, "bg_vertex" );
+    glBindAttribLocation( sh->program, 1, "bg_color" );
+    glBindAttribLocation( sh->program, 2, "bg_normal" );
+    */
+    
     glLinkProgram( sh->program );
     glGetProgramiv( sh->program, GL_LINK_STATUS, &ok );
     if( ! ok )
@@ -236,6 +254,12 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
                     ur_texId(cval) = 0;     // Expecting texture!.
                     break;
 
+#ifdef GL_ES_VERSION_2_0
+                case GL_FLOAT_MAT4:
+                    ur_setId( cval, UT_NONE );
+                    break;
+#endif
+
                 default:
                     ur_setId( cval, UT_NONE );
                     break;
@@ -317,6 +341,10 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
     const UCell* cval = blk->ptr.cell;
     int texUnit = 0;
 
+#ifdef GL_ES_VERSION_2_0
+    es_matrixUsed = 0;
+#endif
+
     while( pi != pend )
     {
         // There is no cell type checking or conversion here for speed.
@@ -381,6 +409,20 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
                 break;
 
             //case GL_SAMPLER_3D:
+
+#ifdef GL_ES_VERSION_2_0
+            case GL_FLOAT_MAT4:
+                /*
+                fprintf( stderr, "sha %f,%f,%f\n    %f,%f,%f\n    %f,%f,%f\n",
+                         matrixTop[0], matrixTop[1], matrixTop[2],
+                         matrixTop[4], matrixTop[5], matrixTop[6],
+                         matrixTop[8], matrixTop[9], matrixTop[10] );
+                */
+                es_matrixLoc = pi->location;
+                es_matrixUsed = 1;
+                //glUniformMatrix4fv( pi->location, 1, GL_FALSE, matrixTop );
+                break;
+#endif
         }
         ++pi;
     }

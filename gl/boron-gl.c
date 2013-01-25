@@ -35,6 +35,10 @@
 #include "draw_prog.h"
 #include "quat.h"
 
+#ifdef __ANDROID__
+#include "glv_activity.h"
+#endif
+
 #if 0
 #include <time.h>
 #define PERF_CLOCK  1
@@ -120,6 +124,18 @@ static void eventHandler( GLView* view, GLViewEvent* event )
         case GLV_EVENT_KEY_DOWN:
         case GLV_EVENT_KEY_UP:
         */
+
+#ifdef __ANDROID__
+        case GLV_EVENT_APP:
+            fprintf( stderr, "GLV_EVENT_APP %d\n", event->code );
+            if( event->code == APP_CMD_STOP )
+            {
+                boron_throwWord( env->guiUT, UR_ATOM_QUIT );
+                UR_GUI_THROW;   // Ignores any later events.
+                return;
+            }
+            break;
+#endif
     }
 
     if( wp )
@@ -2447,7 +2463,7 @@ static void _createFixedAtoms( UThread* ut )
     {
         int i;
         for( i = 0; i < FA_COUNT; ++i )
-            printf( "KR %d %s\n", atoms[i], ur_atomCStr(ut, atoms[i]) );
+            fprintf( stderr, "KR %d %s\n", atoms[i], ur_atomCStr(ut, atoms[i]) );
     }
 #endif
 
@@ -2511,7 +2527,7 @@ extern void gui_addStdClasses();
 
 UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
 {
-#ifdef __linux__
+#if defined(__linux__) && ! defined(__ANDROID__)
     static char joyStr[] = "joystick";
 #endif
     UThread* ut;

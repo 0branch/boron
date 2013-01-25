@@ -31,8 +31,15 @@
 #include "shader.h"
 #include "geo.h"
 #include "quat.h"
+
 #ifdef GL_ES_VERSION_2_0
 #include "es_compat.h"
+
+#define ES_UPDATE_MATRIX \
+    if( es_matrixUsed && es_matrixMod ) \
+        es_updateUniformMatrix();
+#else
+#define ES_UPDATE_MATRIX
 #endif
 
 
@@ -682,18 +689,60 @@ static void bufferReset( DPCompiler* emit )
 */
 
 
+static void _genIndices2( UThread* ut, DPCompiler* emit, uint16_t* dst )
+{
+    UBuffer* iarr;
+    uint32_t* it;
+    uint32_t* end;
+    DPPrimRecord* pr;
+    DPPrimRecord* pend;
+    int offset = 0;
+
+    pr   = (DPPrimRecord*) emit->primRec.ptr.v;
+    pend = pr + emit->primRec.used;
+    while( pr != pend )
+    {
+        if( pr->dataType == UT_VECTOR )
+        {
+            // Convert vector! int32_t to GL_UNSIGNED_SHORT.
+            iarr = ur_buffer( pr->n );
+            it  = iarr->ptr.u32;
+            end = it + iarr->used;
+            while( it != end )
+                *dst++ = *it++;
+
+            offset += iarr->used;
+        }
+        else
+        {
+            int idx = offset;
+            offset += pr->n;
+            while( idx != offset )
+                *dst++ = idx++;
+        }
+        ++pr;
+    }
+}
+
+
 static void genIndices( UThread* ut, DPCompiler* emit )
 {
     if( emit->indexCount && emit->indexBuf )
     {
         uint16_t* dst;
-        uint32_t* it;
-        uint32_t* end;
-        UBuffer* iarr;
-        DPPrimRecord* pr;
-        DPPrimRecord* pend;
-        int offset = 0;
 
+#ifdef GL_ES_VERSION_2_0
+        int len = sizeof(uint16_t) * emit->indexCount;
+        dst = malloc( len );
+        if( dst )
+        {
+            _genIndices2( ut, emit, dst );
+
+            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, emit->indexBuf );
+            glBufferData( GL_ELEMENT_ARRAY_BUFFER, len, dst, GL_STATIC_DRAW );
+            free( dst );
+        }
+#else
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, emit->indexBuf );
         glBufferData( GL_ELEMENT_ARRAY_BUFFER,
                       sizeof(uint16_t) * emit->indexCount,
@@ -702,33 +751,10 @@ static void genIndices( UThread* ut, DPCompiler* emit )
         dst = (uint16_t*) glMapBuffer( GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY );
         if( dst )
         {
-            pr   = (DPPrimRecord*) emit->primRec.ptr.v;
-            pend = pr + emit->primRec.used;
-            while( pr != pend )
-            {
-                if( pr->dataType == UT_VECTOR )
-                {
-                    // Convert vector! int32_t to GL_UNSIGNED_SHORT.
-                    iarr = ur_buffer( pr->n );
-                    it  = iarr->ptr.u32;
-                    end = it + iarr->used;
-                    while( it != end )
-                        *dst++ = *it++;
-
-                    offset += iarr->used;
-                }
-                else
-                {
-                    int idx = offset;
-                    offset += pr->n;
-                    while( idx != offset )
-                        *dst++ = idx++;
-                }
-                ++pr;
-            }
-
+            _genIndices2( ut, emit, dst );
             glUnmapBuffer( GL_ELEMENT_ARRAY_BUFFER );
         }
+#endif
     }
 }
 
@@ -2975,36 +3001,44 @@ dispatch:
             break;
 
         case DP_DRAW_ARR_POINTS:
+            REPORT_1( "DRAW_ARR_POINTS %d\n", pc[0] );
+            ES_UPDATE_MATRIX
             glDrawArrays( GL_POINTS, 0, *pc++ );
             break;
 
         case DP_DRAW_POINTS:
             REPORT_1( "DRAW_POINTS %d\n", pc[0] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_POINTS, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
 
         case DP_DRAW_LINES:
             REPORT_1( "DRAW_LINES %d\n", pc[0] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_LINES, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
 
         case DP_DRAW_LINE_STRIP:
             REPORT_1( "DRAW_LINE_STRIP %d\n", pc[0] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_LINES, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
 
         case DP_DRAW_TRIS:
             REPORT_1( "DRAW_TRIS %d\n", pc[0] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_TRIANGLES, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
 
         case DP_DRAW_TRI_STRIP:
             REPORT_1( "DRAW_TRI_STRIP %d\n", pc[0] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_TRIANGLE_STRIP, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
 
         case DP_DRAW_TRI_FAN:
             REPORT_1( "DRAW_TRI_FAN %d\n", pc[0] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_TRIANGLE_FAN, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
 #ifndef GL_ES_VERSION_2_0 
@@ -3015,6 +3049,7 @@ dispatch:
 #endif
         case DP_DRAW_POINTS_I:
             REPORT_2( "DRAW_POINTS_I %d %d\n", pc[0], pc[1] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_POINTS, pc[0], GL_UNSIGNED_SHORT,
                             NULL + pc[1] );
             pc += 2;
@@ -3022,6 +3057,7 @@ dispatch:
 
         case DP_DRAW_LINES_I:
             REPORT_2( "DRAW_LINES_I %d %d\n", pc[0], pc[1] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_LINES, pc[0], GL_UNSIGNED_SHORT,
                             NULL + pc[1] );
             pc += 2;
@@ -3029,6 +3065,7 @@ dispatch:
 
         case DP_DRAW_LINE_STRIP_I:
             REPORT_2( "DRAW_LINE_STRIP_I %d %d\n", pc[0], pc[1] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_LINE_STRIP, pc[0], GL_UNSIGNED_SHORT,
                             NULL + pc[1] );
             pc += 2;
@@ -3036,6 +3073,7 @@ dispatch:
 
         case DP_DRAW_TRIS_I:
             REPORT_2( "DRAW_TRIS_I %d %d\n", pc[0], pc[1] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_TRIANGLES, pc[0], GL_UNSIGNED_SHORT,
                             NULL + pc[1] );
             pc += 2;
@@ -3043,6 +3081,7 @@ dispatch:
 
         case DP_DRAW_TRI_STRIP_I:
             REPORT_2( "DRAW_TRI_STRIP_I %d %d\n", pc[0], pc[1] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_TRIANGLE_STRIP, pc[0], GL_UNSIGNED_SHORT,
                             NULL + pc[1] );
             pc += 2;
@@ -3050,6 +3089,7 @@ dispatch:
 
         case DP_DRAW_TRI_FAN_I:
             REPORT_2( "DRAW_TRI_FAN_I %d %d\n", pc[0], pc[1] );
+            ES_UPDATE_MATRIX
             glDrawElements( GL_TRIANGLE_FAN, pc[0], GL_UNSIGNED_SHORT,
                             NULL + pc[1] );
             pc += 2;

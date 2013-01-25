@@ -8,6 +8,9 @@
 #include <png.h>
 #include "boron-gl.h"
 #include "os.h"
+#ifdef __ANDROID__
+#include "glv_asset.h"
+#endif
 
 
 #ifndef png_jmpbuf
@@ -218,11 +221,19 @@ CFUNC_PUB( cfunc_load_png )
     {
         int ok;
         const char* file = boron_cstr( ut, a1, 0 );
+#ifdef __ANDROID__
+        struct AssetFile af;
+        if( ! glv_assetOpen( &af, file, "r" ) )
+            return ur_error( ut, UR_ERR_ACCESS, "Could not open \"%s\"", file );
+        ok = load_png( ut, af.fp, 0, 0, res );
+        glv_assetClose( &af );
+#else
         FILE* fp = fopen( file, "rb" );
         if( ! fp )
             return ur_error( ut, UR_ERR_ACCESS, "Could not open \"%s\"", file );
         ok = load_png( ut, fp, 0, 0, res );
         fclose( fp );
+#endif
         return ok;
     }
     else if( ur_is(a1, UT_BINARY) )

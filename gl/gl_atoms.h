@@ -9,8 +9,13 @@ enum GLFixedAtoms
     UR_ATOM_REPEAT= 291,
     UR_ATOM_TEXT  = 332,
     UR_ATOM_WAIT  = 369,
+#ifdef __ANDROID__
+    UR_ATOM_CLOSE = 386,
+    UR_ATOM_WIDTH = 400,
+#else
     UR_ATOM_CLOSE = 396,
     UR_ATOM_WIDTH = 410,
+#endif
     UR_ATOM_HEIGHT,
     UR_ATOM_AREA,
     UR_ATOM_RECT,
