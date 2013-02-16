@@ -201,6 +201,14 @@ typedef struct
 TextureDef;
 
 
+// TODO: Should check for ARB_texture_rg at run-time.
+#ifdef GL_R8
+#define FORMAT_GRAY   GL_R8
+#else
+#define FORMAT_GRAY   GL_LUMINANCE
+#endif
+
+
 static void _texRast( TextureDef* tex, const RasterHead* rh )
 {
     tex->width  = rh->width;
@@ -210,19 +218,16 @@ static void _texRast( TextureDef* tex, const RasterHead* rh )
     switch( rh->format )
     {
         case UR_RAST_GRAY:
-            tex->comp   =
-            tex->format = GL_LUMINANCE;
+            tex->comp = tex->format = FORMAT_GRAY;
             break;
 
         case UR_RAST_RGB:
-            tex->comp   =
-            tex->format = GL_RGB;
+            tex->comp = tex->format = GL_RGB;
             break;
 
         case UR_RAST_RGBA:
         default:
-            tex->comp   =
-            tex->format = GL_RGBA;
+            tex->comp = tex->format = GL_RGBA;
             break;
     }
 
@@ -251,13 +256,11 @@ static void _texCoord( TextureDef* tex, const UCell* cell )
     {
         if( cell->coord.n[2] == 3 )
         {
-            tex->comp   =
-            tex->format = GL_RGB;
+            tex->comp = tex->format = GL_RGB;
         }
         else if( cell->coord.n[2] == 1 )
         {
-            tex->comp   =
-            tex->format = GL_LUMINANCE;
+            tex->comp = tex->format = FORMAT_GRAY;
         }
     }
 }
@@ -290,26 +293,27 @@ static int _textureKeyword( UAtom name, TextureDef* def )
             break;
 
         case UR_ATOM_GRAY:
-            def->comp   =
-            def->format = GL_LUMINANCE;
+            def->comp = def->format = FORMAT_GRAY;
             break;
 
         case UR_ATOM_RGB:
-            def->comp   =
-            def->format = GL_RGB;
+            def->comp = def->format = GL_RGB;
             break;
 
         case UR_ATOM_RGBA:
-            def->comp   =
-            def->format = GL_RGBA;
+            def->comp = def->format = GL_RGBA;
             break;
 
 #ifndef GL_ES_VERSION_2_0 
         case UR_ATOM_F32:
             switch( def->comp )
             {
-                case GL_LUMINANCE:
+                case FORMAT_GRAY:
+#ifdef GL_R8
+                    def->comp = GL_R32F;
+#else
                     def->comp = GL_LUMINANCE32F_ARB;
+#endif
                     break;
                 case GL_RGB:
                     def->comp = GL_RGB32F_ARB;
