@@ -443,11 +443,11 @@ m2: context
 				either same? :system-nop :win32 ["^--rm -f "]["^--@del "]
 				output_file eol
 			]
-			dist: to-text dep
+			dist: rejoin [' ' to-text dep]
 			; Trim twice to remove any newline from last command.
 			rule_commands: replace/all trim trim/indent commands '^/' "^/^-"
 			rule_text: does [
-				emit [eol output_file ": " dist {^/^-} rule_commands eol]
+				emit [eol output_file ':' dist {^/^-} rule_commands eol]
 			]
 		]
 	]
