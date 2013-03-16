@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2012 Karl Robillard
+  Copyright 2009-2013 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -2654,7 +2654,7 @@ void bitset_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 
     // Using "make bitset!" requires evaluation to re-load.
     // Maybe bitset! should have it's own syntax?
-         
+
     ur_strAppendCStr( str, "make bitset! #{" );
     ur_strAppendBinary( str, buf->ptr.b, buf->ptr.b + buf->used, UR_BENC_16 );
     ur_strAppendChar( str, '}' );
