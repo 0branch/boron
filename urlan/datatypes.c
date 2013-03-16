@@ -2158,63 +2158,16 @@ int binary_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 }
 
 
-static inline int toNibble( int c )
-{
-    return (c < 10) ? c + '0' : c + 'A' - 10;
-}
-
-extern void base2_encodeByte( const uint8_t n, char* out );
-extern void base64_encodeTriplet( const uint8_t* in, int len, char* out );
+static const char* binaryEncStart[ UR_BENC_COUNT ] = { "#{", "2#{", "64#{" };
 
 void binary_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     UBinaryIter bi;
-    int c;
     (void) depth;
 
     ur_binSlice( ut, &bi, cell );
-    switch( bi.buf->form )
-    {
-        case UR_BENC_16:
-            ur_strAppendCStr( str, "#{" );
-            ur_foreach( bi )
-            {
-                c = *bi.it;
-                ur_strAppendChar( str, toNibble(c >> 4) );
-                ur_strAppendChar( str, toNibble(c & 0x0f) );
-            }
-            break;
-
-        case UR_BENC_2:
-        {
-            char buf[10];
-            int used = (bi.it != bi.end);
-            buf[8] = ' ';
-            buf[9] = '\0';
-            ur_strAppendCStr( str, "2#{" );
-            ur_foreach( bi )
-            {
-                base2_encodeByte( *bi.it, buf );
-                ur_strAppendCStr( str, buf );
-            }
-            if( used )
-                --str->used;
-        }
-            break;
-
-        case UR_BENC_64:
-        {
-            char buf[5];
-            buf[4] = '\0';
-            ur_strAppendCStr( str, "64#{" );
-            for( c = bi.end - bi.it; c > 0; bi.it += 3, c -= 3 )
-            {
-                base64_encodeTriplet( bi.it, c, buf );
-                ur_strAppendCStr( str, buf );
-            }
-        }
-            break;
-    }
+    ur_strAppendCStr( str, binaryEncStart[ bi.buf->form ] );
+    ur_strAppendBinary( str, bi.it, bi.end, bi.buf->form );
     ur_strAppendChar( str, '}' );
 }
 
@@ -2634,9 +2587,15 @@ int bitset_make( UThread* ut, const UCell* from, UCell* res )
 
 void bitset_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
+    const UBuffer* buf = ur_bufferSer(cell);
     (void) depth;
-    ur_strAppendCStr( str, "make bitset! " );   // Eval dep.
-    binary_toString( ut, cell, str, 0 );
+
+    // Using "make bitset!" requires evaluation to re-load.
+    // Maybe bitset! should have it's own syntax?
+         
+    ur_strAppendCStr( str, "make bitset! #{" );
+    ur_strAppendBinary( str, buf->ptr.b, buf->ptr.b + buf->used, UR_BENC_16 );
+    ur_strAppendChar( str, '}' );
 }
 
 
@@ -2871,6 +2830,11 @@ static uint8_t _strEscapeChars[16] = {
 };
 
 
+static inline int nibbleToChar( int n )
+{
+    return (n < 10) ? n + '0' : n + 'A' - 10;
+}
+
 void string_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     const int longLen = 40;
@@ -2950,7 +2914,7 @@ void string_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 
             default:
                 ur_strAppendChar( str, '^' );
-                ur_strAppendChar( str, toNibble( depth ) );
+                ur_strAppendChar( str, nibbleToChar( depth ) );
                 break;
         }
     }

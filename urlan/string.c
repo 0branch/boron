@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009-2013 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -704,6 +704,64 @@ void ur_strAppend( UBuffer* str, const UBuffer* strB, UIndex itB, UIndex endB )
                 break;
             }
             str->used += usedB;
+        }
+            break;
+    }
+}
+
+
+extern void base2_encodeByte( const uint8_t n, char* out );
+extern void base64_encodeTriplet( const uint8_t* in, int len, char* out );
+
+static inline int nibbleToChar( int n )
+{
+    return (n < 10) ? n + '0' : n + 'A' - 10;
+}
+
+/**
+  Append binary data as text of the specified encoding.
+*/
+void ur_strAppendBinary( UBuffer* str, const uint8_t* it, const uint8_t* end,
+                         enum UrlanBinaryEncoding enc )
+{
+    int c;
+    switch( enc )
+    {
+        default:
+        case UR_BENC_16:
+            while( it != end )
+            {
+                c = *it++;
+                ur_strAppendChar( str, nibbleToChar(c >> 4) );
+                ur_strAppendChar( str, nibbleToChar(c & 0x0f) );
+            }
+            break;
+
+        case UR_BENC_2:
+        {
+            char buf[10];
+            int used = (it != end);
+            buf[8] = ' ';
+            buf[9] = '\0';
+            while( it != end )
+            {
+                base2_encodeByte( *it++, buf );
+                ur_strAppendCStr( str, buf );
+            }
+            if( used )
+                --str->used;
+        }
+            break;
+
+        case UR_BENC_64:
+        {
+            char buf[5];
+            buf[4] = '\0';
+            for( c = end - it; c > 0; it += 3, c -= 3 )
+            {
+                base64_encodeTriplet( it, c, buf );
+                ur_strAppendCStr( str, buf );
+            }
         }
             break;
     }

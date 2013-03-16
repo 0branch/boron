@@ -1,7 +1,7 @@
 #ifndef URLAN_H
 #define URLAN_H
 /*
-  Copyright 2009,2010,2011,2012 Karl Robillard
+  Copyright 2009,2010,2011,2012,2013 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -539,6 +539,8 @@ void     ur_strAppendHex( UBuffer*, uint32_t n, uint32_t hi );
 void     ur_strAppendDouble( UBuffer*, double );
 void     ur_strAppendIndent( UBuffer*, int depth );
 void     ur_strAppend( UBuffer*, const UBuffer* strB, UIndex itB, UIndex endB );
+void     ur_strAppendBinary( UBuffer*, const uint8_t* it, const uint8_t* end,
+                             enum UrlanBinaryEncoding enc );
 void     ur_strTermNull( UBuffer* );
 int      ur_strIsAscii( const UBuffer* );
 void     ur_strFlatten( UBuffer* );
