@@ -11,3 +11,14 @@ b: charset "123b"
 probe and a b
 probe or  a b
 probe xor a b
+
+
+print "---- Bitset compare"
+c: make bitset! #{01000000000000000600}
+d: charset "^0AB"
+probe c
+probe d
+probe same? c c
+probe same? c d
+probe eq?   c d
+probe eq?   c a

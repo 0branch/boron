@@ -232,6 +232,32 @@
 void block_markBuf( UThread* ut, UBuffer* buf );
 
 
+typedef struct
+{
+    UIndex small;
+    UIndex large;
+    char   secondLarger;
+}
+USizeOrder;
+
+
+void ur_sizeOrder( USizeOrder* ord, UIndex a, UIndex b )
+{
+    if( a >= b )
+    {
+        ord->small = b;
+        ord->large = a;
+        ord->secondLarger = 0;
+    }
+    else
+    {
+        ord->small = a;
+        ord->large = b;
+        ord->secondLarger = 1;
+    }
+}
+
+
 //----------------------------------------------------------------------------
 // UT_UNSET
 
@@ -2428,53 +2454,41 @@ int binary_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
             {
                 UBinaryIter biA;
                 UBinaryIter biB;
-                UBinaryIter* biL;
                 UBuffer* bin;
                 uint8_t* bp;
-                int largeS;
-                int smallS;
+                USizeOrder ord;
 
                 bin = ur_makeBinaryCell( ut, 0, res );
                 ur_type(res) = ur_type(a);
 
                 ur_binSlice( ut, &biA, a );
                 ur_binSlice( ut, &biB, b );
-                smallS = biA.end - biA.it;
-                largeS = biB.end - biB.it;
+                ur_sizeOrder( &ord, biA.end - biA.it, biB.end - biB.it );
 
-                if( largeS < smallS )
+                if( ord.large )
                 {
-                    int tmp = largeS;
-                    largeS = smallS;
-                    smallS = tmp;
-                    biL = &biA;
-                }
-                else
-                    biL = &biB;
-
-                if( largeS )
-                {
-                    ur_binExpand( bin, 0, largeS );
+                    ur_binExpand( bin, 0, ord.large );
                     bp = bin->ptr.b;
-                    largeS -= smallS;
+                    ord.large -= ord.small;     // Large is now remainder.
                     switch( op )
                     {
                         case UR_OP_AND:
-                            while( smallS-- )
+                            while( ord.small-- )
                                 *bp++ = *biA.it++ & *biB.it++;
-                            memSet( bp, 0, largeS );
+                            memSet( bp, 0, ord.large );
                             break;
 
                         case UR_OP_OR:
-                            while( smallS-- )
+                            while( ord.small-- )
                                 *bp++ = *biA.it++ | *biB.it++;
-                            memCpy( bp, biL->it, largeS );
-                            break;
+                            goto copy_remain;
 
                         case UR_OP_XOR:
-                            while( smallS-- )
+                            while( ord.small-- )
                                 *bp++ = *biA.it++ ^ *biB.it++;
-                            memCpy( bp, biL->it, largeS );
+copy_remain:
+                            memCpy( bp, ord.secondLarger ? biB.it : biA.it,
+                                    ord.large );
                             break;
                     }
                 }
@@ -2585,6 +2599,54 @@ int bitset_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+int bitset_compare( UThread* ut, const UCell* a, const UCell* b, int test )
+{
+    switch( test )
+    {
+        case UR_COMPARE_SAME:
+            return a->series.buf == b->series.buf;
+
+        case UR_COMPARE_EQUAL:
+        case UR_COMPARE_EQUAL_CASE:
+            if( ! ur_is(a, UT_BITSET) || ! ur_is(b, UT_BITSET) )
+                break;
+            if( a->series.buf == b->series.buf )
+                return 1;
+            {
+            USizeOrder ord;
+            const UBuffer* ba = ur_bufferSer(a);
+            const UBuffer* bb = ur_bufferSer(b);
+
+            ur_sizeOrder( &ord, ba->used, bb->used );
+            if( ord.small )
+            {
+                const uint8_t* pos;
+                const uint8_t* end = bb->ptr.b + ord.small;
+                pos = match_pattern_uint8_t( ba->ptr.b, ba->ptr.b + ord.small,
+                                             bb->ptr.b, end );
+                if( pos != end )
+                    return 0;
+
+                pos = ord.secondLarger ? bb->ptr.b : ba->ptr.b;
+                end = pos + ord.large;
+                pos += ord.small;
+                while( pos != end )
+                {
+                    if( *pos++ )
+                        return 0;
+                }
+            }
+            }
+            return 1;
+
+        case UR_COMPARE_ORDER:
+        case UR_COMPARE_ORDER_CASE:
+            break;
+    }
+    return 0;
+}
+
+
 void bitset_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     const UBuffer* buf = ur_bufferSer(cell);
@@ -2643,7 +2705,7 @@ USeriesType dt_bitset =
     {
     "bitset!",
     bitset_make,            bitset_make,            binary_copy,
-    unset_compare,          binary_operate,         unset_select,
+    bitset_compare,         binary_operate,         unset_select,
     bitset_toString,        bitset_toString,
     unset_recycle,          binary_mark,            ur_binFree,
     unset_markBuf,          binary_toShared,        unset_bind
