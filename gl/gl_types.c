@@ -193,7 +193,7 @@ typedef struct
     int    height;
     int    mipmap;
     GLenum format;
-    GLint  comp;
+    GLint  comp;    // internalFormat
     GLint  wrap;
     GLint  min_filter;
     GLint  mag_filter;
@@ -203,8 +203,10 @@ TextureDef;
 
 // TODO: Should check for ARB_texture_rg at run-time.
 #ifdef GL_R8
-#define FORMAT_GRAY   GL_R8
+#define IFORMAT_GRAY  GL_R8
+#define FORMAT_GRAY   GL_RED
 #else
+#define IFORMAT_GRAY  GL_LUMINANCE
 #define FORMAT_GRAY   GL_LUMINANCE
 #endif
 
@@ -218,7 +220,8 @@ static void _texRast( TextureDef* tex, const RasterHead* rh )
     switch( rh->format )
     {
         case UR_RAST_GRAY:
-            tex->comp = tex->format = FORMAT_GRAY;
+            tex->comp   = IFORMAT_GRAY;
+            tex->format = FORMAT_GRAY;
             break;
 
         case UR_RAST_RGB:
@@ -260,7 +263,8 @@ static void _texCoord( TextureDef* tex, const UCell* cell )
         }
         else if( cell->coord.n[2] == 1 )
         {
-            tex->comp = tex->format = FORMAT_GRAY;
+            tex->comp   = IFORMAT_GRAY;
+            tex->format = FORMAT_GRAY;
         }
     }
 }
@@ -293,7 +297,8 @@ static int _textureKeyword( UAtom name, TextureDef* def )
             break;
 
         case UR_ATOM_GRAY:
-            def->comp = def->format = FORMAT_GRAY;
+            def->comp   = IFORMAT_GRAY;
+            def->format = FORMAT_GRAY;
             break;
 
         case UR_ATOM_RGB:
@@ -308,7 +313,7 @@ static int _textureKeyword( UAtom name, TextureDef* def )
         case UR_ATOM_F32:
             switch( def->comp )
             {
-                case FORMAT_GRAY:
+                case IFORMAT_GRAY:
 #ifdef GL_R8
                     def->comp = GL_R32F;
 #else
