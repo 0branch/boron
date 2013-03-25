@@ -1,8 +1,8 @@
 #!/usr/bin/boron -s
 /*
 	M2 - A meta-make tool
-	Copyright 2001-2012 Karl Robillard
-	Version 1.1.1
+	Copyright 2001-2013 Karl Robillard
+	Version 1.2.0
 
 	TODO:
 		* Remove files outside the build directory from dist rule.
@@ -24,9 +24,11 @@
 
 
 project_file: "project.b"
-template_file: 
+template_file: any [
+	getenv "M2_TEMPLATE"
 	;"/usr/share/boron/m2/m2_template.b"
 	"/home/karl/src/urlan/boron/scripts/m2/m2_linux.b"
+]
 debug_include: false
 
 
@@ -48,6 +50,7 @@ m2: context
 
 	ct: none
 	targets: []
+	sub-projects: []
 	output_buf: make string! 2048
 
 	; This contains file! block! pairs.  The block contains the files
@@ -290,8 +293,11 @@ m2: context
 		]
 	]
 
+	windows?: false
+
 	set 'build_makefile func [projfile template] [
 		do bind load template 'emit
+		windows?: not same? :system-nop :win32
 		do bind load projfile 'emit
 		clear output_buf
 		write makefile generate_makefile
@@ -313,6 +319,40 @@ m2: context
 
 		foreach t targets [append str t/dist]
 		str
+	]
+
+	; Return dependency string with sub-project libraries.
+	sub-project-libs: func [libs | l p out] [
+		out: copy ""
+		foreach l libs [
+			foreach p sub-projects [
+				if all [
+					or eq? p/type 'lib
+					   eq? p/type 'shlib
+					eq? p/base-name l
+				][
+					append out rejoin [' ' p/path '/' p/target]
+				]
+			]
+		]
+		out
+	]
+
+	emit-sub-projects: func [| sub sep qt m2-make] [
+		foreach sub sub-projects [
+			either windows?
+				[sep: '\' qt: ""  m2-make: "& boron -s c:\bin\m2& nmake"]
+				[sep: '/' qt: '"' m2-make: "; m2; make"]
+
+			emit [eol sub/path sep sub/target ':' eol]
+			if sub/config [
+				emit [
+					{^-echo } qt sub/config qt { >} sub/path sep
+					{project.config^/}
+				]
+			]
+			emit ["^-cd " sub/path m2-make eol]
+		]
 	]
 
 	;------------------------------------------------------------------
@@ -378,6 +418,44 @@ m2: context
 		append distribution_files arg
 	]
 
+	sub-project: func [def block! | tok lpath ltype lbase ltarget lconfig] [
+		parse def [some[
+			tok:
+	   ;	set lpath file!
+			file! (lpath: first tok)
+		  | word! file! (
+				ltype: first tok
+				lbase: second tok
+				ltarget: switch ltype [
+					exe [
+						either windows?
+							[join lbase %.exe]
+							[lbase]
+					]
+					lib [
+						either windows?
+							[join lbase %.lib]
+							[rejoin [%lib lbase %.a]]
+					]
+					shlib [
+						either windows?
+							[join lbase %.dll]
+							[rejoin [%lib lbase %.so]]
+					]
+					[error "Invalid sub-project target. Expected exe/lib/shlib"]
+				]
+			)
+		  | string! (lconfig: trim/lines first tok)
+		]]
+		append sub-projects context [
+			path: lpath
+			type: ltype
+			base-name: lbase
+			target: ltarget
+			config: lconfig
+		]
+	]
+
 	sources: func [arg block! /flags fstr] [
 		append ct/source_files arg
 		if flags [
@@ -440,8 +518,7 @@ m2: context
 
 			built_obj_rule: make_obj_rule: ""
 			clean: rejoin [
-				either same? :system-nop :win32 ["^--rm -f "]["^--@del "]
-				output_file eol
+				either windows? ["^--@del "] ["^--rm -f "] output_file eol
 			]
 			dist: rejoin [' ' to-text dep]
 			; Trim twice to remove any newline from last command.

@@ -27,6 +27,7 @@ generate_makefile: does [
     foreach t targets [emit [' ' t/output_file]]
     emit eol
 
+    emit-sub-projects
     foreach t targets [emit ' ' t/rule_text]
 
     emit ["^/^/" do_tags copy nmake_other_rules]
@@ -202,6 +203,7 @@ exe_target: make target_env
     rule_text: does [
         emit [
             eol output_file ": " obj_macro local_libs link_libs
+            sub-project-libs link_libs
             {^/^-$(LINK) /out:$@ $(} uc_name {_LFLAGS) } obj_macro
             { $(} uc_name {_LIBS)} eol
         ]
@@ -233,7 +235,7 @@ lib_target: make exe_target [
 
     rule_text: does [
         emit [
-            eol output_file ": " obj_macro
+            eol output_file ": " obj_macro sub-project-libs link_libs
             "^/^-lib /nologo /out:$@ " obj_macro " $(" uc_name
             "_LIBS) $(" uc_name "_LFLAGS)^/"
         ]
