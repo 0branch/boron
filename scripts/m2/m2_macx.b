@@ -32,6 +32,7 @@ generate_makefile: does [
     foreach t targets [ emit [' ' t/output_file] ]
     emit eol
 
+    emit-sub-projects
     foreach t targets [ emit ' ' t/rule_text ]
 
     emit [ "^/^/" do_tags copy gnu_other_rules ]
@@ -114,6 +115,8 @@ exe_target: make target_env
             cflags {-O3 -DNDEBUG}
         ]
 
+        ; cflags {-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5}
+        ; lflags {-Wl,-syslibroot,/Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5}
         if cfg_universal [
             cflags {-isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch ppc -arch i386 -mmacosx-version-min=10.4}
             lflags {-Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk -arch ppc -arch i386 -mmacosx-version-min=10.4}
@@ -200,6 +203,7 @@ exe_target: make target_env
     rule_text: func [| bdir]
     [
         emit [ eol output_file ": " obj_macro local_libs link_libs
+               sub-project-libs link_libs
             {^/^-$(}
                 either link_cxx ["LINK_CXX"]["LINK"]
                 {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
@@ -228,7 +232,7 @@ lib_target: make exe_target [
 
     rule_text: does
     [
-        emit [ eol output_file ": " obj_macro
+        emit [ eol output_file ": " obj_macro sub-project-libs link_libs
             "^/^-libtool -static -o $@ $^^ $(" uc_name "_LIBS)"
             "^/^-ranlib $@^/"
         ]
@@ -244,7 +248,7 @@ shlib_target: make exe_target [
     ]
 
     rule_text: does [
-        emit [ eol output_file ": " obj_macro
+        emit [ eol output_file ": " obj_macro sub-project-libs link_libs
             {^/^-$(} either link_cxx ["LINK_CXX"]["LINK"]
                 {) -dynamiclib -o $@ } obj_macro
             { $(} uc_name {_LFLAGS) }
