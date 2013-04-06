@@ -1,6 +1,6 @@
 /*
   Boron OpenGL Module
-  Copyright 2005-2012 Karl Robillard
+  Copyright 2005-2013 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -2009,6 +2009,10 @@ CFUNC( cfunc_project_point )
 }
 
 
+#if defined(GL_ES_VERSION_2_0) && ! defined(GL_OES_mapbuffer)
+#define CHANGE_SUBDATA  1
+#endif
+
 /*-cf-
     change-vbo
         buffer  vbo!
@@ -2019,12 +2023,17 @@ CFUNC( cfunc_project_point )
 */
 CFUNC( cfunc_change_vbo )
 {
-    int stride;
-    int offset;
-    int copyLen;
-    int loops;
     UCell* vec = a1 + 1;
     UCell* len = a1 + 2;
+    int copyLen;
+
+#ifdef CHANGE_SUBDATA
+    if( ur_is(len, UT_INT) )
+        copyLen = ur_int(len);
+#else
+    int stride;
+    int offset;
+    int loops;
 
     if( ur_is(len, UT_COORD) )
     {
@@ -2038,6 +2047,7 @@ CFUNC( cfunc_change_vbo )
         offset  = 0;
         copyLen = ur_int(len);
     }
+#endif
     else
         goto bad_dt;
 
@@ -2054,8 +2064,13 @@ CFUNC( cfunc_change_vbo )
 
         if( vbo_count(vbo) && (si.it < si.end) && copyLen )
         {
-            GLfloat* dst;
             float* src = si.buf->ptr.f + si.it;
+
+#ifdef CHANGE_SUBDATA
+            glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
+            glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(float) * copyLen, src );
+#else
+            GLfloat* dst;
 
             glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
             dst = (GLfloat*) glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY );
@@ -2121,6 +2136,7 @@ CFUNC( cfunc_change_vbo )
             }
 
             glUnmapBuffer( GL_ARRAY_BUFFER );
+#endif
         }
         ur_setId(res, UT_UNSET);
         return UR_OK;
@@ -2128,8 +2144,13 @@ CFUNC( cfunc_change_vbo )
 
 bad_dt:
 
-    return ur_error( ut, UR_ERR_TYPE,
-                     "change-vbo expected vbo! vector! int!/coord!" );
+    return ur_error( ut, UR_ERR_TYPE, "change-vbo expected vbo! vector! "
+#ifdef CHANGE_SUBDATA
+                     "int!"
+#else
+                     "int!/coord!"
+#endif
+                   );
 }
 
 
