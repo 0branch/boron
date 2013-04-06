@@ -201,7 +201,7 @@ Number;
     type        UT_DRAWPROG
     elemSize    Unused
     form        Unused
-    flags       Unused
+    flags       0, UR_DRAWPROG_HIDDEN
     used        Number of bytes used
     ptr.b       Program
     ptr.i[-1]   Number of bytes available
@@ -2728,16 +2728,19 @@ void dop_shadow_end()
 int ur_runDrawProg2( UThread* ut, DPState* ds, UIndex n )
 {
     DPHeader* ph;
+    const UBuffer* blk;
+    UCell* val;
     uint32_t* pc;
     uint32_t ops = 0;
 
-#define NEXT_OP     ops >>= 8
+#define PC_WORD \
+    blk = ur_buffer( *pc++ ); \
+    val = blk->ptr.cell + *pc++
 
-#define PC_WORD(blk,val) \
-    UBuffer* blk = ur_buffer( *pc++ ); \
-    UCell* val = blk->ptr.cell + *pc++
-
-    ph = (DPHeader*) ur_buffer( n )->ptr.v;
+    blk = ur_buffer( n );
+    if( blk->flags )    // UR_DRAWPROG_HIDDEN
+        return UR_OK;
+    ph = (DPHeader*) blk->ptr.v;
     if( ! ph )
         return UR_OK;
     pc = dp_byteCode(ph); 
@@ -2787,10 +2790,10 @@ dispatch:
 
         case DP_RUN_PROGRAM_WORD:
         {
-            PC_WORD( blk, val );
+            PC_WORD;
             if( ur_is(val, UT_DRAWPROG) )
             {
-                if( ! ur_runDrawProg2( ut, ds, val->series.buf ) )
+                if( ! ur_runDrawProg2( ut, ds, ur_drawProgN(val) ) )
                     return UR_THROW;
             }
             else if( ur_is(val, UT_WIDGET) )
@@ -3205,7 +3208,7 @@ dispatch:
             pc += 2;
 #else
             uint8_t color[ 4 ];
-            PC_WORD( blk, val );
+            PC_WORD;
             if( ur_is(val, UT_VEC3) )
                 glColor3fv( val->vec3.xyz );
             else if( cellToColorUB( val, color ) == 4 )
@@ -3236,7 +3239,7 @@ dispatch:
 
         case DP_TRANSLATE_WORD:
         {
-            PC_WORD( blk, val );
+            PC_WORD;
             if( ur_is(val, UT_VEC3) )
             {
                 glTranslatef( val->vec3.xyz[0],
@@ -3281,28 +3284,28 @@ dispatch:
 
         case DP_ROTATE_X_WORD:
         {
-            PC_WORD( blk, val );
+            PC_WORD;
             glRotatef( (GLfloat) ur_decimal( val ), 1.0, 0.0, 0.0 );
         }
             break;
 
         case DP_ROTATE_Y_WORD:
         {
-            PC_WORD( blk, val );
+            PC_WORD;
             glRotatef( (GLfloat) ur_decimal( val ), 0.0, 1.0, 0.0 );
         }
             break;
 
         case DP_ROTATE_Z_WORD:
         {
-            PC_WORD( blk, val );
+            PC_WORD;
             glRotatef( (GLfloat) ur_decimal( val ), 0.0, 0.0, 1.0 );
         }
             break;
 
         case DP_ROTATE_WORD:
         {
-            PC_WORD( blk, val );
+            PC_WORD;
             if( ur_is(val, UT_QUAT) )
             {
                 float mat[16];
@@ -3314,7 +3317,7 @@ dispatch:
 
         case DP_SCALE_WORD:
         {
-            PC_WORD( blk, val );
+            PC_WORD;
             REPORT_2( "SCALE_WORD %d %d\n", pc[-2], pc[-1] );
             if( ur_is(val, UT_VEC3) )
             {
@@ -3345,8 +3348,9 @@ dispatch:
 
         case DP_FRAMEBUFFER_TEX_WORD:
         {
-            PC_WORD( blk, val );
-            GLenum attach = *pc++;
+            GLenum attach;
+            PC_WORD;
+            attach = *pc++;
             if( ur_is(val, UT_TEXTURE) )
             {
                 glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, attach,
@@ -3377,7 +3381,7 @@ dispatch:
 
         case DP_SAMPLES_END:
         {
-            PC_WORD( blk, val );
+            PC_WORD;
             if( ds->samplesQueryId )
             {
                 GLuint samples;
@@ -3440,7 +3444,7 @@ dispatch:
         case DP_READ_PIXELS:
         {
             uint16_t* rect;
-            PC_WORD( blk, val );
+            PC_WORD;
             if( ur_is(val, UT_VBO) )
             {
                 UBuffer* res = ur_buffer( ur_vboResN(val) );
@@ -3467,10 +3471,13 @@ dispatch:
         case DP_TEXT_WORD:
         {
             UBinaryIter bi;
+            GLfloat* pen;
+            int attrOffset;
             int cc;
-            PC_WORD( blk, val );
-            int attrOffset = *pc++;
-            GLfloat* pen = (GLfloat*) pc;
+
+            PC_WORD;
+            attrOffset = *pc++;
+            pen = (GLfloat*) pc;
             pc += 2;
 
             dp_toString( ut, val, &bi );
@@ -3520,7 +3527,7 @@ dispatch:
             return ur_error( ut, UR_ERR_SCRIPT,
                              "Invalid draw-prog opcode (%02X)", ops & 0xff );
         }
-        NEXT_OP;
+        ops >>= 8;      // Next Op
     }
 }
 

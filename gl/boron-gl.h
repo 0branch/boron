@@ -2,7 +2,7 @@
 #define BORON_GL_H
 /*
   Boron OpenGL Module
-  Copyright 2005-2012 Karl Robillard
+  Copyright 2005-2013 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -46,16 +46,20 @@ enum BoronGLDataType
 //----------------------------------------------------------------------------
 
 
+// UBuffer flags
+#define UR_DRAWPROG_HIDDEN  1
+
+
 typedef struct
 {
     uint8_t  type;
     uint8_t  flags;
     uint16_t glListPool;
-    UIndex   blkN;
+    UIndex   bufN;
     UIndex   _pad;
     GLuint   glListId;
 }
-UCellDrawList;
+UCellDrawProg;
 
 
 //----------------------------------------------------------------------------
@@ -165,6 +169,8 @@ TexFont* ur_texFontV( UThread*, const UCell* );
 UIndex ur_makeVbo( UThread*, GLenum attrUsage, int acount, float* attr,
                    int icount, uint16_t* indices );
 
+
+#define ur_drawProgN(c)     ((UCellDrawProg*) (c))->bufN
 
 #define ur_rasterElements(rh)       (((uint8_t*) rh) + sizeof(RasterHead))
 #define ur_rasterBytesPerRow(rh)    rh->bytesPerRow

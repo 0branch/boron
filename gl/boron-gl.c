@@ -883,13 +883,16 @@ CFUNC( cfunc_set_volume )
 
 /*-cf-
     show
-        widget  widget!
+        widget  draw-prog!/widget!
     return: unset!
 */
 CFUNC( cfunc_show )
 {
-    (void) ut;
-    if( ur_is(a1, UT_WIDGET) )
+    if( ur_is(a1, UT_DRAWPROG) )
+    {
+        ur_buffer( ur_drawProgN(a1) )->flags = 0;
+    }
+    else if( ur_is(a1, UT_WIDGET) )
     {
         GWidget* wp = ur_widgetPtr( a1 );
         gui_show( wp, 1 );
@@ -908,17 +911,42 @@ CFUNC( cfunc_show )
 
 /*-cf-
     hide
-        widget  widget!
+        widget  draw-prog!/widget!
     return: unset!
 */
 CFUNC( cfunc_hide )
 {
-    (void) ut;
-    if( ur_is(a1, UT_WIDGET) )
+    if( ur_is(a1, UT_DRAWPROG) )
+    {
+        ur_buffer( ur_drawProgN(a1) )->flags = UR_DRAWPROG_HIDDEN;
+    }
+    else if( ur_is(a1, UT_WIDGET) )
     {
         gui_show( ur_widgetPtr( a1 ), 0 );
     }
     ur_setId(res, UT_UNSET);
+    return UR_OK;
+}
+
+
+/*-cf-
+    visible?
+        widget  draw-prog!/widget!
+    return: logic!
+*/
+CFUNC( cfunc_visibleQ )
+{
+    int hidden;
+
+    if( ur_is(a1, UT_DRAWPROG) )
+        hidden = ur_buffer( ur_drawProgN(a1) )->flags & UR_DRAWPROG_HIDDEN;
+    else if( ur_is(a1, UT_WIDGET) )
+        hidden = ur_widgetPtr( a1 )->flags & GW_HIDDEN;
+    else
+        hidden = 1;
+
+    ur_setId(res, UT_LOGIC);
+    ur_int(res) = hidden ? 0 : 1;
     return UR_OK;
 }
 
@@ -2598,6 +2626,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_set_volume,  "set-volume n b" );
     addCFunc( cfunc_show,        "show wid" );
     addCFunc( cfunc_hide,        "hide wid" );
+    addCFunc( cfunc_visibleQ,    "visible? wid" );
     addCFunc( cfunc_move,        "move wid pos /center" );
     addCFunc( cfunc_resize,      "resize wid a" );
     addCFunc( cfunc_text_size,   "text-size f text" );
