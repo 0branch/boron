@@ -773,6 +773,17 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
 }
 
 
+int ur_serializedHeader( const uint8_t* data, int len )
+{
+    if( len > 12 )
+    {
+        return data[0] == 'B' && data[1] == 'O' && data[2] == 'R' &&
+               data[3] == '1' && data[12] == UT_BLOCK;
+    }
+    return 0;
+}
+
+
 /*
   Unserialize binary.
 
@@ -795,15 +806,12 @@ int ur_unserialize( UThread* ut, const uint8_t* start, const uint8_t* end,
     int used;
     int ok = UR_OK;
 
-    bi.it  = start;
-    bi.end = end;
 
-    if( bi.it[0] != 'B' || bi.it[1] != 'O' ||
-        bi.it[2] != 'R' || bi.it[3] != '1' ||
-        bi.it[12] != UT_BLOCK )
+    if( ! ur_serializedHeader( start, end - start ) )
         return ur_error( ut, UR_ERR_SCRIPT, "Invalid serialized data header" );
 
-    bi.it += 4;
+    bi.it  = start + 4;
+    bi.end = end;
     n = _pullU32(&bi);
     ur_arrInit( &atoms, sizeof(UAtom), n );
     if( n )

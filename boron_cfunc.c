@@ -3953,6 +3953,8 @@ CFUNC( cfunc_unserialize )
 }
 
 
+extern int ur_serializedHeader( const uint8_t* data, int len );
+
 /*-cf-
     load
         file    file!/string!/binary!
@@ -3967,6 +3969,7 @@ CFUNC(cfunc_load)
     {
         if( cfunc_unserialize( ut, a1, res ) )
         {
+bind_sb:
             boron_bindDefault( ut, res->series.buf );
             return UR_OK;
         }
@@ -4005,6 +4008,12 @@ check_str:
                 cp = find_uint8_t( cp, cp + bin->used, '\n' );
                 if( ! cp )
                     cp = bin->ptr.b;
+            }
+            else if( ur_serializedHeader( cp, bin->used ) )
+            {
+                if( ! ur_unserialize( ut, cp, cp + bin->used, res ) )
+                    return UR_THROW;
+                goto bind_sb;
             }
 #if CONFIG_COMPRESS == 2
             else if( bin->used > (12 + 8) )
