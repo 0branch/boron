@@ -1,5 +1,5 @@
 /*
-  Copyright 2005-2011 Karl Robillard
+  Copyright 2005-2013 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -659,6 +659,50 @@ CFUNC_PUB( cfunc_sleep )
     ur_setId(res, UT_UNSET);
     return UR_OK;
 }
+
+
+#ifdef CONFIG_EXECUTE
+#include <sys/file.h>
+
+/*-cf-
+    with-flock
+        file        file!
+        body        block!
+        /nowait     Don't block if lock fails.
+    return: Result of body or false.
+*/
+CFUNC_PUB( cfunc_with_flock )
+{
+#define OPT_FLOCK_NOWAIT   0x01
+    int fd;
+    int ok = UR_OK;
+    int oper = LOCK_EX;
+    const char* file = boron_cstr( ut, a1, 0 );
+
+    if( ! boron_requestAccess( ut, "Lock file \"%s\"", file ) )
+        return UR_THROW;
+
+    if( (fd = open( file, O_CREAT | O_RDWR, 0666 )) < 0 )
+        return ur_error( ut, UR_ERR_ACCESS, "could not open file %s", file );
+
+    if( CFUNC_OPTIONS & OPT_FLOCK_NOWAIT )
+        oper |= LOCK_NB;
+
+    if( flock( fd, oper ) == 0 )
+    {
+        ok = boron_doBlock( ut, a1 + 1, res );
+        flock( fd, LOCK_UN );
+    }
+    else
+    {
+        ur_setId(res, UT_LOGIC);
+        ur_int(res) = 0;
+    }
+    close( fd );
+
+    return ok;
+}
+#endif
 
 
 /*EOF*/

@@ -1,5 +1,5 @@
 /*
-  Copyright 2005-2011 Karl Robillard
+  Copyright 2005-2013 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -587,6 +587,53 @@ CFUNC_PUB( cfunc_sleep )
     ur_setId(res, UT_UNSET);
     return UR_OK;
 }
+
+
+#ifdef CONFIG_EXECUTE
+/*
+  with-flock file body /nowait
+*/
+CFUNC_PUB( cfunc_with_flock )
+{
+#define OPT_FLOCK_NOWAIT   0x01
+#define LOCK_ALL    ULONG_MAX
+    OVERLAPPED over;
+    HANDLE fh;
+    int ok = UR_OK;
+    DWORD oper = LOCKFILE_EXCLUSIVE_LOCK;
+    const char* file = boron_cstr( ut, a1, 0 );
+
+    if( ! boron_requestAccess( ut, "Lock file \"%s\"", file ) )
+        return UR_THROW;
+
+    fh = CreateFile( path, GENERIC_READ | GENERIC_WRITE,
+                     FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                     OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+    if( fh == INVALID_HANDLE_VALUE )
+    {
+        return ur_error( ut, UR_ERR_ACCESS, "could not open file %s (%d)",
+                         file, GetLastError() );
+    }
+
+    if( CFUNC_OPTIONS & OPT_FLOCK_NOWAIT )
+        oper |= LOCKFILE_FAIL_IMMEDIATELY;
+
+    memset( &over, 0, sizeof(over) );
+
+    if( LockFileEx( fh, oper, 0, LOCK_ALL, LOCK_ALL, &over ) )
+    {
+        ok = boron_doBlock( ut, a1 + 1, res );
+        UnlockFileEx( fh, 0, LOCK_ALL, LOCK_ALL, &over );
+    }
+    else
+    {
+        ur_setId(res, UT_LOGIC);
+        ur_int(res) = 0;
+    }
+    CloseHandle( fh );
+    return ok;
+}
+#endif
 
 
 /*EOF*/

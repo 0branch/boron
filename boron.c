@@ -843,6 +843,7 @@ extern CFUNC_PUB( cfunc_hostname );
 #endif
 #ifdef CONFIG_EXECUTE
 extern CFUNC_PUB( cfunc_execute );
+extern CFUNC_PUB( cfunc_with_flock );
 #endif
 extern CFUNC_PUB( cfunc_sleep );
 
@@ -1105,6 +1106,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 #endif
 #ifdef CONFIG_EXECUTE
     addCFunc( cfunc_execute,    "execute s /in a /out b /spawn /port" );
+    addCFunc( cfunc_with_flock, "with-flock file file! body block! /nowait" );
 #endif
 #ifdef CONFIG_ASSEMBLE
     addCFunc( cfunc_assemble,   "assemble s block! body block!" );
