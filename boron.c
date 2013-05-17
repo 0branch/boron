@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2012 Karl Robillard
+  Copyright 2009-2013 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -709,6 +709,10 @@ static const char setupScript[] =
     "    [reduce [none path]]\n"
     "]\n"
     "term-dir: func [path] [terminate/dir path '/']\n"
+    "funct: func [spec body] [\n"
+    "  ifn find spec '| [append spec '|]\n"
+    "  func collect/unique/into set-word! body spec body\n"
+    "]\n"
     "\n";
 
 /*-hf- eq?
@@ -1074,6 +1078,8 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_free,       "free s" );
     addCFunc( cfunc_serialize,  "serialize b" );
     addCFunc( cfunc_unserialize,"unserialize b" );
+    addCFunc( cfunc_collect,    "collect type datatype! a block!/paren!"
+                                " /unique /into b block!" );
     addCFunc( cfunc_construct,  "construct s b" );
     addCFunc( cfunc_sleep,      "sleep n" );
     addCFunc( cfunc_wait,       "wait b" );

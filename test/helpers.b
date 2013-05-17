@@ -12,3 +12,16 @@ probe replace/all copy s ',' ' '
 probe replace/all copy s ',' "-->"
 s2: {include: ""}
 probe replace/all copy s2 '"' {\"}
+
+
+print "---- funct"
+sum: funct [a] [
+    lsum: 0
+    forall a [
+        lsum: add lsum lval: first a
+        if eq? lval 2 [print "Found lval 2."]
+    ]
+    lsum
+]
+probe sum [1 2 3]
+print [value? 'lsum value? 'lval]

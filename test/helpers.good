@@ -7,3 +7,7 @@
 "comma separated words "
 "comma-->separated-->words-->"
 {include: \"\"}
+---- funct
+Found lval 2.
+6
+false false

@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2010,2013 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -294,6 +294,50 @@ UIndex ur_blkClone( UThread* ut, UIndex blkN )
     ur_release( hold );
 
     return n;
+}
+
+
+UCell* ur_findCell( UThread* ut, UCell* it, const UCell* end,
+                    const UCell* value )
+{
+    while( it != end )
+    {
+        if( ur_equal( ut, value, it ) )
+            return it;
+        ++it;
+    }
+    return 0;
+}
+
+
+/**
+  Find all values of a certain type and append them to another block.
+
+  \param blkCell    Cell of block or paren to recursively search.
+  \param typeMask   Bit mask of datatypes to collect.
+  \param dest       Matching values are copied to this block buffer.
+  \param unique     Only add equal values once to dest.
+*/
+void ur_blkCollectType( UThread* ut, const UCell* blkCell,
+                        uint32_t typeMask, UBuffer* dest, int unique )
+{
+    UBlockIter bi;
+    int type;
+
+    ur_blkSlice( ut, &bi, blkCell );
+    ur_foreach( bi )
+    {
+        type = ur_type(bi.it);
+        if( (1 << type) & typeMask )
+        {
+            if( unique && ur_findCell( ut, dest->ptr.cell,
+                                       dest->ptr.cell + dest->used, bi.it ) )
+                continue;
+            ur_blkPush( dest, bi.it );
+        }
+        if( type == UT_BLOCK || type == UT_PAREN )
+            ur_blkCollectType( ut, bi.it, typeMask, dest, unique );
+    }
 }
 
 

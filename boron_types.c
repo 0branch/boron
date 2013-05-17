@@ -187,6 +187,7 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
 
         case UT_WORD:
         case UT_LITWORD:
+        case UT_SETWORD:    // Allows funct to avoid mapping set-word! to word!.
             if( ur_atom(bi.it) < UT_MAX )
             {
                 if( localCount )

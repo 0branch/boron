@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2012 Karl Robillard
+  Copyright 2009-2013 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -561,6 +561,37 @@ CFUNC(cfunc_in)
     }
     return errorType( "in expected context! and word!" );
 }
+
+
+#if 0
+/*
+    use
+        context     context!
+        block       block!
+    return: Last evaluated value.
+    group: eval
+
+    Bind block to context and evaluate it.
+*/
+CFUNC(cfunc_use)
+{
+    UBuffer* blk;
+    const UBuffer* ctx;
+    const UCell* bc = a2;
+
+    if( ur_is(a1, UT_CONTEXT) && ur_is(bc, UT_BLOCK) )
+    {
+        if( ! (blk = ur_bufferSerM(bc)) )
+            return UR_THROW;
+        if( ! (ctx = ur_sortedContext(ut, a1)) )
+            return UR_THROW;
+        ur_bind( ut, blk, ctx,
+                 ur_isShared(a1->context.buf) ? UR_BIND_ENV : UR_BIND_THREAD );
+        return boron_doBlock( ut, bc, res );
+    }
+    return errorType( "use expected context! and block!" );
+}
+#endif
 
 
 extern void _contextWords( UThread* ut, const UBuffer* ctx, UIndex ctxN,
@@ -4934,6 +4965,42 @@ CFUNC(cfunc_to_type)
 {
     // Type variation is in a2.
     return DT( ur_int(a2) )->convert( ut, a1, res );
+}
+
+
+/*-cf-
+    collect
+        types       datatype!
+        source      block!/paren!
+        /unique     Only add equal values once.
+        /into       Add values to dest rather than a new block.
+            dest    block!
+    return: New block containing matching values.
+    group: data
+
+    Get all values of a certain type from source block.
+*/
+CFUNC(cfunc_collect)
+{
+#define OPT_COLLECT_UNIQUE  0x01
+#define OPT_COLLECT_INTO    0x02
+    UBuffer* dest;
+    uint32_t opt = CFUNC_OPTIONS;
+
+    if( opt & OPT_COLLECT_INTO )
+    {
+        if( ! (dest = ur_bufferSerM(a3)) )
+            return UR_THROW;
+        *res = *a3;
+    }
+    else
+    {
+        ur_makeBlockCell( ut, UT_BLOCK, 0, res );
+        dest = ur_buffer(res->series.buf);
+    }
+    ur_blkCollectType( ut, a2, a1->datatype.mask0, dest,
+                       opt & OPT_COLLECT_UNIQUE );
+    return UR_OK;
 }
 
 

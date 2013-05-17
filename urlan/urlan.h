@@ -567,6 +567,8 @@ void     ur_blkPush( UBuffer*, const UCell* cell );
 UCell*   ur_blkPop( UBuffer* );
 void     ur_blkSlice( UThread*, UBlockIter*, const UCell* cell );
 int      ur_blkSliceM( UThread*, UBlockIterM*, const UCell* cell );
+void     ur_blkCollectType( UThread*, const UCell* blkCell,
+                            uint32_t typeMask, UBuffer* dest, int unique );
 #define  ur_blkFree ur_arrFree
 
 int      ur_pathCell( UThread*, const UCell* pc, UCell* res );
