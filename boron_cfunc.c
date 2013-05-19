@@ -294,6 +294,15 @@ CFUNC(cfunc_do)
             res->id.type = UT_WORD;
             break;
 
+        case UT_GETWORD:
+        {
+            const UCell* cell;
+            if( ! (cell = ur_wordCell( ut, res )) )
+                return UR_THROW; //goto traceError;
+            *res = *cell;
+        }
+            break;
+
         case UT_STRING:
         {
             USeriesIter si;
