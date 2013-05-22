@@ -31,6 +31,7 @@ enum UrlanFixedAtoms
     UR_ATOM_LATIN1,
     UR_ATOM_UTF8,
     UR_ATOM_UCS2,
+    UR_ATOM_URL,
 
     UR_ATOM_PLUS,
     UR_ATOM_MINUS,

@@ -504,6 +504,7 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 #endif
 
 #include "boron_construct.c"
+#include "boron_encode.c"
 #include "boron_wait.c"
 #include "boron_cfunc.c"
 
@@ -1066,6 +1067,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_typeQ,      "type? a" );
     addCFunc( cfunc_encodingQ,  "encoding? s" );
     addCFunc( cfunc_encode,     "encode type s /bom" );
+    addCFunc( cfunc_decode,     "decode type word! s string!" );
     addCFunc( cfunc_swap,       "swap b /group size" );
     addCFunc( cfunc_lowercase,  "lowercase s" );
     addCFunc( cfunc_uppercase,  "uppercase s" );
