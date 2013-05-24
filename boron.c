@@ -26,7 +26,6 @@
 #include "mem_util.h"
 #include "str.h"
 #include "bignum.h"
-#include "quickSortIndex.h"
 //#include "cpuCounter.h"
 
 #ifdef CONFIG_ASSEMBLE
@@ -505,6 +504,7 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 
 #include "boron_construct.c"
 #include "boron_encode.c"
+#include "boron_sort.c"
 #include "boron_wait.c"
 #include "boron_cfunc.c"
 
@@ -1039,7 +1039,8 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_intersect,  "intersect a b" );
     addCFunc( cfunc_difference, "difference a b" );
     addCFunc( cfunc_union,      "union a b" );
-    addCFunc( cfunc_sort,       "sort ser /case /group size" );
+    addCFunc( cfunc_sort,       "sort ser /case /group size int!"
+                                " /field b block!" );
     addCFunc( cfunc_foreach,    "foreach 'w s body 0 /ghost" );
     addCFunc( cfunc_foreach,    "remove-each 'w s body 1 /ghost" );
     addCFunc( cfunc_forall,     "forall 'w body /ghost" );
