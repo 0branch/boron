@@ -2541,16 +2541,18 @@ CFUNC(cfunc_emptyQ)
     {
         if( ur_is(a1, UT_NONE) )
         {
-            ur_setId( res, UT_LOGIC );
-            ur_int(res) = 1;
-            return UR_OK;
+            si.it = 1;
+            goto set_logic;
         }
         return ur_error( ut, UR_ERR_TYPE, "empty? expected series or none!" );
     }
 
     ur_seriesSlice( ut, &si, a1 );
+    si.it = (si.it == si.end) ? 1 : 0;
+
+set_logic:
     ur_setId( res, UT_LOGIC );
-    ur_int(res) = (si.it == si.end) ? 1 : 0;
+    ur_int(res) = si.it;
     return UR_OK;
 }
 
