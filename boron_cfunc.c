@@ -2526,16 +2526,27 @@ bad_limit:
 
 /*-cf-
     empty?
-        series
+        value       series or none!
     return: logic!
     group: series
+
+    Return true if the size of a series is zero, its position is out of range,
+    or the value is none!.
 */
 CFUNC(cfunc_emptyQ)
 {
     USeriesIter si;
 
     if( ! ur_isSeriesType( ur_type(a1) ) )
-        return ur_error( ut, UR_ERR_TYPE, "empty? expected series" );
+    {
+        if( ur_is(a1, UT_NONE) )
+        {
+            ur_setId( res, UT_LOGIC );
+            ur_int(res) = 1;
+            return UR_OK;
+        }
+        return ur_error( ut, UR_ERR_TYPE, "empty? expected series or none!" );
+    }
 
     ur_seriesSlice( ut, &si, a1 );
     ur_setId( res, UT_LOGIC );
