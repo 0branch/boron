@@ -34,54 +34,47 @@ struct CompareField
 };
 
 
-static const UCell* _blkCell( const UBuffer* blk, UIndex pos )
-{
-    if( pos >= 0 && pos < blk->used )
-        return blk->ptr.cell + pos;
-    return 0;
-}
-
-
+/*
 static int _binByte( const UBuffer* bin, UIndex pos )
 {
     if( pos >= 0 && pos < bin->used )
         return bin->ptr.b[ pos ];
     return -1;
 }
+*/
 
 
 static int _compareField( struct CompareField* cf,
                           const UCell* a, const UCell* b )
 {
-    const UBuffer* bufA;
-    const UBuffer* bufB;
+    UThread* ut = cf->ut;
     const UCell* it;
     int i;
-    int ca;
+    int rev;
     int type = ur_type(a);
 
     if( type != ur_type(b) )
         return 0;
-    if( ! ((1 << type) &
-           (1<<UT_BINARY | 1<<UT_STRING | 1<<UT_FILE |
-            1<<UT_BLOCK | 1<<UT_CONTEXT)) )
-        return 0;
-
-    bufA = ur_bufferSeries( cf->ut, a );
-    bufB = ur_bufferSeries( cf->ut, b );
 
     switch( type )
     {
+#if 0
         case UT_BINARY:
         case UT_STRING:
         case UT_FILE:
+        {
+            const UBuffer* bufA = ur_bufferSer( a );
+            const UBuffer* bufB = ur_bufferSer( b );
+            int ca;
+
             for( it = cf->fb.it; it != cf->fb.end; ++it )
             {
                 if( ur_is(it, UT_INT) )
                 {
-                    // Convert from one-based index but allow negative pos.
+                    // Convert from one-based index but allow negative
+                    // position to skip from end.
                     i = ur_int(it);
-                    if( i > 1 )
+                    if( i > 0 )
                         --i;
 
                     if( type == UT_BINARY )
@@ -106,46 +99,97 @@ static int _compareField( struct CompareField* cf,
                         return -1;
                 }
             }
+        }
             break;
-
+#endif
         case UT_BLOCK:
         {
-            const UCell* valA;
-            const UCell* valB;
+            USeriesIter siA;
+            USeriesIter siB;
+            int pos;
 
-            for( it = cf->fb.it; it != cf->fb.end; ++it )
+            ur_seriesSlice( ut, &siA, a );
+            ur_seriesSlice( ut, &siB, b );
+
+            for( it = cf->fb.it; it != cf->fb.end; )
             {
                 if( ur_is(it, UT_INT) )
                 {
-                    i = ur_int(it) - 1;
+                    // Convert from one-based index but allow negative
+                    // position to pick from end.
+                    i = ur_int(it);
+                    if( i > 0 )
+                        --i;
 
-                    valA = _blkCell( bufA, i + a->series.it );
-                    valB = _blkCell( bufB, i + b->series.it );
+                    if( (++it != cf->fb.end) && ur_is(it, UT_OPTION) )
+                    {
+                        ++it;
+                        rev = 1;
+                    }
+                    else
+                    {
+                        rev = 0;
+                    }
 
-                    if( (i = ur_compare( cf->ut, valA, valB )) )
-                        return i;
+#define SORT_BLK_CELL(res, si, index) \
+    pos = index + ((index < 0) ? si.end : si.it); \
+    if( pos < si.it || pos >= si.end ) \
+        return 0; \
+    res = si.buf->ptr.cell + pos;
+
+                    SORT_BLK_CELL( a, siA, i );
+                    SORT_BLK_CELL( b, siB, i );
+
+                    if( (i = ur_compare( ut, a, b )) )
+                        return rev ? -i : i;
+                }
+                else
+                {
+                    ++it;
                 }
             }
         }
             break;
 
         case UT_CONTEXT:
-            for( it = cf->fb.it; it != cf->fb.end; ++it )
+        {
+            const UBuffer* bufA = ur_bufferSer( a );
+            const UBuffer* bufB = ur_bufferSer( b );
+            UAtom word;
+
+            for( it = cf->fb.it; it != cf->fb.end; )
             {
                 if( ur_is(it, UT_WORD) )
                 {
-                    if( (i = ur_ctxLookup( bufA, ur_atom(it) )) < 0 )
+                    word = ur_atom(it);
+
+                    if( (++it != cf->fb.end) && ur_is(it, UT_OPTION) )
+                    {
+                        ++it;
+                        rev = 1;
+                    }
+                    else
+                    {
+                        rev = 0;
+                    }
+
+                    if( (i = ur_ctxLookup( bufA, word )) < 0 )
                         return 0;
                     a = ur_ctxCell( bufA, i );
 
-                    if( (i = ur_ctxLookup( bufB, ur_atom(it) )) < 0 )
+                    if( (i = ur_ctxLookup( bufB, word )) < 0 )
                         return 0;
                     b = ur_ctxCell( bufB, i );
 
-                    if( (i = ur_compare( cf->ut, a, b )) )
-                        return i;
+                    if( (i = ur_compare( ut, a, b )) )
+                        return rev ? -i : i;
+                }
+                else
+                {
+                    ++it;
                 }
             }
+        }
             break;
     }
     return 0;
@@ -158,7 +202,7 @@ static int _compareField( struct CompareField* cf,
         /case       Use case-sensitive comparison with string types.
         /group      Compare groups of elements by first value in group.
             size    int!
-        /field      Sort on selected words of context elements.
+        /field      Sort on specified context words or block indices.
             which   block!
     return: New series with sorted elements.
     group: series

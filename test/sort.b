@@ -11,21 +11,24 @@ probe sort [6 2 1 9 3 7 5 8 15 4 0 16 14 10 12 11 13 17]
 
 print "---- sort field"
 ctxb: reduce [
-    context [part: 'head  size: 4 regen: 0]
-    context [part: 'wing  size: 8 regen: 0]
-    context [part: 'head  size: 2 regen: 1]
-    context [other: none part: 'wing  size: 7 regen: 0]
+    context [part: 'head  size: 2 regen: false]
+    context [part: 'wing  size: 4 regen: false]
+    context [part: 'head  size: 1 regen: true]
+    context [other: none part: 'wing  size: 3 regen: false]
 ]
-probe sort/field ctxb [part size]
+probe sort/field copy ctxb [part size]
+probe sort/field copy ctxb [part size /desc]
 
 blkb: [
-    [4 0 head]
-    [8 0 wing]
-    [2 1 head]
-    [7 0 wing]
+    [2 false head]
+    [4 false wing]
+    [1 true head]
+    [3 false wing]
 ]
-probe sort/field blkb [3 1]
+probe sort/field copy blkb [3 1]
+probe sort/field copy blkb [3 1 /desc]
 
+/*
 strb: [
     "a-8"
     "X-2"
@@ -35,3 +38,4 @@ strb: [
     "m-0"
 ]
 probe sort/field strb [3 1]
+*/
