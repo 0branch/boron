@@ -204,11 +204,11 @@
 
   \param si     Series buffer and slice to reverse.
 */
-/** \fn int (*USeriesType::find)( UThread*, const UCell* ser, const UCell* val,
-                                  int opt )
+/** \fn int (*USeriesType::find)( UThread*, const USeriesIter* si,
+                                  const UCell* val, int opt )
   Search for a value in the series.
 
-  \param ser    Series cell.
+  \param si     Series iterator.
   \param val    Value to find.
   \param opt    Options.
 
@@ -3391,22 +3391,7 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
     else if( ur_is(val, UT_BITSET) )
     {
         const UBuffer* bbuf = ur_bufferSer(val);
-        if( ur_strIsUcs2(buf) )
-        {
-            const uint16_t* it = buf->ptr.u16;
-            it = find_charset_uint16_t( it + si->it, it + si->end,
-                                        bbuf->ptr.b, bbuf->used );
-            if( it )
-                return it - buf->ptr.u16;
-        }
-        else
-        {
-            const uint8_t* it = buf->ptr.b;
-            it = find_charset_uint8_t( it + si->it, it + si->end,
-                                       bbuf->ptr.b, bbuf->used );
-            if( it )
-                return it - buf->ptr.b;
-        }
+        return ur_strFindChars( buf, si->it, si->end, bbuf->ptr.b, bbuf->used );
     }
     return -1;
 }
