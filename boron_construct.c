@@ -1,5 +1,5 @@
 /*
-  Copyright 2010 Karl Robillard
+  Copyright 2010,2013 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -155,9 +155,127 @@ con_blk:
 }
 
 
+extern int string_append( UThread* ut, UBuffer* buf, const UCell* val );
+
+static int sc_appendEval( UThread* ut, UBuffer* str, const UCell* val )
+{
+    if( ur_is(val, UT_WORD) )
+    {
+        if( ! (val = ur_wordCell( ut, val )) )
+            return UR_THROW;
+        if( ur_is(val, UT_NONE) )
+            return UR_OK;
+    }
+    return string_append( ut, str, val );
+}
+
+
+/*
+    Create output string from input with changes.
+
+    The plan block is simply a list of search and replace values.
+*/
+static int string_construct( UThread* ut, UBuffer* str,
+                             const UCell* inputC, const UCell* blkC )
+{
+#define sc_setBit(mem,n)    (mem[(n)>>3] |= 1<<((n)&7))
+#define SC_BIT_COUNT    256
+    USeriesIter in;
+    UBlockIter bi;
+    UBuffer cset;
+    const UCell* begin;
+    UIndex copyPos;
+    int ch;
+    int fp;
+
+
+    ur_blkSlice( ut, &bi, blkC );
+    begin = bi.it;
+    if( (bi.end - bi.it) & 1 )
+        --bi.end;
+
+    // Create bitset of search value characters.
+    ur_binInit( &cset, SC_BIT_COUNT / 8 );
+    cset.used = SC_BIT_COUNT / 8;
+    memSet( cset.ptr.b, 0, cset.used );
+    for( ; bi.it != bi.end; bi.it += 2 )
+    {
+        if( ur_is(bi.it, UT_CHAR) )
+        {
+            ch = ur_int(bi.it);
+        }
+        else if( ur_is(bi.it, UT_STRING) )
+        {
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, bi.it );
+            ch = ur_strChar( si.buf, si.it );
+        }
+        else
+        {
+            ch = -1;
+        }
+
+        if( ch >= 0 && ch < SC_BIT_COUNT )
+            sc_setBit( cset.ptr.b, ch );
+    }
+
+    // Append to str with replacements.
+    ur_seriesSlice( ut, &in, inputC );
+    copyPos = in.it;
+    while( (fp = ur_strFindChars(in.buf, in.it, in.end, cset.ptr.b, cset.used))
+            > -1 )
+    {
+        ch = ur_strIsUcs2(in.buf) ? in.buf->ptr.u16[ fp ]
+                                  : in.buf->ptr.b[ fp ];
+
+        for( bi.it = begin; bi.it != bi.end; bi.it += 2 )
+        {
+            if( ur_is(bi.it, UT_CHAR) )
+            {
+                if( ch == ur_int(bi.it) )
+                {
+                    in.it = fp + 1;
+match:
+                    ur_strAppend( str, in.buf, copyPos, fp );
+                    copyPos = in.it;
+                    if( sc_appendEval( ut, str, bi.it + 1 ) != UR_OK )
+                        return UR_THROW;
+                    break;
+                }
+            }
+            else if( ur_is(bi.it, UT_STRING) )
+            {
+                USeriesIter inA;
+                USeriesIter si;
+                int len;
+
+                ur_seriesSlice( ut, &si, bi.it );
+                len = si.end - si.it;
+
+                inA.buf = in.buf;
+                inA.it  = fp;
+                inA.end = in.end;
+
+                if( ur_strMatch( &inA, &si, 0 ) == len )
+                {
+                    in.it = fp + len;
+                    goto match;
+                }
+            }
+        }
+        if( bi.it == bi.end )
+            ++in.it;
+    }
+    ur_strAppend( str, in.buf, copyPos, in.end );
+
+    ur_binFree( &cset );
+    return UR_OK;
+}
+
+
 /*-cf-
     construct
-        object  datatype!/binary!
+        object  datatype!/binary!/string!
         plan    block!
     return: New value.
     group: data
@@ -169,21 +287,30 @@ CFUNC(cfunc_construct)
     if( ! ur_is(a2, UT_BLOCK) )
         return errorType( "construct expected block! plan" );
 
-    if( ur_is(a1, UT_DATATYPE) )
+    switch( ur_type(a1) )
     {
-        if( ur_datatype(a1) == UT_BINARY )
+        case UT_DATATYPE:
+            if( ur_datatype(a1) == UT_BINARY )
+            {
+                ur_makeBinaryCell( ut, 0, res );
+                goto con_binary;
+            }
+            break;
+
+        case UT_BINARY:
+            *res = *a1;
+con_binary:
+            return binary_construct( ut, a2, res );
+
+        case UT_STRING:
         {
-            ur_makeBinaryCell( ut, 0, res );
-            goto con_binary;
+            const UBuffer* in = ur_bufferSer(a1);
+            return string_construct( ut,
+                    ur_makeStringCell( ut, in->form, in->used, res ),  // gc!
+                    a1, a2 );
         }
     }
-    else if( ur_is(a1, UT_BINARY) )
-    {
-        *res = *a1;
-con_binary:
-        return binary_construct( ut, a2, res );
-    }
-    return errorType( "construct expected binary!" );
+    return errorType( "construct expected binary!/string!" );
 }
 
 

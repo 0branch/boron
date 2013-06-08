@@ -4,3 +4,5 @@
 #{0001000200030004}
 ---- append binary
 #{FAFB0017002B002B090500540337}
+---- copy string and edit
+"This is some HTML &quot;text&quot;"
