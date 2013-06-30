@@ -3,18 +3,18 @@
 
 enum GLFixedAtoms
 {
-    UR_ATOM_ADD   = 229,
-    UR_ATOM_SIZE  = 251,
-    UR_ATOM_LOOP  = 270,
-    UR_ATOM_REPEAT= 291,
-    UR_ATOM_TEXT  = 332,
-    UR_ATOM_WAIT  = 369,
+    UR_ATOM_ADD   = 230,
+    UR_ATOM_SIZE  = 252,
+    UR_ATOM_LOOP  = 271,
+    UR_ATOM_REPEAT= 292,
+    UR_ATOM_TEXT  = 334,
+    UR_ATOM_WAIT  = 374,
 #ifdef __ANDROID__
     UR_ATOM_CLOSE = 386,
     UR_ATOM_WIDTH = 400,
 #else
-    UR_ATOM_CLOSE = 396,
-    UR_ATOM_WIDTH = 410,
+    UR_ATOM_CLOSE = 402,
+    UR_ATOM_WIDTH = 417,
 #endif
     UR_ATOM_HEIGHT,
     UR_ATOM_AREA,
