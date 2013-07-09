@@ -539,73 +539,103 @@ const UCell* vector_select( UThread* ut, const UCell* cell, const UCell* sel,
 
 int vector_append( UThread* ut, UBuffer* buf, const UCell* val )
 {
-    int vt = ur_type(val);
-    if( (vt == UT_CHAR) || (vt == UT_INT) )
+    switch( ur_type(val) )
     {
-        ur_arrReserve( buf, buf->used + 1 );
-        vector_pokeInt( buf, buf->used++, ur_int(val) );
-        return UR_OK;
-    }
-    else if( vt == UT_DECIMAL )
-    {
-        ur_arrReserve( buf, buf->used + 1 );
-        vector_pokeDouble( buf, buf->used++, ur_decimal(val) );
-        return UR_OK;
-    }
-    else if( vt == UT_VECTOR )
-    {
-        USeriesIter si;
-        ur_seriesSlice( ut, &si, val );
-        ur_vecAppend( buf, si.buf, si.it, si.end );
-        return UR_OK;
-    }
-    else if( vt == UT_VEC3 )
-    {
-        ur_arrReserve( buf, buf->used + 3 );
-        buf->used += 3;
-        vector_pokeFloatV( buf, buf->used - 3, val->vec3.xyz, 3 );
-        return UR_OK;
-    }
-    return ur_error( ut, UR_ERR_TYPE,
+        case UT_CHAR:
+        case UT_INT:
+            ur_arrReserve( buf, buf->used + 1 );
+            vector_pokeInt( buf, buf->used++, ur_int(val) );
+            break;
+
+        case UT_DECIMAL:
+            ur_arrReserve( buf, buf->used + 1 );
+            vector_pokeDouble( buf, buf->used++, ur_decimal(val) );
+            break;
+
+        case UT_VEC3:
+            ur_arrReserve( buf, buf->used + 3 );
+            buf->used += 3;
+            vector_pokeFloatV( buf, buf->used - 3, val->vec3.xyz, 3 );
+            break;
+
+        case UT_VECTOR:
+        {
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, val );
+            ur_vecAppend( buf, si.buf, si.it, si.end );
+        }
+            break;
+
+        case UT_BLOCK:
+        {
+            UBlockIter bi;
+            ur_blkSlice( ut, &bi, val );
+            ur_foreach( bi )
+            {
+                if( ! vector_append( ut, buf, bi.it ) )
+                    return UR_THROW;
+            }
+        }
+            break;
+
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
                  "append vector! expected char!/int!/decimal!/vec3!/vector!" );
+    }
+    return UR_OK;
 }
 
 
 int vector_insert( UThread* ut, UBuffer* buf, UIndex index,
                    const UCell* val, UIndex part )
 {
-    int vt = ur_type(val);
     (void) index;
     (void) part;
 
-    if( (vt == UT_CHAR) || (vt == UT_INT) )
+    switch( ur_type(val) )
     {
-        ur_arrReserve( buf, buf->used + 1 );
-        vector_pokeInt( buf, buf->used++, ur_int(val) );
-        return UR_OK;
-    }
-    else if( vt == UT_DECIMAL )
-    {
-        ur_arrReserve( buf, buf->used + 1 );
-        vector_pokeDouble( buf, buf->used++, ur_decimal(val) );
-        return UR_OK;
-    }
-    else if( vt == UT_VECTOR )
-    {
-        USeriesIter si;
-        ur_seriesSlice( ut, &si, val );
-        ur_vecAppend( buf, si.buf, si.it, si.end );
-        return UR_OK;
-    }
-    else if( vt == UT_VEC3 )
-    {
-        ur_arrReserve( buf, buf->used + 3 );
-        buf->used += 3;
-        vector_pokeFloatV( buf, buf->used - 3, val->vec3.xyz, 3 );
-        return UR_OK;
-    }
-    return ur_error( ut, UR_ERR_TYPE,
+        case UT_CHAR:
+        case UT_INT:
+            ur_arrReserve( buf, buf->used + 1 );
+            vector_pokeInt( buf, buf->used++, ur_int(val) );
+            break;
+
+        case UT_DECIMAL:
+            ur_arrReserve( buf, buf->used + 1 );
+            vector_pokeDouble( buf, buf->used++, ur_decimal(val) );
+            break;
+
+        case UT_VEC3:
+            ur_arrReserve( buf, buf->used + 3 );
+            buf->used += 3;
+            vector_pokeFloatV( buf, buf->used - 3, val->vec3.xyz, 3 );
+            break;
+
+        case UT_VECTOR:
+        {
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, val );
+            ur_vecAppend( buf, si.buf, si.it, si.end );
+        }
+            break;
+#if 0
+        case UT_BLOCK:
+        {
+            UBlockIter bi;
+            ur_blkSlice( ut, &bi, val );
+            ur_foreach( bi )
+            {
+                if( ! vector_insert( ut, buf, 0, bi.it, part ) )
+                    return UR_THROW;
+            }
+        }
+            break;
+#endif
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
                  "insert vector! expected char!/int!/decimal!/vec3!/vector!" );
+    }
+    return UR_OK;
 }
 
 

@@ -14,6 +14,7 @@ a: #[1 2 3]
 probe append copy a 4
 probe append copy a #[70 80 90]
 probe append copy a 9.0,-8.7,7.0
+probe append copy a [9 8.6 'C']
 
 
 ;print "---- find"
