@@ -55,7 +55,10 @@ shlib [%boron 0,2,6] [
     ]
     if random [
         cflags {-DCONFIG_RANDOM}
-        sources [%support/well512.c]
+        sources [
+            %support/well512.c
+            %boron_random.c
+        ]
     ]
     if socket [
         cflags {-DCONFIG_SOCKET}

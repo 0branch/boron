@@ -66,6 +66,7 @@ add_library(boron-lib SHARED
     support/quickSortIndex.c
     support/well512.c
     boron.c
+    boron_random.c
     port_file.c
     port_socket.c
     port_thread.c

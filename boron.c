@@ -26,11 +26,8 @@
 #include "mem_util.h"
 #include "str.h"
 #include "bignum.h"
+#include "boron_internal.h"
 //#include "cpuCounter.h"
-
-#ifdef CONFIG_ASSEMBLE
-#include <jit/jit.h>
-#endif
 
 
 /** \defgroup boron Boron Interpreter
@@ -48,61 +45,12 @@ The Boron programmer interface.
 int boron_doBlock( UThread* ut, const UCell* ec, UCell* res );
 int boron_eval1( UThread* ut, UCell* blkC, UCell* res );
 
-#define MAX_OPT     8       // LIMIT: 8 options per func/cfunc.
-#define OPT_BITS(c) (c)->id._pad0
-
 #define DT(dt)          (ut->types[ dt ])
 #define SERIES_DT(dt)   ((const USeriesType*) (ut->types[ dt ]))
 
 #define errorType(msg)      ur_error(ut, UR_ERR_TYPE, msg)
 #define errorScript(msg)    ur_error(ut, UR_ERR_SCRIPT, msg)
 
-
-typedef struct
-{
-    UCell* args;
-    UIndex funcBuf;
-}
-LocalFrame;
-
-
-// UCellFuncOpt is stored on the data stack just before function arguments.
-typedef struct
-{
-    uint8_t  type;          // UT_LOGIC (For UR_BIND_OPTION result).
-    uint8_t  flags;
-    uint16_t optionMask;    // UCellId _pad0
-    uint8_t  optionJump[ MAX_OPT ];
-    uint16_t jumpIt;
-    uint16_t jumpEnd;
-}
-UCellFuncOpt;
-
-
-typedef struct BoronThread
-{
-    UThread ut;
-    int (*requestAccess)( UThread*, const char* );
-    UCell*  evalData;
-    UCell*  tos;
-    UCell*  eos;
-    LocalFrame* bof;
-    LocalFrame* tof;
-    LocalFrame* eof;
-    UIndex  holdData;
-    UIndex  dstackN;
-    UIndex  fstackN;
-    UIndex  tempN;
-    UCellFuncOpt fo;
-#ifdef CONFIG_ASSEMBLE
-    jit_context_t jit;
-    UAtomEntry* insTable;
-#endif
-}
-BoronThread;
-
-#define BT      ((BoronThread*) ut)
-#define RESULT  (BT->evalData + BT_RESULT)
 
 enum BoronEvalCells
 {
@@ -498,9 +446,6 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 #ifdef CONFIG_COMPRESS
 #include "boron_compress.c"
 #endif
-#ifdef CONFIG_RANDOM
-#include "boron_random.c"
-#endif
 
 #include "boron_construct.c"
 #include "boron_encode.c"
@@ -838,6 +783,9 @@ static void _addDatatypeWords( UThread* ut, int typeCount )
 }
 
 
+#ifdef CONFIG_RANDOM
+extern CFUNC_PUB( cfunc_random );
+#endif
 #ifdef CONFIG_SOCKET
 extern CFUNC_PUB( cfunc_set_addr );
 extern CFUNC_PUB( cfunc_hostname );

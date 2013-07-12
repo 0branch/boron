@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2010 Karl Robillard
+  Copyright 2009-2010,2013 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -19,11 +19,12 @@
 
 
 #include <time.h>
+#include "boron.h"
+#include "boron_internal.h"
 
 
-extern void     init_genrand( uint32_t s );
-extern uint32_t genrand_int32();
-extern double   genrand_real2();
+#define genrand_int32()     well512_genU32( &BT->rand )
+#define genrand_real2()     well512_genReal( &BT->rand )
 
 
 static unsigned long _clockSeed()
@@ -47,7 +48,7 @@ static unsigned long _clockSeed()
     A call to random/seed must be done before random values will be generated.
     If seed data is is not an int! then a clock-based seed is used.
 */
-CFUNC(cfunc_random)
+CFUNC_PUB(cfunc_random)
 {
 #define OPT_RANDOM_SEED     1
     int type = ur_type(a1);
@@ -56,7 +57,7 @@ CFUNC(cfunc_random)
     {
         ur_setId(res, UT_INT);
         ur_int(res) = (type == UT_INT) ? ur_int(a1) : (int32_t) _clockSeed();
-        init_genrand( (uint32_t) ur_int(res) );
+        well512_init( &BT->rand, (uint32_t) ur_int(res) );
         return UR_OK;
     }
 
