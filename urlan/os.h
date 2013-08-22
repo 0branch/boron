@@ -25,6 +25,9 @@
 // ws2 header included here for uc_wait because it must come before windows.h
 #include <winsock2.h>
 #include <windows.h>
+#include <direct.h>     // _chdir, _getcwd
+
+#undef small            // Defined in RpcNdr.h (SDK v6.0A)
 
 #ifdef _MSC_VER
 #define inline  __inline

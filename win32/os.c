@@ -606,7 +606,7 @@ CFUNC_PUB( cfunc_with_flock )
     if( ! boron_requestAccess( ut, "Lock file \"%s\"", file ) )
         return UR_THROW;
 
-    fh = CreateFile( path, GENERIC_READ | GENERIC_WRITE,
+    fh = CreateFile( file, GENERIC_READ | GENERIC_WRITE,
                      FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                      OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
     if( fh == INVALID_HANDLE_VALUE )
