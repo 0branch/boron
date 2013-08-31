@@ -83,20 +83,22 @@ static void label_sizeHint( GWidget* wp, GSizeHint* size )
     tf = ur_texFontV( ut, style + CI_STYLE_CONTROL_FONT );
     if( tf && ep->textN != UR_INVALID_BUF )
     {
-        size->minH = size->maxH = txf_lineSpacing( tf ) + 8;
-
         str = ur_buffer( ep->textN );
         if( ! ur_strIsUcs2(str) )
         {
-            size->minW = txf_width( tf, str->ptr.b, str->ptr.b + str->used );
+            int textDim[2];
+            txf_pixelSize( tf, str->ptr.b, str->ptr.b + str->used, textDim );
+
+            size->minW = textDim[0];
             if( size->maxW < size->minW )
                 size->maxW = size->minW;
+
+            size->minH = size->maxH = textDim[1] + 8;
+            return;
         }
     }
-    else
-    {
-        size->minH = size->maxH = 0;
-    }
+
+    size->minH = size->maxH = 0;
 }
 
 

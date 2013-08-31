@@ -513,7 +513,8 @@ cleanup_lib:
 }
 
 
-int txf_width( const TexFont* tf, const uint8_t* it, const uint8_t* end )
+static int txf_width2( const TexFont* tf, const uint8_t* it,
+                       const uint8_t* end, const uint8_t** sol )
 {
     TexFontGlyph* prev = 0;
     TexFontGlyph* tgi;
@@ -541,7 +542,15 @@ int txf_width( const TexFont* tf, const uint8_t* it, const uint8_t* end )
         }
     }
 
+    *sol = it;
     return width;
+}
+
+
+int txf_width( const TexFont* tf, const uint8_t* it, const uint8_t* end )
+{
+    const uint8_t* sol;
+    return txf_width2( tf, it, end, &sol );
 }
 
 
@@ -558,22 +567,14 @@ void txf_pixelSize( const TexFont* tf, const uint8_t* it, const uint8_t* end,
 
     while( it != end )
     {
-        n = txf_width( tf, it, end );
+        h += ls;
+        n = txf_width2( tf, it, end, &it );
         if( w < n )
             w = n;
-        while( it != end )
-        {
-            n = *it++;
-            if( n == '\n' )
-            {
-                h += ls;
-                break;
-            }
-        }
     }
 
     size[0] = w;
-    size[1] = h;
+    size[1] = (w > 0) ? h - ls : h;
 }
 
 
