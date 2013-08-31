@@ -1441,8 +1441,8 @@ static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
             dim += ep->spacing;
 
 #ifdef REPORT_LAYOUT
-        printf( "KR hbox layout  id %d  class %d  %d,%d,%d,%d\n",
-                it.id, it->classId, cr.x, cr.y, cr.w, cr.h );
+        printf( "KR hbox layout  %p %s\t%d,%d,%d,%d\n",
+                it, it->wclass->name, cr.x, cr.y, cr.w, cr.h );
 #endif
 #if 1
         // Always call layout to recompile DL.
@@ -1563,8 +1563,8 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
             dim -= ep->spacing;
 
 #ifdef REPORT_LAYOUT
-        printf( "KR vbox layout  id %d  class %d  %d,%d,%d,%d\n",
-                it.id, it->classId, cr.x, cr.y, cr.w, cr.h );
+        printf( "KR vbox layout  %p %s\t%d,%d,%d,%d\n",
+                it, it->wclass->name, cr.x, cr.y, cr.w, cr.h );
 #endif
 #if 1
         // Always call layout to recompile DL.
@@ -1753,7 +1753,7 @@ static void grid_layout( GWidget* wp )
 
         cr.y = sy - _int16Sum( rowMin, row + 1 );
         if( row )
-            cr.y -= (row - 1) * ep->spacing;
+            cr.y -= row * ep->spacing;
 
         if( cs.policyX == GW_FIXED )
         {
@@ -1772,8 +1772,8 @@ static void grid_layout( GWidget* wp )
             cr.h = rowMin[ row ];
 
 #ifdef REPORT_LAYOUT
-        printf( "KR grid layout  id %d  class %d  %d,%d,%d,%d\n",
-                it.id, it->classId, cr.x, cr.y, cr.w, cr.h );
+        printf( "KR grid layout  %p %s\t%d,%d,%d,%d\n",
+                it, it->wclass->name, cr.x, cr.y, cr.w, cr.h );
 #endif
         // Always call layout to recompile DL.
         it->area = cr;
