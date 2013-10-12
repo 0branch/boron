@@ -29,7 +29,7 @@ parse-doc: func [txt | fob tok] [
         ]
         thru {return:}         tok: to nl :tok (fob/return: trim tok)
         opt [some ws {group:}  tok: to nl :tok (fob/group:  trim tok)]
-        tok: (fob/about: trim tok)
+        tok: (fob/about: tok)
     ]
     fob
 ]
@@ -190,8 +190,33 @@ emit-groups: func [| add-grp grp tok] [
 ]
 
 
-;white: charset " ^-^/"
-;parse f [name: to white :name thru white f:]
+context [
+    state: none
+
+    transit: func [new] [
+        if ne? state new [
+            switch state [
+                code [emit {</pre>^/}]
+                para [emit {</p>^/}]
+            ]
+            switch state: new [
+                code [emit {<pre class="literal-block">}]
+                para [emit {<p>}]
+            ]
+        ]
+    ]
+
+    set 'markup-lines func [txt | tok] [
+        state: none
+        parse txt [some[
+            tok:
+            4 ' ' thru nl :tok  (transit 'code emit skip tok 4)
+          | nl                  (transit none)
+          | thru nl :tok        (transit 'para emit tok)
+        ]]
+        transit none
+    ]
+]
 
 emit-funcs: func [funcs | f] [
     foreach f funcs [
@@ -211,10 +236,10 @@ emit-funcs: func [funcs | f] [
             argument-table f/args
             {<p class="func-sec">Return</p>^/<div class="return-block">^/<p>}
             f/return
-            {</p>^/</div>^/<p>}
-            f/about
             {</p>^/</div>^/}
         ]
+        markup-lines f/about
+        emit {</div>^/}
     ]
 ]
 

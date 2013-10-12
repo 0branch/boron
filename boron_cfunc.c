@@ -1039,7 +1039,7 @@ CFUNC(cfunc_copy)
         series
         size    Number of elements to reserve.
     return: Series.
-    group: data
+    group: data, storage
 */
 CFUNC(cfunc_reserve)
 {
@@ -2259,7 +2259,7 @@ CFUNC(cfunc_change)
     remove
         series      series or none!
         /slice      Remove to end of slice.
-        /part
+        /part       Remove more than one element.
             number  int!
     return: series or none!
     group: series
@@ -3558,9 +3558,10 @@ CFUNC(cfunc_current_dir)
     group: os
 
     Get operating system environment variable.
-::
-    getenv "PATH"
-    == {/usr/local/bin:/usr/bin:/bin:/usr/games:/home/karl/bin}
+
+    Example:
+        getenv "PATH"
+        == {/usr/local/bin:/usr/bin:/bin:/usr/games:/home/karl/bin}
 */
 CFUNC(cfunc_getenv)
 {
@@ -3631,8 +3632,8 @@ extern int ur_readDir( UThread*, const char* filename, UCell* res );
 /*-cf-
     read
         source  file!/string!/port!
-        /text
-        /into
+        /text   Read as text rather than binary.
+        /into   Put data into existing buffer.
             buffer  binary!/string!
     return: binary!/string!/block!
     group: io
