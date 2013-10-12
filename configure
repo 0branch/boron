@@ -73,13 +73,13 @@ if command -v gcc >/dev/null; then
     echo -e $1 >> MakefileA
   }
 
-  emit "\nCFLAGS=-Iurlan -Isupport -I. -std=gnu99 -pedantic -Wall -W -O3"
+  emit "\nCFLAGS=-Iinclude -Iurlan -Ieval -Isupport -std=gnu99 -pedantic -Wall -W -O3"
   emit "LIBS=-lm"
   emit "OBJS=env.o array.o binary.o block.o coord.o date.o path.o \\"
   emit "	string.o context.o gc.o serialize.o tokenize.o bignum.o \\"
   emit "	vector.o parse_binary.o parse_block.o parse_string.o \\"
   emit "	support/str.o support/mem_util.o support/quickSortIndex.o \\"
-  emit "	unix/os.o boron.o boron_console.o port_file.o"
+  emit "	unix/os.o eval/boron.o eval/console.o eval/port_file.o"
   emit "\nboronA: \$(OBJS)\n\tgcc \$^ -o \$@ \$(LIBS)"
   emit "\n%.o: %.c\n\tgcc -c \$(CFLAGS) \$< -o \$@"
   emit "\n%.o: urlan/%.c\n\tgcc -c \$(CFLAGS) \$< -o \$@"

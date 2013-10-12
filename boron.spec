@@ -34,11 +34,11 @@ mkdir -p $RPM_BUILD_ROOT%{_bindir}
 mkdir -p $RPM_BUILD_ROOT%{_includedir}/boron
 mkdir -p $RPM_BUILD_ROOT%{_libdir}
 install -s -m 755 boron $RPM_BUILD_ROOT%{_bindir}
-sed -e 's~"urlan.h"~<boron/urlan.h>~' boron.h >boron.x
+sed -e 's~"urlan.h"~<boron/urlan.h>~' include/boron.h >boron.x
 install -m 644 -T boron.x           $RPM_BUILD_ROOT%{_includedir}/boron/boron.h
-install -m 644 urlan/urlan.h        $RPM_BUILD_ROOT%{_includedir}/boron
-install -m 644 urlan/urlan_atoms.h  $RPM_BUILD_ROOT%{_includedir}/boron
-install -m 644 urlan/bignum.h       $RPM_BUILD_ROOT%{_includedir}/boron
+install -m 644 include/urlan.h        $RPM_BUILD_ROOT%{_includedir}/boron
+install -m 644 include/urlan_atoms.h  $RPM_BUILD_ROOT%{_includedir}/boron
+install -m 644 include/bignum.h       $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 755 -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}
 ln -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron.so
 ln -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron.so.0

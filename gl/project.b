@@ -7,7 +7,7 @@ default [
 
     include_from [
         %.
-        %..
+        %../include
         %../urlan
     ]
     ;macx [universal]
@@ -104,6 +104,6 @@ exe %boron-gl [
         lflags {-framework Carbon}
     ]
     sources [
-        %../boron_console.c
+        %../eval/console.c
     ]
 ]

@@ -441,24 +441,24 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 
 
 #ifdef CONFIG_CHECKSUM
-#include "boron_checksum.c"
+#include "checksum.c"
 #endif
 #ifdef CONFIG_COMPRESS
-#include "boron_compress.c"
+#include "compress.c"
 #endif
 
-#include "boron_construct.c"
-#include "boron_encode.c"
-#include "boron_sort.c"
-#include "boron_wait.c"
-#include "boron_cfunc.c"
+#include "construct.c"
+#include "encode.c"
+#include "sort.c"
+#include "wait.c"
+#include "cfunc.c"
 
 #ifdef CONFIG_THREAD
-#include "boron_thread.c"
+#include "thread.c"
 #endif
 
 #ifdef CONFIG_ASSEMBLE
-#include "boron_asm.c"
+#include "asm.c"
 #endif
 
 

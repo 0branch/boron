@@ -19,7 +19,7 @@
 
 
 #define SHA1HANDSOFF    1
-#include <support/sha1.c>
+#include <sha1.c>
 
 
 /*

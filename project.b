@@ -17,7 +17,7 @@ default [
     release
 
     objdir %obj
-    include_from [%. %urlan %support]
+    include_from [%include %urlan %eval %support]
 
     macx [
         cflags {-std=c99}
@@ -57,12 +57,12 @@ shlib [%boron 0,2,6] [
         cflags {-DCONFIG_RANDOM}
         sources [
             %support/well512.c
-            %boron_random.c
+            %eval/random.c
         ]
     ]
     if socket [
         cflags {-DCONFIG_SOCKET}
-        sources [%port_socket.c]
+        sources [%eval/port_socket.c]
     ]
     if timecode [
         cflags {-DCONFIG_TIMECODE}
@@ -70,7 +70,7 @@ shlib [%boron 0,2,6] [
     if thread [
         cflags {-DCONFIG_THREAD}
         linux [libs %pthread]
-        sources [%port_thread.c]
+        sources [%eval/port_thread.c]
     ]
     if assemble [
         cflags {-DCONFIG_ASSEMBLE}
@@ -104,8 +104,8 @@ shlib [%boron 0,2,6] [
         %support/mem_util.c
         %support/quickSortIndex.c
 
-        %boron.c
-        %port_file.c
+        %eval/boron.c
+        %eval/port_file.c
     ]
 
     macx  [sources [%unix/os.c]]
@@ -135,6 +135,6 @@ exe %boron [
         ]
     ]
     sources [
-        %boron_console.c
+        %eval/console.c
     ]
 ]
