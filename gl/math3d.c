@@ -197,6 +197,38 @@ void ur_matrixInverse( float* mat, const float* a )
 }
 
 
+#if 0
+#define MAT_SWAP(A,B) \
+    tmp = mat[A]; \
+    mat[A] = mat[B]; \
+    mat[B] = tmp
+
+void ur_matrixTransposeSelf( float* mat )
+{
+    float tmp;
+    MAT_SWAP( k01, k10 );
+    MAT_SWAP( k02, k20 );
+    MAT_SWAP( k12, k21 );
+}
+
+
+void ur_matrixInverseSelf( float* mat )
+{
+    float x, y, z;
+
+    x = mat[ kX ];
+    y = mat[ kY ];
+    z = mat[ kZ ];
+
+    mat[ kX ] = - (x * mat[k00]) - (y * mat[k01]) - (z * mat[k02]);
+    mat[ kY ] = - (x * mat[k10]) - (y * mat[k11]) - (z * mat[k12]);
+    mat[ kZ ] = - (x * mat[k20]) - (y * mat[k21]) - (z * mat[k22]);
+
+    ur_matrixTransposeSelf( mat );
+}
+#endif
+
+
 /*--------------------------------------------------------------------------*/
 
 

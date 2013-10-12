@@ -2250,10 +2250,26 @@ float* ur_matrixM( UThread* ut, const UCell* cell )
 }
 
 
+/*
+  Returns zero and throws error if matrix is invalid.
+*/
+const float* ur_matrix( UThread* ut, const UCell* cell )
+{
+    if( ur_is(cell, UT_VECTOR) )
+    {
+        const UBuffer* mat = ur_bufferSer( cell );
+        if( (mat->form == UR_VEC_F32) && (mat->used >= 16) )
+            return mat->ptr.f;
+    }
+    ur_error( ut, UR_ERR_TYPE, "Expected matrix vector!" );
+    return 0;
+}
+
+
 /*-cf-
     set-matrix
         matrix  vector!
-        value   quat!
+        value   quat!/vector!/word!
     return: Modified matrix
     group: gl
 */
@@ -2270,9 +2286,25 @@ set_res:
         *res = *a1;
         return UR_OK;
     }
+    else if( ur_is(a2, UT_WORD) )
+    {
+        // Transpose 3x3.
+        float tmp;
+
+#define MAT_SWAP(A,B) \
+        tmp = matf[A]; \
+        matf[A] = matf[B]; \
+        matf[B] = tmp
+
+        MAT_SWAP( 1, 4 );
+        MAT_SWAP( 2, 8 );
+        MAT_SWAP( 6, 9 );
+
+        goto set_res;
+    }
     else
     {
-        float* src = ur_matrixM( ut, a2 );  // Should be const ur_matrix().
+        const float* src = ur_matrix( ut, a2 );
         if( src )
         {
             memCpy( matf, src, sizeof(float) * 16 );
@@ -2280,6 +2312,36 @@ set_res:
         }
     }
     return ur_error( ut, UR_ERR_TYPE, "set-matrix expected vector!/quat!" );
+}
+
+
+/*-cf-
+    mul-matrix
+        value   vector!/vec3!
+        matrix  vector!
+    return: Modified value.
+    group: gl
+*/
+CFUNC( cfunc_mul_matrix )
+{
+    const float* matB;
+
+    if( ! (matB = ur_matrix( ut, a1 + 1 )) )
+        return UR_THROW;
+
+    *res = *a1;
+    if( ur_is(a1, UT_VEC3) )
+    {
+        ur_transform( res->vec3.xyz, matB );
+    }
+    else
+    {
+        float* matA;
+        if( ! (matA = ur_matrixM( ut, a1 )) )
+            return UR_THROW;
+        ur_matrixMult( matA, matB, matA );
+    }
+    return UR_OK;
 }
 
 
@@ -2677,6 +2739,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_normalize,   "normalize vec" );
     addCFunc( cfunc_project_point, "project-point pnt a b" );
     addCFunc( cfunc_set_matrix,  "set-matrix m q" );
+    addCFunc( cfunc_mul_matrix,  "mul-matrix m b" );
 
     boron_overrideCFunc( ut, "free", cfunc_freeGL );
 

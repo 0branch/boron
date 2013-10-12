@@ -3312,6 +3312,12 @@ dispatch:
                 quat_toMatrix( val, mat, 1 );
                 glMultMatrixf( mat );
             }
+            else if( ur_is(val, UT_VECTOR) )
+            {
+                const UBuffer* mat = ur_bufferSer( val );
+                // Assuming (mat->form == UR_VEC_F32 && used == 16).
+                glMultMatrixf( mat->ptr.f );
+            }
         }
             break;
 
