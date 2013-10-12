@@ -666,10 +666,12 @@ CFUNC_PUB( cfunc_sleep )
 
 /*-cf-
     with-flock
-        file        file!
-        body        block!
+        file        file!   Lock file.
+        body        block!  Code to evaluate.
         /nowait     Don't block if lock fails.
-    return: Result of body or false.
+    return: Result of body or false if locking failed.
+
+    Obtains an exclusive file lock, does the body code, then unlocks the file.
 */
 CFUNC_PUB( cfunc_with_flock )
 {

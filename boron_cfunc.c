@@ -1183,10 +1183,12 @@ CFUNC(cfunc_not)
 
 /*-cf-
     if
-        exp
-        body    block!
-    return: Result of body if exp is true, or none if it is false.
+        test    Test condition.
+        body    block!  Code to evaluate when true.
+    return: Result of body if test is true, or none! when it is false.
     group: control
+
+    Conditionally evaluate code.
 */
 CFUNC(cfunc_if)
 {
@@ -1205,12 +1207,12 @@ CFUNC(cfunc_if)
 
 /*-cf-
     ifn
-        exp
-        body    block!
-    return: Result of body if exp is false, or none if it is true.
+        test    Test condition.
+        body    block!  Code to evaluate when false.
+    return: Result of body if test is false, or none! when it is true.
     group: control
 
-    This is the same as "if not exp body".
+    This is shorthand for "if not test body".
 */
 CFUNC(cfunc_ifn)
 {
@@ -1229,9 +1231,9 @@ CFUNC(cfunc_ifn)
 
 /*-cf-
     either
-        exp
-        body-t  block!
-        body-f  block!
+        test    Test condition.
+        body-t  block!  Code to evaluate when true.
+        body-f  block!  Code to evaluate when false.
     return: result of body-t if exp is true, or body-f if it is false.
     group: control
 */
@@ -1281,7 +1283,7 @@ CFUNC(cfunc_while)
 
 /*-cf-
     forever
-        body    block!
+        body    block!  Code to evaluate.
     return: Result of body.
     group: control
 
@@ -2307,7 +2309,7 @@ CFUNC(cfunc_remove)
 /*-cf-
     reverse
         series
-        /part
+        /part   Limit change to part of series.
             number  int!
     return: series
     group: series
@@ -2347,10 +2349,10 @@ done:
 /*-cf-
     find
         series
-        value
-        /last
-        /case   Case of characters in strings must match
-        /part
+        value       Element or pattern to search for.
+        /last       Search from end of series.
+        /case       Case of characters in strings must match.
+        /part       Restrict search to part of series.
             limit   series/int!
     return: Position of value in series or none!.
     group: series
@@ -2560,8 +2562,10 @@ set_logic:
 /*-cf-
     head?
         series
-    return: logic!
+    return: logic!  True if position is at the start.
     group: series
+
+    Test if the series position is at the start.
 */
 CFUNC(cfunc_headQ)
 {
@@ -2918,19 +2922,29 @@ static inline UIndex _sliceEnd( const UBuffer* buf, const UCell* cell )
 
 /*-cf-
     foreach
-        'words   word!/block!
+        'words  word!/block!  Value of element(s).
         series
-        body    block!
+        body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
+
+    Iterate over each element of a series.
 */
 /*-cf-
     remove-each
-        'words   word!/block!
+        'words  word!/block!  Value of element(s).
         series
-        body    block!
+        body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
+
+    Remove elements when result of body is true.
+
+    Example:
+        remove-each i items: [1 5 2 3] [gt? i 2]
+        == true
+        probe items
+        == [1 2]
 */
 CFUNC(cfunc_foreach)
 {
@@ -3037,10 +3051,20 @@ loop:
 
 /*-cf-
     forall
-        'word   word!
-        body    block!
+        'ref    word!   Reference to series.
+        body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
+
+    Iterate over each element of a series, changing the reference position. 
+
+    Example:
+        a: [1 2 3]
+        forall a [probe a]
+
+        [1 2 3]
+        [2 3]
+        [3]
 */
 CFUNC(cfunc_forall)
 {
@@ -3168,7 +3192,7 @@ CFUNC(cfunc_all)
 
 /*-cf-
     any
-        tests block!
+        tests block!    Expressions to test.
     return: Result of first true test or false.
     group: control
 */
@@ -3357,6 +3381,15 @@ CFUNC(cfunc_print)
         value
     return: string!
     group: data
+
+    Convert value to text without datatype syntax features.
+
+    This example compares to-text with mold:
+        values: ["str" 'c' [a b]]
+        to-text values
+        == "str c a b"
+        mold values
+        == {["str" 'c' [a b]]}
 */
 CFUNC(cfunc_to_text)
 {
