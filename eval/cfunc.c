@@ -3664,29 +3664,37 @@ extern int ur_readDir( UThread*, const char* filename, UCell* res );
 
 /*-cf-
     read
-        source  file!/string!/port!
-        /text   Read as text rather than binary.
-        /into   Put data into existing buffer.
+        source      file!/string!/port!
+        /text       Read as text rather than binary.
+        /into       Put data into existing buffer.
             buffer  binary!/string!
+        /part       Read a specific number of bytes.
+            size    int!
     return: binary!/string!/block!
     group: io
 
     Read binary! or UTF-8 string!.
 
-    If /text or /into string! options are used then the file is read as
-    UTF-8 data and carriage returns are filtered on Windows.
+    When source is a file name the entire file will be read into memory
+    unless /part is used.
 
-    If file is a directory, then a block containing filenames is returned.
+    If the /text option is used or the /into buffer is a string! then the
+    file is read as UTF-8 data and carriage returns are filtered on Windows.
+
+    If source is a directory name then a block containing file names is
+    returned.
 */
 CFUNC(cfunc_read)
 {
 #define OPT_READ_TEXT   0x01
 #define OPT_READ_INTO   0x02
+#define OPT_READ_PART   0x04
     UBuffer* dest;
     const char* filename;
     const char* mode;
     OSFileInfo info;
     uint32_t opt = CFUNC_OPTIONS;
+    int part;
 
 
     if( ur_is(a1, UT_PORT) )
@@ -3698,7 +3706,14 @@ CFUNC(cfunc_read)
             *res = *a2;
         else
             ur_setId(res, UT_NONE);
-        return dev->read( ut, pbuf, res, 0 );
+        if( opt & OPT_READ_PART )
+        {
+            if( (part = ur_int(a3)) < 1 )
+                return UR_OK;
+        }
+        else
+            part = 0;
+        return dev->read( ut, pbuf, res, part );
     }
 
     if( ! ur_isStringType( ur_type(a1) ) )
@@ -3712,6 +3727,12 @@ CFUNC(cfunc_read)
 
     if( info.type == FI_Dir )
         return ur_readDir( ut, filename, res );
+
+    if( opt & OPT_READ_PART )
+    {
+        part = ur_int(a3);
+        info.size = (part < 0) ? 0 : part;
+    }
 
     if( opt & OPT_READ_INTO )
     {
