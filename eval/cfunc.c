@@ -433,12 +433,25 @@ CFUNC(cfunc_do)
 /*-cf-
     set
         words   word!/lit-word!/block!/path!
-        values
+        values  Any value.
     return: unset!
     group: data
+    see: in, value?
+
+    Assign a value to one or more words.
+
+        set 'a 22
+        a
+        == 22
 
     If words and values are both a block! then each word in words is set
     to the corresponding value in values.
+
+        set [a b] [1 4.0]
+        a
+        == 1
+        b
+        == 4.0
 */
 CFUNC(cfunc_set)
 {
@@ -526,9 +539,15 @@ CFUNC(cfunc_get)
 
 /*-cf-
     value?
-        value
+        value   Any value.
     return: True unless value is an unset word.
     group: data
+    see: set
+
+    Determine if a word has already been set.
+
+        value? 'blah
+        == false
 */
 CFUNC(cfunc_valueQ)
 {
@@ -553,6 +572,7 @@ CFUNC(cfunc_valueQ)
         word        word!
     return: Word bound to context or none!.
     group: data
+    see: set, value?
 */
 CFUNC(cfunc_in)
 {
@@ -666,6 +686,9 @@ CFUNC(cfunc_words_of)
         word    word!
     return: context!/datatype!
     group: data
+    see: bind
+
+    Get the context which a word is bound to.
 */
 CFUNC(cfunc_bindingQ)
 {
@@ -703,6 +726,7 @@ CFUNC(cfunc_bindingQ)
         context word!/context!
     return: Bound words
     group: data
+    see: binding?
 */
 CFUNC(cfunc_bind)
 {
@@ -999,6 +1023,9 @@ static int context_make_override( UThread* ut, const UCell* from, UCell* res )
         attributes
     return: New value.
     group: data
+    see: construct, to-_type_
+
+    Create a new value.
 */
 CFUNC(cfunc_make)
 {
@@ -1055,6 +1082,10 @@ CFUNC(cfunc_copy)
         size    Number of elements to reserve.
     return: Series.
     group: data, storage
+    see: free
+
+    Expand the capacity of series buffer.  This cannot be used to make the
+    buffer smaller.
 */
 CFUNC(cfunc_reserve)
 {
@@ -1099,8 +1130,9 @@ CFUNC(cfunc_reserve)
         body  block!
     return: func!
     group: eval
+    see: func
 
-    Create function which takes no arguments.
+    Create a function which takes no arguments.
 */
 CFUNC(cfunc_does)
 {
@@ -1121,6 +1153,7 @@ CFUNC(cfunc_does)
         body  block!
     return:  func!
     group: eval
+    see: does
 
     Create function.
 */
@@ -1186,6 +1219,7 @@ CFUNC(cfunc_func)
         value
     return: Inverse logic! of value.
     group: data
+    see: complement, negate
 */
 CFUNC(cfunc_not)
 {
@@ -1202,6 +1236,7 @@ CFUNC(cfunc_not)
         body    block!  Code to evaluate when true.
     return: Result of body if test is true, or none! when it is false.
     group: control
+    see: either, ifn, while
 
     Conditionally evaluate code.
 */
@@ -1226,6 +1261,7 @@ CFUNC(cfunc_if)
         body    block!  Code to evaluate when false.
     return: Result of body if test is false, or none! when it is true.
     group: control
+    see: either, if
 
     This is shorthand for "if not test body".
 */
@@ -1251,6 +1287,7 @@ CFUNC(cfunc_ifn)
         body-f  block!  Code to evaluate when false.
     return: result of body-t if exp is true, or body-f if it is false.
     group: control
+    see: if, ifn
 */
 CFUNC(cfunc_either)
 {
@@ -1263,10 +1300,11 @@ CFUNC(cfunc_either)
 
 /*-cf-
     while
-        exp     block!
-        body    block!
+        exp     block! Test condition.
+        body    block! Code to evaluate.
     return: false
     group: control
+    see: forever, if, loop
 
     Repeat body as long as exp is true.
 */
@@ -1301,6 +1339,7 @@ CFUNC(cfunc_while)
         body    block!  Code to evaluate.
     return: Result of body.
     group: control
+    see: loop, while
 
     Repeat body until break or exception thrown.
 */
@@ -1327,6 +1366,7 @@ CFUNC(cfunc_forever)
         body    block!
     return: Result of body.
     group: control
+    see: forever, while
 
     Use 'break to terminate loop.
 */
@@ -1795,6 +1835,7 @@ CFUNC(cfunc_rot)
         series
     return: Previous element of series or the head.
     group: series
+    see: head, next
 */
 CFUNC(cfunc_prev)
 {
@@ -1813,6 +1854,7 @@ CFUNC(cfunc_prev)
         series
     return: Next element of series or the tail.
     group: series
+    see: prev, tail
 */
 CFUNC(cfunc_next)
 {
@@ -1843,6 +1885,7 @@ static int positionPort( UThread* ut, const UCell* portC, int where )
         series  Series or port!
     return: Start of series.
     group: series
+    see: head?, tail
 */
 CFUNC(cfunc_head)
 {
@@ -1866,6 +1909,7 @@ CFUNC(cfunc_head)
         series  Series or port!
     return: End of series.
     group: series
+    see: head, tail?
 */
 CFUNC(cfunc_tail)
 {
@@ -1890,6 +1934,7 @@ CFUNC(cfunc_tail)
         position    int!
     return: Value at position or none! if position is out of range.
     group: series
+    see: index?, poke
 */
 CFUNC(cfunc_pick)
 {
@@ -1935,6 +1980,7 @@ extern int vec3_poke ( UThread*, UCell* cell, int index, const UCell* src );
         value
     return: series.
     group: series
+    see: index?, pick
 */
 CFUNC(cfunc_poke)
 {
@@ -2345,6 +2391,7 @@ CFUNC(cfunc_remove)
             number  int!
     return: series
     group: series
+    see: swap
 
     Reverse the order of elements in a series.
 */
@@ -2597,6 +2644,7 @@ set_logic:
         series
     return: logic!  True if position is at the start.
     group: series
+    see: head, tail?
 
     Test if the series position is at the start.
 */
@@ -2616,6 +2664,9 @@ CFUNC(cfunc_headQ)
         series
     return: int!
     group: series
+    see: index?
+
+    Length of series from current position to end.
 */
 CFUNC(cfunc_sizeQ)
 {
@@ -2642,6 +2693,9 @@ CFUNC(cfunc_sizeQ)
         series  Series or word.
     return: int!
     group: series
+    see: size?
+
+    Current position of series.
 */
 CFUNC(cfunc_indexQ)
 {
@@ -2714,6 +2768,7 @@ CFUNC(cfunc_any_wordQ)
         value   logic!/char!/int!/binary!/bitset!
     return: Complemented value.
     group: data
+    see: negate, not
 */
 CFUNC(cfunc_complement)
 {
@@ -2755,6 +2810,7 @@ CFUNC(cfunc_complement)
         value   int!/decimal!/time!/bignum!/coord!/vec3!/bitset!
     return: Negated value.
     group: data
+    see: complement, not
 */
 CFUNC( cfunc_negate )
 {
@@ -2964,6 +3020,7 @@ static inline UIndex _sliceEnd( const UBuffer* buf, const UCell* cell )
         body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
+    see: forall
 
     Iterate over each element of a series.
 */
@@ -3094,6 +3151,7 @@ loop:
         body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
+    see: foreach
 
     Iterate over each element of a series, changing the reference position. 
 
@@ -3324,8 +3382,9 @@ CFUNC(cfunc_reduce)
         /contents   Omit the outer braces from block and context values.
     return: string!
     group: data
+    see: to-text
 
-    Convert value to its serialized form.
+    Convert value to its string form with datatype syntax features.
 */
 CFUNC(cfunc_mold)
 {
@@ -3356,8 +3415,9 @@ CFUNC(cfunc_mold)
         value
     return: value
     group: io
+    see: mold, print
 
-    Print value in its serialized form.
+    Print value with its datatype syntax features.
 */
 CFUNC(cfunc_probe)
 {
@@ -3380,6 +3440,7 @@ CFUNC(cfunc_probe)
         value
     return: unset!
     group: io
+    see: print
 
     Print reduced value without a trailing linefeed.
 */
@@ -3407,6 +3468,7 @@ CFUNC(cfunc_prin)
         value
     return: unset!
     group: io
+    see: prin, probe
 
     Print reduced value and a trailing linefeed.
 */
@@ -3426,6 +3488,7 @@ CFUNC(cfunc_print)
         value
     return: string!
     group: data
+    see: mold
 
     Convert value to text without datatype syntax features.
 
@@ -3665,13 +3728,14 @@ CFUNC(cfunc_getenv)
 
 /*-cf-
     open
-        device  string!/file!/block!
+        device  int!/string!/file!/block!
         /read   Read-only mode.
         /write  Write-only mode.
         /new    Create empty file.
         /nowait Non-blocking reads.
     return: port!
     group: io
+    see: close
 
     Create port!.
 */
@@ -3717,6 +3781,7 @@ extern int ur_readDir( UThread*, const char* filename, UCell* res );
             size    int!
     return: binary!/string!/block!
     group: io
+    see: load, write
 
     Read binary! or UTF-8 string!.
 
@@ -3847,6 +3912,7 @@ CFUNC(cfunc_read)
         /text   Emit new lines with carriage returns on Windows.
     return: unset!
     group: io
+    see: read, save
 */
 CFUNC(cfunc_write)
 {
@@ -4045,6 +4111,7 @@ extern int ur_serializedHeader( const uint8_t* data, int len );
         file    file!/string!/binary!
     return: block! or none! if file is empty.
     group: io
+    see: read, save
 
     Load file or serialized data with default bindings.
 */
@@ -4141,6 +4208,9 @@ check_str:
         data
     return: unset!
     group: io
+    see: load, write
+
+    Convert data to string! then write it.  Use 'load to restore the data.
 */
 CFUNC(cfunc_save)
 {
@@ -4320,6 +4390,8 @@ CFUNC(cfunc_ltQ)
         value
     return: logic!
     group: math
+
+    Return true if value is an int!/char!/decimal! of zero.
 */
 CFUNC(cfunc_zeroQ)
 {
@@ -4344,6 +4416,9 @@ CFUNC(cfunc_zeroQ)
         value
     return: Datatype of value.
     group: data
+    see: to-_type_
+
+    Determine type of value.
 */
 CFUNC(cfunc_typeQ)
 {
@@ -4360,6 +4435,7 @@ CFUNC(cfunc_typeQ)
             size    int!
     return: Modified data.
     group: series
+    see: reverse
 
     Swap adjacent elements of a series.
 */
@@ -4414,6 +4490,7 @@ CFUNC(cfunc_swap)
         value   char!/string!/file!
     return: Value converted to lowercase.
     group: series
+    see: uppercase
 */
 CFUNC(cfunc_lowercase)
 {
@@ -4441,6 +4518,7 @@ CFUNC(cfunc_lowercase)
         value   char!/string!/file!
     return: Value converted to uppercase.
     group: series
+    see: lowercase
 */
 CFUNC(cfunc_uppercase)
 {
@@ -4773,6 +4851,7 @@ CFUNC(cfunc_cpu_cycles)
         resource    series/port!
     return: unset!
     group: storage
+    see: close, reserve
 
     Clear series and free its memory buffer or close port.
 */
@@ -4832,14 +4911,20 @@ CFUNC(cfunc_hash)
 
 
 /*-cf-
-    datatype?
+    _datatype?_
         value
-    return: True if value is a datatype!.
+    return: True if value is a specific datatype.
     group: data
+    see: to-_type_
 
     Each datatype has its own test function which is named the same as the
     type but ending with '?' rather than a '!'.
-    For example, to test if a value is a string! use "string? val".
+
+    This example shows testing for string! and int! types:
+        string? 20
+        == false
+        int? 20
+        == true
 */
 CFUNC(cfunc_datatypeQ)
 {
@@ -4852,16 +4937,19 @@ CFUNC(cfunc_datatypeQ)
 
 
 /*-cf-
-    to-datatype
-        value
+    to-_type_
+        value   Any value.
     return: New datatype!.
     group: data
+    see: make, type?, _datatype?_
 
-    Convert value to datatype.
+    Convert a value to another datatype.
 
     Each datatype has its own convert function which is named the same as the
     type but starting with "to-".
-    For example, to convert a value to a string! use "to-string val".
+    For example, to convert a value to a string! use:
+        to-string 20
+        == "20"
 */
 CFUNC(cfunc_to_type)
 {

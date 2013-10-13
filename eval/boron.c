@@ -672,12 +672,14 @@ static const char setupScript[] =
         series
     return: logic!
     group: series
+    see: empty?, head?
     Same as empty?
 */
 /*-hf- close
         port
     return: unset!
     group: storage, io
+    see: free, open
     Same as free.
 */
 /*-hf- context
