@@ -1,0 +1,14 @@
+out: open 1
+err: open 2
+
+write out mold args
+write out "^/"
+write out "output 1^/"
+
+write err "ERR 1^/"
+
+write out "output 2^/"
+write out "output 3^/"
+
+write err "ERR 2^/"
+write err "ERR 3^/"
