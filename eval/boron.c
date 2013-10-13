@@ -1056,7 +1056,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_random,     "random a /seed" );
 #endif
 #ifdef CONFIG_EXECUTE
-    addCFunc( cfunc_execute,    "execute s /in a /out b /spawn /port" );
+    addCFunc( cfunc_execute,    "execute s /in a /out b /err c /spawn /port" );
     addCFunc( cfunc_with_flock, "with-flock file file! body block! /nowait" );
 #endif
 #ifdef CONFIG_ASSEMBLE

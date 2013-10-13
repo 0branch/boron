@@ -25,6 +25,7 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/select.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -221,11 +222,18 @@ int ur_readDir( UThread* ut, const char* filename, UCell* res )
 
 
 #ifdef CONFIG_EXECUTE
-static void argumentList( char* cp, char** argv, int maxArg )
+static void appendArg( UBuffer* argv, char* cp )
+{
+    ur_arrReserve( argv, argv->used + 1 );
+    ur_ptr(char*,argv)[ argv->used ] = cp;
+    ++argv->used;
+}
+
+
+static void argumentList( char* cp, UBuffer* argv )
 {
     int prevWhite = 1;
     int quotes = 0;
-    int argc = 0;
 
     while( *cp != '\0' )
     {
@@ -246,42 +254,65 @@ static void argumentList( char* cp, char** argv, int maxArg )
         else if( prevWhite )
         {
             prevWhite = 0;
-            argv[ argc ] = cp;
-            if( ++argc == maxArg )
-                goto term;
+            appendArg( argv, cp );
         }
         ++cp;
     }
-
-term:
-
-    argv[ argc ] = 0;
+    appendArg( argv, 0 );
 }
 
 
-static void _readPipe( int fd, UBuffer* buf )
+static int _readIntoBuf( int fd, UBuffer* buf )
 {
-#define BUFSIZE     1024
+#define BUFSIZE 1024
     int n;
 
-    buf->used = 0;
     if( buf->type == UT_STRING )
-    {
-        int ucs2 = ur_strIsUcs2(buf);
-        ur_arrReserve( buf, BUFSIZE ); 
-        while( (n = read( fd, buf->ptr.c + buf->used, BUFSIZE )) > 0 )
-        {
-            buf->used += ucs2 ? n >> 1 : n;
-            ur_arrReserve( buf, buf->used + BUFSIZE ); 
-        }
-    }
+        ur_arrReserve( buf, buf->used + BUFSIZE ); 
     else
+        ur_binReserve( buf, buf->used + BUFSIZE ); 
+
+    if( (n = read( fd, buf->ptr.c + buf->used, BUFSIZE )) > 0 )
+        buf->used += n;
+    return n;
+}
+
+
+static void _readPipes( int fd, UBuffer* buf, int fd2, UBuffer* buf2 )
+{
+#define VALID(fd)   (fd > -1)
+    fd_set watch;
+    int high;
+
+    high = (fd > fd2) ? fd : fd2;
+    FD_ZERO( &watch );
+
+    while( VALID(fd) || VALID(fd2) )
     {
-        ur_binReserve( buf, BUFSIZE ); 
-        while( (n = read( fd, buf->ptr.c + buf->used, BUFSIZE )) > 0 )
+        if( VALID(fd) )
+            FD_SET( fd, &watch );
+        if( VALID(fd2) )
+            FD_SET( fd2, &watch );
+
+        select( high + 1, &watch, NULL, NULL, NULL );
+
+        if( FD_ISSET(fd, &watch) )
         {
-            buf->used += n;
-            ur_binReserve( buf, buf->used + BUFSIZE ); 
+            if( _readIntoBuf( fd, buf ) < 1 )
+            {
+                if( high == fd )
+                    high = fd2;
+                fd = -1;
+            }
+        }
+        if( FD_ISSET(fd2, &watch) )
+        {
+            if( _readIntoBuf( fd2, buf2 ) < 1 )
+            {
+                if( high == fd2 )
+                    high = fd;
+                fd2 = -1;
+            }
         }
     }
 }
@@ -294,26 +325,39 @@ static void _closePipe( int pipe[2] )
 }
 
 
-static int _execIO( UThread* ut, char** argv, UCell* res,
-                    const UBuffer* in, UBuffer* out )
+static void _connectPipe( int to, int attachEnd, int ignoreEnd )
 {
-    pid_t pid;
+    close( ignoreEnd );
+    dup2( attachEnd, to );
+    close( attachEnd );
+}
+
+
+static int _execIO( UThread* ut, char** argv, UCell* res,
+                    const UBuffer* in, UBuffer* out, UBuffer* err )
+{
+    const char* msg = "pipe failed";
     int inPipe[2];
     int outPipe[2];
+    int errPipe[2];
+    pid_t pid;
 
+
+    outPipe[0] = errPipe[0] = -1;
     if( in )
     {
         if( pipe(inPipe) == -1 )
-            return ur_error( ut, UR_ERR_INTERNAL, "pipe failed" );
+            goto fail_in;
     }
     if( out )
     {
         if( pipe(outPipe) == -1 )
-        {
-            if( in )
-                _closePipe( inPipe );
-            return ur_error( ut, UR_ERR_INTERNAL, "pipe failed" );
-        }
+            goto fail_out;
+    }
+    if( err )
+    {
+        if( pipe(errPipe) == -1 )
+            goto fail_err;
     }
 
     pid = fork();
@@ -322,19 +366,11 @@ static int _execIO( UThread* ut, char** argv, UCell* res,
         // In child process; invoke command.
 
         if( in )
-        {
-            // Set stdin to pipe.
-            close( inPipe[1] );
-            dup2( inPipe[0], 0 );
-            close( inPipe[0] );
-        }
+            _connectPipe( STDIN_FILENO, inPipe[0], inPipe[1] );
         if( out )
-        {
-            // Set stdout to pipe.
-            close( outPipe[0] );
-            dup2( outPipe[1], 1 );
-            close( outPipe[1] );
-        }
+            _connectPipe( STDOUT_FILENO, outPipe[1], outPipe[0] );
+        if( err )
+            _connectPipe( STDERR_FILENO, errPipe[1], errPipe[0] );
 
         if( execvp( argv[0], argv ) == -1 )
         {
@@ -357,11 +393,18 @@ static int _execIO( UThread* ut, char** argv, UCell* res,
                                            : in->used );
             close( inPipe[1] );
         }
-        if( out )
+
+        if( out || err )
         {
-            close( outPipe[1] );
-            _readPipe( outPipe[0], out );
-            close( outPipe[0] );
+            if( out )
+                close( outPipe[1] );
+            if( err )
+                close( errPipe[1] );
+            _readPipes( outPipe[0], out, errPipe[0], err );
+            if( out )
+                close( outPipe[0] );
+            if( err )
+                close( errPipe[0] );
         }
 
         waitpid( pid, &status, 0 );
@@ -374,16 +417,18 @@ static int _execIO( UThread* ut, char** argv, UCell* res,
         ur_setId(res, UT_NONE);
         return UR_OK;
     }
-    else
-    {
-        // fork failed.
 
-        if( in )
-            _closePipe( inPipe );
-        if( out )
-            _closePipe( outPipe );
-        return ur_error( ut, UR_ERR_INTERNAL, "fork failed" );
-    }
+    msg = "fork failed";
+    if( err )
+        _closePipe( errPipe );
+fail_err:
+    if( out )
+        _closePipe( outPipe );
+fail_out:
+    if( in )
+        _closePipe( inPipe );
+fail_in:
+    return ur_error( ut, UR_ERR_INTERNAL, msg );
 }
 
 
@@ -542,6 +587,35 @@ static int _execSpawn( UThread* ut, char** argv, int port, UCell* res )
 }
 
 
+static const UBuffer* _execBuf( UThread* ut, const UCell* cell, int fd )
+{
+    static const char* name[3] = { "input", "output", "error" };
+    const UBuffer* buf;
+
+    if( fd == 0 )
+        buf = ur_bufferSer(cell);
+    else if( ! (buf = ur_bufferSerM(cell)) )
+        return 0;
+
+    if( buf->type == UT_BINARY )
+    {
+        return buf;
+    }
+    else if( buf->type == UT_STRING )
+    {
+        if( ! ur_strIsUcs2(buf) )
+            return buf;
+        ur_error( ut, UR_ERR_TYPE, "execute does not handle UCS2 strings" );
+    }
+    else
+    {
+        ur_error( ut, UR_ERR_TYPE, "execute expected binary!/string! for %s",
+                  name[fd] );
+    }
+    return 0;
+}
+
+
 /*-cf-
     execute
         command     string!
@@ -549,6 +623,8 @@ static int _execSpawn( UThread* ut, char** argv, int port, UCell* res )
             input   binary!/string!
         /out        Store output of command.
             output  binary!/string!
+        /err        Store error output of command.
+            error   binary!/string!
         /spawn      Run command asynchronously.
         /port       Return port to read spawn output.
     return: int! status of command or spawn port!
@@ -556,19 +632,21 @@ static int _execSpawn( UThread* ut, char** argv, int port, UCell* res )
 
     Runs an external program.
 
-    If /spawn is used then /in and /out are ignored.
+    If /spawn is used then /in, /out, and /err are ignored.
 */
 CFUNC_PUB( cfunc_execute )
 {
 #define OPT_EXECUTE_IN      0x01
 #define OPT_EXECUTE_OUT     0x02
-#define OPT_EXECUTE_SPAWN   0x04
-#define OPT_EXECUTE_PORT    0x08
-    char* argv[10];
+#define OPT_EXECUTE_ERR     0x04
+#define OPT_EXECUTE_SPAWN   0x08
+#define OPT_EXECUTE_PORT    0x10
+    UBuffer argv;
     const UBuffer* in = 0;
     UBuffer* out = 0;
-    int type;
+    UBuffer* err = 0;
     uint32_t opt = CFUNC_OPTIONS;
+    int ok;
 
 
     if( ! ur_is(a1, UT_STRING) )
@@ -579,31 +657,46 @@ CFUNC_PUB( cfunc_execute )
     }
 
     // Create arg list before fork to avoid any possible copy-on-write overhead.
-    argumentList( boron_cstr( ut, a1, 0 ), argv, 9 );
+    ur_arrInit( &argv, sizeof(char*), 8 );
+    argumentList( boron_cstr( ut, a1, 0 ), &argv );
 
     if( opt & OPT_EXECUTE_SPAWN )
-        return _execSpawn( ut, argv, opt & OPT_EXECUTE_PORT, res );
-
-    if( opt & OPT_EXECUTE_IN )
     {
-        type = ur_type(a1 + 1);
-        if( type != UT_BINARY && type != UT_STRING )
-            return ur_error( ut, UR_ERR_TYPE,
-                             "execute expected binary!/string! input" );
-        in = ur_bufferSer(a1 + 1);
+        ok = _execSpawn( ut, (char**) argv.ptr.v, opt & OPT_EXECUTE_PORT, res );
+    }
+    else
+    {
+        ok = UR_THROW;
+        if( opt & OPT_EXECUTE_IN )
+        {
+            in = _execBuf( ut, a1 + 1, 0 );
+            if( ! in )
+                goto cleanup;
+        }
+
+        if( opt & OPT_EXECUTE_OUT )
+        {
+            out = (UBuffer*) _execBuf( ut, a1 + 2, 1 );
+            if( ! out )
+                goto cleanup;
+            out->used = 0;
+        }
+
+        if( opt & OPT_EXECUTE_ERR )
+        {
+            err = (UBuffer*) _execBuf( ut, a1 + 3, 2 );
+            if( ! err )
+                goto cleanup;
+            err->used = 0;
+        }
+
+        ok = _execIO( ut, (char**) argv.ptr.v, res, in, out, err );
     }
 
-    if( opt & OPT_EXECUTE_OUT )
-    {
-        type = ur_type(a1 + 2);
-        if( type != UT_BINARY && type != UT_STRING )
-            return ur_error( ut, UR_ERR_TYPE,
-                             "execute expected binary!/string! output" );
-        if( ! (out = ur_bufferSerM(a1 + 2)) )
-            return UR_THROW;
-    }
+cleanup:
 
-    return _execIO( ut, argv, res, in, out );
+    ur_arrFree( &argv );
+    return ok;
 }
 #endif
 
