@@ -14,6 +14,7 @@ func-info: context [
     return: none
     group:  none
     about:  none
+    see:    none
 ]
 
 ws: charset {^/^- }
@@ -29,6 +30,7 @@ parse-doc: func [txt | fob tok] [
         ]
         thru {return:}         tok: to nl :tok (fob/return: trim tok)
         opt [some ws {group:}  tok: to nl :tok (fob/group:  trim tok)]
+        opt [some ws {see:}    tok: to nl :tok (fob/see:    trim tok)]
         tok: (fob/about: tok)
     ]
     fob
@@ -66,8 +68,7 @@ argument-names: func [args | str a p] [
     str: clear "" ;make string! 80
     foreach a args [
         append str ' '
-        append str
-            either p: find a ' ' [slice a p] [a]
+        append str either p: find a ' ' [slice a p] [a]
     ]
     str
 ]
@@ -160,12 +161,12 @@ groups: [
     storage  [] "Storage"
 ]
 
+non-list-term: complement charset " ,^-^/"
 emit-groups: func [| add-grp grp tok] [
-    non-term: complement charset " ,^-^/"
     add-grp: [
         if f/group [
             parse f/group [some [
-                tok: some non-term :tok (
+                tok: some non-list-term :tok (
                     grp: select groups to-word tok
                     either grp [
                         append grp f
@@ -238,7 +239,22 @@ emit-funcs: func [funcs | f] [
             f/return
             {</p>^/</div>^/}
         ]
+
         markup-lines f/about
+
+        ifn empty? f/see [
+            emit {<p class="func-sec">See Also</p>^/}
+            emit {<div class="return-block">^/<p>}
+            count: 0
+            parse f/see [some[
+                tok: some non-list-term :tok (
+                    ifn zero? ++ count [emit {, }]
+                    emit rejoin [{<a href="#} tok {">} tok {</a>}]
+                )
+              | skip
+            ]]
+            emit {</p>^/</div>^/}
+        ]
         emit {</div>^/}
     ]
 ]

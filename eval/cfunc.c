@@ -58,7 +58,8 @@ CFUNC(cfunc_nop)
     return: NA
     group: control
 
-    Exit interpreter.
+    Exit interpreter.  The exit status will be 0 if the return value is not
+    specified.
 */
 CFUNC(cfunc_quit)
 {
@@ -138,9 +139,14 @@ CFUNC(cfunc_break)
 /*-cf-
     throw
         value
-        /name word
+        /name       Give exception a name.
+            word    word!
     return: NA
     group: control
+    see: catch, try
+
+    Stop evaluation of the current function and pass an exception up the
+    call stack.
 */
 CFUNC(cfunc_throw)
 {
@@ -156,11 +162,14 @@ CFUNC(cfunc_throw)
 
 /*-cf-
     catch
-        body block!
-        /name
-            word word!/block!
+        body        block! Code to evaluate.
+        /name       Only catch exceptions with a certain name.
+            word    word!/block! Names to catch.
     return: Result of block evaluation or thrown value.
     group: control
+    see: throw, try
+
+    Do body and return any exception thrown.
 */
 CFUNC(cfunc_catch)
 {
@@ -214,11 +223,13 @@ set_result:
 
 /*-cf-
     try
-        body block!
+        body block! Code to evaluate.
     return: Result of block evaluation or error.
     group: control
+    see: catch, throw
 
-    Do body and catch any errors.
+    Do body and catch any thrown error!.  Other thrown types are ignored
+    and will be passed up the call chain.
 */
 CFUNC(cfunc_try)
 {
@@ -795,6 +806,10 @@ CFUNC(name) { \
         b   int!/decimal!/vec3!/block!
     return: Sum of two numbers.
     group: math
+
+    The second argument may be a block:
+        add 0 [4 1 3]
+        == 8
 */
 /*-cf-
     sub
@@ -2060,12 +2075,28 @@ CFUNC(cfunc_skip)
 /*-cf-
     append
         series      Series or context!
-        value
+        value       Data to append.
         /block      If series and value are blocks, push value as a single item.
         /repeat     Repeat append.
             count   int!
     return: Modified series or bound word!.
     group: series
+    see: remove
+
+    Add data to end of series.
+
+    Examples:
+        append "apple" 's'
+        == "apples"
+
+        append/repeat #{0000} 0xf6 4
+        == #{0000F6F6F6F6}
+
+        dat: [a b]
+        append dat [1 2]
+        == [a b 1 2]
+        append/block dat [3 4]
+        == [a b 1 2 [3 4]]
 */
 CFUNC(cfunc_append)
 {
@@ -2214,7 +2245,7 @@ done:
         replacement
         /slice          Remove slice and insert replacement.
         /part           Remove to limit and insert replacement.
-            limit
+            limit       Series or int!
     return: Series at end of change.
     group: series
 */
@@ -2265,6 +2296,7 @@ CFUNC(cfunc_change)
             number  int!
     return: series or none!
     group: series
+    see: append, clear, remove-each
 
     Remove element at series position.
 */
@@ -2410,6 +2442,7 @@ set_none:
         series  series or none!
     return: Empty series or none!.
     group: series
+    see: remove
 
     Erase to end of series.
 */
@@ -2647,6 +2680,8 @@ CFUNC(cfunc_seriesQ)
         value
     return: True if value is a block type.
     group: data
+
+    Test if value is one of: block!/paren!/path!/lit-path!/set-path!
 */
 CFUNC(cfunc_any_blockQ)
 {
@@ -2660,8 +2695,10 @@ CFUNC(cfunc_any_blockQ)
 /*-cf-
     any-word?
         value
-    return: True if value is a block type.
+    return: True if value is a word type.
     group: data
+
+    Test if value is one of: word!/lit-word!/set-word!/get-word!/option!
 */
 CFUNC(cfunc_any_wordQ)
 {
@@ -2937,11 +2974,13 @@ static inline UIndex _sliceEnd( const UBuffer* buf, const UCell* cell )
         body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
+    see: remove
 
     Remove elements when result of body is true.
 
     Example:
-        remove-each i items: [1 5 2 3] [gt? i 2]
+        items: [1 5 2 3]
+        remove-each i items [gt? i 2]
         == true
         probe items
         == [1 2]
@@ -3159,9 +3198,12 @@ CFUNC(cfunc_map)
 
 /*-cf-
     all
-        tests block!
+        tests block!    Expressions to test.
     return: logic!
     group: control
+    see: any
+
+    Return true only when all expressions are true.
 */
 CFUNC(cfunc_all)
 {
@@ -3195,6 +3237,9 @@ CFUNC(cfunc_all)
         tests block!    Expressions to test.
     return: Result of first true test or false.
     group: control
+    see: all
+
+    Return true if any expressions are true.
 */
 CFUNC(cfunc_any)
 {

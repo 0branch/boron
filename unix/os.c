@@ -763,6 +763,7 @@ CFUNC_PUB( cfunc_sleep )
         body        block!  Code to evaluate.
         /nowait     Don't block if lock fails.
     return: Result of body or false if locking failed.
+    group: os
 
     Obtains an exclusive file lock, does the body code, then unlocks the file.
 */
