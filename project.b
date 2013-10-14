@@ -34,7 +34,7 @@ default [
     ]
 ]
 
-shlib [%boron 0,2,6] [
+shlib [%boron 0,2,8] [
     if checksum [
         cflags {-DCONFIG_CHECKSUM}
     ]
