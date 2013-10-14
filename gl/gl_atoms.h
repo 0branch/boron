@@ -13,8 +13,8 @@ enum GLFixedAtoms
     UR_ATOM_CLOSE = 386,
     UR_ATOM_WIDTH = 400,
 #else
-    UR_ATOM_CLOSE = 402,
-    UR_ATOM_WIDTH = 417,
+    UR_ATOM_CLOSE = 403,
+    UR_ATOM_WIDTH = 418,
 #endif
     UR_ATOM_HEIGHT,
     UR_ATOM_AREA,
