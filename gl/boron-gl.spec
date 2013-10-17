@@ -38,7 +38,6 @@ mkdir -p $RPM_BUILD_ROOT%{_bindir}
 mkdir -p $RPM_BUILD_ROOT%{_includedir}/boron
 mkdir -p $RPM_BUILD_ROOT%{_libdir}
 install -s -m 755 gl/boron-gl $RPM_BUILD_ROOT/%{_bindir}
-mkdir include
 sed -e "s~\"urlan.h\"~<boron/urlan.h>~" gl/gui.h >include/gui.h
 sed -e "s~\"boron.h\"~<boron/boron.h>~" -e "s~\"gui.h\"~<boron/gui.h>~" -e "s~\"TexFont.h\"~<boron/TexFont.h>~" gl/boron-gl.h >include/boron-gl.h
 install -m 644 include/boron-gl.h  $RPM_BUILD_ROOT%{_includedir}/boron
