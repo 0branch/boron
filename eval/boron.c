@@ -1702,6 +1702,30 @@ UBuffer* boron_tempBinary( UThread* ut )
 */
 
 
+/** \enum UserAccess
+  These are the values returned by the boron_requestAccess() callback.
+*/
+/** \var UserAccess::UR_ACCESS_DENY
+   Forbid access to the resource.
+*/
+/** \var UserAccess::UR_ACCESS_ALLOW
+   Grant access to the resource.
+*/
+/** \var UserAccess::UR_ACCESS_ALWAYS
+   Grant access to the resource and allow all future requests.
+*/
+
+
+/**
+  Set the callback function that will request security access from the user.
+
+  If this function is not set then boron_requestAccess() will always return
+  UR_OK.
+
+  \param func   Callback function that must return a UserAccess value.
+
+  \sa boron_requestAccess(), UserAccess
+*/
 void boron_setAccessFunc( UThread* ut, int (*func)( UThread*, const char* ) )
 {
     BT->requestAccess = func;
@@ -1711,7 +1735,11 @@ void boron_setAccessFunc( UThread* ut, int (*func)( UThread*, const char* ) )
 /**
   Request user permission to access a resource.
 
+  \param  msg   Printf style format string.
+
   \return UR_OK/UR_THROW.
+
+  \sa boron_setAccessFunc()
 */
 int boron_requestAccess( UThread* ut, const char* msg, ... )
 {

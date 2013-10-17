@@ -328,7 +328,7 @@ void ur_ctxFree( UBuffer* buf )
 }
 
 
-/*
+/**
   Get word atoms in order.
 
   \param ctx    Valid context buffer

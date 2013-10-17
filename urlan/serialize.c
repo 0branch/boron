@@ -784,7 +784,7 @@ int ur_serializedHeader( const uint8_t* data, int len )
 }
 
 
-/*
+/**
   Unserialize binary.
 
   \param  start     Pointer to serialized binary.
