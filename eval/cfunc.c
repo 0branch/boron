@@ -642,12 +642,14 @@ extern void _contextWords( UThread* ut, const UBuffer* ctx, UIndex ctxN,
         context     context!
     return: Block of words defined in context.
     group: data
+    see: values-of
 */
 /*-cf-
     values-of
         context     context!
     return: Block of values defined in context.
     group: data
+    see: words-of
 */
 CFUNC(cfunc_words_of)
 {
@@ -3517,50 +3519,112 @@ CFUNC(cfunc_to_text)
 
 /*-cf-
     exists?
-        file file!/string!
+        path    file!/string!
     return: True if file or directory exists.
     group: os
+    see: dir?, info?
+
+    Test if path exists in the filesystem.
 */
-CFUNC(cfunc_existsQ)
-{
-    if( ur_isStringType( ur_type(a1) ) )
-    {
-        OSFileInfo info;
-        int ok = ur_fileInfo( boron_cpath(ut, a1, 0), &info, FI_Type );
-
-        ur_setId(res, UT_LOGIC);
-        ur_int(res) = ok ? 1 : 0;
-        return UR_OK;
-    }
-    return ur_error( ut, UR_ERR_TYPE, "exists? expected file!/string!" );
-}
-
-
 /*-cf-
     dir?
         path    file!/string!
     return: logic! or none! if path does not exist.
     group: os
+    see: exists?, info?
 
     Test if path is a directory.
 */
-CFUNC(cfunc_dirQ)
+/*-cf-
+    info?
+        path    file!/string!
+    return: block! of information or none! if path does not exist.
+    group: os
+    see: exists?, dir?
+
+    Get information about a file.  The values returned are the file type,
+    byte size, modification date, and path.
+
+    Example:
+        info? %Makefile
+        == [file 9065 2013-10-13T17:15:51-07:00 %Makefile]
+*/
+CFUNC(cfunc_infoQ)
 {
-    if( ur_isStringType( ur_type(a1) ) )
+    static const char*   _infoName[3] = { "exists?", "dir?", "info?" };
+    static const uint8_t _infoMask[3] =
     {
-        OSFileInfo info;
-        if( ur_fileInfo( boron_cpath(ut, a1, 0), &info, FI_Type ) )
-        {
-            ur_setId(res, UT_LOGIC);
-            ur_int(res) = (info.type == FI_Dir);
-        }
-        else
-        {
-            ur_setId(res, UT_NONE);
-        }
-        return UR_OK;
+        FI_Type, FI_Type, FI_Size | FI_Time | FI_Type
+    };
+    static const char* _infoType[5] =
+    {
+        "file", "link", "dir", "socket", "other"
+    };
+    OSFileInfo info;
+    int ok;
+    int func = ur_int(a2);
+
+
+    assert( func >= 0 & func <= 2 );
+    if( ! ur_isStringType( ur_type(a1) ) )
+    {
+        return ur_error( ut, UR_ERR_TYPE, "%s expected file!/string!",
+                         _infoName[ func ] );
     }
-    return errorType( "make-dir expected file!/string!" );
+    ok = ur_fileInfo( boron_cpath(ut, a1, 0), &info, _infoMask[ func ] );
+    switch( func )
+    {
+        case 0:
+set_logic:
+            ur_setId(res, UT_LOGIC);
+            ur_int(res) = ok ? 1 : 0;
+            return UR_OK;
+
+        case 1:
+            if( ok )
+            {
+                ok = (info.type == FI_Dir);
+                goto set_logic;
+            }
+            break;
+
+        case 2:
+            if( ok )
+            {
+                const char* tn = _infoType[ info.type ];
+                UCell* cell;
+                UBuffer* blk = ur_makeBlockCell( ut, UT_BLOCK, 4, res );
+                blk->used = 4;
+                cell = blk->ptr.cell;
+
+                ur_setId(cell, UT_WORD);
+                ur_setWordUnbound( cell,
+                                   ur_internAtom( ut, tn, tn + strLen(tn) ) );
+                ++cell;
+
+                if( info.size > INT32_MAX )
+                {
+                    ur_setId(cell, UT_BIGNUM);
+                    bignum_setl( cell, info.size );
+                }
+                else
+                {
+                    ur_setId(cell, UT_INT);
+                    ur_int(cell) = (int) info.size;
+                }
+                ++cell;
+
+                ur_setId(cell, UT_DATE);
+                ur_decimal(cell) = info.modified;
+                ++cell;
+
+                *cell = *a1;
+                return UR_OK;
+            }
+            break;
+    }
+    ur_setId(res, UT_NONE);
+    return UR_OK;
 }
 
 

@@ -995,8 +995,9 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_foreach,    "remove-each 'w s body 1 /ghost" );
     addCFunc( cfunc_forall,     "forall 'w body /ghost" );
     addCFunc( cfunc_map,        "map 'w ser body /ghost" );
-    addCFunc( cfunc_existsQ,    "exists? file" );
-    addCFunc( cfunc_dirQ,       "dir? file" );
+    addCFunc( cfunc_infoQ,      "exists? file 0" );
+    addCFunc( cfunc_infoQ,      "dir? file 1" );
+    addCFunc( cfunc_infoQ,      "info? file 2" );
     addCFunc( cfunc_make_dir,   "make-dir path /all" );
     addCFunc( cfunc_change_dir, "change-dir path" );
     addCFunc( cfunc_current_dir,"current-dir" );
