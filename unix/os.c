@@ -296,7 +296,7 @@ static void _readPipes( int fd, UBuffer* buf, int fd2, UBuffer* buf2 )
 
         select( high + 1, &watch, NULL, NULL, NULL );
 
-        if( FD_ISSET(fd, &watch) )
+        if( VALID(fd) && FD_ISSET(fd, &watch) )
         {
             if( _readIntoBuf( fd, buf ) < 1 )
             {
@@ -305,7 +305,7 @@ static void _readPipes( int fd, UBuffer* buf, int fd2, UBuffer* buf2 )
                 fd = -1;
             }
         }
-        if( FD_ISSET(fd2, &watch) )
+        if( VALID(fd2) && FD_ISSET(fd2, &watch) )
         {
             if( _readIntoBuf( fd2, buf2 ) < 1 )
             {
