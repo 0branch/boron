@@ -3363,9 +3363,10 @@ CFUNC(cfunc_reduce)
 
             while( ec2.series.it < ec2.series.end )
             {
+                ++ur_buffer(n)->used;
+                ur_setId( bres, UT_UNSET );
                 if( ! (ok = boron_eval1( ut, &ec2, bres++ )) )
                     break;
-                ++ur_buffer(n)->used;
             }
         }
         return ok;
@@ -3565,7 +3566,7 @@ CFUNC(cfunc_infoQ)
     int func = ur_int(a2);
 
 
-    assert( func >= 0 & func <= 2 );
+    assert( func >= 0 && func <= 2 );
     if( ! ur_isStringType( ur_type(a1) ) )
     {
         return ur_error( ut, UR_ERR_TYPE, "%s expected file!/string!",
