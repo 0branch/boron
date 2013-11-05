@@ -436,7 +436,7 @@ CFUNC(cfunc_do)
         values  Any value.
     return: unset!
     group: data
-    see: in, value?
+    see: get, in, value?
 
     Assign a value to one or more words.
 
@@ -515,6 +515,7 @@ CFUNC(cfunc_set)
         word    word!/context!
     return: Value of word or block of values in context.
     group: data
+    see: in, set
 */
 CFUNC(cfunc_get)
 {
@@ -542,7 +543,7 @@ CFUNC(cfunc_get)
         value   Any value.
     return: True unless value is an unset word.
     group: data
-    see: set
+    see: get, set
 
     Determine if a word has already been set.
 
@@ -785,6 +786,7 @@ CFUNC(cfunc_bind)
         context word!/context!
     return: Modified block.
     group: data
+    see: bind
 
     Replace words with their value in context.
 */
@@ -857,6 +859,7 @@ CFUNC(name) { \
         b   int!/decimal!/vec3!
     return: Quotient of a divided by b.
     group: math
+    see: mod
 */
 /*-cf-
     mod
@@ -864,6 +867,7 @@ CFUNC(name) { \
         b   int!/decimal!/coord!
     return: Remainder of a divided by b.
     group: math
+    see: div
 */
 OPER_FUNC( cfunc_add, UR_OP_ADD )
 OPER_FUNC( cfunc_sub, UR_OP_SUB )
@@ -878,6 +882,7 @@ OPER_FUNC( cfunc_mod, UR_OP_MOD )
         b   logic!/char!/int!/block!
     return: Bitwise AND.
     group: math
+    see: or, xor
 */
 /*-cf-
     or
@@ -885,6 +890,7 @@ OPER_FUNC( cfunc_mod, UR_OP_MOD )
         b   logic!/char!/int!/block!
     return: Bitwise OR.
     group: math
+    see: and, xor
 */
 /*-cf-
     xor
@@ -892,6 +898,7 @@ OPER_FUNC( cfunc_mod, UR_OP_MOD )
         b   logic!/char!/int!/block!
     return: Bitwise exclusive OR.
     group: math
+    see: and, or
 */
 OPER_FUNC( cfunc_and, UR_OP_AND )
 OPER_FUNC( cfunc_or,  UR_OP_OR )
@@ -904,6 +911,7 @@ OPER_FUNC( cfunc_xor, UR_OP_XOR )
         b
     return: Lesser of two values.
     group: math
+    see: maximum
 */
 CFUNC(cfunc_minimum)
 {
@@ -918,6 +926,7 @@ CFUNC(cfunc_minimum)
         b
     return: Greater of two values.
     group: math
+    see: minimum
 */
 CFUNC(cfunc_maximum)
 {
@@ -1589,6 +1598,7 @@ extern void vec3_pick ( const UCell* cell, int index, UCell* res );
         series  series/coord!/vec3!
     return: First item in series or none!.
     group: series
+    see: last, second, third
 */
 CFUNC(cfunc_first)
 {
@@ -1610,6 +1620,7 @@ CFUNC(cfunc_first)
         series  series/coord!/vec3!
     return: Second item in series or none!.
     group: series
+    see: first, third
 */
 CFUNC(cfunc_second)
 {
@@ -1631,6 +1642,7 @@ CFUNC(cfunc_second)
         series  series/coord!/vec3!
     return: Third item in series or none!.
     group: series
+    see: first, second
 */
 CFUNC(cfunc_third)
 {
@@ -1652,6 +1664,7 @@ CFUNC(cfunc_third)
         series
     return: Last item in series or none! if empty.
     group: series
+    see: first
 */
 CFUNC(cfunc_last)
 {
@@ -1888,6 +1901,8 @@ static int positionPort( UThread* ut, const UCell* portC, int where )
     return: Start of series.
     group: series
     see: head?, tail
+
+    For seekable ports, head re-positions it to the start.
 */
 CFUNC(cfunc_head)
 {
@@ -1912,6 +1927,8 @@ CFUNC(cfunc_head)
     return: End of series.
     group: series
     see: head, tail?
+
+    For seekable ports, tail re-positions it to the end.
 */
 CFUNC(cfunc_tail)
 {
@@ -1932,11 +1949,16 @@ CFUNC(cfunc_tail)
 
 /*-cf-
     pick
-        series      series/coord!/vec3!
-        position    int!
+        series      Series or coord!/vec3!
+        position    int!/logic!
     return: Value at position or none! if position is out of range.
     group: series
     see: index?, poke
+
+    Note that series use one-based indexing.
+
+    If position is a logic! value, then true will return the first series
+    value, and false the second.
 */
 CFUNC(cfunc_pick)
 {
@@ -1978,11 +2000,16 @@ extern int vec3_poke ( UThread*, UCell* cell, int index, const UCell* src );
 /*-cf-
     poke
         series      series/coord!/vec3!
-        position    int!
+        position    int!/logic!
         value
     return: series.
     group: series
     see: index?, pick
+
+    Note that series use one-based indexing.
+
+    If position is a logic! value, then true will set the first series
+    value, and false the second.
 */
 CFUNC(cfunc_poke)
 {
@@ -2129,7 +2156,7 @@ CFUNC(cfunc_skip)
             count   int!
     return: Modified series or bound word!.
     group: series
-    see: remove
+    see: remove, terminate
 
     Add data to end of series.
 
@@ -4141,6 +4168,7 @@ CFUNC(cfunc_rename)
         data    block!
     return: binary!
     group: data
+    see: unserialize
 
     Pack data into binary image for transport.
     Series positions, slices, and non-global word bindings are retained.
@@ -4158,6 +4186,7 @@ CFUNC( cfunc_serialize )
         data    binary!
     return: Re-materialized block!.
     group: data
+    see: serialize
 */
 CFUNC( cfunc_unserialize )
 {
@@ -4310,7 +4339,7 @@ extern int ur_parseString( UThread* ut, UBuffer*, UIndex start, UIndex end,
 /*-cf-
     parse
         input   string!/block!
-        rules   block!  
+        rules   block!
         /case   Character case must match when comparing strings.
     return:  True if end of input reached.
     group: data
@@ -4381,6 +4410,7 @@ CFUNC(cfunc_parse)
         b
     return: True if two values are identical.
     group: data
+    see: equal?
 */
 CFUNC(cfunc_sameQ)
 {
@@ -4396,6 +4426,7 @@ CFUNC(cfunc_sameQ)
         b
     return: True if two values are equivalent.
     group: data, math
+    see: eq?, ne?, lt?, gt?, same?
 */
 CFUNC(cfunc_equalQ)
 {
@@ -4411,6 +4442,7 @@ CFUNC(cfunc_equalQ)
         b
     return: True if two values are not equivalent.
     group: data, math
+    see: eq?, gt?, lt?
 */
 CFUNC(cfunc_neQ)
 {
@@ -4426,6 +4458,7 @@ CFUNC(cfunc_neQ)
         b
     return: True if first value is greater than the second.
     group: math
+    see: eq?, lt?, ne?
 */
 CFUNC(cfunc_gtQ)
 {
@@ -4441,6 +4474,7 @@ CFUNC(cfunc_gtQ)
         b
     return: True if first value is less than the second.
     group: math
+    see: eq?, gt?, ne?
 */
 CFUNC(cfunc_ltQ)
 {
@@ -4712,11 +4746,12 @@ CFUNC(cfunc_trim)
 
 /*-cf-
     terminate
-        series  binary!/string!
-        value
+        series  Series to append to.
+        value   Value to append.
         /dir    Check if end is '/' or '\'.
     return: Modified series.
     group: series
+    see: append
 
     Append value to series only if it does not already end with it.
 */

@@ -30,6 +30,10 @@
         data    string!/binary!
     return: binary!
     group: data
+    see: decompress
+
+    Compress data using either zlib or bzip2, depending upon how Boron was
+    compiled.
 */
 CFUNC(cfunc_compress)
 {
@@ -220,6 +224,7 @@ static const uint8_t* str_match( const uint8_t* it, const uint8_t* end,
         data    binary!
     return: string!/binary!
     group: data
+    see: compress
 */
 CFUNC(cfunc_decompress)
 {
