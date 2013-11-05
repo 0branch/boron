@@ -1850,7 +1850,7 @@ CFUNC(cfunc_rot)
         series
     return: Previous element of series or the head.
     group: series
-    see: head, next
+    see: head, next, skip
 */
 CFUNC(cfunc_prev)
 {
@@ -1869,7 +1869,7 @@ CFUNC(cfunc_prev)
         series
     return: Next element of series or the tail.
     group: series
-    see: prev, tail
+    see: prev, tail, skip
 */
 CFUNC(cfunc_next)
 {
@@ -1900,7 +1900,7 @@ static int positionPort( UThread* ut, const UCell* portC, int where )
         series  Series or port!
     return: Start of series.
     group: series
-    see: head?, tail
+    see: head?, skip, tail
 
     For seekable ports, head re-positions it to the start.
 */
@@ -1926,7 +1926,7 @@ CFUNC(cfunc_head)
         series  Series or port!
     return: End of series.
     group: series
-    see: head, tail?
+    see: head, skip, tail?
 
     For seekable ports, tail re-positions it to the end.
 */
@@ -2551,10 +2551,40 @@ extern void coord_slice( const UCell* cell, int index, int count, UCell* res );
 
 /*-cf-
     slice
-        series  series or coord!
-        limit   none!/int!/coord!
-    return: Adjusted slice.
+        start   Series or coord!
+        limit   Series or none!/int!/coord!
+    return: Start with adjusted end.
     group: series
+    see: skip
+
+    Slice gives a series an end position.
+
+    A positive integer limit value sets the length of the slice.
+    If limit is negative, then that number of elements (negated) are removed
+    from the end.
+
+        slice "There and back" 5
+        == "There"
+        slice "There and back" -5
+        == "There and"
+
+    A coord! limit value will modify both the start and the end.  The start
+    will be adjusted by the first coord! number (like skip). The second
+    coord! number will set the length or remove from the end (if negative).
+
+        slice "There and back" 6,3
+        == "and"
+        slice "There and back" 6,-3
+        == "and b"
+
+    If limit is from the the same series as start, then the end is simply
+    set to the limit start position.
+
+        f: %my_song.mp3
+        slice f find f '.'
+        == %my_song
+
+    Passing a none! limit removes any slice end and returns an un-sliced series.
 */
 CFUNC(cfunc_slice)
 {
@@ -4486,11 +4516,11 @@ CFUNC(cfunc_ltQ)
 
 /*-cf-
     zero?
-        value
+        value   int!/char!/decimal!
     return: logic!
     group: math
 
-    Return true if value is an int!/char!/decimal! of zero.
+    Return true if value is the number zero.
 */
 CFUNC(cfunc_zeroQ)
 {
