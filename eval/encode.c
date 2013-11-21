@@ -77,8 +77,9 @@ static int url_encode( UThread* ut, const UCell* strC, UCell* res, int decode )
         /bom    Prepend Unicode BOM for utf8 or ucs2 and return binary.
     return: String or binary with data converted to encoding type.
     group: data
+    see: decode, encoding?
 
-    When data is a string! then the type must be a a word! and a new string
+    When data is a string! then the type must be a word! and a new string
     is returned.
 
     If data is a binary! then the type must be an int! and the input value
@@ -199,6 +200,9 @@ bad_type:
         data    string!
     return: New string with data converted to encoding type.
     group: data
+    see: encode, encoding?
+
+    Undoes URL encoding.
 */
 CFUNC(cfunc_decode)
 {
@@ -210,9 +214,13 @@ CFUNC(cfunc_decode)
 
 /*-cf-
     encoding?
-        value
-    return: Encoding type word! or none! if val is not a string.
+        data 
+    return: Encoding type or none! if data is not a string!/binary!.
     group: data
+    see: encode, decode
+
+    A string! data value will return a word! (latin1, utf8, or ucs2).
+    A binary! data value will return the base int! (2, 16, or 64).
 */
 CFUNC(cfunc_encodingQ)
 {
