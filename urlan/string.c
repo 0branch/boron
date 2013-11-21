@@ -253,18 +253,6 @@ void ur_strInit( UBuffer* buf, int enc, int size )
 /*
    Returns number of characters copied.
 */
-static int copyAsciiToUtf16( uint16_t* dest, const char* src, int srcLen )
-{
-    const char* end = src + srcLen;
-    while( src != end )
-        *dest++ = *src++;
-    return srcLen;
-}
-
-
-/*
-   Returns number of characters copied.
-*/
 int copyLatin1ToUtf8( uint8_t* dest, const uint8_t* src, int srcLen )
 {
     // TODO: Prevent overflow of dest.
@@ -283,6 +271,18 @@ int copyLatin1ToUtf8( uint8_t* dest, const uint8_t* src, int srcLen )
         *dest++ = c;
     }
     return dest - dStart;
+}
+
+
+/*
+   Returns number of characters copied.
+*/
+int copyLatin1ToUcs2( uint16_t* dest, const uint8_t* src, int srcLen )
+{
+    const uint8_t* end = src + srcLen;
+    while( src != end )
+        *dest++ = *src++;
+    return srcLen;
 }
 
 
@@ -314,6 +314,50 @@ int copyUtf8ToLatin1( uint8_t* dest, const uint8_t* src, int srcLen )
         }
 output_char:
         *dest++ = (uint8_t) c;
+    }
+    return dest - dStart;
+}
+
+
+/*
+   Returns number of characters copied.
+*/
+/*
+  UTF-8 Encoding (UCS2 range)
+
+  Unicode Value  Byte 1    Byte 2    Byte 3
+  -------------  --------  --------  --------
+  0x0000-0x007f  0xxxxxxx
+  0x0080-0x07ff  110xxxxx  10xxxxxx
+  0x0800-0xffff  1110xxxx  10xxxxxx  10xxxxxx
+*/
+int copyUtf8ToUcs2( uint16_t* dest, const uint8_t* src, int srcLen )
+{
+    const uint16_t* dStart = dest;
+    const uint8_t* end = src + srcLen;
+    uint16_t c;
+
+    while( src != end )
+    {
+        c = *src++;
+        if( c > 0x7f )
+        {
+            if( (c & 0xe0) == 0xc0 )
+            {
+                c = (c & 0x1f) << 6 | (src[0] & 0x3f);
+                ++src;
+            }
+            else if( (c & 0xf0) == 0xe0 )
+            {
+                c = (c & 0x0f) << 12 | (src[0] & 0x3f) << 6 | (src[1] & 0x3f);
+                src += 2;
+            }
+            else if( (c & 0xc0) == 0x80 )
+                continue;
+            else
+                c = NOT_LATIN1_CHAR;
+        }
+        *dest++ = c;
     }
     return dest - dStart;
 }
@@ -407,17 +451,25 @@ void ur_strAppendChar( UBuffer* str, int uc )
 
 
 /**
-  Append a null-terminated ASCII string to a string buffer.
+  Append a null-terminated UTF-8 string to a string buffer.
 */
 void ur_strAppendCStr( UBuffer* str, const char* cstr )
 {
     int len = strLen( cstr );
 
     ur_arrReserve( str, str->used + len );
-    if( str->form == UR_ENC_UCS2 )
-        copyAsciiToUtf16( str->ptr.u16 + str->used, cstr, len );
-    else
-        memCpy( str->ptr.b + str->used, cstr, len );
+    switch( str->form )
+    {
+        case UR_ENC_LATIN1:
+            len = copyUtf8ToLatin1(str->ptr.b + str->used, (uint8_t*)cstr, len);
+            break;
+        case UR_ENC_UTF8:
+            memCpy( str->ptr.c + str->used, cstr, len );
+            break;
+        case UR_ENC_UCS2:
+            len = copyUtf8ToUcs2(str->ptr.u16 + str->used, (uint8_t*)cstr, len);
+            break;
+    }
     str->used += len;
 }
 
@@ -568,7 +620,8 @@ void ur_strAppendDouble( UBuffer* str, double n )
     {
         char tmp[ DBL_CHARS ];
         cp = _doubleToStr( n, tmp );
-        str->used += copyAsciiToUtf16( str->ptr.u16 + str->used, tmp, cp-tmp );
+        str->used += copyLatin1ToUcs2( str->ptr.u16 + str->used,
+                                       (uint8_t*) tmp, cp - tmp );
     }
     else
     {
@@ -696,8 +749,10 @@ void ur_strAppend( UBuffer* str, const UBuffer* strB, UIndex itB, UIndex endB )
             switch( strB->form )
             {
             case UR_ENC_LATIN1:
-            case UR_ENC_UTF8:       // FIXME: Need copyUtf8ToUcs2().
-                copyAsciiToUtf16( dest, strB->ptr.c + itB, usedB );
+                copyLatin1ToUcs2( dest, strB->ptr.b + itB, usedB );
+                break;
+            case UR_ENC_UTF8:
+                usedB = copyUtf8ToUcs2( dest, strB->ptr.b + itB, usedB );
                 break;
             case UR_ENC_UCS2:
                 memCpy( dest, strB->ptr.u16 + itB, usedB * 2 );
