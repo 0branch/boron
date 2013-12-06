@@ -124,6 +124,7 @@ Datatype      Examples
 `string!`_    "hello"  {hello}
 `file!`_      %main.c %"/mnt/Project Backup/"
 `binary!`_    #{01afed}  #{00 33 ff a0}
+`bitset!`_    make bitset! "abc"
 time!         10:02 -0:0:32.08
 `vector!`_    #[1 2 3]  #[-85.33 2 44.8]
 `block!`_     []  [a b c]
@@ -299,6 +300,13 @@ White space is allowed and ignored inside the braces.
      == #{68656C6C6F}
 
 
+Bitset!
+-------
+
+The *charset* function is a shortcut for ``make bitset!``.
+
+
+
 String!
 -------
 
@@ -471,6 +479,77 @@ And the client::
     s: open "tcp://localhost:6044"
     print to-string read s
     close s
+
+
+Parse Language
+==============
+
+The *parse* function can operate on strings, blocks, and binary values.
+It returns *true* if the end of the input is reached.
+
+
+Block Parse
+-----------
+
+================  ===========================================
+Rule-Statement    Operation
+================  ===========================================
+\|                Start an alternate rule.
+any <val>         Match the value zero or more times.
+break             Stop the current sub-rule as a successful match.
+into <rules>      Parse block at current input position with a new set of rules.
+opt <val>         Match the value zero or one time.
+place <ser>       Set the current input position to the given series position.
+set <word>        Set the specified word to the current input value.
+skip              Skip a single value.
+some <val>        Match the value one or more times.
+thru <val>        Skip input until the value is found, then continue through it.
+to <val>          Skip input until the value is found.
+int! <val>        Match a value an exact number of times.
+int! int! <val>   Match a value a variable number of times.
+int! skip         Skip a number of values.
+block!            Sub-rules.
+datatype!         Match a single value of the given type.
+paren!            Evaluate Boron code.
+set-word!         Set word to the current input position.
+get-word!         Set slice end to the current input position.
+lit-word!         Match the word in the input.
+================  ===========================================
+
+
+String Parse
+------------
+
+================  ===========================================
+Rule-Statement    Operation
+================  ===========================================
+\|                Start an alternate rule.
+any <val>         Match the value zero or more times.
+break             Stop the current sub-rule as a successful match.
+opt <val>         Match the value zero or one time.
+place <ser>       Set the current input position to the given series position.
+skip              Skip a single character.
+some <val>        Match the value one or more times.
+thru <val>        Skip input until the value is found, then continue through it.
+to <val>          Skip input until the value is found.
+int! <val>        Match a value an exact number of times.
+int! int! <val>   Match a value a variable number of times.
+int! skip         Skip a number of characters.
+paren!            Evaluate Boron code.
+set-word!         Set word to the current input position.
+get-word!         Set slice end to the current input position.
+================  ===========================================
+
+=========  ==================================================
+Value      
+=========  ==================================================
+bitset!    Match any character in the set.
+block!     Sub-rules.
+char!      Match a single character.
+string!    Match a string.
+word!      Match value of word.
+=========  ==================================================
+
 
 
 .. |date| date::
