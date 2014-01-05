@@ -119,3 +119,6 @@ probe find/case sq "WINTER"
 probe find/case sq lowercase "WINTER"
 probe encoding? u2
 probe find sq slice u2 5
+
+; Find does't work with utf8 series & latin1 value.
+;probe find encode 'utf8 "Some Random Bits" "Random"
