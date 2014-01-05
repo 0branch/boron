@@ -1251,6 +1251,14 @@ static GWidget* box_make2( UThread* ut, const GWidgetClass* wclass,
 }
 
 
+/*-wid-
+    hbox [margins]   children
+         coord!      block!
+*/
+/*-wid-
+    vbox [margins]   children
+         coord!      block!
+*/
 static const uint8_t box_args[] =
 {
     GUIA_OPT,   UT_COORD,
@@ -1258,7 +1266,6 @@ static const uint8_t box_args[] =
     GUIA_END
 };
 
-// box [margin coord!] block
 static GWidget* box_make( UThread* ut, UBlockIter* bi,
                           const GWidgetClass* wclass )
 {
@@ -1582,6 +1589,12 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
 //----------------------------------------------------------------------------
 
 
+/*-wid-
+    grid size   [margins]   children
+         coord! coord!      block!
+
+    Size is colums,rows.
+*/
 static const uint8_t grid_args[] =
 {
     GUIA_ARG,   UT_COORD,
@@ -1590,7 +1603,7 @@ static const uint8_t grid_args[] =
     GUIA_END
 };
 
-// grid cols,rows [margin coord!] block
+
 static GWidget* grid_make( UThread* ut, UBlockIter* bi,
                            const GWidgetClass* wclass )
 {
@@ -1811,6 +1824,10 @@ GWindow;
 #define WINDOW_DRAG     GW_FLAG_USER2
 
 
+/*-wid-
+   window [name]   event-handler  children
+          string!  none!/block!   block! 
+*/
 static const uint8_t window_args[] =
 {
     GUIA_OPT,      UT_STRING,
@@ -2020,6 +2037,12 @@ static void window_render( GWidget* wp )
 //----------------------------------------------------------------------------
 
 
+/*-wid-
+    overlay layout  [margins]   children
+            word!   coord!      block!
+
+    Layout is 'hbox or 'vbox.
+*/
 static const uint8_t overlay_args[] =
 {
     GUIA_ARG,   UT_WORD,

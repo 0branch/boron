@@ -102,6 +102,12 @@ static void slider_setValue( GSlider* ep, const UCell* cell )
 }
 
 
+/*-wid-
+    slider  range           initial-value   [action]
+            coord!/vec3!    int!/decimal!   block!
+
+    Range is minimum,maximum.
+*/
 static const uint8_t slider_args[] =
 {
     GUIA_ARGM, 2, UT_COORD, UT_VEC3,
@@ -110,9 +116,6 @@ static const uint8_t slider_args[] =
     GUIA_END
 };
 
-/*
-  slider min,max init <action>
-*/
 static GWidget* slider_make( UThread* ut, UBlockIter* bi,
                              const GWidgetClass* wclass )
 {

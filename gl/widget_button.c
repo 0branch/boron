@@ -49,6 +49,14 @@ GButton;
 #define EX_PTR  GButton* ep = (GButton*) wp
 
 
+/*-wid-
+    button  label   action
+            string! block!
+*/
+/*-wid-
+    checkbox    label   action
+                string! block!
+*/
 static const uint8_t button_args[] =
 {
     GUIA_ARGW, 1, UT_STRING,

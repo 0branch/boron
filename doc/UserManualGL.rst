@@ -447,17 +447,17 @@ Calls glBindFramebuffer_ with target GL_FRAMEBUFFER.  Pass zero to restore rende
 
 .. |date| date::
 .. _`function reference`: http://urlan.sf.net/boron/doc/func_ref_gl.html
-.. _glBindBuffer: http://www.opengl.org/sdk/docs/man/xhtml/glBindBuffer.xml
+.. _glBindBuffer: http://www.opengl.org/sdk/docs/man2/xhtml/glBindBuffer.xml
 .. _glBindFramebuffer: http://www.opengl.org/sdk/docs/man3/xhtml/glBindFramebuffer.xml
-.. _glBlendFunc: http://www.opengl.org/sdk/docs/man/xhtml/glBlendFunc.xml
-.. _glClear: http://www.opengl.org/sdk/docs/man/xhtml/glClear.xml
-.. _glColorMask: http://www.opengl.org/sdk/docs/man/xhtml/glColorMask.xml
-.. _glDepthMask: http://www.opengl.org/sdk/docs/man/xhtml/glDepthMask.xml
-.. _glNormalPointer: http://www.opengl.org/sdk/docs/man/xhtml/glNormalPointer.xml
-.. _glPopMatrix: http://www.opengl.org/sdk/docs/man/xhtml/glPopMatrix.xml
-.. _glPushMatrix: http://www.opengl.org/sdk/docs/man/xhtml/glPushMatrix.xml
-.. _glUniform: http://www.opengl.org/sdk/docs/man/xhtml/glUniform.xml
-.. _glUseProgram: http://www.opengl.org/sdk/docs/man/xhtml/glUseProgram.xml
-.. _glVertexPointer: http://www.opengl.org/sdk/docs/man/xhtml/glVertexPointer.xml
-.. _glViewport: http://www.opengl.org/sdk/docs/man/xhtml/glViewport.xml
+.. _glBlendFunc: http://www.opengl.org/sdk/docs/man2/xhtml/glBlendFunc.xml
+.. _glClear: http://www.opengl.org/sdk/docs/man2/xhtml/glClear.xml
+.. _glColorMask: http://www.opengl.org/sdk/docs/man2/xhtml/glColorMask.xml
+.. _glDepthMask: http://www.opengl.org/sdk/docs/man2/xhtml/glDepthMask.xml
+.. _glNormalPointer: http://www.opengl.org/sdk/docs/man2/xhtml/glNormalPointer.xml
+.. _glPopMatrix: http://www.opengl.org/sdk/docs/man2/xhtml/glPopMatrix.xml
+.. _glPushMatrix: http://www.opengl.org/sdk/docs/man2/xhtml/glPushMatrix.xml
+.. _glUniform: http://www.opengl.org/sdk/docs/man2/xhtml/glUniform.xml
+.. _glUseProgram: http://www.opengl.org/sdk/docs/man2/xhtml/glUseProgram.xml
+.. _glVertexPointer: http://www.opengl.org/sdk/docs/man2/xhtml/glVertexPointer.xml
+.. _glViewport: http://www.opengl.org/sdk/docs/man2/xhtml/glViewport.xml
 

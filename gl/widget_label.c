@@ -35,6 +35,10 @@ GLabel;
 #define EX_PTR  GLabel* ep = (GLabel*) wp
 
 
+/*-wid-
+    label   text
+            string!
+*/
 static const uint8_t label_args[] =
 {
     GUIA_ARGW, 1, UT_STRING,

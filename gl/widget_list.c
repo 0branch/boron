@@ -45,6 +45,10 @@ GList;
 #define EX_PTR  GList* ep = (GList*) wp
 
 
+/*-wid-
+    list    headers     items
+            block!      block!
+*/
 static const uint8_t listw_args[] =
 {
     GUIA_ARG,   UT_BLOCK,

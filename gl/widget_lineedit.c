@@ -96,6 +96,10 @@ static UIndex ledit_vbo( UThread* ut, int maxChars )
 }
 
 
+/*-wid-
+    line-edit   text    [max-length]
+                string! int!
+*/
 static const uint8_t ledit_args[] =
 {
     GUIA_ARGW, 1, UT_STRING,
