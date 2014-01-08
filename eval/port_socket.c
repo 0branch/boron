@@ -479,7 +479,7 @@ static void socket_close( UBuffer* pbuf )
     }
 
     memFree( pbuf->ptr.v );
-    pbuf->ptr.v = 0;
+    //pbuf->ptr.v = 0;      // Done by port_destroy().
 }
 
 

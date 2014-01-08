@@ -777,6 +777,7 @@ void port_destroy( UBuffer* buf )
         UPortDevice* dev = (buf->form == UR_PORT_SIMPLE) ?
             (UPortDevice*) buf->ptr.v : *((UPortDevice**) buf->ptr.v);
         dev->close( buf );
+        buf->ptr.v = 0;
     }
 }
 

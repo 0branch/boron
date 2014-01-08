@@ -166,7 +166,7 @@ static void thread_close( UBuffer* port )
 
         //printf( "KR thread_close\n" );
     }
-    port->ptr.v = 0;
+    //pbuf->ptr.v = 0;      // Done by port_destroy().
 }
 
 
