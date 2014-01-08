@@ -152,7 +152,7 @@ static int _isDir( const char* path )
 */
 int ur_makeDir( UThread* ut, const char* path )
 {
-    int err = mkdir( path, 0755 );
+    int err = mkdir( path, 0777 );
     if( err )
     {
         if( (errno != EEXIST) || (_isDir(path) != 1) )
