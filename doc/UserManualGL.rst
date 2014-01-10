@@ -445,6 +445,13 @@ Calls glBindFramebuffer_ with target GL_FRAMEBUFFER.  Pass zero to restore rende
 
 
 
+Widget Instructions
+===================
+
+.. include:: widgets.rst
+
+
+
 .. |date| date::
 .. _`function reference`: http://urlan.sf.net/boron/doc/func_ref_gl.html
 .. _glBindBuffer: http://www.opengl.org/sdk/docs/man2/xhtml/glBindBuffer.xml

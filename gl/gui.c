@@ -79,7 +79,7 @@ GWidget* gui_allocWidget( int size, const GWidgetClass* wclass )
     {
         memSet( wp, 0, size );
         wp->wclass = wclass;
-        wp->flags  = GW_UPDATE_LAYOUT;
+        wp->flags  = wclass->flags;
     }
     return wp;
 }
@@ -316,11 +316,30 @@ void widget_renderChildren( GWidget* wp )
 }
 
 
+/*
+  Propagate widget area to children.
+*/
+static void widget_fullAreaLayout( GWidget* wp )
+{
+    GWidget* it;
+
+    EACH_SHOWN_CHILD( wp, it )
+        if( it->flags & GW_SELF_LAYOUT )
+            continue;
+        it->area = wp->area;
+        it->wclass->layout( it );
+        //wp->flags |= GW_UPDATE_LAYOUT;
+    EACH_END
+}
+
+
 static void markLayoutDirty( GWidget* wp )
 {
-    wp->flags |= GW_UPDATE_LAYOUT;
-    if( wp->parent )
-        markLayoutDirty( wp->parent );
+    while( wp )
+    {
+        wp->flags |= GW_UPDATE_LAYOUT;
+        wp = wp->parent;
+    }
 }
 
 
@@ -371,7 +390,10 @@ static uint16_t glvModifierMask[ KEY_MOD_COUNT ] =
     GLV_MASK_SHIFT
 };
 
-static void _remapKeys( UThread* ut, const UCell* cell, const UAtom* modAtom )
+/*
+   Return non-zero if cell is a valid key handler block.
+*/
+static int _remapKeys( UThread* ut, const UCell* cell, const UAtom* modAtom )
 {
     if( ur_is(cell, UT_BLOCK) && (! ur_isShared(cell->series.buf)) )
     {
@@ -416,7 +438,9 @@ static void _remapKeys( UThread* ut, const UCell* cell, const UAtom* modAtom )
             ++out;
         }
         bi.buf->used = out - bi.buf->ptr.cell;
+        return 1;
     }
+    return 0;
 }
 
 
@@ -426,6 +450,13 @@ static void _remapKeys( UThread* ut, const UCell* cell, const UAtom* modAtom )
 #define expandMin   user16
 
 
+/*-wid-
+    expand  [minimum]
+            int!
+
+    Fills as much space as possible to push other widgets against parent
+    edges.
+*/
 static GWidget* expand_make( UThread* ut, UBlockIter* bi,
                              const GWidgetClass* wclass )
 {
@@ -482,12 +513,14 @@ enum EventContextIndex
 #define eventCtxN       user32
 
 
-static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC )
+static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC,
+                                 int* eventMask )
 {
     UAtom atoms[ EI_COUNT + KEY_MOD_COUNT ];
     UBuffer* blk;
     UBuffer* ctx;
     int i;
+    int mask = 0;
 
 
     ur_internAtoms( ut, "event key-down key-up\n"
@@ -512,8 +545,14 @@ static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC )
         return UR_THROW;
 
     ctx = ur_buffer( wp->eventCtxN );   // Re-aquire
-    _remapKeys( ut, ur_ctxCell( ctx, EI_KEY_DOWN ), atoms + EI_COUNT );
-    _remapKeys( ut, ur_ctxCell( ctx, EI_KEY_UP   ), atoms + EI_COUNT );
+    if( _remapKeys( ut, ur_ctxCell( ctx, EI_KEY_DOWN ), atoms + EI_COUNT ) )
+        mask |= GLV_EVENT_KEY_DOWN;
+    if( _remapKeys( ut, ur_ctxCell( ctx, EI_KEY_UP   ), atoms + EI_COUNT ) )
+        mask |= GLV_EVENT_KEY_UP;
+
+    if( eventMask )
+        *eventMask = mask;
+
     return UR_OK;
 }
 
@@ -851,7 +890,7 @@ static GWidget* root_make( UThread* ut, UBlockIter* bi,
         goto done;
     if( ur_is(bi->it, UT_BLOCK) )
     {
-        if( ! _installEventContext( ut, (GWidget*) ep, bi->it ) )
+        if( ! _installEventContext( ut, (GWidget*) ep, bi->it, 0 ) )
             goto fail;
         ++bi->it;
     }
@@ -1146,8 +1185,6 @@ static void root_sizeHint( GWidget* wp, GSizeHint* size )
 
 static void root_render( GWidget* wp )
 {
-    GWidget* it;
-
     if( wp->eventCtxN )
     {
         UThread* ut = glEnv.guiUT;
@@ -1162,14 +1199,10 @@ static void root_render( GWidget* wp )
     if( wp->flags & GW_UPDATE_LAYOUT )
     {
         wp->flags &= ~GW_UPDATE_LAYOUT;
-        EACH_SHOWN_CHILD( wp, it )
-            it->flags |= GW_UPDATE_LAYOUT;
-        EACH_END
+        widget_fullAreaLayout( wp );
     }
 
-    EACH_SHOWN_CHILD( wp, it )
-        it->wclass->render( it );
-    EACH_END
+    widget_renderChildren( wp );
 }
 
 
@@ -1225,8 +1258,6 @@ static GWidget* box_make2( UThread* ut, const GWidgetClass* wclass,
                            const UCell* grid )
 {
     Box* ep = (Box*) gui_allocWidget( sizeof(Box), wclass );
-
-    ep->wid.flags |= GW_NO_INPUT;
     ep->marginL = 0;
     ep->marginT = 0;
     ep->marginR = 0;
@@ -1827,6 +1858,8 @@ GWindow;
 /*-wid-
    window [name]   event-handler  children
           string!  none!/block!   block! 
+
+   Free-floating movable window.
 */
 static const uint8_t window_args[] =
 {
@@ -1855,7 +1888,6 @@ static GWidget* window_make( UThread* ut, UBlockIter* bi,
 
     ep->dp[0] = ur_makeDrawProg( ut );
 
-
     /* TODO: Support path?
     if( ur_sel(arg) == UR_ATOM_HBOX )
         ep->wid.flags |= WINDOW_HBOX;
@@ -1869,9 +1901,8 @@ static GWidget* window_make( UThread* ut, UBlockIter* bi,
 
     if( ur_is(arg[1], UT_BLOCK) )
     {
-        if( ! _installEventContext( ut, (GWidget*) ep, arg[1] ) )
+        if( ! _installEventContext( ut, (GWidget*) ep, arg[1], 0 ) )
             goto fail;
-        ep->wid.eventCtxN = arg[1]->series.buf;
     }
 
     if( gui_makeWidgets( ut, arg[2], (GWidget*) ep, 0 ) )
@@ -2037,9 +2068,92 @@ static void window_render( GWidget* wp )
 //----------------------------------------------------------------------------
 
 
+#define VIEWPORT_KEYS   GW_FLAG_USER1
+
+
+/*-wid-
+   viewport event-handler
+            block! 
+*/
+static const uint8_t viewport_args[] =
+{
+    GUIA_ARGW, 1,  UT_BLOCK,
+    GUIA_END
+};
+
+
+static GWidget* viewport_make( UThread* ut, UBlockIter* bi,
+                               const GWidgetClass* wclass )
+{
+    GWidget* wp;
+    const UCell* arg[ 1 ];
+    int emask;
+
+    if( ! gui_parseArgs( ut, bi, wclass, viewport_args, arg ) )
+        return 0;
+
+    wp = gui_allocWidget( sizeof(GWidget), wclass );
+
+    wp->expandMin = 0;      // For expand_sizeHint().
+
+    if( _installEventContext( ut, wp, arg[0], &emask ) )
+    {
+        if( emask & (GLV_EVENT_KEY_DOWN | GLV_EVENT_KEY_UP) )
+            wp->flags |= VIEWPORT_KEYS;
+        return wp;
+    }
+
+    wclass->free( wp );
+    return 0;
+}
+
+
+static void viewport_mark( UThread* ut, GWidget* wp )
+{
+    ur_markBlkN( ut, wp->eventCtxN );
+    widget_markChildren( ut, wp );
+}
+
+
+static void viewport_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
+{
+    if( (ev->type == GLV_EVENT_BUTTON_DOWN) && (wp->flags & VIEWPORT_KEYS) )
+        gui_setKeyFocus( wp );
+    eventContextDispatch( ut, wp, ev );
+}
+
+
+static void viewport_layout( GWidget* wp )
+{
+    GLViewEvent me;
+    INIT_EVENT( me, GLV_EVENT_RESIZE, 0, 0, wp->area.w, wp->area.h );
+    eventContextDispatch( glEnv.guiUT, wp, &me );
+    widget_fullAreaLayout( wp );
+}
+
+
+static void viewport_render( GWidget* wp )
+{
+    UThread* ut = glEnv.guiUT;
+    const UBuffer* ctx = ur_buffer( wp->eventCtxN );
+    const UCell* cell = ur_ctxCell( ctx, EI_DRAW );
+    if( ur_is(cell, UT_DRAWPROG) )
+    {
+        ur_runDrawProg( ut, cell->series.buf );
+    }
+
+    widget_renderChildren( wp );
+}
+
+
+//----------------------------------------------------------------------------
+
+
 /*-wid-
     overlay layout  [margins]   children
             word!   coord!      block!
+
+    Place widgets over the parent area.
 
     Layout is 'hbox or 'vbox.
 */
@@ -2097,13 +2211,20 @@ static void overlay_layout( GWidget* wp )
     UThread* ut = glEnv.guiUT;
 
 
+    if( ! style )
+    {
+        // Delay layout until render.
+        wp->flags |= GW_UPDATE_LAYOUT;
+        return;
+    }
+
     save = ur_beginDP( &dpc );
 
     rc = style + CI_STYLE_START_DL;
     if( ur_is(rc, UT_BLOCK) )
         ur_compileDP( ut, rc, 1 );
 
-    wp->area = wp->parent->area;
+    //wp->area = wp->parent->area;
 
     if( wp->flags & WINDOW_HBOX )
         hbox_layout( wp );
@@ -2138,10 +2259,10 @@ static void overlay_render( GWidget* wp )
 GWidgetClass wclass_root =
 {
     "root",
-    root_make,          widget_free,        root_mark,
-    root_dispatch,      root_sizeHint,      widget_layoutNul,
-    root_render,        eventContextSelect,
-    0, 0
+    root_make,              widget_free,        root_mark,
+    root_dispatch,          root_sizeHint,      widget_layoutNul,
+    root_render,            eventContextSelect,
+    0, GW_UPDATE_LAYOUT
 };
 
 
@@ -2151,7 +2272,7 @@ GWidgetClass wclass_hbox =
     box_make,               widget_free,        widget_markChildren,
     widget_dispatch,        hbox_sizeHint,      hbox_layout,
     widget_renderChildren,  gui_areaSelect,
-    0, 0
+    0, GW_UPDATE_LAYOUT | GW_NO_INPUT
 };
 
 
@@ -2161,7 +2282,7 @@ GWidgetClass wclass_vbox =
     box_make,               widget_free,        widget_markChildren,
     widget_dispatch,        vbox_sizeHint,      vbox_layout,
     widget_renderChildren,  gui_areaSelect,
-    0, 0
+    0, GW_UPDATE_LAYOUT | GW_NO_INPUT
 };
 
 
@@ -2171,17 +2292,27 @@ GWidgetClass wclass_grid =
     grid_make,              widget_free,        widget_markChildren,
     widget_dispatch,        grid_sizeHint,      grid_layout,
     widget_renderChildren,  gui_areaSelect,
-    0, 0
+    0, GW_UPDATE_LAYOUT | GW_NO_INPUT
 };
 
 
 GWidgetClass wclass_window =
 {
     "window",
-    window_make,        widget_free,        window_mark,
-    window_dispatch,    window_sizeHint,    window_layout,
-    window_render,      eventContextSelect,
-    0, 0
+    window_make,            widget_free,        window_mark,
+    window_dispatch,        window_sizeHint,    window_layout,
+    window_render,          eventContextSelect,
+    0, GW_UPDATE_LAYOUT | GW_SELF_LAYOUT
+};
+
+
+GWidgetClass wclass_viewport =
+{
+    "viewport",
+    viewport_make,          widget_free,        viewport_mark,
+    viewport_dispatch,      expand_sizeHint,    viewport_layout,
+    viewport_render,        eventContextSelect,
+    0, GW_UPDATE_LAYOUT
 };
 
 
@@ -2191,7 +2322,7 @@ GWidgetClass wclass_overlay =
     overlay_make,       widget_free,        overlay_mark,
     widget_dispatch,    window_sizeHint,    overlay_layout,
     overlay_render,     gui_areaSelect,
-    0, 0
+    0, GW_UPDATE_LAYOUT //| GW_SELF_LAYOUT
 };
 
 
@@ -2201,7 +2332,7 @@ GWidgetClass wclass_expand =
     expand_make,        widget_free,        widget_markNul,
     widget_dispatch,    expand_sizeHint,    widget_layoutNul,
     widget_renderNul,   gui_areaSelect,
-    0, 0
+    0, GW_UPDATE_LAYOUT
 };
 
 
@@ -2222,23 +2353,25 @@ extern GWidgetClass wclass_slider;
 
 void gui_addStdClasses()
 {
-    GWidgetClass* classes[ 13 ];
+    GWidgetClass* classes[ 14 ];
+    GWidgetClass** wp = classes;
 
-    classes[0]  = &wclass_root;
-    classes[1]  = &wclass_expand;
-    classes[2]  = &wclass_hbox;
-    classes[3]  = &wclass_vbox;
-    classes[4]  = &wclass_grid;
-    classes[5]  = &wclass_window;
-    classes[6]  = &wclass_overlay;
-    classes[7]  = &wclass_button;
-    classes[8]  = &wclass_checkbox;
-    classes[9]  = &wclass_label;
-    classes[10] = &wclass_lineedit;
-    classes[11] = &wclass_list;
-    classes[12] = &wclass_slider;
+    *wp++ = &wclass_root;
+    *wp++ = &wclass_expand;
+    *wp++ = &wclass_hbox;
+    *wp++ = &wclass_vbox;
+    *wp++ = &wclass_grid;
+    *wp++ = &wclass_window;
+    *wp++ = &wclass_viewport;
+    *wp++ = &wclass_overlay;
+    *wp++ = &wclass_button;
+    *wp++ = &wclass_checkbox;
+    *wp++ = &wclass_label;
+    *wp++ = &wclass_lineedit;
+    *wp++ = &wclass_list;
+    *wp++ = &wclass_slider;
 
-    gui_addWidgetClasses( classes, 13 );
+    gui_addWidgetClasses( classes, wp - classes );
 }
 
 
@@ -2418,16 +2551,14 @@ void gui_show( GWidget* wp, int show )
         if( hidden )
         {
             wp->flags &= ~GW_HIDDEN;
-            if( wp->parent )
-                markLayoutDirty( wp->parent );
+            markLayoutDirty( wp->parent );
         }
     }
     else if( ! hidden )
     {
         gui_removeFocus( wp );
         wp->flags |= GW_HIDDEN;
-        if( wp->parent )
-            markLayoutDirty( wp->parent );
+        markLayoutDirty( wp->parent );
     }
 }
 

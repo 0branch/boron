@@ -143,7 +143,8 @@ struct GWidgetClass
 #define GW_RECYCLE       0x0008
 #define GW_NO_SPACE      0x0010
 #define GW_NO_INPUT      0x0020
-#define GW_DESTRUCT      0x0040
+#define GW_SELF_LAYOUT   0x0040
+#define GW_DESTRUCT      0x0080
 #define GW_FLAG_USER1    0x0100
 #define GW_FLAG_USER2    0x0200
 #define GW_FLAG_USER3    0x0400
@@ -162,6 +163,7 @@ struct GWidget
 };
 
 
+// gui_hasFocus values
 #define GW_FOCUS_KEY     0x0001
 #define GW_FOCUS_MOUSE   0x0002
 #define GW_FOCUS_GRAB    0x0004
