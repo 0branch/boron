@@ -546,12 +546,16 @@ static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC,
 
     ctx = ur_buffer( wp->eventCtxN );   // Re-aquire
     if( _remapKeys( ut, ur_ctxCell( ctx, EI_KEY_DOWN ), atoms + EI_COUNT ) )
-        mask |= GLV_EVENT_KEY_DOWN;
-    if( _remapKeys( ut, ur_ctxCell( ctx, EI_KEY_UP   ), atoms + EI_COUNT ) )
-        mask |= GLV_EVENT_KEY_UP;
+        mask |= 1 << EI_KEY_DOWN;
+    if( _remapKeys( ut, ur_ctxCell( ctx, EI_KEY_UP ), atoms + EI_COUNT ) )
+        mask |= 1 << EI_KEY_UP;
 
     if( eventMask )
+    {
+        if( ur_is( ur_ctxCell(ctx, EI_MOUSE_MOVE), UT_BLOCK ) )
+            mask |= 1 << EI_MOUSE_MOVE;
         *eventMask = mask;
+    }
 
     return UR_OK;
 }
@@ -982,6 +986,9 @@ void gui_setKeyFocus( GWidget* wp )
 }
 
 
+/*
+  \param keyFocus  Also set keyboard focus if non-zero.
+*/
 void gui_grabMouse( GWidget* wp, int keyFocus )
 {
     GUIRoot* ui = (GUIRoot*) gui_root( wp );
@@ -2069,6 +2076,7 @@ static void window_render( GWidget* wp )
 
 
 #define VIEWPORT_KEYS   GW_FLAG_USER1
+#define VIEWPORT_MOVE   GW_FLAG_USER2
 
 
 /*-wid-
@@ -2098,8 +2106,10 @@ static GWidget* viewport_make( UThread* ut, UBlockIter* bi,
 
     if( _installEventContext( ut, wp, arg[0], &emask ) )
     {
-        if( emask & (GLV_EVENT_KEY_DOWN | GLV_EVENT_KEY_UP) )
+        if( emask & ((1 << EI_KEY_DOWN) | (1 << EI_KEY_UP)) )
             wp->flags |= VIEWPORT_KEYS;
+        if( emask & (1 << EI_MOUSE_MOVE) )
+            wp->flags |= VIEWPORT_MOVE;
         return wp;
     }
 
@@ -2117,8 +2127,20 @@ static void viewport_mark( UThread* ut, GWidget* wp )
 
 static void viewport_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
-    if( (ev->type == GLV_EVENT_BUTTON_DOWN) && (wp->flags & VIEWPORT_KEYS) )
-        gui_setKeyFocus( wp );
+    if( ev->type == GLV_EVENT_BUTTON_DOWN )
+    {
+        int trackKeys = wp->flags & VIEWPORT_KEYS;
+        if( wp->flags & VIEWPORT_MOVE )
+            gui_grabMouse( wp, trackKeys );
+        else if( trackKeys )
+            gui_setKeyFocus( wp );
+    }
+    else if( ev->type == GLV_EVENT_BUTTON_UP )
+    {
+        if( wp->flags & VIEWPORT_MOVE )
+            gui_ungrabMouse( wp );
+    }
+
     eventContextDispatch( ut, wp, ev );
 }
 
