@@ -2004,11 +2004,6 @@ static void window_layout( GWidget* wp )
 
     save = ur_beginDP( &dpc );
 
-    rc = style + CI_STYLE_START_DL;
-    if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
-
-
     rc = style + CI_STYLE_WINDOW_MARGIN;
     if( ur_is(rc, UT_COORD) )
         setBoxMargins( (Box*) ep, rc );
@@ -2045,6 +2040,7 @@ static void window_layout( GWidget* wp )
 static void window_render( GWidget* wp )
 {
     EX_PTR;
+    UCell* rc;
     int drag;
 
 
@@ -2056,6 +2052,10 @@ static void window_render( GWidget* wp )
         wp->flags &= ~GW_UPDATE_LAYOUT;
         window_layout( wp );
     }
+
+    rc = glEnv.guiStyle + CI_STYLE_START_DL;
+    if( ur_is(rc, UT_DRAWPROG) )
+        ur_runDrawProg( glEnv.guiUT, ur_drawProgN(rc) );
 
     drag = wp->flags & WINDOW_DRAG;
     if( drag )
@@ -2228,12 +2228,10 @@ static void overlay_layout( GWidget* wp )
     EX_PTR;
     DPCompiler* save;
     DPCompiler dpc;
-    UCell* rc;
-    UCell* style = glEnv.guiStyle;
     UThread* ut = glEnv.guiUT;
 
 
-    if( ! style )
+    if( ! glEnv.guiStyle )
     {
         // Delay layout until render.
         wp->flags |= GW_UPDATE_LAYOUT;
@@ -2241,10 +2239,6 @@ static void overlay_layout( GWidget* wp )
     }
 
     save = ur_beginDP( &dpc );
-
-    rc = style + CI_STYLE_START_DL;
-    if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
 
     //wp->area = wp->parent->area;
 
@@ -2260,6 +2254,7 @@ static void overlay_layout( GWidget* wp )
 static void overlay_render( GWidget* wp )
 {
     EX_PTR;
+    UCell* rc;
 
     if( ! (glEnv.guiStyle = gui_style( glEnv.guiUT )) )
         return;
@@ -2269,6 +2264,10 @@ static void overlay_render( GWidget* wp )
         wp->flags &= ~GW_UPDATE_LAYOUT;
         overlay_layout( wp );
     }
+
+    rc = glEnv.guiStyle + CI_STYLE_START_DL;
+    if( ur_is(rc, UT_DRAWPROG) )
+        ur_runDrawProg( glEnv.guiUT, ur_drawProgN(rc) );
 
     ur_runDrawProg( glEnv.guiUT, ep->dp[0] );
     widget_renderChildren( wp );

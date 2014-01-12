@@ -35,7 +35,7 @@ gui-style-proto: context [
     area:
 
     ; Display lists & sizes
-    start-dl:
+    start-dl:           ; Compiled by user.
     window-margin:
     window:
     button-size:
