@@ -677,8 +677,8 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
             // coord elements: x, y, button
             ur_setId(val, UT_COORD);
             val->coord.len  = 3;
-            val->coord.n[0] = event->x - wp->area.x;
-            val->coord.n[1] = event->y - wp->area.y;
+            val->coord.n[0] = event->x /*- wp->area.x*/;
+            val->coord.n[1] = event->y /*- wp->area.y*/;
             val->coord.n[2] = mapButton( event->code );
             break;
 
@@ -690,8 +690,8 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
             // coord elements: x, y, button
             ur_setId(val, UT_COORD);
             val->coord.len  = 3;
-            val->coord.n[0] = event->x - wp->area.x;
-            val->coord.n[1] = event->y - wp->area.y;
+            val->coord.n[0] = event->x /*- wp->area.x*/;
+            val->coord.n[1] = event->y /*- wp->area.y*/;
             val->coord.n[2] = mapButton( event->code );
             break;
 
@@ -703,9 +703,9 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
             // coord elements: x, y, dx, dy, btn-mask
             ur_setId(val, UT_COORD);
             val->coord.len  = 5;
-            val->coord.n[0] = event->x - wp->area.x;
+            val->coord.n[0] = event->x /*- wp->area.x*/;
+            val->coord.n[1] = event->y /*- wp->area.y*/;
             //val->coord.n[1] = (ui->rootH - event->y - 1) - wp->y;
-            val->coord.n[1] = event->y - wp->area.y;
             val->coord.n[2] = glEnv.mouseDeltaX;
             val->coord.n[3] = glEnv.mouseDeltaY;
             val->coord.n[4] = event->state;
