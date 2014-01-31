@@ -1,6 +1,9 @@
 ; m2 Linux-g++ template
 
 
+system-qt: true
+qt-version: 4
+
 linux:
 unix:  func [blk] [do blk]
 
@@ -14,6 +17,10 @@ generate_makefile: does [
     ]
 
     emit do_tags copy gnu_header
+    emit pick [
+        {MOC      = moc-qt4^/QTINC    = /usr/include^/^/}
+        {MOC      = $(QTDIR)/bin/moc^/QTINC    = $(QTDIR)/include^/^/}
+    ] system-qt
 
     emit "^/#------ Target settings"
     foreach t targets [emit "^/^/" t/macro_text]
@@ -46,36 +53,64 @@ generate_makefile: does [
 
 
 qt-includes: context [
-   gui:     does [ include_from {$(QTINC)/QtGui} ]
-   network: does [ include_from {$(QTINC)/QtNetwork} ]
-   opengl:  does [ include_from {$(QTINC)/QtOpenGL} ]
-   xml:     does [ include_from {$(QTINC)/QtXml} ]
-   svg:     does [ include_from {$(QTINC)/QtSvg} ]
-   sql:     does [ include_from {$(QTINC)/QtSql} ]
-   support: does [ include_from {$(QTINC)/Qt3Support}
-                   cxxflags {-DQT3_SUPPORT} ]
+    concurrent: does [ include_from {$(QTINC)/QtConcurrent} ]
+    gui: does [
+         include_from {$(QTINC)/QtGui}
+         if eq? 5 qt-version [include_from {$(QTINC)/QtWidgets}]
+    ]
+    network:    does [ include_from {$(QTINC)/QtNetwork} ]
+    opengl:     does [ include_from {$(QTINC)/QtOpenGL} ]
+    xml:        does [ include_from {$(QTINC)/QtXml} ]
+    svg:        does [ include_from {$(QTINC)/QtSvg} ]
+    sql:        does [ include_from {$(QTINC)/QtSql} ]
+    support:    does [ include_from {$(QTINC)/Qt3Support}
+                       cxxflags {-DQT3_SUPPORT} ]
 ]
 
-qt-libraries: context [
-   core:    { QtCore}
-   gui:     { QtGui}
-   network: { QtNetwork}
-   opengl:  { QtOpenGL}
-   xml:     { QtXml}
-   svg:     { QtSvg}
-   sql:     { QtSql}
-   support: { Qt3Support}
-]
-
-qt-debug-libraries: context [
-   core:    { QtCore_debug}
-   gui:     { QtGui_debug}
-   network: { QtNetwork_debug}
-   opengl:  { QtOpenGL_debug}
-   xml:     { QtXml_debug}
-   svg:     { QtSvg_debug}
-   sql:     { QtSql_debug}
-   support: { Qt3Support_debug}
+either eq? 5 qt-version [
+    qt-libraries: context [
+        concurrent: " Qt5Concurrent"
+        core:    " Qt5Core"
+        gui:     " Qt5Widgets Qt5Gui"
+        network: " Qt5Network"
+        opengl:  " Qt5OpenGL"
+        svg:     " Qt5Svg"
+        sql:     " Qt5Sql"
+        widgets: " Qt5Widgets"
+        xml:     " Qt5Xml"
+    ]
+    qt-debug-libraries: context [
+        concurrent: "Qt5Concurrent_debug"
+        core:    "Qt5Core_debug"
+        gui:     "Qt5Widgets_debug Qt5Gui_debug"
+        network: "Qt5Network_debug"
+        opengl:  "Qt5OpenGL_debug"
+        svg:     "Qt5Svg_debug"
+        sql:     "Qt5Sql_debug"
+        widgets: "Qt5Widgets_debug"
+        xml:     "Qt5Xml_debug"
+    ]
+][
+    qt-libraries: context [
+        core:    "QtCore"
+        gui:     "QtGui"
+        network: "QtNetwork"
+        opengl:  "QtOpenGL"
+        xml:     "QtXml"
+        svg:     "QtSvg"
+        sql:     "QtSql"
+        support: "Qt3Support"
+    ]
+    qt-debug-libraries: context [
+        core:    "QtCore_debug"
+        gui:     "QtGui_debug"
+        network: "QtNetwork_debug"
+        opengl:  "QtOpenGL_debug"
+        xml:     "QtXml_debug"
+        svg:     "QtSvg_debug"
+        sql:     "QtSql_debug"
+        support: "Qt3Support_debug"
+    ]
 ]
 
 
@@ -116,6 +151,7 @@ exe_target: make target_env
             include_from {$(QTINC)}
             include_from {$(QTINC)/QtCore}
             do bind cfg/qt qt-includes
+            if eq? 5 qt-version [cxxflags {-fPIC}]
             if cfg/release [
                 cxxflags {-DQT_NO_DEBUG}
             ]
@@ -127,21 +163,25 @@ exe_target: make target_env
         ]
     ]
 
-    configure: does [
+    configure: func [| qt-libs] [
         output_file: rejoin [output_dir name]
         do config
         if cfg/qt [
-            append qt4-libs: copy cfg/qt 'core
-            
-          ; libs_from "$(QTDIR)/lib" 
-            libs rejoin bind qt4-libs either cfg/debug
-                    [qt-debug-libraries]
-                    [qt-libraries]
+            qt-libs: copy cfg/qt
+            ifn find qt-libs 'core [append qt-libs 'core]
+
+            qt-libs: rejoin bind qt-libs
+                either cfg/debug [qt-debug-libraries] [qt-libraries]
+
+            either system-qt [
+                libs qt-libs
+            ][
+                libs_from "$(QTDIR)/lib" qt-libs
+            ]
         ]
     ]
 
-    macro_text: func []
-    [
+    macro_text: does [
         ifn empty? menv_aflags [
             emit [uc_name "_AFLAGS   = " menv_aflags eol]
         ]
@@ -272,11 +312,6 @@ LINK     = gcc
 LINK_CXX = g++
 TAR      = tar -cf
 GZIP     = gzip -9f
-
-MOC      = moc-qt4
-QTINC    = /usr/include
-# MOC      = $(QTDIR)/bin/moc
-# QTINC    = $(QTDIR)/include
 
 }
 ;#------ Project-wide settings

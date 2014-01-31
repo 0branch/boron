@@ -2,6 +2,7 @@
 
 
 embed-manifest: true
+qt-version: 4
 
 win32: func [blk] [do blk]
 
@@ -45,39 +46,70 @@ generate_makefile: does [
 
 
 qt-includes: context [
-   gui:     does [ include_from {$(QTDIR)\include\QtGui} ]
-   network: does [ include_from {$(QTDIR)\include\QtNetwork} ]
-   opengl:  does [ include_from {$(QTDIR)\include\QtOpenGL} ]
-   xml:     does [ include_from {$(QTDIR)\include\QtXml} ]
-   svg:     does [ include_from {$(QTDIR)\include\QtSvg} ]
-   sql:     does [ include_from {$(QTDIR)\include\QtSql} ]
-   support: does [ include_from {$(QTDIR)\include\Qt3Support}
-                   cxxflags {-DQT3_SUPPORT} ]
+    concurrent: does [ include_from {$(QTDIR)\include\QtConcurrent} ]
+    gui: does [
+        include_from {$(QTDIR)\include\QtGui}
+        if eq? 5 qt-version [include_from {$(QTDIR)\include\QtWidgets}]
+    ]
+    network: does [ include_from {$(QTDIR)\include\QtNetwork} ]
+    opengl:  does [ include_from {$(QTDIR)\include\QtOpenGL} ]
+    xml:     does [ include_from {$(QTDIR)\include\QtXml} ]
+    svg:     does [ include_from {$(QTDIR)\include\QtSvg} ]
+    sql:     does [ include_from {$(QTDIR)\include\QtSql} ]
+    support: does [ include_from {$(QTDIR)\include\Qt3Support}
+                    cxxflags {-DQT3_SUPPORT} ]
 ]
 
-qt-libraries: context [
-   core:    { QtCore4}
-   gui:     { QtGui4}
-   network: { QtNetwork4}
-   opengl:  { QtOpenGL4}
-   xml:     { QtXml4}
-   svg:     { QtSvg4}
-   sql:     { QtSql4}
-   support: { Qt3Support4}
-   main:    { qtmain}
-]
+either eq? 5 qt-version [
+    qt-libraries: context [
+       concurrent: " Qt5Concurrent"
+       core:    " Qt5Core"
+       gui:     " Qt5Gui Qt5Widgets"
+       network: " Qt5Network"
+       opengl:  " Qt5OpenGL"
+       xml:     " Qt5Xml"
+       svg:     " Qt5Svg"
+       sql:     " Qt5Sql"
+       main:    " qtmain"
+    ]
 
-qt-debug-libraries: context [
-   core:    { QtCored4}
-   gui:     { QtGuid4}
-   network: { QtNetworkd4}
-   opengl:  { QtOpenGLd4}
-   xml:     { QtXmld4}
-   xml:     { QtXmld4}
-   svg:     { QtSvgd4}
-   sql:     { QtSqld4}
-   support: { Qt3Supportd4}
-   main:    { qtmaind}
+    qt-debug-libraries: context [
+       concurrent: " Qt5Concurrentd"
+       core:    " Qt5Cored"
+       gui:     " Qt5Guid Qt5Widgetsd"
+       network: " Qt5Networkd"
+       opengl:  " Qt5OpenGLd"
+       xml:     " Qt5Xmld"
+       xml:     " Qt5Xmld"
+       svg:     " Qt5Svgd"
+       sql:     " Qt5Sqld"
+       main:    " qtmaind"
+    ]
+][
+    qt-libraries: context [
+       core:    " QtCore4"
+       gui:     " QtGui4"
+       network: " QtNetwork4"
+       opengl:  " QtOpenGL4"
+       xml:     " QtXml4"
+       svg:     " QtSvg4"
+       sql:     " QtSql4"
+       support: " Qt3Support4"
+       main:    " qtmain"
+    ]
+
+    qt-debug-libraries: context [
+       core:    " QtCored4"
+       gui:     " QtGuid4"
+       network: " QtNetworkd4"
+       opengl:  " QtOpenGLd4"
+       xml:     " QtXmld4"
+       xml:     " QtXmld4"
+       svg:     " QtSvgd4"
+       sql:     " QtSqld4"
+       support: " Qt3Supportd4"
+       main:    " qtmaind"
+    ]
 ]
 
 
@@ -97,7 +129,7 @@ exe_target: make target_env
 
         cflags {/nologo}
         cxxflags {/EHsc}
-        lflags {/nologo /incremental:no}
+        lflags {/nologo}    ; { /incremental:no}
 
         either cfg_console [
             lflags {/subsystem:console}
@@ -119,7 +151,7 @@ exe_target: make target_env
 
         if cfg/release [
             cflags {/MD}
-            cflags {-O1 -DNDEBUG}
+            cflags {-O2 -DNDEBUG}
         ]
 
         if cfg/opengl [
@@ -146,9 +178,9 @@ exe_target: make target_env
         do config
         ;libs {user32}    ; gdi32
         if cfg/qt [
-            append qt4-libs: copy cfg/qt [core main]
+            append qt-libs: copy cfg/qt [core main]
             libs_from %"$(QTDIR)/lib" 
-                rejoin bind qt4-libs
+                rejoin bind qt-libs
                     either cfg/debug [qt-debug-libraries] [qt-libraries]
 
             libs {comdlg32 winspool advapi32 shell32 ole32}
@@ -168,7 +200,7 @@ exe_target: make target_env
         remove str
     ]
 
-    macro_text: func [] [
+    macro_text: does [
         ifn empty? menv_aflags [
             emit [uc_name "_AFLAGS   = " menv_aflags eol]
         ]
@@ -204,7 +236,7 @@ exe_target: make target_env
         emit [
             eol output_file ": " obj_macro local_libs link_libs
             sub-project-libs link_libs
-            {^/^-$(LINK) /out:$@ $(} uc_name {_LFLAGS) } obj_macro
+            {^/^-$(LINK) /machine:x86 /out:$@ $(} uc_name {_LFLAGS) } obj_macro
             { $(} uc_name {_LIBS)} eol
         ]
         if embed-manifest [
@@ -250,9 +282,9 @@ shlib_target: make exe_target [
         ;cflags {-MT}
         lflags {/DLL}
         if cfg/qt [
-            append qt4-libs: copy cfg/qt [core]
+            append qt-libs: copy cfg/qt [core]
             libs_from %"$(QTDIR)/lib" 
-                rejoin bind qt4-libs
+                rejoin bind qt-libs
                     either cfg/debug [qt-debug-libraries] [qt-libraries]
         ]
     ]
