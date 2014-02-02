@@ -160,5 +160,6 @@ EXPORTS
     find_pattern_uint16_t   @158
     find_pattern_ic_uint16_t    @159
     boron_overrideCFunc     @160
-    cfunc_free              @161
-;   ur_stringToTimeCode     @162
+    boron_eval1             @161
+    cfunc_free              @162
+;   ur_stringToTimeCode     @163

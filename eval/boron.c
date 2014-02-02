@@ -42,9 +42,6 @@ The Boron programmer interface.
 */
 
 
-int boron_doBlock( UThread* ut, const UCell* ec, UCell* res );
-int boron_eval1( UThread* ut, UCell* blkC, UCell* res );
-
 #define DT(dt)          (ut->types[ dt ])
 #define SERIES_DT(dt)   ((const USeriesType*) (ut->types[ dt ]))
 
@@ -1310,7 +1307,7 @@ traceError:
 }
 
 
-/*
+/**
   Evaluate one value in block.
 
   blkC->series.it is advanced.
