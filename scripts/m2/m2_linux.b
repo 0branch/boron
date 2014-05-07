@@ -60,11 +60,13 @@ qt-includes: context [
     ]
     network:    does [ include_from {$(QTINC)/QtNetwork} ]
     opengl:     does [ include_from {$(QTINC)/QtOpenGL} ]
-    xml:        does [ include_from {$(QTINC)/QtXml} ]
+    printsupport:
+                does [ include_from {$(QTINC)/QtPrintSupport}
     svg:        does [ include_from {$(QTINC)/QtSvg} ]
     sql:        does [ include_from {$(QTINC)/QtSql} ]
     support:    does [ include_from {$(QTINC)/Qt3Support}
                        cxxflags {-DQT3_SUPPORT} ]
+    xml:        does [ include_from {$(QTINC)/QtXml} ]
 ]
 
 either eq? 5 qt-version [
@@ -74,6 +76,7 @@ either eq? 5 qt-version [
         gui:     " Qt5Widgets Qt5Gui"
         network: " Qt5Network"
         opengl:  " Qt5OpenGL"
+        printsupport: " Qt5PrintSupport"
         svg:     " Qt5Svg"
         sql:     " Qt5Sql"
         widgets: " Qt5Widgets"
@@ -85,6 +88,7 @@ either eq? 5 qt-version [
         gui:     " Qt5Widgets_debug Qt5Gui_debug"
         network: " Qt5Network_debug"
         opengl:  " Qt5OpenGL_debug"
+        printsupport: " Qt5PrintSupport_debug"
         svg:     " Qt5Svg_debug"
         sql:     " Qt5Sql_debug"
         widgets: " Qt5Widgets_debug"
@@ -96,20 +100,20 @@ either eq? 5 qt-version [
         gui:     " QtGui"
         network: " QtNetwork"
         opengl:  " QtOpenGL"
-        xml:     " QtXml"
         svg:     " QtSvg"
         sql:     " QtSql"
         support: " Qt3Support"
+        xml:     " QtXml"
     ]
     qt-debug-libraries: context [
         core:    " QtCore_debug"
         gui:     " QtGui_debug"
         network: " QtNetwork_debug"
         opengl:  " QtOpenGL_debug"
-        xml:     " QtXml_debug"
         svg:     " QtSvg_debug"
         sql:     " QtSql_debug"
         support: " Qt3Support_debug"
+        xml:     " QtXml_debug"
     ]
 ]
 

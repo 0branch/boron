@@ -53,11 +53,13 @@ qt-includes: context [
     ]
     network: does [ include_from {$(QTDIR)\include\QtNetwork} ]
     opengl:  does [ include_from {$(QTDIR)\include\QtOpenGL} ]
-    xml:     does [ include_from {$(QTDIR)\include\QtXml} ]
+    printsupport:
+             does [ include_from {$(QTDIR)\include\QtPrintSupport} ]
     svg:     does [ include_from {$(QTDIR)\include\QtSvg} ]
     sql:     does [ include_from {$(QTDIR)\include\QtSql} ]
     support: does [ include_from {$(QTDIR)\include\Qt3Support}
                     cxxflags {-DQT3_SUPPORT} ]
+    xml:     does [ include_from {$(QTDIR)\include\QtXml} ]
 ]
 
 either eq? 5 qt-version [
@@ -67,10 +69,11 @@ either eq? 5 qt-version [
        gui:     " Qt5Gui Qt5Widgets"
        network: " Qt5Network"
        opengl:  " Qt5OpenGL"
-       xml:     " Qt5Xml"
+       printsupport: " Qt5PrintSupport"
        svg:     " Qt5Svg"
        sql:     " Qt5Sql"
        main:    " qtmain"
+       xml:     " Qt5Xml"
     ]
 
     qt-debug-libraries: context [
@@ -79,11 +82,11 @@ either eq? 5 qt-version [
        gui:     " Qt5Guid Qt5Widgetsd"
        network: " Qt5Networkd"
        opengl:  " Qt5OpenGLd"
-       xml:     " Qt5Xmld"
-       xml:     " Qt5Xmld"
+       printsupport: " Qt5PrintSupportd"
        svg:     " Qt5Svgd"
        sql:     " Qt5Sqld"
        main:    " qtmaind"
+       xml:     " Qt5Xmld"
     ]
 ][
     qt-libraries: context [
@@ -91,11 +94,11 @@ either eq? 5 qt-version [
        gui:     " QtGui4"
        network: " QtNetwork4"
        opengl:  " QtOpenGL4"
-       xml:     " QtXml4"
        svg:     " QtSvg4"
        sql:     " QtSql4"
        support: " Qt3Support4"
        main:    " qtmain"
+       xml:     " QtXml4"
     ]
 
     qt-debug-libraries: context [
@@ -103,12 +106,11 @@ either eq? 5 qt-version [
        gui:     " QtGuid4"
        network: " QtNetworkd4"
        opengl:  " QtOpenGLd4"
-       xml:     " QtXmld4"
-       xml:     " QtXmld4"
        svg:     " QtSvgd4"
        sql:     " QtSqld4"
        support: " Qt3Supportd4"
        main:    " qtmaind"
+       xml:     " QtXmld4"
     ]
 ]
 
