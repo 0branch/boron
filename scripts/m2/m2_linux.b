@@ -61,7 +61,7 @@ qt-includes: context [
     network:    does [ include_from {$(QTINC)/QtNetwork} ]
     opengl:     does [ include_from {$(QTINC)/QtOpenGL} ]
     printsupport:
-                does [ include_from {$(QTINC)/QtPrintSupport}
+                does [ include_from {$(QTINC)/QtPrintSupport} ]
     svg:        does [ include_from {$(QTINC)/QtSvg} ]
     sql:        does [ include_from {$(QTINC)/QtSql} ]
     support:    does [ include_from {$(QTINC)/Qt3Support}
