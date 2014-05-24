@@ -468,10 +468,9 @@ Here is a simple TCP server which sends clients a message::
 
     s: open "tcp://:6044"
     forever [
-        con: read wait s [
-            write con "Hello, client.^/"
-            close con
-        ]
+        con: read wait s
+        write con "Hello, client.^/"
+        close con
     ]
 
 And the client::
