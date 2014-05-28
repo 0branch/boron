@@ -25,6 +25,7 @@ generate_makefile: does [
     emit expand_list_gnu header_files_used
 
     emit "^/^/#------ Build rules^/^/all:"
+    emit-sub-project-targets
     foreach t targets [emit [' ' t/output_file]]
     emit eol
 

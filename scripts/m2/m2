@@ -338,6 +338,13 @@ m2: context
 		out
 	]
 
+	emit-sub-project-targets: func [| sub sep] [
+		sep: pick ['\' '/'] windows?
+		foreach sub sub-projects [
+			emit [' ' sub/path sep sub/target]
+		]
+	]
+
 	emit-sub-projects: func [| sub sep qt m2-make] [
 		foreach sub sub-projects [
 			either windows?
