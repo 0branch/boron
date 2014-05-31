@@ -75,6 +75,7 @@ struct DrawTextState
     GLfloat y;
     GLfloat marginL;
     GLfloat marginR;
+    int emitTris;
 };
 
 

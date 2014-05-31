@@ -945,6 +945,7 @@ void vbo_drawTextInit( DrawTextState* ds, TexFont* tf, GLfloat x, GLfloat y )
     ds->y       = y;
     ds->marginL = x;
     ds->marginR = 90000.0f;
+    ds->emitTris = 0;
 }
 
 
@@ -1016,7 +1017,17 @@ int vbo_drawText( DrawTextState* ds,
                 VB_GLYPH_ATTR( min_s, min_t, gx,      gy );
                 VB_GLYPH_ATTR( max_s, min_t, gx + gw, gy );
                 VB_GLYPH_ATTR( max_s, max_t, gx + gw, gy + gh );
-                VB_GLYPH_ATTR( min_s, max_t, gx,      gy + gh );
+
+                if( ds->emitTris )
+                {
+                    VB_GLYPH_ATTR( max_s, max_t, gx + gw, gy + gh );
+                    VB_GLYPH_ATTR( min_s, max_t, gx,      gy + gh );
+                    VB_GLYPH_ATTR( min_s, min_t, gx,      gy );
+                }
+                else
+                {
+                    VB_GLYPH_ATTR( min_s, max_t, gx,      gy + gh );
+                }
 
                 ++drawn;
             }
@@ -1133,7 +1144,7 @@ static void dp_emitTextWord( DPCompiler* emit, const UCell* wordC )
    The bi->buf member is not set.
    Uses glEnv.tmpStr.
 */
-static void dp_toString( UThread* ut, const UCell* cell, UBinaryIter* bi )
+void dp_toString( UThread* ut, const UCell* cell, UBinaryIter* bi )
 {
     UBuffer* str;
 

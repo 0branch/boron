@@ -346,7 +346,7 @@ static int _textureKeyword( UAtom name, TextureDef* def )
   texture! [
     raster!/coord!/int!/binary!/vector!
     'mipmap 'nearest 'linear 'repeat 'clamp
-    'gray 'rgb' 'rgba 'f32
+    'gray 'rgb 'rgba 'f32
   ]
 */
 int texture_make( UThread* ut, const UCell* from, UCell* res )

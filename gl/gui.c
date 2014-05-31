@@ -46,9 +46,11 @@
 extern void block_markBuf( UThread* ut, UBuffer* buf );
 extern int boron_doVoid( UThread* ut, const UCell* blkC );
 //void gui_dumpWidget( const GWidget* wp, int indent );
+extern int itemview_parse( UThread* ut, UBlockIter* bi, GWidget* wp );
 
 
 //#define REPORT_LAYOUT   1
+#define EVAL_PATH       1
 
 
 #define IGNORES_INPUT(wp)   (wp->flags & (GW_DISABLED | GW_NO_INPUT))
@@ -214,6 +216,14 @@ int gui_parseArgs( UThread* ut, UBlockIter* bi, const GWidgetClass* wc,
                    const uint8_t* pc, const UCell** args )
 {
     const UCell* command = bi->it++;
+#ifdef EVAL_PATH
+    UBuffer* pathArg;
+
+    assert( glEnv.guiArgBlkN != UR_INVALID_BUF );
+    pathArg = ur_buffer( glEnv.guiArgBlkN );
+    pathArg->used = 0;
+#endif
+
     while( 1 )
     {
         switch( *pc )
@@ -251,6 +261,15 @@ int gui_parseArgs( UThread* ut, UBlockIter* bi, const GWidgetClass* wc,
                         if( ! (cell = ur_wordCell( ut, cell )) )
                             return UR_THROW;
                     }
+#ifdef EVAL_PATH
+                    else if( ur_is(cell, UT_PATH) )
+                    {
+                        UCell* persist = ur_blkAppendNew( pathArg, UT_NONE );
+                        if( ! ur_pathCell( ut, cell, persist ) )
+                            return UR_THROW;
+                        cell = persist;
+                    }
+#endif
                     if( ! _matchMultTypes( pc, cell ) )
                         goto fail_mult;
                     *args++ = cell;
@@ -2363,6 +2382,7 @@ extern GWidgetClass wclass_label;
 extern GWidgetClass wclass_lineedit;
 extern GWidgetClass wclass_list;
 extern GWidgetClass wclass_slider;
+extern GWidgetClass wclass_itemview;
 /*
     "console",
     "option",
@@ -2374,7 +2394,7 @@ extern GWidgetClass wclass_slider;
 
 void gui_addStdClasses()
 {
-    GWidgetClass* classes[ 14 ];
+    GWidgetClass* classes[ 15 ];
     GWidgetClass** wp = classes;
 
     *wp++ = &wclass_root;
@@ -2391,6 +2411,7 @@ void gui_addStdClasses()
     *wp++ = &wclass_lineedit;
     *wp++ = &wclass_list;
     *wp++ = &wclass_slider;
+    *wp++ = &wclass_itemview;
 
     gui_addWidgetClasses( classes, wp - classes );
 }
@@ -2666,7 +2687,8 @@ GWidgetClass* gui_widgetClass( UAtom name )
 
 /*
   \param blkC       Valid block with widget layout language.
-  \param parent     Pointer to parent or zero if none.
+  \param parent     Pointer to parent or NULL if none.
+  \param result     If not NULL then place widget! or none! value here.
 
   \return UR_OK/UR_THROW
 */
@@ -2674,6 +2696,15 @@ int gui_makeWidgets( UThread* ut, const UCell* blkC, GWidget* parent,
                      UCell* result )
 {
     UBlockIter bi;
+
+#ifdef EVAL_PATH
+    if( glEnv.guiArgBlkN == UR_INVALID_BUF )
+    {
+        glEnv.guiArgBlkN = ur_makeBlock( ut, 4 );
+        ur_hold( glEnv.guiArgBlkN );
+    }
+#endif
+
     ur_blkSlice( ut, &bi, blkC );
     return _makeChildren( ut, &bi, parent, result );
 }

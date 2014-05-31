@@ -2658,6 +2658,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
 
     glEnv.view = 0;
     glEnv.guiUT = 0;
+    glEnv.guiArgBlkN = UR_INVALID_BUF;
     glEnv.prevMouseX = MOUSE_UNSET;
     glEnv.prevMouseY = MOUSE_UNSET;
     glEnv.guiThrow = 0;

@@ -118,7 +118,7 @@ demo-window: [
     ]
 ]
 
-view-cam: make camera [
+view-cam: make orbit-cam [
     fov:   60.0
     near:   1.0
     far: 9000.0

@@ -140,6 +140,7 @@ struct GLEnv
     GWidget* eventWidget;
     UThread* guiUT;
     UCell*   guiStyle;          // For GWidget layout & render.
+    UIndex   guiArgBlkN;        // For gui_parseArgs() path! results.
     UBuffer tmpBin;
     UBuffer tmpStr;
     UBuffer widgetClasses;
@@ -158,6 +159,7 @@ extern UThread* boron_makeEnvGL( UDatatype**, unsigned int dtCount );
 extern void boron_freeEnvGL( UThread* );
 
 void ur_markBlkN( UThread* ut, UIndex blkN );
+#define ur_markCtxN(ut,n)   ur_markBlkN(ut, n)
 
 UBuffer* ur_makeRaster( UThread*, int format, int w, int h, UCell* res );
 int      ur_rasterElementSize( const RasterHead* );
