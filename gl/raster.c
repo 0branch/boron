@@ -133,10 +133,32 @@ void ur_rasterBlit( const RasterHead* src, uint16_t* srcRect,
 
     if( src->format == dest->format )
     {
-        ses *= sr.w;
+        ses *= sr.w;        // Source byte copy length.
         while( sr.h-- )
         {
             memCpy( dp, sp, ses );
+            sp += sskip;
+            dp += dskip;
+        }
+    }
+    else if( src->format == UR_RAST_RGB && dest->format == UR_RAST_RGBA )
+    {
+        const char* end;
+
+        ses *= sr.w;        // Source byte copy length.
+        sskip -= ses;
+        dskip -= sr.w * des;
+
+        while( sr.h-- )
+        {
+            end = sp + ses;
+            while( sp != end )
+            {
+                *dp++ = *sp++;
+                *dp++ = *sp++;
+                *dp++ = *sp++;
+                *dp++ = 255;
+            }
             sp += sskip;
             dp += dskip;
         }

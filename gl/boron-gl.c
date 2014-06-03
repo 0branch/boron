@@ -1658,7 +1658,7 @@ CFUNC( cfunc_animate )
     blit
         dest    raster!
         src     raster!
-        pos     coord!  Desitination position
+        pos     coord!  Destination position and optional size
     return: dest
     group: data
 */
