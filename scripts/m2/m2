@@ -345,6 +345,14 @@ m2: context
 		]
 	]
 
+	emit-sub-project-clean: func [| sub cmd] [
+		cmd: pick [
+			["^-cd " sub/path " & nmake clean^/"]
+			["^-make -C " sub/path " clean^/"]
+		] windows?
+		foreach sub sub-projects [emit cmd]
+	]
+
 	emit-sub-projects: func [| sub sep qt m2-make] [
 		foreach sub sub-projects [
 			either windows?

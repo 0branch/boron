@@ -34,6 +34,7 @@ generate_makefile: does [
 
     emit [ "^/^/" do_tags copy gnu_other_rules ]
 
+    emit-sub-project-clean
     foreach t targets [ emit t/clean ]
 
     emit "^/^/#------ Compile rules^/^/"
