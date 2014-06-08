@@ -2756,8 +2756,10 @@ void boron_freeEnvGL( UThread* ut )
 #ifndef NO_AUDIO
         aud_shutdown();
 #endif
-        glv_destroy( gView );
+
+        // Free Boron before view since datatypes can make glDelete* calls.
         boron_freeEnv( ut );
+        glv_destroy( gView );
     }
 }
 
