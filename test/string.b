@@ -122,3 +122,13 @@ probe find sq slice u2 5
 
 ; Find does't work with utf8 series & latin1 value.
 ;probe find encode 'utf8 "Some Random Bits" "Random"
+
+
+print "---- find bitset!"
+sep: charset "/\"
+probe find a: "/tmp/path/file" sep
+probe find b: "c:\Temp\path\file" sep
+probe find c: "Not a path" sep
+probe find/last a sep
+probe find/last b sep
+probe find/last c sep

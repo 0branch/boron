@@ -1148,6 +1148,41 @@ UIndex ur_strFindChars( const UBuffer* str, UIndex start, UIndex end,
 }
 
 
+/**
+  Find the last character of a set in a string.
+
+  \param str        Valid string buffer.
+  \param start      Start index in str.
+  \param end        Ending index in str.
+  \param charSet    Bitset of characters to look for.
+  \param len        Byte length of charSet.
+
+  \return Last index where any characters in charSet are found or -1 if
+          none are found.
+*/
+UIndex ur_strFindCharsRev( const UBuffer* str, UIndex start, UIndex end,
+                           uint8_t* charSet, int len )
+{
+    if( ur_strIsUcs2(str) )
+    {
+        const uint16_t* it;
+        it = find_last_charset_uint16_t( str->ptr.u16 + start,
+                                         str->ptr.u16 + end, charSet, len );
+        if( it )
+            return it - str->ptr.u16;
+    }
+    else
+    {
+        const uint8_t* it;
+        it = find_last_charset_uint8_t( str->ptr.b + start,
+                                        str->ptr.b + end, charSet, len );
+        if( it )
+            return it - str->ptr.b;
+    }
+    return -1;
+}
+
+
 /*
   Returns first occurance of pattern or 0 if it is not found.
 */

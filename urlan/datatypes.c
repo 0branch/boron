@@ -3379,6 +3379,7 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
     {
         UBinaryIter bi;
         ur_binSlice( ut, &bi, val );
+        // TODO: Implement UR_FIND_LAST.
         if( ! ur_strIsUcs2(buf) )
         {
             const uint8_t* it = buf->ptr.b;
@@ -3391,7 +3392,12 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
     else if( ur_is(val, UT_BITSET) )
     {
         const UBuffer* bbuf = ur_bufferSer(val);
-        return ur_strFindChars( buf, si->it, si->end, bbuf->ptr.b, bbuf->used );
+        if( opt & UR_FIND_LAST )
+            return ur_strFindCharsRev( buf, si->it, si->end,
+                                       bbuf->ptr.b, bbuf->used );
+        else
+            return ur_strFindChars( buf, si->it, si->end,
+                                    bbuf->ptr.b, bbuf->used );
     }
     return -1;
 }

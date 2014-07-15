@@ -25,6 +25,12 @@ const uint8_t* find_charset_uint8_t( const uint8_t* it, const uint8_t* end,
 const uint16_t* find_charset_uint16_t( const uint16_t* it, const uint16_t* end,
                                        const uint8_t* cset, int csetLen );
 
+const uint8_t* find_last_charset_uint8_t( const uint8_t* it, const uint8_t* end,
+                                          const uint8_t* cset, int csetLen );
+const uint16_t* find_last_charset_uint16_t( const uint16_t* it,
+                                            const uint16_t* end,
+                                            const uint8_t* cset, int csetLen );
+
 const uint8_t* find_pattern_uint8_t( const uint8_t* it, const uint8_t* end,
                                const uint8_t* pit, const uint8_t* pend );
 const uint16_t* find_pattern_uint16_t( const uint16_t* it, const uint16_t* end,

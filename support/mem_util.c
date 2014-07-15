@@ -81,6 +81,29 @@ FIND_CHARSET(uint16_t)
 
 
 /*
+  Returns last occurance of any character in cset or 0 if none are found.
+  csetLen is the number of bytes in cset.
+*/
+#define FIND_LAST_CHARSET(T) \
+const T* find_last_charset_ ## T( const T* it, const T* end, \
+    const uint8_t* cset, int csetLen ) { \
+    T n; \
+    int index; \
+    while( it != end ) { \
+        --end; \
+        n = *end; \
+        index = n >> 3; \
+        if( (index < csetLen) && (cset[index] & (1 << (n & 7))) ) \
+            return end; \
+    } \
+    return 0; \
+}
+
+FIND_LAST_CHARSET(uint8_t)
+FIND_LAST_CHARSET(uint16_t)
+
+
+/*
   Returns first occurance of pattern or 0 if it is not found.
 
   TODO: Look at using a faster search algorithm such as Boyer-Moore or grep

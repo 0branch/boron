@@ -549,6 +549,8 @@ void     ur_strUppercase( UBuffer* str, UIndex start, UIndex send );
 UIndex   ur_strFindChar( const UBuffer*, UIndex start, UIndex end, int ch );
 UIndex   ur_strFindChars( const UBuffer*, UIndex start, UIndex end,
                           uint8_t* charSet, int len );
+UIndex   ur_strFindCharsRev( const UBuffer*, UIndex start, UIndex end,
+                             uint8_t* charSet, int len );
 UIndex   ur_strFind( const USeriesIter*, const USeriesIter*, int matchCase );
 UIndex   ur_strMatch( const USeriesIter*, const USeriesIter*, int matchCase );
 int      ur_strChar( const UBuffer*, UIndex pos );
