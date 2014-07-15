@@ -590,7 +590,7 @@ void     ur_ctxWordAtoms( const UBuffer*, UAtom* atoms );
 int      ur_ctxLookup( const UBuffer*, UAtom atom );
 const UBuffer* ur_sortedContext( UThread*, const UCell* );
 #define  ur_ctxLookupNoSort ur_ctxLookup
-#define  ur_ctxCell(c,n)    ((c)->ptr.cell + n)
+#define  ur_ctxCell(c,n)    ((c)->ptr.cell + (n))
 
 UIndex   ur_makeVector( UThread*, enum UrlanVectorType, int size );
 UBuffer* ur_makeVectorCell( UThread*, enum UrlanVectorType, int size, UCell* );
