@@ -33,6 +33,8 @@
 #include "os.h"
 #include "mem_util.h"
 
+#include "ucs2_case.c"
+
 
 // Emit inverted question mark for invalid Latin1 characters.
 #define NOT_LATIN1_CHAR     0xBF
@@ -1022,84 +1024,6 @@ void ur_strUppercase( UBuffer* buf, UIndex start, UIndex send )
         }
             break;
     }
-}
-
-
-/**
-  Convert UCS2 character to lowercase.
-*/
-int ur_charLowercase( int c )
-{
-    if( c >= 'A' )
-    {
-        if( c <= 'Z' )
-            return c + 32;
-        if( c >= 0x00C0 )
-        {
-            if( c <= 0x00DE )                           // Latin capital.
-            {
-                if( c != 0x00D7 )
-                    return c + 32;
-            }
-            else if( (c >= 0x0100) && (c <= 0x0136) )   // Latin capital.
-            {
-                if( (c & 1) == 0 )
-                    return (c == 0x0130) ? 'i' : c + 1;
-            }
-            else if( c >= 0x0391 )
-            {
-                if( (c <= 0x03AB) && (c != 0x03A2) )    // Greek capital.
-                    return c + 32;
-                if( (c >= 0x0400) && (c < 0x0410) )     // Cyrillic capital.
-                    return c + 80;
-                if( (c >= 0x0410) && (c <= 0x042F) )    // Cyrillic capital.
-                    return c + 32;
-                if( (c >= 0x0531) && (c <= 0x0556) )    // Armenian capital.
-                    return c + 48;
-                // TODO: Implement full lookup table.
-            }
-        }
-    }
-    return c;
-}
-
-
-/**
-  Convert UCS2 character to uppercase.
-*/
-int ur_charUppercase( int c )
-{
-    if( c >= 'a' )
-    {
-        if( c <= 'z' )
-            return c - 32;
-        if( c >= 0x00E0 )
-        {
-            if( c <= 0x00FE )                           // Latin small.
-            {
-                if( c != 0x00F7 )
-                    return c - 32;
-            }
-            else if( (c >= 0x0101) && (c <= 0x0137) )   // Latin small.
-            {
-                if( c & 1 )
-                    return (c == 0x0131) ? 'I' : c - 1;
-            }
-            else if( c >= 0x03B1 )
-            {
-                if( (c <= 0x03CB) && (c != 0x03C2) )    // Greek small.
-                    return c - 32;
-                if( (c >= 0x0430) && (c < 0x0450) )     // Cyrillic small.
-                    return c - 32;
-                if( (c >= 0x0450) && (c <= 0x045F) )    // Cyrillic small.
-                    return c - 80;
-                if( (c >= 0x0561) && (c <= 0x0586) )    // Armenian small.
-                    return c - 48;
-                // TODO: Implement full lookup table.
-            }
-        }
-    }
-    return c;
 }
 
 
