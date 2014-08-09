@@ -39,6 +39,9 @@ probe find b 1
 probe find b #{0c01}
 probe find/part b #{0203} 4
 probe find/part b #{0203} 90
+s: charset "^0^D"
+probe find #{ffff0d11 11002222} s
+probe find/last #{ffff0d11 11002222} s
 
 
 print "---- change"

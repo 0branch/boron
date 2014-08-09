@@ -2398,17 +2398,19 @@ void binary_reverse( const USeriesIterM* si )
 
 int binary_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
-    const uint8_t* it;
     const UBuffer* buf = si->buf;
+    const uint8_t* it = buf->ptr.b;
+    const uint8_t* ba = it + si->it;
+    const uint8_t* bb = it + si->end;
     int vt = ur_type(val);
 
     if( (vt == UT_CHAR) || (vt == UT_INT) )
     {
-        it = buf->ptr.b;
         if( opt & UR_FIND_LAST )
-            it = find_last_uint8_t( it + si->it, it + si->end, ur_int(val) );
+            it = find_last_uint8_t( ba, bb, ur_int(val) );
         else
-            it = find_uint8_t( it + si->it, it + si->end, ur_int(val) );
+            it = find_uint8_t( ba, bb, ur_int(val) );
+check_find:
         if( it )
             return it - buf->ptr.b;
     }
@@ -2422,12 +2424,19 @@ int binary_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
         if( (vt != UT_BINARY) && ur_strIsUcs2(siV.buf) )
             return -1;      // TODO: Handle ucs2.
 
-        it = buf->ptr.b;
+        // TODO: Implement UR_FIND_LAST.
         itV = siV.buf->ptr.b;
-        it = find_pattern_uint8_t( it + si->it, it + si->end,
-                                   itV + siV.it, itV + siV.end );
-        if( it )
-            return it - buf->ptr.b;
+        it = find_pattern_uint8_t( ba, bb, itV + siV.it, itV + siV.end );
+        goto check_find;
+    }
+    else if( vt == UT_BITSET )
+    {
+        const UBuffer* bbuf = ur_bufferSer(val);
+        if( opt & UR_FIND_LAST )
+            it = find_last_charset_uint8_t( ba, bb, bbuf->ptr.b, bbuf->used );
+        else
+            it = find_charset_uint8_t( ba, bb, bbuf->ptr.b, bbuf->used );
+        goto check_find;
     }
     return -1;
 }
