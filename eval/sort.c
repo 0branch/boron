@@ -226,9 +226,6 @@ CFUNC(cfunc_sort)
         ur_blkSlice( ut, &bi, a1 );
         len = bi.end - bi.it;
 
-        // Make invalidates bi.buf.
-        blk = ur_makeBlockCell( ut, type, len, res );
-
         fld.opt = CFUNC_OPTIONS;
         if( fld.opt & OPT_SORT_GROUP )
         {
@@ -236,12 +233,16 @@ CFUNC(cfunc_sort)
             if( group < 1 )
                 group = 1;
             indexLen = len / group;
+            len = indexLen * group;     // Remove any partial group.
         }
         else
         {
             group = 1;
             indexLen = len;
         }
+
+        // Make invalidates bi.buf.
+        blk = ur_makeBlockCell( ut, type, len, res );
 
         qs.index    = ((uint32_t*) (blk->ptr.cell + len)) - indexLen;
         qs.data     = (uint8_t*) bi.it;
