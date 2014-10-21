@@ -3028,6 +3028,7 @@ union_loop:
         setB    series
     return: New series that contains only the elements common to both sets.
     group: series
+    see: difference, union
 */
 CFUNC(cfunc_intersect)
 {
@@ -3041,6 +3042,7 @@ CFUNC(cfunc_intersect)
         setB    series
     return: New series that contains the elements of setA which are not in setB.
     group: series
+    see: intersect, union
 
     This function generates the set-theoretic difference, not the symmetric
     difference (the elements unique to both sets).
@@ -3057,6 +3059,7 @@ CFUNC(cfunc_difference)
         setB    series
     return: New series that contains the distinct elements of both sets.
     group: series
+    see: difference, intersect
 */
 CFUNC(cfunc_union)
 {
