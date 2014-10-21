@@ -19,7 +19,23 @@ enum OSFileType
     FI_Link,
     FI_Dir,
     FI_Socket,
-    FI_Other
+    FI_OtherType
+};
+
+
+enum OSFilePerm
+{
+    FI_User,
+    FI_Group,
+    FI_Other,
+    FI_Misc,
+
+    FI_Read  = 4,       // FI_User, FI_Group, FI_Other
+    FI_Write = 2,
+    FI_Exec  = 1,
+
+    FI_SetUser  = 4,    // FI_Misc
+    FI_SetGroup = 2
 };
 
 
@@ -28,6 +44,7 @@ typedef struct
     int64_t size;
     double  accessed;
     double  modified;
+    int16_t perm[4];
     uint8_t type;
 }
 OSFileInfo;

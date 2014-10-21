@@ -128,7 +128,15 @@ int ur_fileInfo( const char* path, OSFileInfo* info, int mask )
             info->type = FI_Socket;
 #endif
         else
-            info->type = FI_Other;
+            info->type = FI_OtherType;
+
+#if (S_IRUSR != (4 << 6)) || (S_IWOTH != 2) || (S_ISUID != (4 << 9))
+#error "Stat protection bits don't match OSFilePerm bits."
+#endif
+        info->perm[0] = (buf.st_mode & S_IRWXU) >> 6;
+        info->perm[1] = (buf.st_mode & S_IRWXG) >> 3;
+        info->perm[2] = (buf.st_mode & S_IRWXO);
+        info->perm[3] = (buf.st_mode & (S_ISUID | S_ISGID)) >> 9;
     }
 
     return 1;

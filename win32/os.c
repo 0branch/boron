@@ -215,6 +215,11 @@ int ur_fileInfo( const char* path, OSFileInfo* info, int mask )
             info->type = FI_Dir;
         else
             info->type = FI_File;
+
+        info->perm[0] = info->perm[1] = info->perm[2] =
+               (data.dwFileAttributes & FILE_ATTRIBUTE_READONLY) ?
+                FI_Read : FI_Read | FI_Write;
+        info->perm[3] = 0;
     }
 
     return 1;

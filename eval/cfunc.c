@@ -3604,11 +3604,11 @@ CFUNC(cfunc_to_text)
     see: exists?, dir?
 
     Get information about a file.  The values returned are the file type,
-    byte size, modification date, and path.
+    byte size, modification date, path, and permissions.
 
     Example:
         info? %Makefile
-        == [file 9065 2013-10-13T17:15:51-07:00 %Makefile]
+        == [file 9065 2013-10-13T17:15:51-07:00 %Makefile 7,5,5,0]
 */
 CFUNC(cfunc_infoQ)
 {
@@ -3654,8 +3654,8 @@ set_logic:
             {
                 const char* tn = _infoType[ info.type ];
                 UCell* cell;
-                UBuffer* blk = ur_makeBlockCell( ut, UT_BLOCK, 4, res );
-                blk->used = 4;
+                UBuffer* blk = ur_makeBlockCell( ut, UT_BLOCK, 5, res );
+                blk->used = 5;
                 cell = blk->ptr.cell;
 
                 ur_setId(cell, UT_WORD);
@@ -3679,7 +3679,11 @@ set_logic:
                 ur_decimal(cell) = info.modified;
                 ++cell;
 
-                *cell = *a1;
+                *cell++ = *a1;
+
+                ur_setId(cell, UT_COORD);
+                cell->coord.len = 4;
+                memCpy( cell->coord.n, info.perm, sizeof(int16_t) * 4 );
                 return UR_OK;
             }
             break;
