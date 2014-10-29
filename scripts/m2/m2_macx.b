@@ -1,6 +1,8 @@
 ; m2 Mac OS X template
 
 
+qt-version: 5
+
 macx: func [blk] [do blk]
 
 bundle:    does [ct/cfg_bundle: true]
@@ -53,24 +55,37 @@ generate_makefile: does [
 ]
 
 
-qt-libs: context [
-   gui:     does [include_from {/Library/Frameworks/QtGui.framework/Headers}
-                  lflags   {-framework QtGui}]
-   network: does [include_from {/Library/Frameworks/QtNetwork.framework/Headers}
-                  lflags   {-framework QtNetwork}]
-   opengl:  does [include_from {/Library/Frameworks/QtOpenGL.framework/Headers}
-                  lflags   {-framework QtOpenGL}]
-   xml:     does [include_from {/Library/Frameworks/QtXml.framework/Headers}
-                  lflags   {-framework QtXml}]
-   svg:     does [include_from {/Library/Frameworks/QtSvg.framework/Headers}
-                  lflags   {-framework QtSvg}]
-   sql:     does [include_from {/Library/Frameworks/QtSql.framework/Headers}
-                  lflags   {-framework QtSql}]
-   support: does [
-       include_from {/Library/Frameworks/Qt3Support.framework/Headers}
-       cxxflags {-DQT3_SUPPORT}
-       lflags   {-framework Qt3Support }
-   ]
+qt-fw: func [name] [
+    include_from rejoin ["/Library/Frameworks/" name ".framework/Headers"]
+    lflags join "-framework " name
+]
+
+either eq? 5 qt-version [
+    qt-libs: context [
+       concurrent:  does [qt-fw "QtConcurrent"]
+       core:        does [qt-fw "QtCore"]
+       gui:         does [qt-fw "QtGui" qt-fw "QtWidgets"]
+       network:     does [qt-fw "QtNetwork"]
+       opengl:      does [qt-fw "QtOpenGL"]
+       printsupport: does [qt-fw "QtPrintSupport"]
+       svg:         does [qt-fw "QtSvg"]
+       sql:         does [qt-fw "QtSql"]
+       widgets:     does [qt-fw "QtWidgets"]
+       xml:         does [qt-fw "QtXml"]
+    ]
+][
+    qt-libs: context [
+       gui:     does [qt-fw "QtGui"]
+       network: does [qt-fw "QtNetwork"]
+       opengl:  does [qt-fw "QtOpenGL"]
+       xml:     does [qt-fw "QtXml"]
+       svg:     does [qt-fw "QtSvg"]
+       sql:     does [qt-fw "QtSql"]
+       support: does [
+           cxxflags {-DQT3_SUPPORT}
+           qt-fw "Qt3Support"
+       ]
+    ]
 ]
 
 qt-static-libs: context [
@@ -117,8 +132,10 @@ exe_target: make target_env
             cflags {-O3 -DNDEBUG}
         ]
 
-        ; cflags {-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5}
-        ; lflags {-Wl,-syslibroot,/Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5}
+        /*
+        cflags {-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5}
+        lflags {-Wl,-syslibroot,/Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5}
+        */
         if cfg_universal [
             cflags {-isysroot /Developer/SDKs/MacOSX10.4u.sdk -arch ppc -arch i386 -mmacosx-version-min=10.4}
             lflags {-Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk -arch ppc -arch i386 -mmacosx-version-min=10.4}
@@ -273,10 +290,10 @@ gnu_header:
 #------ Compiler and tools
 
 AS       = as
-CC       = gcc
-CXX      = g++
-LINK     = gcc
-LINK_CXX = g++
+CC       = gcc  # cc
+CXX      = g++  # c++
+LINK     = gcc  # cc
+LINK_CXX = g++  # c++
 TAR      = tar -cf
 GZIP     = gzip -9f
 MOC      = <moc_exe>
