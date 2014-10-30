@@ -600,9 +600,9 @@ void ur_strAppendHex( UBuffer* str, uint32_t n, uint32_t hi )
 */
 static char* _doubleToStr( double n, char* cp )
 {
-    strPrint( cp, "%f", n );
-    while( *cp != '\0' )
-        ++cp;
+    // FIXME: Not using exponential notation can result in strings of
+    //        more than DBL_CHARS.
+    cp += strPrint( cp, "%f", n );
     while( cp[-1] == '0' && cp[-2] != '.' )
         --cp;
     return cp;
@@ -614,7 +614,7 @@ static char* _doubleToStr( double n, char* cp )
 */
 void ur_strAppendDouble( UBuffer* str, double n )
 {
-#define DBL_CHARS   18
+#define DBL_CHARS   32
     char* cp;
 
     ur_arrReserve( str, str->used + DBL_CHARS );
