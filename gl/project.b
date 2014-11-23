@@ -13,7 +13,7 @@ default [
     ;macx [universal]
 ]
 
-shlib [%boron-gl 0,2,8] [
+shlib [%boron-gl 0,2,10] [
    ;cflags {-DNO_AUDIO}
 
     linux [
