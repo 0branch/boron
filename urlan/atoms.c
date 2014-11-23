@@ -128,9 +128,9 @@ static UAtom _internAtom( UThread* ut, UBuffer* atoms, UBuffer* names,
                           const uint8_t* str, const uint8_t* end )
 {
     uint8_t* cp;
-    const uint8_t* ep;
+    const uint8_t* it;
     const uint8_t* sp;
-    int c;
+    int c, d;
     int len;
     uint32_t hash;
     UIndex   avail;
@@ -148,7 +148,7 @@ static UAtom _internAtom( UThread* ut, UBuffer* atoms, UBuffer* names,
 #endif
 
     len = end - str;
-    if( len > MAX_WORD_LEN )
+    if( len > MAX_WORD_LEN )        /* LIMIT: Maximum word length */
     {
         len = MAX_WORD_LEN;
         end = str + len;
@@ -165,41 +165,30 @@ static UAtom _internAtom( UThread* ut, UBuffer* atoms, UBuffer* names,
     }
     else
     {
-        uint8_t lower[ MAX_WORD_LEN ];      /* LIMIT: Maximum word length */
-        const uint8_t* it;
-
-        // Convert str to lowercase for faster comparison below.
-        cp = lower;
-        it = str;
-        ep = str + len;
-        while( it != ep )
-        {
-            c = *it++;
-            LOWERCASE( c );
-            *cp++ = c;
-        }
-
         node = table + node->head;
         while( 1 )
         {
             if( node->nameLen == len )
             {
                 sp = names->ptr.b + node->nameIndex;
-                it = lower;
-                ep = lower + len;
-                while( it != ep )
+                it = str;
+                while( it != end )
                 {
 #ifdef KEEP_CASE
                     c = *sp++;
+                    d = *it++;
+                    if( c == d )
+                        continue;
                     LOWERCASE( c );
-                    if( c != *it++ )
+                    LOWERCASE( d );
+                    if( c != d )
                         break;
 #else
                     if( *sp++ != *it++ )
                         break;
 #endif
                 }
-                if( it == ep )
+                if( it == end )
                     goto done;
             }
 
@@ -241,9 +230,8 @@ static UAtom _internAtom( UThread* ut, UBuffer* atoms, UBuffer* names,
 #endif
 
     cp = names->ptr.b + names->used;
-    ep = cp + len;
     names->used += len + 1;
-    while( cp != ep )
+    while( str != end )
     {
 #ifdef KEEP_CASE
         *cp++ = *str++;
