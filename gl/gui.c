@@ -1978,6 +1978,7 @@ static void window_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                 gui_ungrabMouse( wp );
                 gui_move( wp, wp->area.x + ep->transX,
                               wp->area.y + ep->transY );
+                ep->transX = ep->transY = 0;
                 return;
             }
             break;
@@ -2425,14 +2426,28 @@ void gui_addStdClasses()
 */
 UIndex gui_parentDrawProg( GWidget* wp )
 {
-    while( wp->parent )
+    while( (wp = wp->parent) )
     {
-        wp = wp->parent;
         if( wp->wclass == &wclass_window ||
             wp->wclass == &wclass_overlay )
             return ((GWindow*) wp)->dp[0];
     }
     return UR_INVALID_BUF;
+}
+
+
+/*
+  Return pointer to X,Y values or 0 if there is no parent window.
+*/
+const int16_t* gui_parentTranslation( GWidget* wp )
+{
+    while( (wp = wp->parent) )
+    {
+        if( wp->wclass == &wclass_window ||
+            wp->wclass == &wclass_overlay )
+            return &((GWindow*) wp)->transX;
+    }
+    return 0;
 }
 
 

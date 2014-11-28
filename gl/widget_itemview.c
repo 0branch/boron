@@ -567,6 +567,8 @@ static void itemview_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 
 static void itemview_calcItemHeight( UThread* ut, GItemView* ep )
 {
+    (void) ut;
+    (void) ep;
     /*
     TexFont* tf;
     tf = ur_texFontV( ut, glEnv.guiStyle + CI_STYLE_LIST_FONT );
@@ -757,8 +759,13 @@ static void itemview_render( GWidget* wp )
 
     if( fcBuf->used )
     {
-        // FIXME: Scissor is not affected by transforms (e.g. window dragging)!
-        glScissor( wp->area.x, wp->area.y, wp->area.w, wp->area.h );
+        const int16_t* trans = gui_parentTranslation( wp );
+
+        // Scissor works in window coordinates so matrix rotations cannot
+        // be supported and translation (e.g. window dragging) must be applied
+        // manually.
+        glScissor( wp->area.x + trans[0], wp->area.y + trans[1],
+                   wp->area.w, wp->area.h );
         glEnable( GL_SCISSOR_TEST );
 #if 0
         glEnableVertexAttribArray( ALOC_POS );

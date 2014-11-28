@@ -205,6 +205,7 @@ void     gui_grabMouse( GWidget*, int keyFocus );
 void     gui_ungrabMouse( GWidget* );
 int      gui_hasFocus( GWidget* );
 UIndex   gui_parentDrawProg( GWidget* );
+const int16_t* gui_parentTranslation( GWidget* );
 int      gui_limitX( int x, const GRect* );
 int      gui_limitY( int y, const GRect* );
 
