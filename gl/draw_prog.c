@@ -1123,6 +1123,7 @@ static void dp_emitTextWord( DPCompiler* emit, const UCell* wordC )
     int attrOffset = geo->attr.used;
     int startIndex = geo_vertCount( geo );
     int maxLen = MAX_DYNAMIC_TEXT_LEN;
+    const uint32_t* pp;
 
     geo->flags |= GEOM_DYN_ATTR;
 
@@ -1133,8 +1134,9 @@ static void dp_emitTextWord( DPCompiler* emit, const UCell* wordC )
     emitOp1( DP_FONT, emit->fontN );
     emitWordOp( emit, wordC, DP_TEXT_WORD );
     emitDPArg( emit, attrOffset * sizeof(GLfloat) );
-    emitDPArg( emit, *((uint32_t*) &emit->penX) );
-    emitDPArg( emit, *((uint32_t*) &emit->penY) );
+    pp = (const uint32_t*) &emit->penX;
+    emitDPArg( emit, pp[0] );
+    emitDPArg( emit, pp[1] );
     emitOp2( DP_DRAW_TRIS_I, 0, indexOffset * sizeof(uint16_t) );
 }
 
@@ -1882,10 +1884,8 @@ bad_quad:
                 INC_PC_VALUE(val)
                 if( ur_is(val, UT_VEC3) )
                 {
-                    emitDPInst( emit, DP_TRANSLATE, 3,
-                                *((uint32_t*) &val->vec3.xyz[0]),
-                                *((uint32_t*) &val->vec3.xyz[1]),
-                                *((uint32_t*) &val->vec3.xyz[2]) );
+                    const uint32_t* vp = (const uint32_t*) &val->vec3.xyz;
+                    emitDPInst( emit, DP_TRANSLATE, 3, vp[0], vp[1], vp[2] );
                 }
                 else if( ! emitWordOp( emit, val, DP_TRANSLATE_WORD ) )
                 {
@@ -2084,10 +2084,12 @@ bad_quad:
                             break;
 
                         case UT_VEC3:
+                        {
+                            const uint32_t* vp =
+                                (const uint32_t*) &val->vec3.xyz;
                             emitDPInst( emit, DP_UNIFORM_3F, 4, loc,
-                                        *((uint32_t*) &val->vec3.xyz[0]),
-                                        *((uint32_t*) &val->vec3.xyz[1]),
-                                        *((uint32_t*) &val->vec3.xyz[2]) );
+                                        vp[0], vp[1], vp[2] );
+                        }
                             break;
                     }
                 }
@@ -2287,6 +2289,7 @@ samples_err:
             case DOP_READ_PIXELS:
             {
                 const UCell* rect;
+                const uint32_t* pp;
                 INC_PC
                 if( ! ur_is(pc, UT_COORD) )
                 {
@@ -2298,8 +2301,9 @@ samples_err:
                 {
                     typeError( "read-pixels expected word!" );
                 }
-                emitDPArg( emit, *((uint32_t*)  rect->coord.n) );
-                emitDPArg( emit, *((uint32_t*) (rect->coord.n + 2)) );
+                pp = (const uint32_t*) rect->coord.n;
+                emitDPArg( emit, pp[0] );
+                emitDPArg( emit, pp[1] );
             }
                 break;
 

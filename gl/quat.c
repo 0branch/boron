@@ -22,16 +22,18 @@
 #if 1
 // Fast conversion from http://www.stereopsis.com/FPU.html
 
+union FloatInt
+{
+    float f;
+    uint32_t i;
+};
+
+
 #define quatWd  quat_w
 
 float quat_w( const UCell* cell )
 {
-    union
-    {
-        float f;
-        uint32_t i;
-    }
-    conv;
+    union FloatInt conv;
 
     if( ur_flags( cell, UR_FLAG_QUAT_ONEW ) )
         return ur_flags( cell, UR_FLAG_QUAT_NEGW ) ? -1.0f : 1.0f;
@@ -42,6 +44,7 @@ float quat_w( const UCell* cell )
 
 void quat_setW( UCell* cell, float w )
 {
+    union FloatInt conv;
 #define CLR_SET(cell,clr,set)   cell->id.flags = (cell->id.flags & ~clr) | set
     if( w < 0.0f )
     {
@@ -62,8 +65,8 @@ void quat_setW( UCell* cell, float w )
     {
         ur_clrFlags( cell, UR_FLAG_QUAT_NEGW | UR_FLAG_QUAT_ONEW );
     }
-    w += 1.0f;
-    ur_w(cell) = (*((uint32_t*) &w) & 0x7fffff) >> 7;
+    conv.f = w + 1.0f;
+    ur_w(cell) = (conv.i & 0x7fffff) >> 7;
 }
 
 #else
