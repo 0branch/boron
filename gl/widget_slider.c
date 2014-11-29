@@ -38,11 +38,6 @@ enum SliderOrient
     VSLIDER
 };
 
-struct ValueI
-{
-    int32_t val, min, max;
-};
-
 struct ValueF
 {
     float val, min, max;
@@ -51,15 +46,11 @@ struct ValueF
 typedef struct
 {
     GWidget  wid;
-    union
-    {
-        struct ValueF f;
-        struct ValueI i;
-    } data;
+    struct ValueF data;
     UIndex   actionN;
     //DPSwitch dpSwitch;
     int16_t  knobWidth;
-    int16_t  tx;
+    uint16_t tx;
     DPSwitch dpTrans;
     uint8_t  state;
     uint8_t  held;
@@ -73,32 +64,21 @@ GSlider;
 
 static void slider_setValue( GSlider* ep, const UCell* cell )
 {
-    if( ep->dataType == UT_INT )
-    {
-        if( ur_is(cell, UT_INT) )
-        {
-            struct ValueI* da = &ep->data.i;
-            int32_t n = ur_int(cell);
-            if( n < da->min )
-                n = da->min;
-            else if( n > da->max )
-                n = da->max;
-            da->val = n;
-        }
-    }
+    struct ValueF* da = &ep->data;
+    float n;
+
+    if( ur_is(cell, UT_INT) )
+        n = (float) ur_int(cell);
+    else if( ur_is(cell, UT_DECIMAL) )
+        n = (float) ur_decimal(cell);
     else
-    {
-        if( ur_is(cell, UT_DECIMAL) )
-        {
-            struct ValueF* da = &ep->data.f;
-            float n = (float) ur_decimal(cell);
-            if( n < da->min )
-                n = da->min;
-            else if( n > da->max )
-                n = da->max;
-            da->val = n;
-        }
-    }
+        n = 0.0;
+
+    if( n < da->min )
+        n = da->min;
+    else if( n > da->max )
+        n = da->max;
+    da->val = n;
 }
 
 
@@ -129,16 +109,16 @@ static GWidget* slider_make( UThread* ut, UBlockIter* bi,
     ep->state = BTN_STATE_UP;
     if( ur_is(arg[0], UT_COORD) )
     {
-        ep->data.i.val =
-        ep->data.i.min = arg[0]->coord.n[0];
-        ep->data.i.max = arg[0]->coord.n[1];
+        ep->data.val =
+        ep->data.min = (float) arg[0]->coord.n[0];
+        ep->data.max = (float) arg[0]->coord.n[1];
         ep->dataType = UT_INT;
     }
     else
     {
-        ep->data.f.val =
-        ep->data.f.min = arg[0]->vec3.xyz[0];
-        ep->data.f.max = arg[0]->vec3.xyz[1];
+        ep->data.val =
+        ep->data.min = arg[0]->vec3.xyz[0];
+        ep->data.max = arg[0]->vec3.xyz[1];
         ep->dataType = UT_DECIMAL;
     }
 
@@ -180,9 +160,20 @@ static void slider_setState( UThread* ut, GSlider* ep, int state )
 */
 
 
-static int slider_adjust( GSlider* ep, int adj )
+static uint16_t slider_knobTrans( GSlider* ep, float movef, float range )
 {
-    int nx = ep->tx + adj;
+    struct ValueF* da = &ep->data;
+    float relv = da->val - da->min;
+
+    if( ep->dataType == UT_INT )
+        relv = floor(relv + 0.5);
+    return (uint16_t) (movef * relv / range);
+}
+
+
+static int slider_place( GSlider* ep, int px )
+{
+    int nx = px - ep->wid.area.x;
     int moveW = ep->wid.area.w - ep->knobWidth;
 
     if( nx < 0 )
@@ -191,21 +182,33 @@ static int slider_adjust( GSlider* ep, int adj )
         nx = moveW;
     if( ep->tx != nx )
     {
-        ep->tx = nx;
+        struct ValueF* da = &ep->data;
+        float range = da->max - da->min;
+        float movef = (float) moveW;
 
-        if( ep->dataType == UT_INT )
-        {
-            struct ValueI* da = &ep->data.i;
-            da->val = da->min +
-                      (ep->tx * (da->max - da->min) / moveW );
-        }
-        else
-        {
-            struct ValueF* da = &ep->data.f;
-            da->val = da->min +
-                      (ep->tx * (da->max - da->min) / moveW );
-        }
+        da->val = da->min + (nx * range / movef);
+        ep->tx = slider_knobTrans( ep, movef, range );
+        //printf( "KR slider adj nx:%d tx:%d\n", nx, ep->tx );
+        return 1;
+    }
+    return 0;
+}
 
+
+static int slider_adjust( GSlider* ep, float adj )
+{
+    struct ValueF* da = &ep->data;
+    float n = da->val + adj;
+
+    if( n < da->min )
+        n = da->min;
+    else if( n > da->max )
+        n = da->max;
+    if( da->val != n )
+    {
+        da->val = n;
+        ep->tx = slider_knobTrans( ep, (float) (ep->wid.area.w - ep->knobWidth),
+                                   ep->data.max - ep->data.min );
         return 1;
     }
     return 0;
@@ -225,6 +228,10 @@ static void slider_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                 //slider_setState( ut, ep, BTN_STATE_DOWN );
                 ep->held = 1;
                 gui_grabMouse( wp, 1 );
+
+                // TODO: Do relative movement if the pointer is over the knob.
+                if( slider_place( ep, ev->x ) )
+                    goto trans;
             }
             break;
 
@@ -243,33 +250,30 @@ static void slider_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
         case GLV_EVENT_MOTION:
             if( ep->held )
             {
-                if( glEnv.mouseDeltaX )
-                {
-                    if( slider_adjust( ep, glEnv.mouseDeltaX ) )
-                        goto trans;
-                }
+                if( slider_place( ep, ev->x ) )
+                    goto trans;
             }
             break;
 
         case GLV_EVENT_KEY_DOWN:
             if( ev->code == KEY_Left )
             {
-                if( slider_adjust( ep, -2 ) )
+                if( slider_adjust( ep, -1.0 ) )
                     goto trans;
             }
             else if( ev->code == KEY_Right )
             {
-                if( slider_adjust( ep, 2 ) )
+                if( slider_adjust( ep, 1.0 ) )
                     goto trans;
             }
             else if( ev->code == KEY_Home )
             {
-                if( slider_adjust( ep, -9999 ) )
+                if( slider_adjust( ep, -9999999.0 ) )
                     goto trans;
             }
             else if( ev->code == KEY_End )
             {
-                if( slider_adjust( ep, 9999 ) )
+                if( slider_adjust( ep, 9999999.0 ) )
                     goto trans;
             }
             // Fall through...
@@ -346,7 +350,6 @@ static void slider_layout( GWidget* wp )
     UCell* style = glEnv.guiStyle;
     UThread* ut = glEnv.guiUT;
     EX_PTR;
-    int moveW;
     //int horiz = (ep->orient == HSLIDER);
 
     if( ! gDPC )
@@ -357,17 +360,8 @@ static void slider_layout( GWidget* wp )
     rc = style + CI_STYLE_SLIDER_SIZE;
     ep->knobWidth = rc->coord.n[0];
 
-    moveW = ep->wid.area.w - ep->knobWidth;
-    if( ep->dataType == UT_INT )
-    {
-        ep->tx = (moveW * (ep->data.i.val - ep->data.i.min)) /
-                 (ep->data.i.max - ep->data.i.min);
-    }
-    else
-    {
-        ep->tx = (int16_t) ((moveW * (ep->data.f.val - ep->data.f.min)) /
-                            (ep->data.f.max - ep->data.f.min));
-    }
+    ep->tx = slider_knobTrans( ep, (float) (ep->wid.area.w - ep->knobWidth),
+                               ep->data.max - ep->data.min );
 
 
     // Set draw list variables.
@@ -408,9 +402,9 @@ static int slider_select( GWidget* wp, UAtom atom, UCell* res )
     {
         ur_setId(res, ep->dataType);
         if( ep->dataType == UT_INT )
-            ur_int(res) = ep->data.i.val;
+            ur_int(res) = (int32_t) ep->data.val;
         else
-            ur_decimal(res) = ep->data.f.val;
+            ur_decimal(res) = ep->data.val;
         return UR_OK;
     }
     return gui_areaSelect( wp, atom, res );
