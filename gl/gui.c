@@ -269,6 +269,13 @@ int gui_parseArgs( UThread* ut, UBlockIter* bi, const GWidgetClass* wc,
                             return UR_THROW;
                         cell = persist;
                     }
+                    else if( ur_is(cell, UT_PAREN) )
+                    {
+                        UCell* persist = ur_blkAppendNew( pathArg, UT_NONE );
+                        if( ! boron_doBlock(ut, cell, persist) )
+                            return UR_THROW;
+                        cell = persist;
+                    }
 #endif
                     if( ! _matchMultTypes( pc, cell ) )
                         goto fail_mult;

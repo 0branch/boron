@@ -50,6 +50,7 @@ items: []
 foreach [c m n d] [
     ship   200  "Voyager"          "A refit was made in 35088."
     base  1040  "Central Command"  "The base of Janus sector.^/Ready to serve."
+    ship   160  "Arjura"           "Science vessel deployed^/to Taurus sector."
 ][
     append items make obj-proto [
         class: c
@@ -61,15 +62,15 @@ foreach [c m n d] [
 
 item-layout: [
     300,90 [           ; Item size: width,height vbox hbox grid
-        image 0,30 (
+        image 0,30,32,32 gui-style/tex-size (
             select [
-                ship 0,128,64,64
-                base 0,128,64,64
+                ship   0,320, 63,383
+                base 128,320,191,383
             ] item/class
         )
         font gui-style/list-font
-        text 60,50 "Name:"  text 120,50 item/name
-        text 60,30 "Mass:"  text 120,30 item/mass
+        text 50,50 "Name:"  text 110,50 item/name
+        text 50,30 "Mass:"  text 110,30 item/mass
         text  0,10 item/desc
     ]
 ]
