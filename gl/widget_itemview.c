@@ -26,6 +26,7 @@
 #include "draw_prog.h"
 #include "os.h"
 #include "gl_atoms.h"
+#include "shader.h"
 
 extern void dp_toString( UThread* ut, const UCell* cell, UBinaryIter* bi );
 
@@ -53,6 +54,7 @@ typedef struct
     GLuint    vbo[2];
     int       vboSize[2];       // Byte size.
 
+    GLint     use_color;
     UIndex    dataBlkN;
     UIndex    layoutBlkN;
     int       itemCount;
@@ -93,6 +95,12 @@ static const uint8_t iv_args_image[] =
     GUIA_END
 };
 
+static const uint8_t iv_args_color[] =
+{
+    GUIA_ARGW, 1, UT_INT,
+    GUIA_END
+};
+
 static const uint8_t iv_args_font[] =
 {
     GUIA_ARGW, 1, UT_FONT,
@@ -111,6 +119,7 @@ typedef struct
     GLfloat* attr;
     GLuint   drawFirst;
     GLsizei  drawCount;
+    GLfloat  color[3];  // Index into shader color table (attribute color.r).
     UIndex   fontN;     // TexFont binary
     GLfloat  penX;
     GLfloat  penY;
@@ -161,6 +170,21 @@ void vbo_drawQuad( GLfloat* vp, GLfloat* tp, int stride, const int16_t* rect,
 }
 
 
+void vbo_setVec3( GLfloat* ap, int stride, int count, const float* vec )
+{
+    int i;
+    for( i = 0; i < count; ++i )
+    {
+        ap[0] = vec[0];
+        ap[1] = vec[1];
+        ap[2] = vec[2];
+        ap += stride;
+    }
+}
+
+
+#define AttrCount   8
+
 #define FETCH_ARGS(spec) \
     if( ! gui_parseArgs( ut, bi, wp->wclass, spec, arg ) ) \
         return UR_THROW
@@ -196,11 +220,17 @@ int itemview_parse( DrawContext* dc, UThread* ut, UBlockIter* bi, GWidget* wp )
                     rect[1] = coord[1] + dc->penY;
                     rect[2] = coord[2];
                     rect[3] = coord[3];
-                    vbo_drawQuad( dc->attr, dc->attr + 3, 5, rect,
+                    vbo_drawQuad( dc->attr, dc->attr + 3, AttrCount, rect,
                                   arg[1]->coord.n, arg[2]->coord.n );
-                    dc->attr      += 6 * 5;
+                    vbo_setVec3( dc->attr + 5, AttrCount, 6, dc->color );
+                    dc->attr      += 6 * AttrCount;
                     dc->drawCount += 6;
                 }
+                    break;
+
+                case DOP_COLOR:
+                    FETCH_ARGS( iv_args_color );
+                    dc->color[0] = (GLfloat) ur_int( arg[0] );
                     break;
 
                 case DOP_FONT:
@@ -225,15 +255,18 @@ int itemview_parse( DrawContext* dc, UThread* ut, UBlockIter* bi, GWidget* wp )
                                       (TexFont*) ur_buffer( dc->fontN )->ptr.v,
                                       x, y );
                     dts.emitTris = 1;
-                    glyphCount = vbo_drawText( &dts, dc->attr + 3, dc->attr, 5,
-                                               si.it, si.end );
+                    glyphCount = vbo_drawText( &dts, dc->attr + 3, dc->attr,
+                                               AttrCount, si.it, si.end );
+                    glyphCount *= 6;
+                    vbo_setVec3( dc->attr + 5, AttrCount, glyphCount,
+                                 dc->color );
                     /*
                     while( si.it != si.end )
                         putchar( *si.it++ );
                     putchar( '\n' );
                     */
-                    dc->attr      += glyphCount * 6 * 5;
-                    dc->drawCount += glyphCount * 6;
+                    dc->attr      += glyphCount * AttrCount;
+                    dc->drawCount += glyphCount;
                 }
                     break;
 
@@ -263,7 +296,7 @@ invalid_op:
 static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
                                   const UBuffer* items, int page )
 {
-#define TRI_ATTR_BYTES  (3 * 5 * sizeof(GLfloat))
+#define TRI_ATTR_BYTES  (3 * AttrCount * sizeof(GLfloat))
     DrawContext dc;
     UBlockIter bi;
     UBlockIter layout;
@@ -310,6 +343,8 @@ static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
         *cell = *bi.it;
 
         dc.drawCount = 0;
+        dc.color[0] = 1.0;
+        dc.color[1] = dc.color[2] = 0.0;
         dc.penY -= ep->itemHeight;
 
         layout.it = loStart;
@@ -385,6 +420,7 @@ static GWidget* itemview_make( UThread* ut, UBlockIter* bi,
     glGenBuffers( 2, ep->vbo );
     ep->vboSize[0] = ep->vboSize[1] = 0;
 
+    ep->use_color  = -1;
     ep->selCol     = -1;
     ep->selRow     = -1;
     ep->itemCount  = 0;
@@ -664,17 +700,19 @@ static void itemview_sizeHint( GWidget* wp, GSizeHint* size )
 }
 
 
+extern DPCompiler* gDPC;
+
 static void itemview_layout( GWidget* wp )
 {
-    /*
     UCell* rc;
+    /*
     UCell* it;
     UBuffer* blk;
     int row, rowCount;
     int col, colCount;
     */
     int itemY;
-    //UCell* style = glEnv.guiStyle;
+    UCell* style = glEnv.guiStyle;
     UThread* ut  = glEnv.guiUT;
     //UIndex strN = 0;
     EX_PTR;
@@ -694,6 +732,21 @@ static void itemview_layout( GWidget* wp )
     itemview_calcItemHeight( ut, ep );
 
     itemY = wp->area.y + wp->area.h - ep->itemHeight;
+
+    if( ep->use_color == -1 )
+    {
+        rc = style + CI_STYLE_SLIDER_GROOVE + 1;    // CI_STYLE_SHADER
+        if( ur_is(rc, UT_CONTEXT) )
+        {
+            const Shader* shad = shaderContext( ut, rc, 0 );
+            if( shad )
+            {
+                ep->use_color = glGetUniformLocation( shad->program,
+                                                      "use_color" );
+                //printf( "KR use_color %d\n", ep->use_color );
+            }
+        }
+    }
 
 
 #if 0
@@ -832,18 +885,27 @@ static void itemview_render( GWidget* wp )
 #else
         glEnableClientState( GL_VERTEX_ARRAY );
         glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-        glVertexPointer  ( 3, GL_FLOAT, 5 * sizeof(GLfloat), NULL + 0 );
-        glTexCoordPointer( 2, GL_FLOAT, 5 * sizeof(GLfloat),
+        glEnableClientState( GL_COLOR_ARRAY );
+        glVertexPointer  ( 3, GL_FLOAT, AttrCount * sizeof(GLfloat), NULL + 0 );
+        glTexCoordPointer( 2, GL_FLOAT, AttrCount * sizeof(GLfloat),
                            NULL + 3 * sizeof(GLfloat) );
+        glColorPointer( 3, GL_FLOAT, AttrCount * sizeof(GLfloat),
+                        NULL + 5 * sizeof(GLfloat) );
 #endif
-        glColor3f( 1.0, 1.0, 1.0 );
+        //glColor3f( 1.0, 1.0, 1.0 );
+
         glPushMatrix();
         glTranslatef( (GLfloat) wp->area.x, (GLfloat) wp->area.y, 0.0f );
+
+        glUniform1i( ep->use_color, 1 );
         glMultiDrawArrays( GL_TRIANGLES,
                            (GLint*)    fcBuf->ptr.i,
                            (GLsizei*) (fcBuf->ptr.i + fcBuf->used),
                            fcBuf->used );
+        glUniform1i( ep->use_color, 0 );
+
         glPopMatrix();
+        glDisableClientState( GL_COLOR_ARRAY );
         glDisable( GL_SCISSOR_TEST );
     }
 }

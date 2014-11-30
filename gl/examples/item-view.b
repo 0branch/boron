@@ -10,7 +10,7 @@ ortho-cam: copy ortho-cam       ; Copy from shared storage.
 ;/*
 load-png0: :load-png
 load-png: func [file] [
-    if find file %oxif.png [
+    if find file %oxif-comp.png [
         return blit load-png0 file
                     load-png0 %data/image/color_numbers.png
                     0,128,256,128
@@ -71,6 +71,7 @@ item-layout: [
         font gui-style/list-font
         text 50,50 "Name:"  text 110,50 item/name
         text 50,30 "Mass:"  text 110,30 item/mass
+        color 31
         text  0,10 item/desc
     ]
 ]
@@ -99,7 +100,7 @@ gui: make widget! [
         ]
 
         s1: slider 1,100 50 [print s1/value]
-            slider 1,100 25
+            slider 0,4 2
 
         res-view: item-view items item-layout
         /*
