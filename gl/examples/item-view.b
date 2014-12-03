@@ -50,7 +50,8 @@ items: []
 foreach [c m n d] [
     ship   200  "Voyager"          "A refit was made in 35088."
     base  1040  "Central Command"  "The base of Janus sector.^/Ready to serve."
-    ship   160  "Arjura"           "Science vessel deployed^/to Taurus sector."
+    ship   160  "Arjura"           "Science vessel deployed to Taurus^/sector."
+    ship   160  "Tessel"           "Science vessel 2."
 ][
     append items make obj-proto [
         class: c
@@ -60,19 +61,24 @@ foreach [c m n d] [
    ]
 ]
 
+; Item-view binds layout block to gui-style.
 item-layout: [
     300,90 [           ; Item size: width,height vbox hbox grid
-        image 0,30,32,32 gui-style/tex-size (
+        image 8,50,32,32 tex-size (
             select [
                 ship   0,320, 63,383
                 base 128,320,191,383
             ] item/class
         )
-        font gui-style/list-font
-        text 50,50 "Name:"  text 110,50 item/name
-        text 50,30 "Mass:"  text 110,30 item/mass
-        color 31
-        text  0,10 item/desc
+        font list-font
+        text 50,70 "Name:"  text 110,70 item/name
+        text 50,50 "Mass:"  text 110,50 item/mass
+        color 31    ; gray
+        text  8,30 item/desc
+    ][
+        ; Selected background
+        color 63
+        image area tex-size 2,438,9,445 ; sm-box
     ]
 ]
 

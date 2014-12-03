@@ -2646,7 +2646,7 @@ void gui_resize( GWidget* wp, int w, int h )
 }
 
 
-UCell* gui_style( UThread* ut )
+UBuffer* gui_styleContext( UThread* ut )
 {
     UBuffer* ctx = ur_threadContext( ut );
     int n = ur_ctxLookup( ur_ctxSort(ctx), UR_ATOM_GUI_STYLE );
@@ -2654,11 +2654,17 @@ UCell* gui_style( UThread* ut )
     {
         UCell* cc = ur_ctxCell( ctx, n );
         if( ur_is(cc, UT_CONTEXT) )
-        {
-            ctx = ur_bufferSerM(cc);
-            return ur_ctxCell( ctx, 0 );
-        }
+            return ur_bufferSerM(cc);
     }
+    return 0;
+}
+
+
+UCell* gui_style( UThread* ut )
+{
+    const UBuffer* ctx = gui_styleContext( ut );
+    if( ctx )
+        return ur_ctxCell( ctx, 0 );
     return 0;
 }
 

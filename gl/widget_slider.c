@@ -1,6 +1,6 @@
 /*
   Boron OpenGL GUI
-  Copyright 2012 Karl Robillard
+  Copyright 2012,2014 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -135,7 +135,6 @@ static GWidget* slider_make( UThread* ut, UBlockIter* bi,
 static void slider_mark( UThread* ut, GWidget* wp )
 {
     EX_PTR;
-    //ur_markBuffer( ut, ep->labelN );
     ur_markBlkN( ut, ep->actionN );
 }
 

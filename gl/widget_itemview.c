@@ -57,9 +57,11 @@ typedef struct
     GLint     use_color;
     UIndex    dataBlkN;
     UIndex    layoutBlkN;
-    int       itemCount;
+    UIndex    selectBgBlkN;
+    uint32_t  itemCount;
     uint16_t  itemWidth;
     uint16_t  itemHeight;
+    int32_t   scrollY;
 
     UIndex    bindCtxN;
     UIndex    selRow;
@@ -293,9 +295,13 @@ invalid_op:
     bi.end = bi.it + bi.buf->used
 
 
+#define DECORATION_GROUPS   1
+
 static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
                                   const UBuffer* items, int page )
 {
+#define MAX_ITEM_TRIS   400
+#define MAX_DEC_TRIS    100
 #define TRI_ATTR_BYTES  (3 * AttrCount * sizeof(GLfloat))
     DrawContext dc;
     UBlockIter bi;
@@ -305,28 +311,68 @@ static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
     UCell* cell;
     float* attr;
     int bsize;
+    int height = ep->itemHeight;
+    int caOffset = items->used + DECORATION_GROUPS;
 
 
-    // Reserve 400 triangles for each item.
-    ur_binReserve( &glEnv.tmpBin, items->used * 400 * TRI_ATTR_BYTES );
+    // Reserve triangles for each item.
+    ur_binReserve( &glEnv.tmpBin,
+           (MAX_DEC_TRIS + (items->used * MAX_ITEM_TRIS)) * TRI_ATTR_BYTES );
     attr = glEnv.tmpBin.ptr.f;
 
-    // Reserve first & count arrays.  fcBuf->used tracks the number of items,
-    // which is half the number of integers used for both arrays.
+    // Reserve first & count arrays.  fcBuf->used tracks the number of items
+    // and view decorations, which is half the number of integers used for
+    // both arrays.
     fcBuf = &ep->fc[ page ];
-    ur_arrReserve( fcBuf, items->used * 2 );
+    ur_arrReserve( fcBuf, caOffset * 2 );
     fcBuf->used = 0;
 
     dc.attr = attr;
     dc.drawFirst = 0;
-
-#if 0
-    dc.penX = ep->wid.area.x;
-    dc.penY = ep->wid.area.y + ep->wid.area.h;
-#else
     dc.penX = 0.0;
-    dc.penY = ep->wid.area.h;
+
+#if 1
+    // Build selected background tris.
+    dc.drawCount = 0;
+
+    if( ep->selRow > -1 )
+    {
+        dc.color[0] = 1.0;
+        dc.color[1] = dc.color[2] = 0.0;
+        dc.penY = ep->wid.area.h;
+
+        cell = glEnv.guiStyle + CI_STYLE_AREA;
+        //ur_setId(cell, UT_COORD)
+        cell->coord.len = 4;
+        cell->coord.n[0] = 0;
+        cell->coord.n[1] = (ep->selRow + 1) * -height;
+        cell->coord.n[2] = ep->itemWidth;
+        cell->coord.n[3] = height;
+
+        layout.buf = ur_buffer( ep->selectBgBlkN );
+        layout.it  = layout.buf->ptr.cell;
+        layout.end = layout.it + layout.buf->used;
+
+        if( ! itemview_parse( &dc, ut, &layout, (GWidget*) ep ) )
+        {
+            // Clear exceptions.
+            UBuffer* buf = ur_errorBlock(ut);
+            buf->used = 0;
+
+            printf( "KR itemview_parse failed\n" );
+        }
+    }
+
+    fcBuf->ptr.i[ fcBuf->used ] = dc.drawFirst;
+    fcBuf->ptr.i[ fcBuf->used + caOffset ] = dc.drawCount;
+    ++fcBuf->used;
+
+    dc.attr = attr + MAX_DEC_TRIS * 3 * AttrCount;
+    dc.drawFirst = MAX_DEC_TRIS * 3;
 #endif
+
+    dc.penY = ep->wid.area.h;
+
 
     // Setup the data item and layout iterators.
     bi.it  = items->ptr.cell;
@@ -345,7 +391,7 @@ static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
         dc.drawCount = 0;
         dc.color[0] = 1.0;
         dc.color[1] = dc.color[2] = 0.0;
-        dc.penY -= ep->itemHeight;
+        dc.penY -= height;
 
         layout.it = loStart;
         if( ! itemview_parse( &dc, ut, &layout, (GWidget*) ep ) )
@@ -357,15 +403,20 @@ static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
             printf( "KR itemview_parse failed\n" );
         }
 
-        printf( "KR fc %d,%d\n", dc.drawFirst, dc.drawCount );
+        //printf( "KR fc %d,%d\n", dc.drawFirst, dc.drawCount );
 
         fcBuf->ptr.i[ fcBuf->used ] = dc.drawFirst;
-        fcBuf->ptr.i[ fcBuf->used + items->used ] = dc.drawCount;
+        fcBuf->ptr.i[ fcBuf->used + caOffset ] = dc.drawCount;
         ++fcBuf->used;
 
         dc.drawFirst += dc.drawCount;
+        //dc.drawFirst += MAX_ITEM_TRIS;
     }
 
+    assert( fcBuf->used == caOffset );
+
+
+    // Transfer vertex data to GPU.
     bsize = dc.drawFirst * TRI_ATTR_BYTES;
     if( ep->vboSize[ page ] < bsize )
     {
@@ -381,6 +432,14 @@ static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
             glUnmapBuffer( GL_ARRAY_BUFFER );
         }
     }
+}
+
+
+static void itemview_updateSelection( GItemView* ep )
+{
+    int n = ep->modVbo ^ 1;
+    ep->modVbo = n;
+    ep->fc[ n ].used = 0;   // Force redraw.
 }
 
 
@@ -426,10 +485,12 @@ static GWidget* itemview_make( UThread* ut, UBlockIter* bi,
     ep->itemCount  = 0;
     ep->itemWidth  = 0;
     ep->itemHeight = 0;
+    ep->scrollY    = 0;
     ep->modVbo     = 0;
     ep->updateMethod = IV_UPDATE_2;
-    ep->layoutBlkN = UR_INVALID_BUF;
-    ep->bindCtxN   = UR_INVALID_BUF;
+    ep->layoutBlkN   = UR_INVALID_BUF;
+    ep->selectBgBlkN = UR_INVALID_BUF;
+    ep->bindCtxN     = UR_INVALID_BUF;
 
     itemBlkN = arg[0]->series.buf;
     if( ur_isShared( itemBlkN ) )
@@ -438,37 +499,47 @@ static GWidget* itemview_make( UThread* ut, UBlockIter* bi,
         ep->dataBlkN  = itemBlkN;
 
     //--------------------------------------------
-    // Parse layout block
+    // Parse layout block   [size coord!  item block!  selected block!]
 
     {
-    UBlockIter bi;
+    UBlockIterM bi;
+    UBuffer* ctx;
 
-    ur_blkSlice( ut, &bi, arg[1] );
-    if( (bi.end - bi.it) < 2 )
+    if( ur_blkSliceM( ut, &bi, arg[1] ) != UR_OK )
+        goto fail;
+    if( (bi.end - bi.it) < 3 )
         goto bad_layout;
+
+    ctx = gui_styleContext( ut );
+    if( ctx )
+        ur_bind( ut, bi.buf, ctx, UR_BIND_THREAD );
 
     if( ur_is(bi.it, UT_COORD) )
     {
         // Fixed layout.
         static char itemStr[] = "item";
         UBuffer* blk;
-        UBuffer* ctx;
+
+        if( ! ur_is(bi.it + 1, UT_BLOCK) || ! ur_is(bi.it + 2, UT_BLOCK) )
+            goto bad_layout;
 
         ep->itemWidth  = bi.it->coord.n[0];
         ep->itemHeight = bi.it->coord.n[1];
-        printf( "KR item dim %d,%d\n", ep->itemWidth, ep->itemHeight );
+        //printf( "KR item dim %d,%d\n", ep->itemWidth, ep->itemHeight );
         ++bi.it;
 
-        if( (bi.it == bi.end) || ! ur_is(bi.it, UT_BLOCK) )
-            goto bad_layout;
-        if( ! (blk = ur_bufferSerM( bi.it )) )
-            goto fail;
         ep->layoutBlkN = bi.it->series.buf;
 
-        ep->bindCtxN = ur_makeContext( ut, 1 );
+        ep->bindCtxN = ur_makeContext( ut, 1 );     // gc!
         ctx = ur_buffer( ep->bindCtxN );
         ur_ctxAppendWord( ctx, ur_internAtom( ut, itemStr, itemStr + 4 ) );
+
+        if( ! (blk = ur_bufferSerM( bi.it )) )
+            goto fail;
         ur_bind( ut, blk, ctx, UR_BIND_THREAD );
+        ++bi.it;
+
+        ep->selectBgBlkN = bi.it->series.buf;
     }
 #ifdef ITEMVIEW_BOX_LAYOUT
     else
@@ -514,6 +585,7 @@ static void itemview_mark( UThread* ut, GWidget* wp )
 
     ur_markBlkN( ut, ep->dataBlkN );
     ur_markBlkN( ut, ep->layoutBlkN );
+    ur_markBlkN( ut, ep->selectBgBlkN );
     ur_markCtxN( ut, ep->bindCtxN );
 }
 
@@ -529,12 +601,9 @@ static int itemview_validRow( UThread* ut, GItemView* ep, unsigned int row )
             return 1;
     }
 #else
-    if( ep->dataBlkN > 0 )
-    {
-        UBuffer* blk = ur_buffer( ep->dataBlkN );
-        if( row < (unsigned int) blk->used )
-            return 1;
-    }
+    (void) ut;
+    if( row < ep->itemCount )
+        return 1;
 #endif
     return 0;
 }
@@ -598,17 +667,15 @@ static void itemview_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 */
         case GLV_EVENT_BUTTON_DOWN:
         {
-            int row = (((wp->area.y + wp->area.h) - ev->y) / ep->itemHeight)-1;
-            if( row != ep->selRow )
+            int top = wp->area.y + wp->area.h + ep->scrollY;
+            int row = (top - ev->y) / ep->itemHeight;
+            if( row != ep->selRow && itemview_validRow( ut, ep, row ) )
             {
-                if( itemview_validRow( ut, ep, row ) )
-                {
-                    ep->selRow = row;
-                    itemview_layout( wp );
-                }
+                ep->selRow = row;
+                itemview_updateSelection( ep );
             }
             gui_setKeyFocus( wp );
-            //printf( "KR row %d\n", row );
+            //printf( "KR down %d,%d row %d\n", ev->x, ev->y, row );
         }
             break;
 /*
@@ -633,10 +700,22 @@ static void itemview_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             break;
 */
         case GLV_EVENT_WHEEL:
-            if( ev->y < 0 )
-                itemview_selectNextItem( ut, wp );
+        {
+            int stackHeight = ep->itemHeight * (int) ep->itemCount;
+            int limit = stackHeight - wp->area.h;
+            if( limit <= 0 )
+            {
+                ep->scrollY = 0;
+            }
             else
-                itemview_selectPrevItem( wp );
+            {
+                ep->scrollY -= ev->y >> 2;
+                if( ep->scrollY < 0 )
+                    ep->scrollY = 0;
+                else if( ep->scrollY > limit )
+                    ep->scrollY = limit;
+            }
+        }
             break;
 
         case GLV_EVENT_KEY_DOWN:
@@ -710,8 +789,8 @@ static void itemview_layout( GWidget* wp )
     UBuffer* blk;
     int row, rowCount;
     int col, colCount;
-    */
     int itemY;
+    */
     UCell* style = glEnv.guiStyle;
     UThread* ut  = glEnv.guiUT;
     //UIndex strN = 0;
@@ -731,7 +810,7 @@ static void itemview_layout( GWidget* wp )
 
     itemview_calcItemHeight( ut, ep );
 
-    itemY = wp->area.y + wp->area.h - ep->itemHeight;
+    //itemY = wp->area.y + wp->area.h - ep->itemHeight;
 
     if( ep->use_color == -1 )
     {
@@ -843,10 +922,7 @@ static void itemview_render( GWidget* wp )
     int n;
 
 
-    // Alternate vertex array buffers.
     n = ep->modVbo;
-    ep->modVbo = n ^ 1;
-
     fcBuf = &ep->fc[ n ];
     glBindBuffer( GL_ARRAY_BUFFER, ep->vbo[ n ] );
 
@@ -854,7 +930,8 @@ static void itemview_render( GWidget* wp )
     {
         UThread* ut = glEnv.guiUT;
         const UBuffer* items = ur_buffer( ep->dataBlkN );
-        if( items->used != fcBuf->used )
+        ep->itemCount = items->used;
+        if( items->used != fcBuf->used - DECORATION_GROUPS )
         {
             if( items->used )
                 itemview_rebuildAttr( ut, ep, items, n );
@@ -892,10 +969,10 @@ static void itemview_render( GWidget* wp )
         glColorPointer( 3, GL_FLOAT, AttrCount * sizeof(GLfloat),
                         NULL + 5 * sizeof(GLfloat) );
 #endif
-        //glColor3f( 1.0, 1.0, 1.0 );
 
         glPushMatrix();
-        glTranslatef( (GLfloat) wp->area.x, (GLfloat) wp->area.y, 0.0f );
+        glTranslatef( (GLfloat) wp->area.x,
+                      (GLfloat) wp->area.y + ep->scrollY, 0.0f );
 
         glUniform1i( ep->use_color, 1 );
         glMultiDrawArrays( GL_TRIANGLES,
