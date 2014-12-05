@@ -29,6 +29,7 @@
 #include "shader.h"
 
 extern void dp_toString( UThread* ut, const UCell* cell, UBinaryIter* bi );
+extern double ur_now();
 
 
 /*
@@ -56,12 +57,14 @@ typedef struct
 
     GLint     use_color;
     UIndex    dataBlkN;
+    UIndex    actionBlkN;
     UIndex    layoutBlkN;
     UIndex    selectBgBlkN;
     uint32_t  itemCount;
     uint16_t  itemWidth;
     uint16_t  itemHeight;
     int32_t   scrollY;
+    double    clickTime;
 
     UIndex    bindCtxN;
     UIndex    selRow;
@@ -447,13 +450,14 @@ static void itemview_updateSelection( GItemView* ep )
 
 
 /*-wid-
-    item-view   items    layout
-                block!   block!
+    item-view   items    layout   action
+                block!   block!   block!
 */
 static const uint8_t itemview_args[] =
 {
     GUIA_ARGW, 1, UT_BLOCK,
     GUIA_ARGW, 1, UT_BLOCK,
+    GUIA_OPT,     UT_BLOCK,
     GUIA_END
 };
 
@@ -464,7 +468,7 @@ static GWidget* itemview_make( UThread* ut, UBlockIter* bi,
 {
     GItemView* ep;
     UIndex itemBlkN;
-    const UCell* arg[2];
+    const UCell* arg[3];
     //int ok;
 
     if( ! gui_parseArgs( ut, bi, wclass, itemview_args, arg ) )
@@ -491,12 +495,17 @@ static GWidget* itemview_make( UThread* ut, UBlockIter* bi,
     ep->layoutBlkN   = UR_INVALID_BUF;
     ep->selectBgBlkN = UR_INVALID_BUF;
     ep->bindCtxN     = UR_INVALID_BUF;
+    ep->actionBlkN   = UR_INVALID_BUF;
 
     itemBlkN = arg[0]->series.buf;
     if( ur_isShared( itemBlkN ) )
-        ep->dataBlkN  = UR_INVALID_BUF;
+        ep->dataBlkN = UR_INVALID_BUF;
     else
-        ep->dataBlkN  = itemBlkN;
+        ep->dataBlkN = itemBlkN;
+
+    // Optional action block.
+    if( arg[2] )
+        ep->actionBlkN = arg[2]->series.buf;
 
     //--------------------------------------------
     // Parse layout block   [size coord!  item block!  selected block!]
@@ -584,40 +593,67 @@ static void itemview_mark( UThread* ut, GWidget* wp )
     EX_PTR;
 
     ur_markBlkN( ut, ep->dataBlkN );
+    ur_markBlkN( ut, ep->actionBlkN );
     ur_markBlkN( ut, ep->layoutBlkN );
     ur_markBlkN( ut, ep->selectBgBlkN );
     ur_markCtxN( ut, ep->bindCtxN );
 }
 
 
-static int itemview_validRow( UThread* ut, GItemView* ep, unsigned int row )
+static int itemview_validRow( GItemView* ep, unsigned int row )
 {
-#ifdef ITEM_HEADER
-    if( (ep->headerBlkN > 0) && (ep->dataBlkN > 0) )
-    {
-        UBuffer* hblk = ur_buffer( ep->headerBlkN );
-        UBuffer* blk  = ur_buffer( ep->dataBlkN );
-        if( (hblk->used) && (row < (unsigned int) (blk->used / hblk->used)) )
-            return 1;
-    }
-#else
-    (void) ut;
     if( row < ep->itemCount )
         return 1;
-#endif
     return 0;
 }
 
 
-static void itemview_layout( GWidget* );
+static void itemview_scroll( GItemView* ep, int dy )
+{
+    int stackHeight = ep->itemHeight * (int) ep->itemCount;
+    int limit = stackHeight - ep->wid.area.h;
+    if( limit <= 0 )
+    {
+        ep->scrollY = 0;
+    }
+    else
+    {
+        ep->scrollY -= dy;
+        if( ep->scrollY < 0 )
+            ep->scrollY = 0;
+        else if( ep->scrollY > limit )
+            ep->scrollY = limit;
+    }
+}
 
-static void itemview_selectNextItem( UThread* ut, GWidget* wp )
+
+static void _makeItemVisible( GItemView* ep, int i )
+{
+    if( i > -1 )
+    {
+        int top = ep->wid.area.h;
+        int itemY = top - (ep->itemHeight * i) + ep->scrollY;
+
+        if( itemY > top )
+        {
+            itemview_scroll( ep, itemY - top );
+        }
+        else if( (itemY - ep->itemHeight) < 0 )
+        {
+            itemview_scroll( ep, -(itemY + ep->itemHeight) );
+        }
+    }
+}
+
+
+static void itemview_selectNextItem( GWidget* wp )
 {
     EX_PTR;
-    if( itemview_validRow( ut, ep, ep->selRow + 1 ) )
+    if( itemview_validRow( ep, ep->selRow + 1 ) )
     {
         ++ep->selRow;
-        itemview_layout( wp );
+        _makeItemVisible( ep, ep->selRow );
+        itemview_updateSelection( ep );
     }
 }
 
@@ -628,7 +664,8 @@ static void itemview_selectPrevItem( GWidget* wp )
     if( ep->selRow > 0 )
     {
         --ep->selRow;
-        itemview_layout( wp );
+        _makeItemVisible( ep, ep->selRow );
+        itemview_updateSelection( ep );
     }
 }
 
@@ -638,6 +675,7 @@ static void itemview_selectPrevItem( GWidget* wp )
 static void itemview_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
     EX_PTR;
+    (void) ut;
 /*
     UCell* val;
     UCell* cell;
@@ -667,12 +705,25 @@ static void itemview_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 */
         case GLV_EVENT_BUTTON_DOWN:
         {
+            double prevTime;
             int top = wp->area.y + wp->area.h + ep->scrollY;
             int row = (top - ev->y) / ep->itemHeight;
-            if( row != ep->selRow && itemview_validRow( ut, ep, row ) )
+
+            if( itemview_validRow( ep, row ) )
             {
-                ep->selRow = row;
-                itemview_updateSelection( ep );
+                prevTime = ep->clickTime;
+                ep->clickTime = ur_now();
+
+                if( row != ep->selRow )
+                {
+                    ep->selRow = row;
+                    itemview_updateSelection( ep );
+                }
+                else if( (ep->clickTime - prevTime) < GUI_DCLICK_TIME )
+                {
+                    if( ep->actionBlkN != UR_INVALID_BUF )
+                        gui_doBlockN( ut, ep->actionBlkN );
+                }
             }
             gui_setKeyFocus( wp );
             //printf( "KR down %d,%d row %d\n", ev->x, ev->y, row );
@@ -700,32 +751,22 @@ static void itemview_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             break;
 */
         case GLV_EVENT_WHEEL:
-        {
-            int stackHeight = ep->itemHeight * (int) ep->itemCount;
-            int limit = stackHeight - wp->area.h;
-            if( limit <= 0 )
-            {
-                ep->scrollY = 0;
-            }
-            else
-            {
-                ep->scrollY -= ev->y >> 2;
-                if( ep->scrollY < 0 )
-                    ep->scrollY = 0;
-                else if( ep->scrollY > limit )
-                    ep->scrollY = limit;
-            }
-        }
+            itemview_scroll( ep, ev->y >> 2 );
             break;
 
         case GLV_EVENT_KEY_DOWN:
             switch( ev->code )
             {
+                case KEY_Return:
+                    if( ep->actionBlkN != UR_INVALID_BUF )
+                        gui_doBlockN( ut, ep->actionBlkN );
+                    return;
+
                 case KEY_Up:
                     itemview_selectPrevItem( wp );
                     return;
                 case KEY_Down:
-                    itemview_selectNextItem( ut, wp );
+                    itemview_selectNextItem( wp );
                     return;
             }
             // Fall through...
@@ -992,14 +1033,13 @@ static int itemview_select( GWidget* wp, UAtom atom, UCell* res )
 {
     if( atom == UR_ATOM_VALUE /*selection*/ )
     {
-        UIndex i;
         EX_PTR;
 
-        if( ep->colCount && (ep->selRow > -1) )
+        if( ep->selRow > -1 )
         {
-            i = ep->selRow * ep->colCount;
-            ur_setId( res, UT_BLOCK );
-            ur_setSlice( res, ep->dataBlkN, i, i + ep->colCount );
+            UThread* ut = glEnv.guiUT;
+            const UBuffer* items = ur_buffer( ep->dataBlkN );
+            *res = items->ptr.cell[ ep->selRow ];
         }
         else
         {

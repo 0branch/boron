@@ -108,7 +108,7 @@ gui: make widget! [
         s1: slider 1,100 50 [print s1/value]
             slider 0,4 2
 
-        res-view: item-view items item-layout
+        res-view: item-view items item-layout [probe res-view/value/name]
         /*
             ; When using automatic layout, the first item at construction
             ; time is template for all item layout.
@@ -132,7 +132,11 @@ gui: make widget! [
         expand 16
         hbox [
             expand
-            button "OK"     [print wd-text print s1/value print res-view/value]
+            button "OK" [
+                print wd-text
+                print s1/value
+                print res-view/value/name
+            ]
             button "Cancel" [quit]
         ]
     ]

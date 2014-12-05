@@ -1099,7 +1099,7 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
     GUIRoot* ep = (GUIRoot*) wp;
 
 #if 0
-    printf( "KR dispatch %d  mouseFocus %d  keyFocus %d\n",
+    printf( "KR dispatch %d  mouseFocus %p  keyFocus %p\n",
             ev->type, ep->mouseFocus, ep->keyFocus );
 #endif
 

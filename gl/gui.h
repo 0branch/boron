@@ -25,6 +25,9 @@
 #include "urlan.h"
 
 
+#define GUI_DCLICK_TIME 0.5
+
+
 enum GUIEvent
 {
     GUI_EVENT_TIMER = GLV_EVENT_USER,
