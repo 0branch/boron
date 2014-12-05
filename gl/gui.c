@@ -1093,6 +1093,37 @@ found:
 }
 
 
+static GWidget* _updateFocus( GUIRoot* ui )
+{
+    GWidget* fw = ui->mouseFocus;
+    const GLViewEvent* mev = &ui->lastMotion;
+
+    if( mev->type != GLV_EVENT_MOTION )
+        mev = 0;
+
+    if( fw )
+    {
+        if( ui->mouseGrabbed )
+            return fw;
+        if( mev && gui_widgetContains( fw, mev->x, mev->y ) )
+        {
+            if( (fw = activeChildAt( fw, mev, 1 )) )
+               goto change_focus;
+            return ui->mouseFocus;
+        }
+    }
+
+    if( mev && (fw = activeChildAt( &ui->wid, mev, 1 )) )
+    {
+change_focus:
+        //printf( "KR _updateMouseFocus %p\n", fw );
+        gui_setMouseFocus( ui, fw );
+        ui->keyFocus = 0;
+    }
+    return fw;
+}
+
+
 static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
     GWidget* cw;
@@ -1133,7 +1164,7 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             // Fall through...
 
         case GLV_EVENT_WHEEL:
-            if( (cw = ep->mouseFocus) )
+            if( (cw = _updateFocus( ep )) )
                 goto dispatch_used;
             break;
 
