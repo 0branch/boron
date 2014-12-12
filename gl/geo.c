@@ -179,6 +179,7 @@ void geo_bufferData( const Geometry* geo )
 /*--------------------------------------------------------------------------*/
 
 
+/*
 float* geo_attrTV( Geometry* geo, float* vert, const float* tv )
 {
     float* attr;
@@ -194,6 +195,7 @@ float* geo_attrTV( Geometry* geo, float* vert, const float* tv )
 
     return vert + geo->attrSize;
 }
+*/
 
 
 float* geo_attrNTV( Geometry* geo, float* vert, const float* ntv )
@@ -226,6 +228,140 @@ float* geo_attrNTV( Geometry* geo, float* vert, const float* ntv )
 
 
 /*
+  \param rect   View rectangle (x,y,width,height)
+  \param tsize  Texture size (x,y)
+  \param tc     Texture coordinates (left,bot,right,top)
+*/
+void quad_init( QuadDim* qd, const int16_t* rect, const int16_t* tsize,
+                const int16_t* tc )
+{
+    qd->x   = (float) rect[0];
+    qd->y   = (float) rect[1];
+    qd->x2  = qd->x + (float) rect[2];
+    qd->y2  = qd->y + (float) rect[3];
+    qd->us  = 1.0 / ((float) tsize[0]);
+    qd->vs  = 1.0 / ((float) tsize[1]);
+    qd->tx1 = ((float) tc[0]) * qd->us;
+    qd->tx2 = ((float) (tc[2] + 1)) * qd->us;
+    qd->ty1 = 1.0 - ((float) tc[1]) * qd->vs;
+    qd->ty2 = 1.0 - ((float) (tc[3] + 1)) * qd->vs;
+
+    //printf( "KR quad %f,%f %f,%f\n", qd->x,qd->y, qd->x2,qd->y2 );
+    //printf( "        %f,%f %f,%f\n", qd->tx1,qd->ty1, qd->tx2,qd->ty2 );
+}
+
+
+#define Q_VERT(s,t,x,y) \
+    tp[0] = s; \
+    tp[1] = t; \
+    tp += stride; \
+    vp[0] = x; \
+    vp[1] = y; \
+    vp[2] = 0.0f; \
+    vp += stride
+
+#define Q_VER_(s,t,x,y) \
+    tp[0] = s; \
+    tp[1] = t; \
+    vp[0] = x; \
+    vp[1] = y; \
+    vp[2] = 0.0f
+
+/*
+   Emit two triangles (6 vertices).
+*/
+void quad_emitVT( const QuadDim* qd, float* vp, float* tp, int stride )
+{
+    Q_VERT( qd->tx1, qd->ty1, qd->x,  qd->y );
+    Q_VERT( qd->tx2, qd->ty1, qd->x2, qd->y );
+    Q_VERT( qd->tx2, qd->ty2, qd->x2, qd->y2 );
+
+    Q_VERT( qd->tx1, qd->ty2, qd->x,  qd->y2 );
+    Q_VERT( qd->tx1, qd->ty1, qd->x,  qd->y );
+    Q_VER_( qd->tx2, qd->ty2, qd->x2, qd->y2 );
+}
+
+
+/*
+   Emit two triangles (4 vertices).
+*/
+void quad_emitFanVT( const QuadDim* qd, float* vp, float* tp, int stride )
+{
+    Q_VERT( qd->tx1, qd->ty1, qd->x,  qd->y );
+    Q_VERT( qd->tx2, qd->ty1, qd->x2, qd->y );
+    Q_VERT( qd->tx2, qd->ty2, qd->x2, qd->y2 );
+    Q_VER_( qd->tx1, qd->ty2, qd->x,  qd->y2 );
+}
+
+
+/*
+  Emit strip of 20 triangles (2 degenerate, 22 vertices).
+
+  \param cx     Corner X size (texel width)
+  \param cy     Corner Y size (texel height)
+*/
+void quad_emitSkinVT( const QuadDim* qd, float cx, float cy,
+                      float* vp, float* tp, int stride )
+{
+    float tcx = cx * qd->us;
+    float tcy = cy * qd->vs;
+    float xA, xB;
+    float yA, yB;
+    float uA, uB;
+    float vA, vB;
+
+    /*
+       15\ 17\ 19\ 21
+        - \16 \18 \20
+
+       14 /12 /10 / 8
+       13/ 11/  9/  -
+
+        1\  3\  5\  7
+        0 \ 2 \ 4 \ 6
+    */
+
+    xA = qd->x + cx;
+    xB = qd->x2 - cx;
+    yA = qd->y;
+    yB = qd->y + cy;
+    uA = qd->tx1 + tcx;
+    uB = qd->tx2 - tcx;
+    vA = qd->ty1 - tcy;
+    vB = qd->ty2 + tcy;
+
+    Q_VERT( qd->tx1, qd->ty1, qd->x,  yA );
+    Q_VERT( qd->tx1, vA,      qd->x,  yB );
+    Q_VERT( uA,      qd->ty1, xA,     yA );
+    Q_VERT( uA,      vA,      xA,     yB );
+    Q_VERT( uB,      qd->ty1, xB,     yA );
+    Q_VERT( uB,      vA,      xB,     yB );
+    Q_VERT( qd->tx2, qd->ty1, qd->x2, yA );
+    Q_VERT( qd->tx2, vA,      qd->x2, yB );
+
+    yA  = qd->y2 - cy;
+
+    Q_VERT( qd->tx2, vB,      qd->x2, yA );
+    Q_VERT( uB,      vA,      xB,     yB );
+    Q_VERT( uB,      vB,      xB,     yA );
+    Q_VERT( uA,      vA,      xA,     yB );
+    Q_VERT( uA,      vB,      xA,     yA );
+    Q_VERT( qd->tx1, vA,      qd->x,  yB );
+    Q_VERT( qd->tx1, vB,      qd->x,  yA );
+
+    yB = qd->y2;
+
+    Q_VERT( qd->tx1, qd->ty2, qd->x,  yB );
+    Q_VERT( uA,      vB,      xA,     yA );
+    Q_VERT( uA,      qd->ty2, xA,     yB );
+    Q_VERT( uB,      vB,      xB,     yA );
+    Q_VERT( uB,      qd->ty2, xB,     yB );
+    Q_VERT( qd->tx2, vB,      qd->x2, yA );
+    Q_VER_( qd->tx2, qd->ty2, qd->x2, yB );
+}
+
+
+/*
    Draw textured rectangle.
    If skinned, draw 9 quads with a single triangle strip.
 
@@ -237,88 +373,30 @@ float* geo_attrNTV( Geometry* geo, float* vert, const float* ntv )
 void geo_quadSkin( Geometry* geo, const int16_t* rect,
                    const int16_t* tsize, const int16_t* tc, int skin )
 {
-    GLint x  = rect[0];
-    GLint y  = rect[1];
-    GLint x2 = x + rect[2];
-    GLint y2 = y + rect[3];
-    GLfloat ws = 1.0 / ((GLfloat) tsize[0]);
-    GLfloat hs = 1.0 / ((GLfloat) tsize[1]);
-    GLfloat tx1 = ((GLfloat) tc[0]) * ws;
-    GLfloat ty1 = 1.0 - ((GLfloat) tc[1]) * hs;
-    GLfloat tx2 = ((GLfloat) (tc[2] + 1)) * ws;
-    GLfloat ty2 = 1.0 - ((GLfloat) (tc[3] + 1)) * hs;
+    QuadDim qd;
     float* vert;
-    float tv[5];
 
-#define QS_VERT(tx,ty,x,y) \
-    tv[0] = tx; \
-    tv[1] = ty; \
-    tv[2] = x; \
-    tv[3] = y; \
-    vert = geo_attrTV( geo, vert, tv )
 
-    tv[4] = 0.0f;
+    quad_init( &qd, rect, tsize, tc );
 
     if( skin )
     {
-        GLint cx = tc[4];
-        GLint cy = tc[5];
-        GLfloat tcx = ((GLfloat) cx) * ws;
-        GLfloat tcy = ((GLfloat) cy) * hs;
-
-
         geo_primBegin( geo, GL_TRIANGLE_STRIP );
-
         geo_addOrderedIndices( geo, 22 );
         vert = geo_addVerts( geo, 22 );
 
-        /*
-           15\ 17\ 19\ 21
-            - \16 \18 \20
-
-           14 /12 /10 / 8
-           13/ 11/  9/  -
-
-            1\  3\  5\  7
-            0 \ 2 \ 4 \ 6
-        */
-
-        QS_VERT( tx1,       ty1,       x,       y );
-        QS_VERT( tx1,       ty1 - tcy, x,       y + cy );
-        QS_VERT( tx1 + tcx, ty1,       x  + cx, y );
-        QS_VERT( tx1 + tcx, ty1 - tcy, x  + cx, y + cy );
-        QS_VERT( tx2 - tcx, ty1,       x2 - cx, y );
-        QS_VERT( tx2 - tcx, ty1 - tcy, x2 - cx, y + cy );
-        QS_VERT( tx2,       ty1,       x2,      y );
-        QS_VERT( tx2,       ty1 - tcy, x2,      y + cy );
-
-        QS_VERT( tx2,       ty2 + tcy, x2,      y2 - cy );
-        QS_VERT( tx2 - tcx, ty1 - tcy, x2 - cx, y  + cy );
-        QS_VERT( tx2 - tcx, ty2 + tcy, x2 - cx, y2 - cy );
-        QS_VERT( tx1 + tcx, ty1 - tcy, x  + cx, y  + cy );
-        QS_VERT( tx1 + tcx, ty2 + tcy, x  + cx, y2 - cy );
-        QS_VERT( tx1,       ty1 - tcy, x,       y  + cy );
-        QS_VERT( tx1,       ty2 + tcy, x,       y2 - cy );
-
-        QS_VERT( tx1,       ty2,       x,       y2 );
-        QS_VERT( tx1 + tcx, ty2 + tcy, x  + cx, y2 - cy );
-        QS_VERT( tx1 + tcx, ty2,       x  + cx, y2 );
-        QS_VERT( tx2 - tcx, ty2 + tcy, x2 - cx, y2 - cy );
-        QS_VERT( tx2 - tcx, ty2,       x2 - cx, y2 );
-        QS_VERT( tx2,       ty2 + tcy, x2,      y2 - cy );
-        QS_VERT( tx2,       ty2,       x2,      y2 );
+        quad_emitSkinVT( &qd, (float) tc[4], (float) tc[5],
+                         vert + geo->vertOff, vert + geo->uvOff,
+                         geo->attrSize );
     }
     else
     {
         geo_primBegin( geo, GL_TRIANGLE_FAN );
-
         geo_addOrderedIndices( geo, 4 );
         vert = geo_addVerts( geo, 4 );
 
-        QS_VERT( tx1, ty1, x,  y );
-        QS_VERT( tx2, ty1, x2, y );
-        QS_VERT( tx2, ty2, x2, y2 );
-        QS_VERT( tx1, ty2, x,  y2 );
+        quad_emitFanVT( &qd, vert + geo->vertOff, vert + geo->uvOff,
+                        geo->attrSize );
     }
 
     geo_primEnd( geo );

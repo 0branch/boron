@@ -27,6 +27,15 @@
 
 typedef struct
 {
+    float x, y, x2, y2;
+    float us, vs;               // UV scale (convert texel to 0-1).
+    float tx1, ty1, tx2, ty2;
+}
+QuadDim;
+
+
+typedef struct
+{
     GLenum  mode;
     GLsizei count;
     GLuint  offset;
@@ -62,7 +71,7 @@ void      geo_init( Geometry*, const char* attrib,
 void      geo_free( Geometry* );
 void      geo_reserve( Geometry*, int vertCount, int idxCount, int primCount );
 float*    geo_addVerts( Geometry*, int vcount );
-float*    geo_attrTV( Geometry*, float* vert, const float* tv );
+//float*    geo_attrTV( Geometry*, float* vert, const float* tv );
 float*    geo_attrNTV( Geometry*, float* vert, const float* ntv );
 void      geo_primBegin( Geometry*, GLenum mode );
 void      geo_primEnd( Geometry* );
@@ -76,6 +85,13 @@ void geo_image( Geometry*, GLfloat x, GLfloat y, GLfloat x2, GLfloat y2 );
 void geo_box( Geometry*, const float* minv, const float* maxv, int inside );
 void geo_sphere( Geometry*, float radius, int slices, int stacks,
                  int inside );
+
+void quad_init( QuadDim*, const int16_t* rect, const int16_t* tsize,
+                const int16_t* tc );
+void quad_emitVT( const QuadDim*, float* vp, float* tp, int stride );
+void quad_emitFanVT( const QuadDim*, float* vp, float* tp, int stride );
+void quad_emitSkinVT( const QuadDim*, float cx, float cy,
+                      float* vp, float* tp, int stride );
 
 
 #define geo_vertCount(geo)  ((geo)->attr.used / (geo)->attrSize)

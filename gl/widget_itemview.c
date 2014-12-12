@@ -132,49 +132,6 @@ typedef struct
 DrawContext;
 
 
-/*
-    Emit two triangles into vp & tp.
-
-    \param rect   View rectangle (x,y,width,height)
-    \param tsize  Texture size (w,h)
-    \param tc     Texture coordinates (left,bot,right,top)
-*/
-void vbo_drawQuad( GLfloat* vp, GLfloat* tp, int stride, const int16_t* rect,
-                   const int16_t* tsize, const int16_t* tc )
-{
-    float x  = (float) rect[0];
-    float y  = (float) rect[1];
-    float x2 = x + (float) rect[2];
-    float y2 = y + (float) rect[3];
-    float ws = 1.0 / ((float) tsize[0]);
-    float hs = 1.0 / ((float) tsize[1]);
-    float tx1 = ((float) tc[0]) * ws;
-    float ty1 = 1.0 - ((float) tc[1]) * hs;
-    float tx2 = ((float) (tc[2] + 1)) * ws;
-    float ty2 = 1.0 - ((float) (tc[3] + 1)) * hs;
-
-    //printf( "KR quad %f,%f %f,%f\n", x,y, x2,y2 );
-    //printf( "        %f,%f %f,%f\n", tx1,ty1, tx2,ty2 );
-
-#define Q_VERT(s,t,x,y) \
-    tp[0] = s; \
-    tp[1] = t; \
-    tp += stride; \
-    vp[0] = x; \
-    vp[1] = y; \
-    vp[2] = 0.0f; \
-    vp += stride
-
-    Q_VERT( tx1, ty1, x,  y );
-    Q_VERT( tx2, ty1, x2, y );
-    Q_VERT( tx2, ty2, x2, y2 );
-
-    Q_VERT( tx1, ty2, x,  y2 );
-    Q_VERT( tx1, ty1, x,  y );
-    Q_VERT( tx2, ty2, x2, y2 );
-}
-
-
 void vbo_setVec3( GLfloat* ap, int stride, int count, const float* vec )
 {
     int i;
@@ -216,6 +173,7 @@ int itemview_parse( DrawContext* dc, UThread* ut, UBlockIter* bi, GWidget* wp )
             {
                 case DOP_IMAGE:
                 {
+                    QuadDim qd;
                     int16_t rect[4];
                     const int16_t* coord;
                     FETCH_ARGS( iv_args_image );
@@ -225,8 +183,8 @@ int itemview_parse( DrawContext* dc, UThread* ut, UBlockIter* bi, GWidget* wp )
                     rect[1] = coord[1] + dc->penY;
                     rect[2] = coord[2];
                     rect[3] = coord[3];
-                    vbo_drawQuad( dc->attr, dc->attr + 3, AttrCount, rect,
-                                  arg[1]->coord.n, arg[2]->coord.n );
+                    quad_init( &qd, rect, arg[1]->coord.n, arg[2]->coord.n );
+                    quad_emitVT( &qd, dc->attr, dc->attr + 3, AttrCount );
                     vbo_setVec3( dc->attr + 5, AttrCount, 6, dc->color );
                     dc->attr      += 6 * AttrCount;
                     dc->drawCount += 6;
