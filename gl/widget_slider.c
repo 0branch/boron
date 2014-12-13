@@ -38,19 +38,21 @@ enum SliderOrient
     VSLIDER
 };
 
-struct ValueF
+struct Value
 {
     float val, min, max;
+    float vsize;            // Scroll-bar only.
 };
 
 typedef struct
 {
     GWidget  wid;
-    struct ValueF data;
+    struct Value data;
     UIndex   actionN;
     //DPSwitch dpSwitch;
     int16_t  knobWidth;
     uint16_t tx;
+    uint16_t dragOff;
     DPSwitch dpTrans;
     uint8_t  state;
     uint8_t  held;
@@ -64,7 +66,7 @@ GSlider;
 
 static void slider_setValue( GSlider* ep, const UCell* cell )
 {
-    struct ValueF* da = &ep->data;
+    struct Value* da = &ep->data;
     float n;
 
     if( ur_is(cell, UT_INT) )
@@ -112,6 +114,7 @@ static GWidget* slider_make( UThread* ut, UBlockIter* bi,
         ep->data.val =
         ep->data.min = (float) arg[0]->coord.n[0];
         ep->data.max = (float) arg[0]->coord.n[1];
+        ep->data.vsize = (float) arg[0]->coord.n[2];
         ep->dataType = UT_INT;
     }
     else
@@ -119,6 +122,7 @@ static GWidget* slider_make( UThread* ut, UBlockIter* bi,
         ep->data.val =
         ep->data.min = arg[0]->vec3.xyz[0];
         ep->data.max = arg[0]->vec3.xyz[1];
+        ep->data.vsize = arg[0]->vec3.xyz[2];
         ep->dataType = UT_DECIMAL;
     }
 
@@ -161,7 +165,7 @@ static void slider_setState( UThread* ut, GSlider* ep, int state )
 
 static uint16_t slider_knobTrans( GSlider* ep, float movef, float range )
 {
-    struct ValueF* da = &ep->data;
+    struct Value* da = &ep->data;
     float relv = da->val - da->min;
 
     if( ep->dataType == UT_INT )
@@ -181,7 +185,7 @@ static int slider_place( GSlider* ep, int px )
         nx = moveW;
     if( ep->tx != nx )
     {
-        struct ValueF* da = &ep->data;
+        struct Value* da = &ep->data;
         float range = da->max - da->min;
         float movef = (float) moveW;
 
@@ -196,7 +200,7 @@ static int slider_place( GSlider* ep, int px )
 
 static int slider_adjust( GSlider* ep, float adj )
 {
-    struct ValueF* da = &ep->data;
+    struct Value* da = &ep->data;
     float n = da->val + adj;
 
     if( n < da->min )
@@ -224,13 +228,23 @@ static void slider_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
         case GLV_EVENT_BUTTON_DOWN:
             if( ev->code == GLV_BUTTON_LEFT )
             {
+                int rx = ev->x - wp->area.x;
+
                 //slider_setState( ut, ep, BTN_STATE_DOWN );
-                ep->held = 1;
                 gui_grabMouse( wp, 1 );
 
-                // TODO: Do relative movement if the pointer is over the knob.
-                if( slider_place( ep, ev->x ) )
-                    goto trans;
+                // Do relative movement if the pointer is over the knob.
+                if( rx >= ep->tx && rx < (ep->tx + ep->knobWidth) )
+                {
+                    ep->held = 2;
+                    ep->dragOff = rx - ep->tx;
+                }
+                else
+                {
+                    ep->held = 1;
+                    if( slider_place( ep, ev->x ) )
+                        goto trans;
+                }
             }
             break;
 
@@ -249,7 +263,10 @@ static void slider_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
         case GLV_EVENT_MOTION:
             if( ep->held )
             {
-                if( slider_place( ep, ev->x ) )
+                int px = ev->x;
+                if( ep->held == 2 )
+                    px -= ep->dragOff;
+                if( slider_place( ep, px ) )
                     goto trans;
             }
             break;
@@ -303,13 +320,17 @@ activate:
 }
 
 
+GWidgetClass wclass_scrollbar;
+
 static void slider_sizeHint( GWidget* wp, GSizeHint* size )
 {
     UCell* rc;
     EX_PTR;
+    int isSlider = (wp->wclass != &wclass_scrollbar);
 
-    rc = glEnv.guiStyle + CI_STYLE_SLIDER_SIZE;
-    if( ur_is(rc, UT_COORD) )
+    rc = glEnv.guiStyle + (isSlider ? CI_STYLE_SLIDER_SIZE
+                                    : CI_STYLE_SCROLL_SIZE);
+    if( isSlider && ur_is(rc, UT_COORD) )
     {
         size->minW = rc->coord.n[0];
         size->minH = rc->coord.n[1];
@@ -346,18 +367,29 @@ static void slider_sizeHint( GWidget* wp, GSizeHint* size )
 static void slider_layout( GWidget* wp )
 {
     UCell* rc;
+    UCell* area;
     UCell* style = glEnv.guiStyle;
     UThread* ut = glEnv.guiUT;
     EX_PTR;
+    int isSlider = (wp->wclass != &wclass_scrollbar);
     //int horiz = (ep->orient == HSLIDER);
 
     if( ! gDPC )
         return;
 
-    // Get slider knob width.
+    // Set slider knob width.
 
-    rc = style + CI_STYLE_SLIDER_SIZE;
-    ep->knobWidth = rc->coord.n[0];
+    if( isSlider )
+    {
+        rc = style + CI_STYLE_SLIDER_SIZE;
+        ep->knobWidth = rc->coord.n[0];
+    }
+    else
+    {
+        struct Value* da = &ep->data;
+        ep->knobWidth = (int16_t) (da->vsize * wp->area.w /
+                                   (da->max - da->min + da->vsize));
+    }
 
     ep->tx = slider_knobTrans( ep, (float) (ep->wid.area.w - ep->knobWidth),
                                ep->data.max - ep->data.min );
@@ -365,24 +397,26 @@ static void slider_layout( GWidget* wp )
 
     // Set draw list variables.
 
-    rc = style + CI_STYLE_AREA;
-    gui_initRectCoord( rc, wp, UR_ATOM_RECT );
+    area = style + CI_STYLE_AREA;
+    gui_initRectCoord( area, wp, UR_ATOM_RECT );
 
 
     // Compile draw lists.
 
     //ep->dpSwitch = dp_beginSwitch( gDPC, 2 );
 
-    rc = style + CI_STYLE_SLIDER_GROOVE;
+    rc = style + (isSlider ? CI_STYLE_SLIDER_GROOVE : CI_STYLE_SCROLL_BAR);
     if( ur_is(rc, UT_BLOCK) )
         ur_compileDP( ut, rc, 1 );
     //dp_endCase( gDPC, ep->dpSwitch );
 
 #if 1
-    rc = style + CI_STYLE_SLIDER;
+    rc = style + (isSlider ? CI_STYLE_SLIDER : CI_STYLE_SCROLL_KNOB);
         //(horiz ? CI_STYLE_SLIDER_H : CI_STYLE_SLIDER_V);
     if( ur_is(rc, UT_BLOCK) )
     {
+        area->coord.n[2] = ep->knobWidth;   // Area width.
+
         ep->dpTrans = dp_beginTransXY( gDPC, ep->tx, 0.0f );
         ur_compileDP( ut, rc, 1 );
         dp_endTransXY( gDPC );
@@ -413,6 +447,16 @@ static int slider_select( GWidget* wp, UAtom atom, UCell* res )
 GWidgetClass wclass_slider =
 {
     "slider",
+    slider_make,        widget_free,        slider_mark,
+    slider_dispatch,    slider_sizeHint,    slider_layout,
+    widget_renderNul,   slider_select,
+    0, 0
+};
+
+
+GWidgetClass wclass_scrollbar =
+{
+    "scroll-bar",
     slider_make,        widget_free,        slider_mark,
     slider_dispatch,    slider_sizeHint,    slider_layout,
     widget_renderNul,   slider_select,

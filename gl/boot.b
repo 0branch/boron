@@ -55,6 +55,9 @@ gui-style-proto: context [
     slider-size:
     slider:
     slider-groove:
+    scroll-size:
+    scroll-bar:
+    scroll-knob:
         none
 ]
 

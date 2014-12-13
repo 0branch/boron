@@ -2421,6 +2421,7 @@ extern GWidgetClass wclass_label;
 extern GWidgetClass wclass_lineedit;
 extern GWidgetClass wclass_list;
 extern GWidgetClass wclass_slider;
+extern GWidgetClass wclass_scrollbar;
 extern GWidgetClass wclass_itemview;
 /*
     "console",
@@ -2433,7 +2434,7 @@ extern GWidgetClass wclass_itemview;
 
 void gui_addStdClasses()
 {
-    GWidgetClass* classes[ 15 ];
+    GWidgetClass* classes[ 16 ];
     GWidgetClass** wp = classes;
 
     *wp++ = &wclass_root;
@@ -2450,6 +2451,7 @@ void gui_addStdClasses()
     *wp++ = &wclass_lineedit;
     *wp++ = &wclass_list;
     *wp++ = &wclass_slider;
+    *wp++ = &wclass_scrollbar;
     *wp++ = &wclass_itemview;
 
     gui_addWidgetClasses( classes, wp - classes );
