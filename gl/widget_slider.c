@@ -25,6 +25,8 @@
 #include "os.h"
 #include "gl_atoms.h"
 
+GWidgetClass wclass_scrollbar;
+
 
 enum SliderState
 {
@@ -34,8 +36,8 @@ enum SliderState
 
 enum SliderOrient
 {
-    HSLIDER,
-    VSLIDER
+    HORIZONTAL,
+    VERTICAL
 };
 
 struct Value
@@ -49,10 +51,9 @@ typedef struct
     GWidget  wid;
     struct Value data;
     UIndex   actionN;
-    //DPSwitch dpSwitch;
-    int16_t  knobWidth;
-    uint16_t tx;
-    uint16_t dragOff;
+    int16_t  knobLen;
+    uint16_t td;
+    int16_t  dragOff;
     DPSwitch dpTrans;
     uint8_t  state;
     uint8_t  held;
@@ -85,13 +86,14 @@ static void slider_setValue( GSlider* ep, const UCell* cell )
 
 
 /*-wid-
-    slider  range           initial-value   [action]
-            coord!/vec3!    int!/decimal!   block!
+    slider  [orient]    range           initial-value   [action]
+            word!       coord!/vec3!    int!/decimal!   block!
 
     Range is minimum,maximum.
 */
 static const uint8_t slider_args[] =
 {
+    GUIA_OPT,     UT_WORD,
     GUIA_ARGM, 2, UT_COORD, UT_VEC3,
     GUIA_ARGW, 2, UT_INT,   UT_DECIMAL,
     GUIA_OPT,     UT_BLOCK,
@@ -102,35 +104,47 @@ static GWidget* slider_make( UThread* ut, UBlockIter* bi,
                              const GWidgetClass* wclass )
 {
     GSlider* ep;
-    const UCell* arg[3];
+    const UCell* arg[4];
 
     if( ! gui_parseArgs( ut, bi, wclass, slider_args, arg ) )
         return 0;
 
     ep = (GSlider*) gui_allocWidget( sizeof(GSlider), wclass );
     ep->state = BTN_STATE_UP;
-    if( ur_is(arg[0], UT_COORD) )
+
+    // Optional orientaion.
+    if( arg[0] )
+    {
+        const char* word = ur_atomCStr( ut, arg[0]->word.atom );
+        ep->orient = (word[0] == 'h') ? HORIZONTAL : VERTICAL;
+    }
+    else if( wclass == &wclass_scrollbar )
+    {
+        ep->orient = VERTICAL;
+    }
+
+    if( ur_is(arg[1], UT_COORD) )
     {
         ep->data.val =
-        ep->data.min = (float) arg[0]->coord.n[0];
-        ep->data.max = (float) arg[0]->coord.n[1];
-        ep->data.vsize = (float) arg[0]->coord.n[2];
+        ep->data.min = (float) arg[1]->coord.n[0];
+        ep->data.max = (float) arg[1]->coord.n[1];
+        ep->data.vsize = (float) arg[1]->coord.n[2];
         ep->dataType = UT_INT;
     }
     else
     {
         ep->data.val =
-        ep->data.min = arg[0]->vec3.xyz[0];
-        ep->data.max = arg[0]->vec3.xyz[1];
-        ep->data.vsize = arg[0]->vec3.xyz[2];
+        ep->data.min = arg[1]->vec3.xyz[0];
+        ep->data.max = arg[1]->vec3.xyz[1];
+        ep->data.vsize = arg[1]->vec3.xyz[2];
         ep->dataType = UT_DECIMAL;
     }
 
-    slider_setValue( ep, arg[1] );
+    slider_setValue( ep, arg[2] );
 
     // Optional action block.
-    if( arg[2] )
-        ep->actionN = arg[2]->series.buf;
+    if( arg[3] )
+        ep->actionN = arg[3]->series.buf;
 
     return (GWidget*) ep;
 }
@@ -141,26 +155,6 @@ static void slider_mark( UThread* ut, GWidget* wp )
     EX_PTR;
     ur_markBlkN( ut, ep->actionN );
 }
-
-
-/*
-static void slider_setState( UThread* ut, GSlider* ep, int state )
-{
-    (void) ut;
-
-    if( state != ep->state )
-    {
-        ep->state = state;
-
-        if( ep->dpSwitch )
-        {
-            UIndex resN = gui_parentDrawProg( &ep->wid );
-            if( resN != UR_INVALID_BUF )
-                ur_setDPSwitch( ut, resN, ep->dpSwitch, state );
-        }
-    }
-}
-*/
 
 
 static uint16_t slider_knobTrans( GSlider* ep, float movef, float range )
@@ -176,22 +170,36 @@ static uint16_t slider_knobTrans( GSlider* ep, float movef, float range )
 
 static int slider_place( GSlider* ep, int px )
 {
-    int nx = px - ep->wid.area.x;
-    int moveW = ep->wid.area.w - ep->knobWidth;
+    int nx, moveW;
+
+    if( ep->orient == HORIZONTAL )
+    {
+        nx = px - ep->wid.area.x;
+        moveW = ep->wid.area.w - ep->knobLen;
+    }
+    else
+    {
+#ifdef YTOP
+        nx = px - ep->wid.area.y;
+#else
+        nx = ep->wid.area.y + ep->wid.area.h - px;
+#endif
+        moveW = ep->wid.area.h - ep->knobLen;
+    }
 
     if( nx < 0 )
         nx = 0;
     else if( nx > moveW )
         nx = moveW;
-    if( ep->tx != nx )
+    if( ep->td != nx )
     {
         struct Value* da = &ep->data;
         float range = da->max - da->min;
         float movef = (float) moveW;
 
         da->val = da->min + (nx * range / movef);
-        ep->tx = slider_knobTrans( ep, movef, range );
-        //printf( "KR slider adj nx:%d tx:%d\n", nx, ep->tx );
+        ep->td = slider_knobTrans( ep, movef, range );
+        //printf( "KR slider adj nx:%d td:%d\n", nx, ep->td );
         return 1;
     }
     return 0;
@@ -209,8 +217,10 @@ static int slider_adjust( GSlider* ep, float adj )
         n = da->max;
     if( da->val != n )
     {
+        int majorD = (ep->orient == HORIZONTAL) ? ep->wid.area.w
+                                                : ep->wid.area.h;
         da->val = n;
-        ep->tx = slider_knobTrans( ep, (float) (ep->wid.area.w - ep->knobWidth),
+        ep->td = slider_knobTrans( ep, (float) (majorD - ep->knobLen),
                                    ep->data.max - ep->data.min );
         return 1;
     }
@@ -228,21 +238,40 @@ static void slider_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
         case GLV_EVENT_BUTTON_DOWN:
             if( ev->code == GLV_BUTTON_LEFT )
             {
-                int rx = ev->x - wp->area.x;
+                int pd, rd;
 
-                //slider_setState( ut, ep, BTN_STATE_DOWN );
                 gui_grabMouse( wp, 1 );
 
+                if( ep->orient == HORIZONTAL )
+                {
+                    pd = ev->x;
+                    rd = ev->x - wp->area.x;
+                }
+                else
+                {
+                    pd = ev->y;
+#ifdef YTOP
+                    rd = ev->y - wp->area.y;
+#else
+                    rd = wp->area.y + wp->area.h - ev->y;
+#endif
+                }
+
                 // Do relative movement if the pointer is over the knob.
-                if( rx >= ep->tx && rx < (ep->tx + ep->knobWidth) )
+                if( rd >= ep->td && rd < (ep->td + ep->knobLen) )
                 {
                     ep->held = 2;
-                    ep->dragOff = rx - ep->tx;
+#ifndef YTOP
+                    if( ep->orient == VERTICAL )
+                        ep->dragOff = ev->y -(wp->area.y + wp->area.h - ep->td);
+                    else
+#endif
+                        ep->dragOff = rd - ep->td;
                 }
                 else
                 {
                     ep->held = 1;
-                    if( slider_place( ep, ev->x ) )
+                    if( slider_place( ep, pd ) )
                         goto trans;
                 }
             }
@@ -253,7 +282,6 @@ static void slider_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             {
                 int pressed = (ep->state == BTN_STATE_DOWN);
                 gui_ungrabMouse( wp );
-                //slider_setState( ut, ep, BTN_STATE_UP );
                 ep->held = 0;
                 if( pressed && gui_widgetContains( wp, ev->x, ev->y ) )
                     goto activate;
@@ -263,10 +291,10 @@ static void slider_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
         case GLV_EVENT_MOTION:
             if( ep->held )
             {
-                int px = ev->x;
+                int pd = (ep->orient == HORIZONTAL) ? ev->x : ev->y;
                 if( ep->held == 2 )
-                    px -= ep->dragOff;
-                if( slider_place( ep, px ) )
+                    pd -= ep->dragOff;
+                if( slider_place( ep, pd ) )
                     goto trans;
             }
             break;
@@ -312,15 +340,30 @@ trans:
     {
         UIndex resN = gui_parentDrawProg( wp );
         if( resN != UR_INVALID_BUF )
-            ur_setTransXY( ut, resN, ep->dpTrans, (float) ep->tx, 0.0f );
+        {
+            float tx, ty;
+            if( ep->orient == HORIZONTAL )
+            {
+                tx = (float) ep->td;
+                ty = 0.0f;
+            }
+            else
+            {
+                tx = 0.0f;
+#ifdef YTOP
+                ty = (float) ep->td;
+#else
+                ty = (float) (wp->area.h - ep->knobLen - ep->td);
+#endif
+            }
+            ur_setTransXY( ut, resN, ep->dpTrans, tx, ty );
+        }
     }
 activate:
     if( ep->actionN )
         gui_doBlockN( ut, ep->actionN );
 }
 
-
-GWidgetClass wclass_scrollbar;
 
 static void slider_sizeHint( GWidget* wp, GSizeHint* size )
 {
@@ -330,7 +373,7 @@ static void slider_sizeHint( GWidget* wp, GSizeHint* size )
 
     rc = glEnv.guiStyle + (isSlider ? CI_STYLE_SLIDER_SIZE
                                     : CI_STYLE_SCROLL_SIZE);
-    if( isSlider && ur_is(rc, UT_COORD) )
+    if( ur_is(rc, UT_COORD) )
     {
         size->minW = rc->coord.n[0];
         size->minH = rc->coord.n[1];
@@ -341,7 +384,7 @@ static void slider_sizeHint( GWidget* wp, GSizeHint* size )
         size->minH = 20;
     }
 
-    if( ep->orient == HSLIDER )
+    if( ep->orient == HORIZONTAL )
     {
         size->minW = 100;
         size->maxW = GW_MAX_DIM;
@@ -372,26 +415,27 @@ static void slider_layout( GWidget* wp )
     UThread* ut = glEnv.guiUT;
     EX_PTR;
     int isSlider = (wp->wclass != &wclass_scrollbar);
-    //int horiz = (ep->orient == HSLIDER);
+    int horiz = (ep->orient == HORIZONTAL);
+    int majorD = horiz ? wp->area.w : wp->area.h;
 
     if( ! gDPC )
         return;
 
-    // Set slider knob width.
+    // Set slider knob length.
 
     if( isSlider )
     {
         rc = style + CI_STYLE_SLIDER_SIZE;
-        ep->knobWidth = rc->coord.n[0];
+        ep->knobLen = rc->coord.n[0];
     }
     else
     {
         struct Value* da = &ep->data;
-        ep->knobWidth = (int16_t) (da->vsize * wp->area.w /
-                                   (da->max - da->min + da->vsize));
+        ep->knobLen = (int16_t) (da->vsize * majorD /
+                                (da->max - da->min + da->vsize));
     }
 
-    ep->tx = slider_knobTrans( ep, (float) (ep->wid.area.w - ep->knobWidth),
+    ep->td = slider_knobTrans( ep, (float) (majorD - ep->knobLen),
                                ep->data.max - ep->data.min );
 
 
@@ -403,28 +447,36 @@ static void slider_layout( GWidget* wp )
 
     // Compile draw lists.
 
-    //ep->dpSwitch = dp_beginSwitch( gDPC, 2 );
-
     rc = style + (isSlider ? CI_STYLE_SLIDER_GROOVE : CI_STYLE_SCROLL_BAR);
     if( ur_is(rc, UT_BLOCK) )
         ur_compileDP( ut, rc, 1 );
-    //dp_endCase( gDPC, ep->dpSwitch );
 
-#if 1
     rc = style + (isSlider ? CI_STYLE_SLIDER : CI_STYLE_SCROLL_KNOB);
         //(horiz ? CI_STYLE_SLIDER_H : CI_STYLE_SLIDER_V);
     if( ur_is(rc, UT_BLOCK) )
     {
-        area->coord.n[2] = ep->knobWidth;   // Area width.
+        float tx, ty;
+        if( horiz )
+        {
+            tx = (float) ep->td;
+            ty = 0.0f;
+            area->coord.n[2] = ep->knobLen;   // Area width.
+        }
+        else
+        {
+            tx = 0.0f;
+#ifdef YTOP
+            ty = (float) ep->td;
+#else
+            ty = (float) (wp->area.h - ep->knobLen - ep->td);
+#endif
+            area->coord.n[3] = ep->knobLen;   // Area height.
+        }
 
-        ep->dpTrans = dp_beginTransXY( gDPC, ep->tx, 0.0f );
+        ep->dpTrans = dp_beginTransXY( gDPC, tx, ty );
         ur_compileDP( ut, rc, 1 );
         dp_endTransXY( gDPC );
     }
-    //dp_endCase( gDPC, ep->dpSwitch );
-#endif
-
-    //dp_endSwitch( gDPC, ep->dpSwitch, ep->state );
 }
 
 
