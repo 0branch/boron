@@ -3553,7 +3553,8 @@ int block_make( UThread* ut, const UCell* from, UCell* res )
         }
         else if( (si.buf->elemSize == 1) )
         {
-            if( ur_tokenize( ut, si.buf->ptr.c + si.it,
+            if( ur_tokenizeType( ut, si.buf->form,
+                                 si.buf->ptr.c + si.it,
                                  si.buf->ptr.c + si.end, res ) )
                 return UR_OK;
         }

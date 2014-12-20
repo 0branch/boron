@@ -3,6 +3,7 @@ print encoding? "abc"
 u: "Sîne klâwen"
 print [encoding? u  encoding? encode 'ucs2 u]
 probe encode/bom 'utf8 u
+probe to-block {"Copyright © 1930"}
 
 
 print "---- append"

@@ -482,6 +482,8 @@ UBuffer* ur_threadContext( UThread* );
 UBuffer* ur_envContext( UThread* );
 void     ur_appendTrace( UThread*, UIndex blkN, UIndex it );
 UIndex   ur_tokenize( UThread*, const char* it, const char* end, UCell* res );
+UIndex   ur_tokenizeType( UThread*, int inputEncoding,
+                          const char* it, const char* end, UCell* res );
 int      ur_serialize( UThread*, UIndex blkN, UCell* res );
 int      ur_unserialize( UThread*, const uint8_t* start, const uint8_t* end,
                          UCell* res );

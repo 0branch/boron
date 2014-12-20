@@ -707,6 +707,27 @@ static const char* _errToken( UBuffer* bin, const char* it, const char* end )
 }
 
 
+UIndex _makeStringEnc( UThread* ut, const uint8_t* it, const uint8_t* end,
+                       int enc )
+{
+    UIndex n;
+    if( enc == UR_ENC_LATIN1 )
+    {
+        UBuffer* str;
+        int len = end - it;
+        n = ur_makeString( ut, UR_ENC_LATIN1, len );
+        str = ur_buffer( n );
+        memCpy( str->ptr.b, it, len );
+        str->used = len;
+    }
+    else
+    {
+        n = ur_makeStringUtf8( ut, it, end );
+    }
+    return n;
+}
+
+
 #define syntaxError(msg) \
     errorMsg = msg; \
     goto error_msg
@@ -732,6 +753,13 @@ static const char* _errToken( UBuffer* bin, const char* it, const char* end )
   generated with ur_error() and zero is returned.
 */
 UIndex ur_tokenize( UThread* ut, const char* it, const char* end, UCell* res )
+{
+    return ur_tokenizeType( ut, UR_ENC_UTF8, it, end, res );
+}
+
+
+UIndex ur_tokenizeType( UThread* ut, int inputEncoding,
+                        const char* it, const char* end, UCell* res )
 {
 #define STACK   stack.ptr.i
 #define BLOCK   ur_buffer( STACK[ stack.used - 1 ] )
@@ -963,8 +991,9 @@ vector_newline:
                 syntaxError( "String not terminated" );
 string_end:
                 {
-                UIndex newStrN = ur_makeStringUtf8( ut, (uint8_t*) token,
-                                                        (uint8_t*) it );
+                UIndex newStrN = _makeStringEnc( ut, (uint8_t*) token,
+                                                     (uint8_t*) it,
+                                                 inputEncoding );
                 cell = ur_blkAppendNew( BLOCK, UT_STRING );
                 ur_setSeries( cell, newStrN, 0 );
                 }
@@ -1002,6 +1031,7 @@ string_end:
             case LIT:
                 token = ++it;
                 {
+                // TODO: Handle Latin1
                 int c = ur_charUtf8ToUcs2( (const uint8_t*) token,
                                            (const uint8_t*) end,
                                            (const uint8_t**) &it );
@@ -1148,8 +1178,9 @@ hex_number:
                     SCAN_END
                 }
                 {
-                UIndex newStrN = ur_makeStringUtf8( ut, (uint8_t*) token,
-                                                        (uint8_t*) it );
+                UIndex newStrN = _makeStringEnc( ut, (uint8_t*) token,
+                                                     (uint8_t*) it,
+                                                 inputEncoding );
                 cell = ur_blkAppendNew( BLOCK, UT_FILE );
                 ur_setSeries( cell, newStrN, 0 );
                 if( ch == '"' )
