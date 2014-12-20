@@ -813,7 +813,7 @@ static void itemview_layout( GWidget* wp )
 
     if( ep->use_color == -1 )
     {
-        rc = style + CI_STYLE_SLIDER_GROOVE + 1;    // CI_STYLE_SHADER
+        rc = style + CI_STYLE_WIDGET_SH;
         if( ur_is(rc, UT_CONTEXT) )
         {
             const Shader* shad = shaderContext( ut, rc, 0 );

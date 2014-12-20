@@ -38,6 +38,7 @@ enum GUIEvent
 // Order must match gui-style-proto in boot.b.
 enum ContextIndexStyle
 {
+    CI_STYLE_WIDGET_SH,     // shader!
     CI_STYLE_TEXTURE,       // texture!
     CI_STYLE_TEX_SIZE,      // coord!
     CI_STYLE_CONTROL_FONT,  // font!

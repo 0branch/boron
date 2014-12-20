@@ -23,6 +23,7 @@ orbit-cam: make camera [
 
 ; Must match order of ContextIndexStyle in gui.h
 gui-style-proto: context [
+    widget-sh:
     texture:
     tex-size:
     control-font:

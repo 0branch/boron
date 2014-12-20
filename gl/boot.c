@@ -15,6 +15,7 @@
   "    focal-pnt: 0.0,0.0,0.0\n"
   "]\n"
   "gui-style-proto: context [\n"
+  "    widget-sh:\n"
   "    texture:\n"
   "    tex-size:\n"
   "    control-font:\n"
