@@ -2,7 +2,6 @@
 
 
 embed-manifest: true
-qt-version: 4
 
 win32: func [blk] [do blk]
 
@@ -48,11 +47,10 @@ generate_makefile: does [
 
 
 qt-includes: context [
-    concurrent: does [ include_from {$(QTDIR)\include\QtConcurrent} ]
-    gui: does [
-        include_from {$(QTDIR)\include\QtGui}
-        if eq? 5 qt-version [include_from {$(QTDIR)\include\QtWidgets}]
-    ]
+    concurrent:
+             does [ include_from {$(QTDIR)\include\QtConcurrent} ]
+    core:    does [ include_from {$(QTDIR)\include\QtCore} ]
+    gui:     does [ include_from {$(QTDIR)\include\QtGui} ]
     network: does [ include_from {$(QTDIR)\include\QtNetwork} ]
     opengl:  does [ include_from {$(QTDIR)\include\QtOpenGL} ]
     printsupport:
@@ -61,59 +59,65 @@ qt-includes: context [
     sql:     does [ include_from {$(QTDIR)\include\QtSql} ]
     support: does [ include_from {$(QTDIR)\include\Qt3Support}
                     cxxflags {-DQT3_SUPPORT} ]
+    widgets: does [
+        if gt? qt-version 4 [include_from {$(QTDIR)\include\QtWidgets}]
+    ]
     xml:     does [ include_from {$(QTDIR)\include\QtXml} ]
 ]
 
-either eq? 5 qt-version [
-    qt-libraries: context [
-       concurrent: " Qt5Concurrent"
-       core:    " Qt5Core"
-       gui:     " Qt5Gui Qt5Widgets"
-       network: " Qt5Network"
-       opengl:  " Qt5OpenGL"
-       printsupport: " Qt5PrintSupport"
-       svg:     " Qt5Svg"
-       sql:     " Qt5Sql"
-       main:    " qtmain"
-       xml:     " Qt5Xml"
+qt-libraries: func [debug | n] [
+    n: qt-version
+    if debug [n: negate n]
+    context select [
+    5 [
+        concurrent: " Qt5Concurrent"
+        core:    " Qt5Core"
+        gui:     " Qt5Gui"
+        network: " Qt5Network"
+        opengl:  " Qt5OpenGL"
+        printsupport: " Qt5PrintSupport"
+        svg:     " Qt5Svg"
+        sql:     " Qt5Sql"
+        main:    " qtmain"
+        widgets: " Qt5Widgets"
+        xml:     " Qt5Xml"
     ]
-
-    qt-debug-libraries: context [
-       concurrent: " Qt5Concurrentd"
-       core:    " Qt5Cored"
-       gui:     " Qt5Guid Qt5Widgetsd"
-       network: " Qt5Networkd"
-       opengl:  " Qt5OpenGLd"
-       printsupport: " Qt5PrintSupportd"
-       svg:     " Qt5Svgd"
-       sql:     " Qt5Sqld"
-       main:    " qtmaind"
-       xml:     " Qt5Xmld"
+    -5 [
+        concurrent: " Qt5Concurrentd"
+        core:    " Qt5Cored"
+        gui:     " Qt5Guid"
+        network: " Qt5Networkd"
+        opengl:  " Qt5OpenGLd"
+        printsupport: " Qt5PrintSupportd"
+        svg:     " Qt5Svgd"
+        sql:     " Qt5Sqld"
+        main:    " qtmaind"
+        widgets: " Qt5Widgetsd"
+        xml:     " Qt5Xmld"
     ]
-][
-    qt-libraries: context [
-       core:    " QtCore4"
-       gui:     " QtGui4"
-       network: " QtNetwork4"
-       opengl:  " QtOpenGL4"
-       svg:     " QtSvg4"
-       sql:     " QtSql4"
-       support: " Qt3Support4"
-       main:    " qtmain"
-       xml:     " QtXml4"
+    4 [
+        core:    " QtCore4"
+        gui:     " QtGui4"
+        network: " QtNetwork4"
+        opengl:  " QtOpenGL4"
+        svg:     " QtSvg4"
+        sql:     " QtSql4"
+        support: " Qt3Support4"
+        main:    " qtmain"
+        xml:     " QtXml4"
     ]
-
-    qt-debug-libraries: context [
-       core:    " QtCored4"
-       gui:     " QtGuid4"
-       network: " QtNetworkd4"
-       opengl:  " QtOpenGLd4"
-       svg:     " QtSvgd4"
-       sql:     " QtSqld4"
-       support: " Qt3Supportd4"
-       main:    " qtmaind"
-       xml:     " QtXmld4"
+    -4 [
+        core:    " QtCored4"
+        gui:     " QtGuid4"
+        network: " QtNetworkd4"
+        opengl:  " QtOpenGLd4"
+        svg:     " QtSvgd4"
+        sql:     " QtSqld4"
+        support: " Qt3Supportd4"
+        main:    " qtmaind"
+        xml:     " QtXmld4"
     ]
+    ] n
 ]
 
 
@@ -164,8 +168,7 @@ exe_target: make target_env
 
         if cfg/qt [
             include_from {$(QTDIR)\include}
-            include_from {$(QTDIR)\include\QtCore}
-            do bind cfg/qt in qt-includes 'gui
+            do bind copy cfg/qt in qt-includes 'gui
             if cfg/release [
                 cxxflags {-DQT_NO_DEBUG}
             ]
@@ -182,10 +185,9 @@ exe_target: make target_env
         do config
         ;libs {user32}    ; gdi32
         if cfg/qt [
-            append qt-libs: copy cfg/qt [core main]
+            append qt-libs: copy cfg/qt 'main
             libs_from %"$(QTDIR)/lib" 
-                rejoin bind qt-libs
-                    either cfg/debug [qt-debug-libraries] [qt-libraries]
+                rejoin bind qt-libs qt-libraries cfg/debug
 
             libs {comdlg32 winspool advapi32 shell32 ole32}
         ]
@@ -286,10 +288,8 @@ shlib_target: make exe_target [
         ;cflags {-MT}
         lflags {/DLL}
         if cfg/qt [
-            append qt-libs: copy cfg/qt [core]
             libs_from %"$(QTDIR)/lib" 
-                rejoin bind qt-libs
-                    either cfg/debug [qt-debug-libraries] [qt-libraries]
+                rejoin bind copy cfg/qt qt-libraries cfg/debug
         ]
     ]
 ]

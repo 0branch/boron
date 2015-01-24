@@ -1,8 +1,8 @@
 #!/usr/bin/boron -s
 /*
 	M2 - A meta-make tool
-	Copyright 2001-2013 Karl Robillard
-	Version 1.2.0
+	Copyright 2001-2015 Karl Robillard
+	Version 1.3.0
 
 	TODO:
 		* Remove files outside the build directory from dist rule.
@@ -403,8 +403,9 @@ m2: context
 	no-warn:	does [ct/cfg/warn:   false] ; Disable compiler warnings.
 
 	opengl:		does [ct/cfg/opengl: true]  ; Using OpenGL libraries.
-	qt:			func [libs block!] [ct/cfg/qt: libs]  ; Using Qt 4.
+	qt:			func [libs block!] [ct/cfg/qt: validate-qt libs]
 	qt-static:	does [ct/cfg/qt-static: true]
+	qt-version: 5
 	x11:		does [ct/cfg/x11: true]     ; Using X11 libraries.
 
 	include-define:	func [str string!] [append ct/defines parse-white str]
@@ -784,6 +785,16 @@ add_moc_files: func [ct files block! | blk dir file]
 	blk
 ]
 
+validate-qt: func [blk | pos] [
+    if all [find blk 'widgets  not find blk 'gui] [
+        append blk 'gui
+    ]
+    if eq? qt-version 4 [
+        if pos: find blk 'widgets [remove pos]
+    ]
+    ifn find blk 'core [append blk 'core]
+    blk
+]
 ]
 
 

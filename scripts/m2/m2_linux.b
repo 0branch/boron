@@ -2,7 +2,6 @@
 
 
 system-qt: true
-qt-version: 4
 
 linux:
 unix:  func [blk] [do blk]
@@ -17,10 +16,12 @@ generate_makefile: does [
     ]
 
     emit do_tags copy gnu_header
-    emit pick [
-        {MOC      = moc-qt4^/QTINC    = /usr/include^/^/}
-        {MOC      = $(QTDIR)/bin/moc^/QTINC    = $(QTDIR)/include^/^/}
-    ] system-qt
+    emit case [
+        not system-qt
+            {MOC      = $(QTDIR)/bin/moc^/QTINC    = $(QTDIR)/include^/^/}
+        eq? qt-version 5 {MOC      = moc-qt5^/QTINC    = /usr/include/qt5^/^/}
+        true             {MOC      = moc-qt4^/QTINC    = /usr/include^/^/}
+    ]
 
     emit "^/#------ Target settings"
     foreach t targets [emit "^/^/" t/macro_text]
@@ -55,68 +56,57 @@ generate_makefile: does [
 
 
 qt-includes: context [
-    concurrent: does [ include_from {$(QTINC)/QtConcurrent} ]
-    gui: does [
-         include_from {$(QTINC)/QtGui}
-         if eq? 5 qt-version [include_from {$(QTINC)/QtWidgets}]
+    concurrent: " $(QTINC)/QtConcurrent"
+    core:       " $(QTINC)/QtCore"
+    gui:        " $(QTINC)/QtGui"
+    network:    " $(QTINC)/QtNetwork"
+    opengl:     " $(QTINC)/QtOpenGL"
+    printsupport: " $(QTINC)/QtPrintSupport"
+    svg:        " $(QTINC)/QtSvg"
+    sql:        " $(QTINC)/QtSql"
+    support: does [
+        cxxflags "-DQT3_SUPPORT"
+        " $(QTINC)/Qt3Support"
     ]
-    network:    does [ include_from {$(QTINC)/QtNetwork} ]
-    opengl:     does [ include_from {$(QTINC)/QtOpenGL} ]
-    printsupport:
-                does [ include_from {$(QTINC)/QtPrintSupport} ]
-    svg:        does [ include_from {$(QTINC)/QtSvg} ]
-    sql:        does [ include_from {$(QTINC)/QtSql} ]
-    support:    does [ include_from {$(QTINC)/Qt3Support}
-                       cxxflags {-DQT3_SUPPORT} ]
-    xml:        does [ include_from {$(QTINC)/QtXml} ]
+    widgets: does [
+        if lt? qt-version 5 [return ""]
+        " $(QTINC)/QtWidgets"
+    ]
+    xml:        " $(QTINC)/QtXml"
 ]
 
-either eq? 5 qt-version [
-    qt-libraries: context [
-        concurrent: " Qt5Concurrent"
-        core:    " Qt5Core"
-        gui:     " Qt5Widgets Qt5Gui"
-        network: " Qt5Network"
-        opengl:  " Qt5OpenGL"
-        printsupport: " Qt5PrintSupport"
-        svg:     " Qt5Svg"
-        sql:     " Qt5Sql"
-        widgets: " Qt5Widgets"
-        xml:     " Qt5Xml"
+qt-libraries: func [debug | blk it] [
+    blk: select [
+        5 [
+            concurrent: " Qt5Concurrent"
+            core:    " Qt5Core"
+            gui:     " Qt5Gui"
+            network: " Qt5Network"
+            opengl:  " Qt5OpenGL"
+            printsupport: " Qt5PrintSupport"
+            svg:     " Qt5Svg"
+            sql:     " Qt5Sql"
+            widgets: " Qt5Widgets"
+            xml:     " Qt5Xml"
+        ]
+        4 [
+            core:    " QtCore"
+            gui:     " QtGui"
+            network: " QtNetwork"
+            opengl:  " QtOpenGL"
+            svg:     " QtSvg"
+            sql:     " QtSql"
+            support: " Qt3Support"
+            xml:     " QtXml"
+        ]
+    ] qt-version
+
+    if debug [
+        map it blk [
+            either string? it [join it "_debug"][it]
+        ]
     ]
-    qt-debug-libraries: context [
-        concurrent: " Qt5Concurrent_debug"
-        core:    " Qt5Core_debug"
-        gui:     " Qt5Widgets_debug Qt5Gui_debug"
-        network: " Qt5Network_debug"
-        opengl:  " Qt5OpenGL_debug"
-        printsupport: " Qt5PrintSupport_debug"
-        svg:     " Qt5Svg_debug"
-        sql:     " Qt5Sql_debug"
-        widgets: " Qt5Widgets_debug"
-        xml:     " Qt5Xml_debug"
-    ]
-][
-    qt-libraries: context [
-        core:    " QtCore"
-        gui:     " QtGui"
-        network: " QtNetwork"
-        opengl:  " QtOpenGL"
-        svg:     " QtSvg"
-        sql:     " QtSql"
-        support: " Qt3Support"
-        xml:     " QtXml"
-    ]
-    qt-debug-libraries: context [
-        core:    " QtCore_debug"
-        gui:     " QtGui_debug"
-        network: " QtNetwork_debug"
-        opengl:  " QtOpenGL_debug"
-        svg:     " QtSvg_debug"
-        sql:     " QtSql_debug"
-        support: " Qt3Support_debug"
-        xml:     " QtXml_debug"
-    ]
+    context blk
 ]
 
 
@@ -155,8 +145,8 @@ exe_target: make target_env
 
         if cfg/qt [
             include_from {$(QTINC)}
-            include_from {$(QTINC)/QtCore}
-            do bind cfg/qt qt-includes
+            include_from rejoin bind copy cfg/qt qt-includes
+
             if eq? 5 qt-version [cxxflags {-fPIC}]
             if cfg/release [
                 cxxflags {-DQT_NO_DEBUG}
@@ -173,12 +163,7 @@ exe_target: make target_env
         output_file: rejoin [output_dir name]
         do config
         if cfg/qt [
-            qt-libs: copy cfg/qt
-            ifn find qt-libs 'core [append qt-libs 'core]
-
-            qt-libs: rejoin bind qt-libs
-                either cfg/debug [qt-debug-libraries] [qt-libraries]
-
+            qt-libs: rejoin bind copy cfg/qt qt-libraries cfg/debug
             either system-qt [
                 libs qt-libs
             ][

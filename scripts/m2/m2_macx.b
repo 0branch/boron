@@ -1,8 +1,6 @@
 ; m2 Mac OS X template
 
 
-qt-version: 5
-
 macx: func [blk] [do blk]
 
 bundle:    does [ct/cfg_bundle: true]
@@ -60,32 +58,30 @@ qt-fw: func [name] [
     lflags join "-framework " name
 ]
 
-either eq? 5 qt-version [
-    qt-libs: context [
-       concurrent:  does [qt-fw "QtConcurrent"]
-       core:        does [qt-fw "QtCore"]
-       gui:         does [qt-fw "QtGui" qt-fw "QtWidgets"]
-       network:     does [qt-fw "QtNetwork"]
-       opengl:      does [qt-fw "QtOpenGL"]
-       printsupport: does [qt-fw "QtPrintSupport"]
-       svg:         does [qt-fw "QtSvg"]
-       sql:         does [qt-fw "QtSql"]
-       widgets:     does [qt-fw "QtWidgets"]
-       xml:         does [qt-fw "QtXml"]
-    ]
-][
-    qt-libs: context [
-       gui:     does [qt-fw "QtGui"]
-       network: does [qt-fw "QtNetwork"]
-       opengl:  does [qt-fw "QtOpenGL"]
-       xml:     does [qt-fw "QtXml"]
-       svg:     does [qt-fw "QtSvg"]
-       sql:     does [qt-fw "QtSql"]
-       support: does [
-           cxxflags {-DQT3_SUPPORT}
-           qt-fw "Qt3Support"
-       ]
-    ]
+qt-libs: does [
+    context pick [[
+        concurrent:  does [qt-fw "QtConcurrent"]
+        core:        does [qt-fw "QtCore"]
+        gui:         does [qt-fw "QtGui"]
+        network:     does [qt-fw "QtNetwork"]
+        opengl:      does [qt-fw "QtOpenGL"]
+        printsupport: does [qt-fw "QtPrintSupport"]
+        svg:         does [qt-fw "QtSvg"]
+        sql:         does [qt-fw "QtSql"]
+        widgets:     does [qt-fw "QtWidgets"]
+        xml:         does [qt-fw "QtXml"]
+    ][
+        gui:     does [qt-fw "QtGui"]
+        network: does [qt-fw "QtNetwork"]
+        opengl:  does [qt-fw "QtOpenGL"]
+        xml:     does [qt-fw "QtXml"]
+        svg:     does [qt-fw "QtSvg"]
+        sql:     does [qt-fw "QtSql"]
+        support: does [
+            cxxflags {-DQT3_SUPPORT}
+            qt-fw "Qt3Support"
+        ]
+    ]] eq? 5 qt-version
 ]
 
 qt-static-libs: context [
@@ -93,6 +89,7 @@ qt-static-libs: context [
        include_from join {$(QTDIR)/include/} name
        lflags join {-l} name
    ]
+   core:    does [qlib {QtCore}]
    gui:     does [qlib {QtGui}]
    network: does [qlib {QtNetwork}]
    opengl:  does [qlib {QtOpenGL}]
@@ -149,16 +146,14 @@ exe_target: make target_env
         if cfg/qt [
             either cfg/qt-static [
                 include_from {$(QTDIR)/include}
-                include_from {$(QTDIR)/include/QtCore}
-                lflags {-L$(QTDIR)/lib -lQtCore}
+                lflags {-L$(QTDIR)/lib}
                 lflags {-framework Carbon -lz -liconv}
-                do bind cfg/qt qt-static-libs
+                do bind copy cfg/qt qt-static-libs
             ][
-                include_from {/Library/Frameworks/QtCore.framework/Headers}
                 cflags {-F/Library/Frameworks}
-                lflags {-F/Library/Frameworks -framework QtCore}
+                lflags {-F/Library/Frameworks}
                 lflags {-framework Carbon}
-                do bind cfg/qt qt-libs
+                do bind copy cfg/qt qt-libs
             ]
             if cfg/release [
                 cxxflags {-DQT_NO_DEBUG}
