@@ -22,7 +22,10 @@
 #include "os.h"
 
 #ifdef __linux
+#define USE_EVENTFD
 #include <sys/eventfd.h>
+#elif ! defined(_WIN32)
+#include <sys/socket.h>
 #endif
 
 
@@ -38,8 +41,10 @@ typedef struct
     OSCond  cond;
     UBuffer buf;
     UIndex  it;
-#ifdef __linux
+#ifdef USE_EVENTFD
     int     eventFD;
+#elif ! defined(_WIN32)
+    int     socketFD[2];    // 0 is read, 1 is write.
 #endif
 }
 ThreadQueue;
@@ -86,8 +91,20 @@ static int _initThreadQueue( ThreadQueue* queue )
     condInit( queue->cond );
     ur_blkInit( &queue->buf, UT_BLOCK, 0 );
     queue->it = 0;
-#ifdef __linux
+#ifdef USE_EVENTFD
     queue->eventFD = eventfd( 0, EFD_CLOEXEC );
+    if( queue->eventFD == -1 )
+    {
+        perror( "eventfd" );
+        return 0;
+    }
+#elif ! defined(_WIN32)
+    if( socketpair( AF_UNIX, SOCK_STREAM, 0, queue->socketFD ) )
+    {
+        queue->socketFD[0] = queue->socketFD[1] = -1;
+        perror( "socketpair" );
+        return 0;
+    }
 #endif
     return 1;
 }
@@ -100,8 +117,15 @@ static void _freeThreadQueue( ThreadQueue* queue )
     mutexFree( queue->mutex );
     condFree( queue->cond );
     ur_blkFree( &queue->buf );
-#ifdef __linux
-    close( queue->eventFD );
+#ifdef USE_EVENTFD
+    if( queue->eventFD > -1 )
+        close( queue->eventFD );
+#elif ! defined(_WIN32)
+    if( queue->socketFD[0] > -1 )
+    {
+        close( queue->socketFD[0] );
+        close( queue->socketFD[1] );
+    }
 #endif
 }
 
@@ -122,7 +146,7 @@ static int thread_open( UThread* ut, const UPortDevice* pdev,
     {
 fail:
         memFree( ext );
-        return ur_error( ut, UR_ERR_INTERNAL, "Could not create thread mutex" );
+        return ur_error( ut, UR_ERR_INTERNAL, "Could not create thread queue" );
     }
 
     if( ! _initThreadQueue( &ext->B ) )
@@ -186,22 +210,27 @@ static UIndex thread_dequeue( UBuffer* qbuf, UIndex it, UCell* dest,
 }
 
 
-#ifdef __linux
-static inline void readEvent( int fd )
+static inline void readEvent( ThreadQueue* q )
 {
+#ifdef USE_EVENTFD
     uint64_t n;
-    read( fd, &n, sizeof(n) );
+    read( q->eventFD, &n, sizeof(n) );
+#elif ! defined(_WIN32)
+    uint16_t n;
+    read( q->socketFD[0], &n, sizeof(n) );
+#endif
 }
 
-static inline void writeEvent( int fd )
+static inline void writeEvent( ThreadQueue* q )
 {
+#ifdef USE_EVENTFD
     uint64_t n = 1;
-    write( fd, &n, sizeof(n) );
-}
-#else
-#define readEvent(fd)
-#define writeEvent(fd)
+    write( q->eventFD, &n, sizeof(n) );
+#elif ! defined(_WIN32)
+    uint16_t n = 1;
+    write( q->socketFD[1], &n, sizeof(n) );
 #endif
+}
 
 
 #define ur_unbind(c)    (c)->word.ctx = UR_INVALID_BUF
@@ -217,7 +246,8 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
 
     queue = (port->SIDE == SIDE_A) ? &ext->B : &ext->A;
 
-    readEvent( queue->eventFD );
+    readEvent( queue );     // Waits until data is available.
+
     mutexLock( queue->mutex );
     while( queue->it >= queue->buf.used )
     {
@@ -319,7 +349,7 @@ static int thread_write( UThread* ut, UBuffer* port, const UCell* data )
     {
         thread_queue( &queue->buf, data, buf );
         condSignal( queue->cond );
-        writeEvent( queue->eventFD );
+        writeEvent( queue );
     }
     mutexUnlock( queue->mutex );
 
@@ -338,9 +368,12 @@ static int thread_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 
 static int thread_waitFD( UBuffer* port )
 {
-#ifdef __linux
+#ifdef USE_EVENTFD
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
     return (port->SIDE == SIDE_A) ? ext->B.eventFD : ext->A.eventFD;
+#elif ! defined(_WIN32)
+    ThreadExt* ext = (ThreadExt*) port->ptr.v;
+    return (port->SIDE == SIDE_A) ? ext->B.socketFD[0] : ext->A.socketFD[0];
 #else
     return -1;
 #endif
