@@ -712,7 +712,10 @@ UBuffer* boron_makePort( UThread* ut, const UPortDevice* pdev, void* ext,
 }
 
 
-int port_make( UThread* ut, const UCell* from, UCell* res )
+/*
+  \param opt   PortOpenOptions
+*/
+int port_makeOpt( UThread* ut, const UCell* from, int opt, UCell* res )
 {
     UPortDevice* pdev = 0;
     UAtom name = 0;
@@ -766,7 +769,13 @@ int port_make( UThread* ut, const UCell* from, UCell* res )
         return ur_error( ut, UR_ERR_SCRIPT, "Port type %s does not exist",
                          ur_atomCStr(ut, name) );
 
-    return pdev->open( ut, pdev, from, 0, res );
+    return pdev->open( ut, pdev, from, opt, res );
+}
+
+
+int port_make( UThread* ut, const UCell* from, UCell* res )
+{
+    return port_makeOpt( ut, from, 0, res );
 }
 
 

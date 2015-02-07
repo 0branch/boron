@@ -3872,7 +3872,7 @@ CFUNC(cfunc_open)
 {
     if( ur_is(a1, UT_FILE) )
         return port_file.open( ut, &port_file, a1, CFUNC_OPTIONS, res );
-    return port_make( ut, a1, res );
+    return port_makeOpt( ut, a1, CFUNC_OPTIONS, res );
 }
 
 
