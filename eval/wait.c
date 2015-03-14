@@ -33,7 +33,7 @@
 #endif
 
 
-#define MAX_PORTS   4       // LIMIT: Maximum ports wait can handle.
+#define MAX_PORTS   16      // LIMIT: Maximum ports wait can handle.
 
 
 typedef struct
