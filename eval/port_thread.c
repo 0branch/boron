@@ -40,7 +40,7 @@ typedef struct
     OSMutex mutex;
     OSCond  cond;
     UBuffer buf;
-    UIndex  it;
+    UIndex  readIt;
 #ifdef USE_EVENTFD
     int     eventFD;
 #elif ! defined(_WIN32)
@@ -90,7 +90,7 @@ static int _initThreadQueue( ThreadQueue* queue )
 
     condInit( queue->cond );
     ur_blkInit( &queue->buf, UT_BLOCK, 0 );
-    queue->it = 0;
+    queue->readIt = 0;
 #ifdef USE_EVENTFD
     queue->eventFD = eventfd( 0, EFD_CLOEXEC );
     if( queue->eventFD == -1 )
@@ -246,10 +246,11 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
 
     queue = (port->SIDE == SIDE_A) ? &ext->B : &ext->A;
 
-    readEvent( queue );     // Waits until data is available.
+    if( ! queue->readIt )
+        readEvent( queue );     // Waits until data is available.
 
     mutexLock( queue->mutex );
-    while( queue->it >= queue->buf.used )
+    while( queue->readIt >= queue->buf.used )
     {
         if( condWaitF( queue->cond, queue->mutex ) )
         {
@@ -257,7 +258,7 @@ static int thread_read( UThread* ut, UBuffer* port, UCell* dest, int part )
             goto waitError;
         }
     }
-    queue->it = thread_dequeue( &queue->buf, queue->it, dest, &tbuf );
+    queue->readIt = thread_dequeue( &queue->buf, queue->readIt, dest, &tbuf );
     mutexUnlock( queue->mutex );
 
     if( tbuf.type )
