@@ -43,7 +43,9 @@ typedef struct
     UIndex  readIt;
 #ifdef USE_EVENTFD
     int     eventFD;
-#elif ! defined(_WIN32)
+#elif defined(_WIN32)
+    HANDLE  eventH;
+#else
     int     socketFD[2];    // 0 is read, 1 is write.
 #endif
 }
@@ -98,7 +100,14 @@ static int _initThreadQueue( ThreadQueue* queue )
         perror( "eventfd" );
         return 0;
     }
-#elif ! defined(_WIN32)
+#elif defined(_WIN32)
+    queue->eventH = CreateEvent( NULL, FALSE, FALSE, NULL );
+    if( queue->eventH == NULL )
+    {
+        fprintf( stderr, "CreateEvent error (%ld)\n", GetLastError() );
+        return 0;
+    }
+#else
     if( socketpair( AF_UNIX, SOCK_STREAM, 0, queue->socketFD ) )
     {
         queue->socketFD[0] = queue->socketFD[1] = -1;
@@ -120,7 +129,10 @@ static void _freeThreadQueue( ThreadQueue* queue )
 #ifdef USE_EVENTFD
     if( queue->eventFD > -1 )
         close( queue->eventFD );
-#elif ! defined(_WIN32)
+#elif defined(_WIN32)
+    if( queue->eventH != NULL )
+        CloseHandle( queue->eventH );
+#else
     if( queue->socketFD[0] > -1 )
     {
         close( queue->socketFD[0] );
@@ -215,7 +227,12 @@ static inline void readEvent( ThreadQueue* q )
 #ifdef USE_EVENTFD
     uint64_t n;
     read( q->eventFD, &n, sizeof(n) );
-#elif ! defined(_WIN32)
+#elif defined(_WIN32)
+    DWORD result;
+    result = WaitForSingleObject( q->eventH, INFINITE );
+    if( result != WAIT_OBJECT_0 )
+        fprintf( stderr, "WaitForSingleObject error (%ld)\n", GetLastError() );
+#else
     uint16_t n;
     read( q->socketFD[0], &n, sizeof(n) );
 #endif
@@ -226,7 +243,10 @@ static inline void writeEvent( ThreadQueue* q )
 #ifdef USE_EVENTFD
     uint64_t n = 1;
     write( q->eventFD, &n, sizeof(n) );
-#elif ! defined(_WIN32)
+#elif defined(_WIN32)
+    if( ! SetEvent( q->eventH ) )
+        fprintf( stderr, "SetEvent error (%ld)\n", GetLastError() );
+#else
     uint16_t n = 1;
     write( q->socketFD[1], &n, sizeof(n) );
 #endif
@@ -372,11 +392,14 @@ static int thread_waitFD( UBuffer* port )
 #ifdef USE_EVENTFD
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
     return (port->SIDE == SIDE_A) ? ext->B.eventFD : ext->A.eventFD;
-#elif ! defined(_WIN32)
+#elif defined(_WIN32)
+    (void) port;
+    //ThreadExt* ext = (ThreadExt*) port->ptr.v;
+    //return (port->SIDE == SIDE_A) ? ext->B.eventH : ext->A.eventH;
+    return -1;
+#else
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
     return (port->SIDE == SIDE_A) ? ext->B.socketFD[0] : ext->A.socketFD[0];
-#else
-    return -1;
 #endif
 }
 
