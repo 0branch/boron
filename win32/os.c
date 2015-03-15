@@ -296,7 +296,8 @@ int ur_readDir( UThread* ut, const char* filename, UCell* res )
             if( cp[0] == '.' && (cp[1] == '.' || cp[1] == '\0') )
                 continue;
 
-            strN = ur_makeStringUtf8( ut, cp, cp + strlen(cp) );
+            strN = ur_makeStringUtf8( ut, (const uint8_t*) cp,
+                                          (const uint8_t*) (cp + strlen(cp)) );
             cell = ur_blkAppendNew( ur_buffer(blkN), UT_FILE );
             ur_setSeries( cell, strN, 0 );
         }

@@ -4,6 +4,7 @@
 embed-manifest: true
 
 win32: func [blk] [do blk]
+msvc: true
 
 console: does [ct/cfg_console: true]
 

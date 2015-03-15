@@ -31,6 +31,7 @@
 
 #define ssize_t     int
 #define SOCKET_ERR  WSAGetLastErrorMessage()
+#define INVALID(s)  (s == INVALID_SOCKET)
 
 static char* WSAGetLastErrorMessage()
 {
@@ -49,6 +50,7 @@ static char* WSAGetLastErrorMessage()
 
 #define SOCKET      int
 #define SOCKET_ERR  strerror(errno)
+#define INVALID(s)  (s < 0)
 #define closesocket close
 
 #endif
@@ -254,7 +256,7 @@ static int _openUdpSocket( UThread* ut, SocketExt* ext, int nowait )
     SOCKET fd;
 
     fd = socket( AF_INET, SOCK_DGRAM, 0 );
-    if( fd < 0 )
+    if( INVALID(fd) )
     {
         ur_error( ut, UR_ERR_ACCESS, "socket %s", SOCKET_ERR );
         return -1;
@@ -290,7 +292,7 @@ static int _openTcpClient( UThread* ut, struct sockaddr* addr,
     SOCKET fd;
 
     fd = socket( AF_INET, SOCK_STREAM, 0 );
-    if( fd < 0 )
+    if( INVALID(fd) )
     {
         ur_error( ut, UR_ERR_ACCESS, "socket %s", SOCKET_ERR );
         return -1;
@@ -314,27 +316,27 @@ static int _openTcpServer( UThread* ut, struct sockaddr* addr,
     int yes = 1;
 
     fd = socket( AF_INET, SOCK_STREAM, 0 );
-    if( fd < 0 )
+    if( INVALID(fd) )
     {
         ur_error( ut, UR_ERR_ACCESS, "socket %s", SOCKET_ERR );
         return -1;
     }
 
-    if( setsockopt( fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int) ) < 0 )
+    if( setsockopt( fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int) ) != 0 )
     {
         closesocket( fd );
         ur_error( ut, UR_ERR_ACCESS, "setsockopt %s", SOCKET_ERR );
         return -1;
     }
 
-    if( bind( fd, addr, addrlen ) < 0 )
+    if( bind( fd, addr, addrlen ) != 0 )
     {
         closesocket( fd );
         ur_error( ut, UR_ERR_ACCESS, "bind %s", SOCKET_ERR );
         return -1;
     }
 
-    if( listen( fd, backlog ) < 0 )
+    if( listen( fd, backlog ) != 0 )
     {
         closesocket( fd );
         ur_error( ut, UR_ERR_ACCESS, "listen %s", SOCKET_ERR );
@@ -583,7 +585,7 @@ static int socket_accept( UThread* ut, UBuffer* port, UCell* dest, int part )
     ext = (SocketExt*) memAlloc( sizeof(SocketExt) );
 
     fd = accept( port->FD, &ext->addr, &ext->addrlen );
-    if( fd < 0 )
+    if( INVALID(fd) )
     {
         memFree( ext );
         return ur_error( ut, UR_ERR_INTERNAL, SOCKET_ERR );

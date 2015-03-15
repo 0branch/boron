@@ -33,8 +33,10 @@
 #define read    _read
 #define write   _write
 #define lseek   _lseek
+#ifdef _MSC_VER
 #define S_IRUSR _S_IREAD
 #define S_IWUSR _S_IWRITE
+#endif
 #define S_IRGRP 0
 #define S_IROTH 0
 #define ssize_t int

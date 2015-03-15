@@ -30,7 +30,8 @@ default [
         cflags {-pedantic}
     ]
     win32 [
-        include_from %win32
+        if msvc [include_from %win32]
+        if thread [cflags {-D_WIN32_WINNT=0x0600}]
     ]
 ]
 
@@ -40,7 +41,7 @@ shlib [%boron 0,2,10] [
     ]
     if eq? compress 'zlib [
         cflags {-DCONFIG_COMPRESS=1}
-        win32 [libs %zdll]
+        win32 [libs either msvc [%zdll] [%z]]
         macx  [libs %z]
         unix  [libs {z m}]
     ]
@@ -112,7 +113,7 @@ shlib [%boron 0,2,10] [
     unix  [sources [%unix/os.c]]
     win32 [
         sources [%win32/os.c]
-        lflags "/def:win32\boron.def"
+        lflags either msvc ["/def:win32\boron.def"]["win32/boron.def"]
         libs %ws2_32
     ]
 ]

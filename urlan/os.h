@@ -21,7 +21,9 @@
 #ifdef _WIN32
 
 // Must define _WIN32_WINNT to use InitializeCriticalSectionAndSpinCount
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT    0x0403
+#endif
 // ws2 header included here for uc_wait because it must come before windows.h
 #include <winsock2.h>
 #include <windows.h>
