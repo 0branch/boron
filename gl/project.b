@@ -1,3 +1,7 @@
+project: "boron-gl"
+
+audio: true
+do-any %project.config
 
 default [
     warn
@@ -14,7 +18,6 @@ default [
 ]
 
 shlib [%boron-gl 0,2,10] [
-   ;cflags {-DNO_AUDIO}
 
     linux [
         cflags {-std=gnu99}
@@ -22,10 +25,6 @@ shlib [%boron-gl 0,2,10] [
         include_from %../unix
         include_from %/usr/include/freetype2
        ;sources [%joystick.c]
-
-        ;libs [%X11 %Xxf86vm]
-        ;libs [%freetype %png %glv %GL %GLU
-        ;      %openal %vorbis %vorbisfile]
     ]
     macx [
         cflags {-std=c99}
@@ -52,13 +51,20 @@ shlib [%boron-gl 0,2,10] [
         libs_from join lib-path %lpng128 [%libpng]
         libs_from join lib-path %zlib [%zlib]
 
-        include_from %"C:/Program Files/OpenAL 1.1 SDK/include"
-        libs_from %"C:/Program Files/OpenAL 1.1 SDK/libs/Win32" %OpenAL32
-            ;%ALut
+        if audio [
+            include_from %"C:/Program Files/OpenAL 1.1 SDK/include"
+            libs_from %"C:/Program Files/OpenAL 1.1 SDK/libs/Win32" %OpenAL32
+        ]
+    ]
+
+    either audio [
+        sources [%audio.c]
+    ][
+        cflags "-DNO_AUDIO"
+        sources [%audio_stub.c]
     ]
 
     sources [
-        %audio.c
         %boron-gl.c
         %draw_prog.c
         %geo.c
@@ -92,17 +98,19 @@ exe %boron-gl [
         ;libs_from %/usr/X11R6/lib [%X11 %Xxf86vm]
         libs [%X11 %Xxf86vm]
         libs [%freetype %png %glv %m]
-        libs [%openal %vorbis %vorbisfile %pthread]
+        if audio [
+            libs [%openal %vorbis %vorbisfile %pthread]
+        ]
     ]
     macx [
         libs [%freetype %png]
-        libs [%vorbis %vorbisfile]
-
-       ;lflags {-framework ALUT}
-        lflags {-framework OpenAL}
         lflags {-framework OpenGL}
         lflags {-framework AGL}
         lflags {-framework Carbon}
+        if audio [
+            libs [%vorbis %vorbisfile]
+            lflags {-framework OpenAL}
+        ]
     ]
     sources [
         %../eval/console.c
