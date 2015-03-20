@@ -1777,8 +1777,8 @@ typedef struct
 {
     float proj[ 16 ];
     float orient[ 16 ];
-    float near;
-    float far;
+    float zNear;
+    float zFar;
     float view[4];
 }
 Camera;
@@ -1814,14 +1814,14 @@ static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
         for( i = 0; i < 4; ++i )
             cam->view[ i ] = (float) cell->coord.n[ i ];
 
-        cam->near = number_f( ur_ctxCell( ctx, CAM_CTX_NEAR ) );
-        cam->far  = number_f( ur_ctxCell( ctx, CAM_CTX_FAR ) );
-        fov       = number_f( ur_ctxCell( ctx, CAM_CTX_FOV ) );
+        cam->zNear = number_f( ur_ctxCell( ctx, CAM_CTX_NEAR ) );
+        cam->zFar  = number_f( ur_ctxCell( ctx, CAM_CTX_FAR ) );
+        fov        = number_f( ur_ctxCell( ctx, CAM_CTX_FOV ) );
         if( fov > 0.0 )
         {
             w = (float) cell->coord.n[2];
             h = (float) cell->coord.n[3];
-            ur_perspective( cam->proj, fov, w / h, cam->near, cam->far );
+            ur_perspective( cam->proj, fov, w / h, cam->zNear, cam->zFar );
 
             if( (mat = _cameraOrientMatrix( ut, ctx )) )
             {
@@ -1863,7 +1863,7 @@ static int projectPoint( const float* pnt, const Camera* cam, float* windowPos,
     // Do perspective division to normalize between -1 and 1.
     if( w == 0.0 )
         return 0;
-    if( w < cam->near )
+    if( w < cam->zNear )
     {
         if( dropNear )
             return 0;

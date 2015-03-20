@@ -97,21 +97,21 @@ void ur_loadRotation( float* mat, const float* axis, float radians )
 
 
 void ur_perspective( float* mat, float fovYDegrees, float aspect,
-                     float near, float far )
+                     float zNear, float zFar )
 {
     float xmax, ymax, depth; 
 
-    ymax = near * tanf(fovYDegrees * UR_PI / 360.0f);
+    ymax = zNear * tanf(fovYDegrees * UR_PI / 360.0f);
     xmax = ymax * aspect;
-    depth = far - near;
+    depth = zFar - zNear;
 
-    mat[0] = near / xmax;
+    mat[0] = zNear / xmax;
     mat[1] = mat[2] = mat[3] = mat[4] = 0.0f;
-    mat[5] = near / ymax;
+    mat[5] = zNear / ymax;
     mat[6] = mat[7] = mat[8] = mat[9] = 0.0f;
-    mat[10] = (-far - near) / depth;
+    mat[10] = (-zFar - zNear) / depth;
     mat[11] = -1.0f;
-    mat[14] = (-2.0f * near * far) / depth;
+    mat[14] = (-2.0f * zNear * zFar) / depth;
     mat[12] = mat[13] = mat[15] = 0.0f;
 }
 

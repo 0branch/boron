@@ -2523,7 +2523,7 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
     GLfloat mat[16];
     double w, h;
     double fov;
-    double near, far;
+    double zNear, zFar;
     const UCell* val;
     const UBuffer* blk = ur_bufferE( ctxValBlk );
     const UCell* ctxCells = blk->ptr.cell;
@@ -2543,18 +2543,18 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
 
         glMatrixMode( GL_PROJECTION );
 
-        near = number_d( ctxCells + CAM_CTX_NEAR );
-        far  = number_d( ctxCells + CAM_CTX_FAR );
-        fov  = number_d( ctxCells + CAM_CTX_FOV );
+        zNear = number_d( ctxCells + CAM_CTX_NEAR );
+        zFar  = number_d( ctxCells + CAM_CTX_FAR );
+        fov   = number_d( ctxCells + CAM_CTX_FOV );
         if( fov > 0.0 )
         {
-            ur_perspective( mat, fov, w / h, near, far );
+            ur_perspective( mat, fov, w / h, zNear, zFar );
             glLoadMatrixf( mat );
         }
         else
         {
             glLoadIdentity();
-            glOrtho( 0, w, 0, h, near, far );
+            glOrtho( 0, w, 0, h, zNear, zFar );
         }
 
         glMatrixMode( GL_MODELVIEW );
