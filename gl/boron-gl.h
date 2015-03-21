@@ -171,6 +171,8 @@ TexFont* ur_texFontV( UThread*, const UCell* );
 UIndex ur_makeVbo( UThread*, GLenum attrUsage, int acount, float* attr,
                    int icount, uint16_t* indices );
 
+extern const char* gl_errorString( GLenum error );
+
 
 #define ur_drawProgN(c)     ((UCellDrawProg*) (c))->bufN
 

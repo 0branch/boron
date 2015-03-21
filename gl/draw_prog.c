@@ -3536,8 +3536,7 @@ dispatch:
                 err = glGetError();
                 if( err != GL_NO_ERROR )
                 {
-                    return ur_error( ut, UR_ERR_INTERNAL,
-                                     (const char*) gluErrorString( err ) );
+                    return ur_error( ut, UR_ERR_INTERNAL, gl_errorString(err) );
                 }
                 */
             }

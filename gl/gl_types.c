@@ -488,8 +488,7 @@ build:
         GLenum err = glGetError();
         if( err != GL_NO_ERROR )
         {
-            return ur_error( ut, UR_ERR_INTERNAL,
-                             (const char*) gluErrorString( err ) );
+            return ur_error( ut, UR_ERR_INTERNAL, gl_errorString( err ) );
         }
     }
 
@@ -595,7 +594,7 @@ static void texture_recycle( UThread* ut, int phase )
             GLenum err = glGetError();
             if( err )
                 printf( "texture_recycle: glGetError %s\n",
-                        gluErrorString( err ) );
+                        gl_errorString( err ) );
 #else
             glGetError();
 #endif

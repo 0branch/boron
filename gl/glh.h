@@ -1,6 +1,6 @@
 #ifdef __APPLE__
 
-#include <OpenGL/glu.h>
+#include <OpenGL/gl.h>
 
 #elif defined(__ANDROID__)
 
@@ -22,6 +22,6 @@
 #else
 
 #define GL_GLEXT_PROTOTYPES
-#include <GL/glu.h>
+#include <GL/gl.h>
 
 #endif

@@ -89,7 +89,6 @@ shlib [%boron-gl 0,2,10] [
 ]
 
 exe %boron-gl [
-    opengl
     include_from %../support
     cflags {-DBORON_GL}
     libs_from %. %boron-gl
@@ -97,7 +96,7 @@ exe %boron-gl [
     linux [
         ;libs_from %/usr/X11R6/lib [%X11 %Xxf86vm]
         libs [%X11 %Xxf86vm]
-        libs [%freetype %png %glv %m]
+        libs [%freetype %png %glv %GL %m]
         if audio [
             libs [%openal %vorbis %vorbisfile %pthread]
         ]

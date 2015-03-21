@@ -2828,4 +2828,30 @@ void boron_freeEnvGL( UThread* ut )
 }
 
 
+/*
+   Local version of gluErrorString() so we don't need to link with libGLU.
+*/
+const char* gl_errorString( GLenum error )
+{
+    switch( error )
+    {
+        case GL_NO_ERROR:           return "no error";
+        case GL_INVALID_ENUM:       return "invalid enumerant";
+        case GL_INVALID_VALUE:      return "invalid value";
+        case GL_INVALID_OPERATION:  return "invalid operation";
+#ifdef GL_STACK_OVERFLOW
+        case GL_STACK_OVERFLOW:     return "stack overflow";
+        case GL_STACK_UNDERFLOW:    return "stack underflow";
+#endif
+        case GL_OUT_OF_MEMORY:      return "out of memory";
+#ifdef GL_TABLE_TOO_LARGE
+        case GL_TABLE_TOO_LARGE:    return "table too large";
+#endif
+        case GL_INVALID_FRAMEBUFFER_OPERATION:
+                                    return "invalid framebuffer operation";
+    }
+    return "unnkown GL error";
+}
+
+
 // EOF
