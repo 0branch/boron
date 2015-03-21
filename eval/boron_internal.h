@@ -13,6 +13,12 @@
 #define MAX_OPT     8       // LIMIT: 8 options per func/cfunc.
 #define OPT_BITS(c) (c)->id._pad0
 
+#define PORT_SITE(dev,pbuf,portC) \
+    UBuffer* pbuf = ur_buffer( portC->series.buf ); \
+    UPortDevice* dev = (pbuf->form == UR_PORT_SIMPLE) ? \
+        (UPortDevice*) pbuf->ptr.v : \
+        (pbuf->ptr.v ? *((UPortDevice**) pbuf->ptr.v) : 0)
+
 
 typedef struct
 {

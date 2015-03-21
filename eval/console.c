@@ -19,6 +19,9 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
 #ifdef CONFIG_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -31,9 +34,6 @@
 #include "boron.h"
 #include "urlan_atoms.h"
 #include "str.h"
-#ifdef _WIN32
-#include <winsock2.h>
-#endif
 #ifdef BORON_GL
 #include "boron-gl.h"
 #define boron_makeEnv   boron_makeEnvGL

@@ -18,19 +18,21 @@
 */
 
 
-/*
-#include "urlan.h"
 #include <math.h>
-*/
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef _WIN32
-// Included in os.h
-//#include <winsock2.h>
-//#include <windows.h>
+#include <winsock2.h>
+#include <windows.h>
 #else
 #include <sys/select.h>
 #include <errno.h>
 #endif
+
+#include "boron.h"
+#include "boron_internal.h"
 
 
 #define MAX_PORTS   16      // LIMIT: Maximum ports wait can handle.
@@ -129,7 +131,7 @@ static int _fillWaitInfo( UThread* ut, WaitInfo* wi,
     Wait for data on ports.
 */
 // (target -- port)
-CFUNC( cfunc_wait )
+CFUNC_PUB( cfunc_wait )
 {
     WaitInfo wi;
     int n;

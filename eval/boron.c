@@ -430,12 +430,6 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 
 //dev = ((UPortDevice**) ut->env->ports.ptr.v)[ buf->form ]; 
 
-#define PORT_SITE(dev,pbuf,portC) \
-    UBuffer* pbuf = ur_buffer( portC->series.buf ); \
-    UPortDevice* dev = (pbuf->form == UR_PORT_SIMPLE) ? \
-        (UPortDevice*) pbuf->ptr.v : \
-        (pbuf->ptr.v ? *((UPortDevice**) pbuf->ptr.v) : 0)
-
 
 #ifdef CONFIG_CHECKSUM
 #include "checksum.c"
@@ -447,7 +441,6 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 #include "construct.c"
 #include "encode.c"
 #include "sort.c"
-#include "wait.c"
 #include "cfunc.c"
 
 #ifdef CONFIG_THREAD
@@ -794,6 +787,7 @@ extern CFUNC_PUB( cfunc_execute );
 extern CFUNC_PUB( cfunc_with_flock );
 #endif
 extern CFUNC_PUB( cfunc_sleep );
+extern CFUNC_PUB( cfunc_wait );
 
 
 /**

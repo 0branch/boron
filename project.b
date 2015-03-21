@@ -107,6 +107,7 @@ shlib [%boron 0,2,10] [
 
         %eval/boron.c
         %eval/port_file.c
+        %eval/wait.c
     ]
 
     macx  [sources [%unix/os.c]]

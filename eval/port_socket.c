@@ -18,13 +18,10 @@
 */
 
 
-//#include <stdio.h>
-#include "boron.h"
-#include "os.h"
-
 #ifdef _WIN32
 
 #include <time.h>
+#include <stdio.h>
 #include <string.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -54,6 +51,9 @@ static char* WSAGetLastErrorMessage()
 #define closesocket close
 
 #endif
+
+#include "boron.h"
+#include "os.h"
 
 
 #define FD      used
