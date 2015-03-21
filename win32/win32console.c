@@ -17,7 +17,7 @@ using namespace std;
 void redirectIOToConsole()
 {
     int hConHandle;
-    long lStdHandle;
+    intptr_t stdHandle;
     CONSOLE_SCREEN_BUFFER_INFO coninfo;
     FILE* fp;
 
@@ -31,22 +31,22 @@ void redirectIOToConsole()
     SetConsoleScreenBufferSize( GetStdHandle(STD_OUTPUT_HANDLE), coninfo.dwSize );
 
     // redirect unbuffered STDOUT to the console
-    lStdHandle = (long) GetStdHandle(STD_OUTPUT_HANDLE);
-    hConHandle = _open_osfhandle(lStdHandle, _O_TEXT);
+    stdHandle = (intptr_t) GetStdHandle(STD_OUTPUT_HANDLE);
+    hConHandle = _open_osfhandle(stdHandle, _O_TEXT);
     fp = _fdopen( hConHandle, "w" );
     *stdout = *fp;
     setvbuf( stdout, NULL, _IONBF, 0 );
 
     // redirect unbuffered STDIN to the console
-    lStdHandle = (long) GetStdHandle(STD_INPUT_HANDLE);
-    hConHandle = _open_osfhandle(lStdHandle, _O_TEXT);
+    stdHandle = (intptr_t) GetStdHandle(STD_INPUT_HANDLE);
+    hConHandle = _open_osfhandle(stdHandle, _O_TEXT);
     fp = _fdopen( hConHandle, "r" );
     *stdin = *fp;
     setvbuf( stdin, NULL, _IONBF, 0 );
 
     // redirect unbuffered STDERR to the console
-    lStdHandle = (long) GetStdHandle(STD_ERROR_HANDLE);
-    hConHandle = _open_osfhandle(lStdHandle, _O_TEXT);
+    stdHandle = (intptr_t) GetStdHandle(STD_ERROR_HANDLE);
+    hConHandle = _open_osfhandle(stdHandle, _O_TEXT);
     fp = _fdopen( hConHandle, "w" );
     *stderr = *fp;
     setvbuf( stderr, NULL, _IONBF, 0 );

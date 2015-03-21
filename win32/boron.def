@@ -161,5 +161,22 @@ EXPORTS
     find_pattern_ic_uint16_t    @159
     boron_overrideCFunc     @160
     boron_eval1             @161
-    cfunc_free              @162
-;   ur_stringToTimeCode     @163
+    boron_doBlock           @162
+    boron_doBlockN          @163
+    cfunc_free              @164
+    unset_bind              @165
+    unset_compare           @166
+    unset_copy              @167
+    unset_destroy           @168
+    unset_make              @169
+    unset_mark              @170
+    unset_operate           @171
+    unset_select            @172
+    unset_toShared          @173
+    unset_toString          @174
+    binary_copy             @175
+    binary_mark             @176
+    binary_toShared         @177
+    block_markBuf           @178
+    vec3_toString           @179
+;   ur_stringToTimeCode     @180

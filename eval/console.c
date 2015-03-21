@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #ifdef _WIN32
 #include <winsock2.h>
+#define setenv(name,val,over)   SetEnvironmentVariable(name, val)
 #endif
 #ifdef CONFIG_READLINE
 #include <readline/readline.h>

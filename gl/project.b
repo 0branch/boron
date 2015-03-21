@@ -14,11 +14,11 @@ default [
         %../include
         %../urlan
     ]
+    win32 [include_from %../../glv/win32]
     ;macx [universal]
 ]
 
 shlib [%boron-gl 0,2,10] [
-
     linux [
         cflags {-std=gnu99}
         cflags {-DUSE_XF86VMODE}
@@ -35,25 +35,36 @@ shlib [%boron-gl 0,2,10] [
         include_from %/usr/local/include/freetype2
     ]
     win32 [
-        lib-path: %"C:/cygwin/home/karl/osrc/"
+        sources [
+            %../../glv/win32/glv.c
+            %../win32/win32console.c
+        ]
+        either msvc [
+            lib-path: %"C:/cygwin/home/karl/osrc/"
 
-        include_from %glv/win32
-        sources [%glv/win32/glv.c]
+            include_from %../win32
 
-        include_from %../win32
-        sources_from %../win32 [%win32console.c]
+            include_from join lib-path %freetype2/include
+            libs_from join lib-path %freetype2/objs [%freetype]
 
-        include_from join lib-path %freetype2/include
-        libs_from join lib-path %freetype2/objs [%freetype]
+            include_from join lib-path %lpng128
+            include_from join lib-path %zlib
+            libs_from join lib-path %lpng128 [%libpng]
+            libs_from join lib-path %zlib [%zlib]
 
-        include_from join lib-path %lpng128
-        include_from join lib-path %zlib
-        libs_from join lib-path %lpng128 [%libpng]
-        libs_from join lib-path %zlib [%zlib]
-
-        if audio [
-            include_from %"C:/Program Files/OpenAL 1.1 SDK/include"
-            libs_from %"C:/Program Files/OpenAL 1.1 SDK/libs/Win32" %OpenAL32
+            if audio [
+              include_from %"C:/Program Files/OpenAL 1.1 SDK/include"
+              libs_from %"C:/Program Files/OpenAL 1.1 SDK/libs/Win32" %OpenAL32
+            ]
+        ][
+            audio: false
+            cflags {-DGLEW_BUILD}
+            include_from [
+                %/usr/x86_64-w64-mingw32/sys-root/mingw/include/freetype2
+                %../win32
+            ]
+            libs_from %.. %boron
+            libs "glew32 opengl32 freetype png z"
         ]
     ]
 
@@ -110,6 +121,10 @@ exe %boron-gl [
             libs [%vorbis %vorbisfile]
             lflags {-framework OpenAL}
         ]
+    ]
+    win32 [
+        sources [%../../glv/win32/glv_main.c]
+        libs %ws2_32
     ]
     sources [
         %../eval/console.c

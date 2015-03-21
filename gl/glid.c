@@ -32,6 +32,8 @@
 #define glGenFramebuffersEXT        glGenFramebuffers
 #define glDeleteRenderbuffersEXT    glDeleteRenderbuffers
 #define glDeleteFramebuffersEXT     glDeleteFramebuffers
+#elif defined(_WIN32)
+#include <GL/glew.h>
 #else
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>

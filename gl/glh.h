@@ -19,6 +19,11 @@
 #define GL_WRITE_ONLY               GL_WRITE_ONLY_OES   
 #define GL_COLOR_ATTACHMENT0_EXT    GL_COLOR_ATTACHMENT0
 
+#elif defined(_WIN32)
+
+//#include <GL/gl.h>
+#include <GL/glew.h>
+
 #else
 
 #define GL_GLEXT_PROTOTYPES
