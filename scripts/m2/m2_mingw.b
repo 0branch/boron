@@ -21,7 +21,8 @@ generate_makefile: does [
     emit case [
         not system-qt
             {MOC      = $(QTDIR)/bin/moc^/QTINC    = $(QTDIR)/include^/^/}
-        eq? qt-version 5 {MOC      = moc-qt5^/QTINC    = /usr/include/qt5^/^/}
+        eq? qt-version 5
+            {MOC      = /usr/x86_64-w64-mingw32/bin/qt5/moc^/QTINC    = /usr/x86_64-w64-mingw32/sys-root/mingw/include/qt5^/^/}
         true             {MOC      = moc-qt4^/QTINC    = /usr/include^/^/}
     ]
 
