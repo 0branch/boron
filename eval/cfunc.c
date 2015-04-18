@@ -3898,6 +3898,71 @@ CFUNC(cfunc_close)
 #endif
 
 
+#define OPT_READ_TEXT   0x01
+#define OPT_READ_INTO   0x02
+#define OPT_READ_PART   0x04
+
+/*
+  \param len   Default length.
+
+  Return read length of /part or the greater of default size and the
+  /into buffer available memory.  A /part less than zero returns zero.
+  If an error is thrown -1 is returned.
+*/
+static int _readBuffer( UThread* ut, uint32_t opt, const UCell* a1,
+                        UCell* res, int len )
+{
+    int n;
+
+    if( opt & OPT_READ_PART )
+    {
+        n = ur_int(a3);
+        len = (n > 1) ? n : 0;
+    }
+
+    if( opt & OPT_READ_INTO )
+    {
+        UBuffer* buf;
+        const UCell* ic = a2;
+        int type = ur_type(ic);
+
+        if( type == UT_BINARY || type == UT_STRING )
+        {
+            buf = ur_bufferSerM(ic);
+            if( ! buf )
+                return -1;
+
+            n = ur_testAvail( buf );
+            if( n < len )
+            {
+                if( type == UT_STRING )
+                    ur_arrReserve( buf, len );
+                else
+                    ur_binReserve( buf, len );
+            }
+            else
+                len = n;
+
+            *res = *ic;
+        }
+        else
+        {
+            errorType( "read /into expected binary!/string! buffer" );
+            return -1;
+        }
+    }
+    else if( opt & OPT_READ_TEXT )
+    {
+        ur_makeStringCell( ut, UR_ENC_UTF8, len, res );
+    }
+    else
+    {
+        ur_makeBinaryCell( ut, len, res );
+    }
+    return len;
+}
+
+
 extern int ur_readDir( UThread*, const char* filename, UCell* res );
 
 /*-cf-
@@ -3925,15 +3990,10 @@ extern int ur_readDir( UThread*, const char* filename, UCell* res );
 */
 CFUNC(cfunc_read)
 {
-#define OPT_READ_TEXT   0x01
-#define OPT_READ_INTO   0x02
-#define OPT_READ_PART   0x04
-    UBuffer* dest;
     const char* filename;
-    const char* mode;
     OSFileInfo info;
     uint32_t opt = CFUNC_OPTIONS;
-    int part;
+    int len;
 
 
     if( ur_is(a1, UT_PORT) )
@@ -3941,18 +4001,16 @@ CFUNC(cfunc_read)
         PORT_SITE(dev, pbuf, a1);
         if( ! dev )
             return errorScript( "cannot read from closed port" );
-        if( opt & OPT_READ_INTO )
-            *res = *a2;
-        else
-            ur_setId(res, UT_NONE);
-        if( opt & OPT_READ_PART )
+
+        if( dev->defaultReadLen > 0 )
         {
-            if( (part = ur_int(a3)) < 1 )
-                return UR_OK;
+            len = _readBuffer( ut, opt, a1, res, dev->defaultReadLen ); // gc!
+            if( len <= 0 )
+                return (len < 0) ? UR_THROW : UR_OK;
+            pbuf = ur_buffer( a1->port.buf );   // Re-aquire
         }
-        else
-            part = 0;
-        return dev->read( ut, pbuf, res, part );
+
+        return dev->read( ut, pbuf, res, len );
     }
 
     if( ! ur_isStringType( ur_type(a1) ) )
@@ -3967,52 +4025,20 @@ CFUNC(cfunc_read)
     if( info.type == FI_Dir )
         return ur_readDir( ut, filename, res );
 
-    if( opt & OPT_READ_PART )
+    len = _readBuffer( ut, opt, a1, res, (int) info.size ); // gc!
+    if( len > 0 )
     {
-        part = ur_int(a3);
-        info.size = (part < 0) ? 0 : part;
-    }
-
-    if( opt & OPT_READ_INTO )
-    {
-        const UCell* bufArg = a2;
-        if( (ur_is(bufArg, UT_BINARY) || ur_is(bufArg, UT_STRING)) )
-        {
-            dest = ur_bufferSerM(bufArg);
-            if( ! dest )
-                return UR_THROW;
-
-            if( dest->type == UT_STRING )
-                ur_arrReserve( dest, (int) info.size );
-            else
-                ur_binReserve( dest, (int) info.size );
-
-            if( ur_is(bufArg, UT_STRING) || (opt & OPT_READ_TEXT) )
-                mode = "r";     // Read as text to filter carriage ret.
-            else
-                mode = "rb";
-            *res = *bufArg;
-        }
-        else
-        {
-            return errorType( "read expected binary!/string! buffer" );
-        }
-    }
-    else if( opt & OPT_READ_TEXT )
-    {
-        mode = "r";
-        dest = ur_makeStringCell( ut, UR_ENC_UTF8, (int) info.size, res );
-    }
-    else
-    {
-        mode = "rb";
-        dest = ur_makeBinaryCell( ut, (int) info.size, res );
-    }
-
-    if( info.size > 0 )
-    {
+        UBuffer* dest;
+        const char* mode;
         FILE* fp;
         size_t n;
+
+#ifdef _WIN32
+        if( ur_is(res, UT_STRING) || (opt & OPT_READ_TEXT) )
+            mode = "r";     // Read as text to filter carriage ret.
+        else
+#endif
+            mode = "rb";
 
         fp = fopen( filename, mode );
         if( ! fp )
@@ -4020,15 +4046,20 @@ CFUNC(cfunc_read)
             return ur_error( ut, UR_ERR_ACCESS,
                              "could not open file %s", filename );
         }
-        n = fread( dest->ptr.b, 1, (size_t) info.size, fp );
+        dest = ur_buffer( res->series.buf );
+        n = fread( dest->ptr.b, 1, len, fp );
         if( n > 0 )
         {
             dest->used = n;
             if( dest->type == UT_STRING )
                 ur_strFlatten( dest );
         }
+        else
+            dest->used = 0;
         fclose( fp );
     }
+    else if( len < 0 )
+        return UR_THROW;
     return UR_OK;
 }
 

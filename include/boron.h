@@ -91,10 +91,11 @@ struct UPortDevice
     int  (*open) ( UThread*, const UPortDevice*, const UCell* from, int opt,
                    UCell* res );
     void (*close)( UBuffer* );
-    int  (*read) ( UThread*, UBuffer*, UCell*, int part );
+    int  (*read) ( UThread*, UBuffer*, UCell*, int len );
     int  (*write)( UThread*, UBuffer*, const UCell* );
     int  (*seek) ( UThread*, UBuffer*, UCell*, int where );
     int  (*waitFD)( UBuffer* );
+    int  defaultReadLen;
 };
 
 

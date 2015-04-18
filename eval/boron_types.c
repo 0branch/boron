@@ -606,12 +606,15 @@ void cfunc_toShared( UCell* cell )
 
   \param pbuf   Buffer created by UPortDevice::open.
 */
-/** \fn int (*UPortDevice::read)(UThread*, UBuffer* pbuf, UCell* dest, int part)
+/** \fn int (*UPortDevice::read)(UThread*, UBuffer* pbuf, UCell* dest, int len)
   Read data from port.
+  If UPortDevice::defaultReadLen is greater than zero then dest will
+  reference a UT_BINARY or UT_STRING buffer with enough memory reserved for
+  len bytes.
 
-  \param pbuf   Buffer created by UPortDevice::open.
-  \param dest   Destination buffer.
-  \param part   If greater than zero, then limit read to this number of bytes.
+  \param pbuf   Port buffer created by UPortDevice::open.
+  \param dest   Destination buffer or result.
+  \param len    Number of bytes to read into dest.
 
   \return UR_OK/UR_THROW
 */
@@ -633,6 +636,11 @@ void cfunc_toShared( UCell* cell )
   \return UR_OK/UR_THROW
 
   If the device cannot seek then call ur_error().
+*/
+/** \var int UPortDevice::defaultReadLen
+  Number of bytes to read if script does not specify a length.
+  This should be set to zero if UPortDevice::read does not expect a UT_BINARY
+  or UT_STRING buffer.
 */
 
 

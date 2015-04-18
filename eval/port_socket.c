@@ -493,82 +493,53 @@ static void socket_close( UBuffer* pbuf )
   Limit game packets to 1448 bytes?
 */
 
-#define RECV_BUF_SIZE       2048
-
-static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int part )
+static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int len )
 {
-    UBuffer* buf = 0;
     SocketExt* ext;
-    ssize_t len;
     ssize_t count;
-    SOCKET fd = port->FD; 
+    SOCKET fd = port->FD;
+    UBuffer* buf = ur_buffer( dest->series.buf );
 
     //printf( "KR socket_read %d %d\n", fd, port->TCP );
 
-    ext = port->TCP ? 0 : ur_ptr(SocketExt, port);
-
-    len = part ? part : RECV_BUF_SIZE;
-
-    if( ur_is(dest, UT_BINARY) )
+    if( port->TCP )
     {
-        buf = ur_bufferSerM( dest );
-        if( ! buf )
-            return UR_THROW;
-        count = ur_testAvail( buf );
-        if( count < len )
-            ur_binReserve( buf, len );
-        else
-            len = count;
-    }
-    else if( ur_is(dest, UT_STRING) )
-    {
-        buf = ur_bufferSerM( dest );
-        if( ! buf )
-            return UR_THROW;
-        count = ur_testAvail( buf );
-        if( count < len )
-            ur_arrReserve( buf, len );
-        else
-            len = count;
+        count = recv( fd, buf->ptr.c, len, 0 );         // TCP
+        if( ! count )
+        {
+            // If blocking, zero means the peer has closed the connection.
+            closesocket( fd );
+            port->FD = -1;
+        }
     }
     else
     {
-        // NOTE: Make invalidates port.
-        buf = ur_makeBinaryCell( ut, len, dest );
+        ext = ur_ptr(SocketExt, port);
+        count = recvfrom( fd, buf->ptr.c, len, 0,
+                          &ext->addr, &ext->addrlen );  // UDP
     }
 
-    if( buf )
+    if( count == -1 )
     {
-        if( ext )
-        {
-            count = recvfrom( fd, buf->ptr.c, len, 0,
-                              &ext->addr, &ext->addrlen );  // UDP
-        }
-        else
-        {
-            count = recv( fd, buf->ptr.c, len, 0 );         // TCP
-        }
-        if( count == -1 )
-        {
+        buf->used = 0;
 #ifdef _WIN32
-            int err = WSAGetLastError();
-            if( (err == WSAEWOULDBLOCK) || (err == WSAEINTR) )
+        int err = WSAGetLastError();
+        if( (err == WSAEWOULDBLOCK) || (err == WSAEINTR) )
 #else
-            if( (errno == EAGAIN) || (errno == EINTR) )
+        if( (errno == EAGAIN) || (errno == EINTR) )
 #endif
-            {
-                ur_setId(dest, UT_NONE);
-            }
-            else
-            {
-                return ur_error( ut, UR_ERR_ACCESS,
-                                 "recvfrom %s", SOCKET_ERR );
-            }
+        {
+            ur_setId(dest, UT_NONE);
         }
         else
         {
-            buf->used = count;
+            return ur_error( ut, UR_ERR_ACCESS,
+                             "recvfrom %s", SOCKET_ERR );
         }
+    }
+    else
+    {
+        buf->used = count;
     }
     return UR_OK;
 }
@@ -656,14 +627,14 @@ static int socket_waitFD( UBuffer* port )
 UPortDevice port_socket =
 {
     socket_open, socket_close, socket_read, socket_write, socket_seek,
-    socket_waitFD
+    socket_waitFD, 2048
 };
 
 
 UPortDevice port_listenSocket =
 {
     socket_open, socket_close, socket_accept, socket_write, socket_seek,
-    socket_waitFD
+    socket_waitFD, 0
 };
 
 /*EOF*/

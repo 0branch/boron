@@ -407,7 +407,7 @@ static int thread_waitFD( UBuffer* port )
 UPortDevice port_thread =
 {
     thread_open, thread_close, thread_read, thread_write, thread_seek,
-    thread_waitFD
+    thread_waitFD, 0
 };
 
 

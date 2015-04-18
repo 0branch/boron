@@ -108,53 +108,18 @@ static void file_close( UBuffer* port )
 }
 
 
-static int file_read( UThread* ut, UBuffer* port, UCell* dest, int part )
+static int file_read( UThread* ut, UBuffer* port, UCell* dest, int len )
 {
-    const int BUF_SIZE = 2048;
-    UBuffer* buf = 0;
-    ssize_t len;
-    ssize_t count;
+    ssize_t n;
+    UBuffer* buf = ur_buffer( dest->series.buf );
 
-    if( part )
-        len = part;
-    else
-        len = BUF_SIZE;
-
-    if( ur_is(dest, UT_BINARY) )
+    n = read( port->FD, buf->ptr.v, len );
+    if( n < 0 )
     {
-        buf = ur_bufferSerM( dest );
-        if( ! buf )
-            return UR_THROW;
-        count = ur_testAvail( buf );
-        if( count < len )
-            ur_binReserve( buf, len );
-        else
-            len = count;
+        buf->used = 0;
+        return ur_error( ut, UR_ERR_ACCESS, strerror( errno ) );
     }
-    else if( ur_is(dest, UT_STRING) )
-    {
-        buf = ur_bufferSerM( dest );
-        if( ! buf )
-            return UR_THROW;
-        count = ur_testAvail( buf );
-        if( count < len )
-            ur_arrReserve( buf, len );
-        else
-            len = count;
-    }
-    else
-    {
-        // NOTE: Make invalidates port.
-        buf = ur_makeBinaryCell( ut, len, dest );
-    }
-
-    if( buf )
-    {
-        count = read( port->FD, buf->ptr.v, len );
-        if( count == -1 )
-            return ur_error( ut, UR_ERR_ACCESS, strerror( errno ) );
-        buf->used = count;
-    }
+    buf->used = n;
     return UR_OK;
 }
 
@@ -244,7 +209,7 @@ static int file_waitFD( UBuffer* port )
 UPortDevice port_file =
 {
     file_open, file_close, file_read, file_write, file_seek,
-    file_waitFD
+    file_waitFD, 2048
 };
 
 
