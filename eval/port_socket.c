@@ -1,5 +1,5 @@
 /*
-  Copyright 2010 Karl Robillard
+  Copyright 2010-2015 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -211,9 +211,12 @@ CFUNC_PUB( cfunc_set_addr )
 CFUNC_PUB( cfunc_hostname )
 {
 #define HLEN    80
-    char host[ HLEN ]; 
+#define SLEN    10
+    char host[ HLEN ];
+    char serv[ SLEN ];
     UBuffer* str;
     int len;
+    int sl;
 
     if( ur_is(a1, UT_PORT) )
     {
@@ -222,16 +225,23 @@ CFUNC_PUB( cfunc_hostname )
         if( ! ext )
             return UR_THROW;
 
-        err = getnameinfo( &ext->addr, ext->addrlen, host, HLEN, 0, 0, 0 );
+        err = getnameinfo( &ext->addr, ext->addrlen, host, HLEN, serv, SLEN,
+                           /*NI_NUMERICHOST |*/ NI_NUMERICSERV );
         if( ! err )
+        {
+            sl = strLen( serv );
             goto makeStr;
+        }
         return ur_error( ut, UR_ERR_ACCESS, "getnameinfo %s",
                          gai_strerror( err ) );
     }
     else if( ur_is(a1, UT_NONE) )
     {
         if( gethostname( host, HLEN ) == 0 )
+        {
+            sl = 0;
             goto makeStr;
+        }
         return ur_error( ut, UR_ERR_ACCESS, "gethostname %s", SOCKET_ERR );
     }
     return ur_error( ut, UR_ERR_TYPE, "hostname expected none!/port!" );
@@ -241,8 +251,14 @@ makeStr:
     host[ HLEN - 1 ] = '\0';
     len = strLen( host );
 
-    str = ur_makeStringCell( ut, UR_ENC_LATIN1, len, res );
+    str = ur_makeStringCell( ut, UR_ENC_LATIN1, len + sl + 1, res );
     memCpy( str->ptr.c, host, len );
+    if( sl )
+    {
+        str->ptr.c[ len++ ] = ':';
+        memCpy( str->ptr.c + len, serv, sl );
+        len += sl;
+    }
     str->used = len;
     return UR_OK;
 }
@@ -554,6 +570,7 @@ static int socket_accept( UThread* ut, UBuffer* port, UCell* dest, int part )
 
 
     ext = (SocketExt*) memAlloc( sizeof(SocketExt) );
+    ext->addrlen = sizeof(ext->addr);
 
     fd = accept( port->FD, &ext->addr, &ext->addrlen );
     if( INVALID(fd) )
