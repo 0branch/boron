@@ -1,0 +1,14 @@
+---- file read
+{init
+This test file contains 104 bytes of data.
+
+  Vidit numquam ad quo, eos antiopam electram consulatu in.
+}
+{This test file contains 104 bytes of data.
+
+  Vidit numquam ad quo, eos antiopam electram consulatu in.
+}
+{This test file contains 104 bytes of data.
+
+  Vidit numquam ad quo, eos antiopam electram consulatu in.
+This}

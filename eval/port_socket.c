@@ -512,7 +512,7 @@ static void socket_close( UBuffer* pbuf )
 static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int len )
 {
     SocketExt* ext;
-    ssize_t count;
+    ssize_t n;
     SOCKET fd = port->FD;
     UBuffer* buf = ur_buffer( dest->series.buf );
 
@@ -520,8 +520,8 @@ static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int len )
 
     if( port->TCP )
     {
-        count = recv( fd, buf->ptr.c, len, 0 );         // TCP
-        if( ! count )
+        n = recv( fd, buf->ptr.c + buf->used, len, 0 );     // TCP
+        if( ! n )
         {
             // If blocking, zero means the peer has closed the connection.
             closesocket( fd );
@@ -531,13 +531,16 @@ static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int len )
     else
     {
         ext = ur_ptr(SocketExt, port);
-        count = recvfrom( fd, buf->ptr.c, len, 0,
-                          &ext->addr, &ext->addrlen );  // UDP
+        n = recvfrom( fd, buf->ptr.c + buf->used, len, 0,
+                      &ext->addr, &ext->addrlen );          // UDP
     }
 
-    if( count == -1 )
+    if( n > 0 )
     {
-        buf->used = 0;
+        buf->used += n;
+    }
+    else if( n == -1 )
+    {
 #ifdef _WIN32
         int err = WSAGetLastError();
         if( (err == WSAEWOULDBLOCK) || (err == WSAEINTR) )
@@ -555,7 +558,7 @@ static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int len )
     }
     else
     {
-        buf->used = count;
+        ur_setId(dest, UT_NONE);
     }
     return UR_OK;
 }

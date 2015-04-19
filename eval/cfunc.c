@@ -3900,7 +3900,8 @@ CFUNC(cfunc_close)
 
 #define OPT_READ_TEXT   0x01
 #define OPT_READ_INTO   0x02
-#define OPT_READ_PART   0x04
+#define OPT_READ_APPEND 0x04
+#define OPT_READ_PART   0x08
 
 /*
   \param len   Default length.
@@ -3916,32 +3917,49 @@ static int _readBuffer( UThread* ut, uint32_t opt, const UCell* a1,
 
     if( opt & OPT_READ_PART )
     {
-        n = ur_int(a3);
+        n = ur_int(a1 + 3);
         len = (n > 1) ? n : 0;
     }
 
-    if( opt & OPT_READ_INTO )
+    if( opt & (OPT_READ_INTO | OPT_READ_APPEND) )
     {
         UBuffer* buf;
-        const UCell* ic = a2;
-        int type = ur_type(ic);
+        const UCell* ic = a1 + 1;
+        int type;
+        int rlen;
+
+        if( opt & OPT_READ_APPEND )
+            ++ic;
+        type = ur_type(ic);
 
         if( type == UT_BINARY || type == UT_STRING )
         {
             buf = ur_bufferSerM(ic);
             if( ! buf )
                 return -1;
+            if( opt & OPT_READ_INTO )
+                buf->used = 0;
+            rlen = len + buf->used;
 
             n = ur_testAvail( buf );
-            if( n < len )
+            if( n < rlen )
             {
                 if( type == UT_STRING )
-                    ur_arrReserve( buf, len );
+                {
+                    if( ur_strIsUcs2( buf ) )
+                    {
+                        errorType( "cannot read /into UCS2 string!" );
+                        return -1;
+                    }
+                    ur_arrReserve( buf, rlen );
+                }
                 else
-                    ur_binReserve( buf, len );
+                    ur_binReserve( buf, rlen );
             }
-            else
+            else if( ! (opt & OPT_READ_PART) )
+            {
                 len = n;
+            }
 
             *res = *ic;
         }
@@ -3971,13 +3989,16 @@ extern int ur_readDir( UThread*, const char* filename, UCell* res );
         /text       Read as text rather than binary.
         /into       Put data into existing buffer.
             buffer  binary!/string!
+        /append     Append data to existing buffer.
+            abuf    binary!/string!
         /part       Read a specific number of bytes.
             size    int!
-    return: binary!/string!/block!
+    return: binary!/string!/block!/none!
     group: io
     see: load, write
 
-    Read binary! or UTF-8 string!.
+    Read binary! or UTF-8 string!.  None is returned when nothing is read
+    (e.g. if the end of a file is reached or a TCP socket is disconnected).
 
     When source is a file name the entire file will be read into memory
     unless /part is used.
@@ -4002,9 +4023,10 @@ CFUNC(cfunc_read)
         if( ! dev )
             return errorScript( "cannot read from closed port" );
 
-        if( dev->defaultReadLen > 0 )
+        len = dev->defaultReadLen;
+        if( len > 0 )
         {
-            len = _readBuffer( ut, opt, a1, res, dev->defaultReadLen ); // gc!
+            len = _readBuffer( ut, opt, a1, res, len ); // gc!
             if( len <= 0 )
                 return (len < 0) ? UR_THROW : UR_OK;
             pbuf = ur_buffer( a1->port.buf );   // Re-aquire
@@ -4047,15 +4069,22 @@ CFUNC(cfunc_read)
                              "could not open file %s", filename );
         }
         dest = ur_buffer( res->series.buf );
-        n = fread( dest->ptr.b, 1, len, fp );
+        n = fread( dest->ptr.b + dest->used, 1, len, fp );
         if( n > 0 )
         {
-            dest->used = n;
+            dest->used += n;
             if( dest->type == UT_STRING )
                 ur_strFlatten( dest );
         }
+        else if( ferror( fp ) )
+        {
+            fclose( fp );
+            return ur_error( ut, UR_ERR_ACCESS, "fread error %s", filename );
+        }
         else
-            dest->used = 0;
+        {
+            ur_setId(res, UT_NONE);
+        }
         fclose( fp );
     }
     else if( len < 0 )

@@ -994,7 +994,8 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_current_dir,"current-dir" );
     addCFunc( cfunc_getenv,     "getenv val" );
     addCFunc( cfunc_open,       "open from /read /write /new /nowait" );
-    addCFunc( cfunc_read,       "read from /text /into b /part size int!" );
+    addCFunc( cfunc_read,       "read from /text /into b /append a"
+                                " /part size int!" );
     addCFunc( cfunc_write,      "write to data /append /text" );
     addCFunc( cfunc_delete,     "delete file" );
     addCFunc( cfunc_rename,     "rename a b" );

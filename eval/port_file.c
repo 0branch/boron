@@ -113,13 +113,13 @@ static int file_read( UThread* ut, UBuffer* port, UCell* dest, int len )
     ssize_t n;
     UBuffer* buf = ur_buffer( dest->series.buf );
 
-    n = read( port->FD, buf->ptr.v, len );
-    if( n < 0 )
-    {
-        buf->used = 0;
+    n = read( port->FD, buf->ptr.c + buf->used, len );
+    if( n > 0 )
+        buf->used += n;
+    else if( n < 0 )
         return ur_error( ut, UR_ERR_ACCESS, strerror( errno ) );
-    }
-    buf->used = n;
+    else
+        ur_setId(dest, UT_NONE);
     return UR_OK;
 }
 
