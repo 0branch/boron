@@ -306,6 +306,9 @@ static int _openTcpClient( UThread* ut, struct sockaddr* addr,
                            socklen_t addrlen )
 {
     SOCKET fd;
+#ifdef __APPLE__
+    int yes = 1;
+#endif
 
     fd = socket( AF_INET, SOCK_STREAM, 0 );
     if( INVALID(fd) )
@@ -313,6 +316,15 @@ static int _openTcpClient( UThread* ut, struct sockaddr* addr,
         ur_error( ut, UR_ERR_ACCESS, "socket %s", SOCKET_ERR );
         return -1;
     }
+
+#ifdef __APPLE__
+    if( setsockopt( fd, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof(int) ) != 0 )
+    {
+        closesocket( fd );
+        ur_error( ut, UR_ERR_ACCESS, "setsockopt %s", SOCKET_ERR );
+        return -1;
+    }
+#endif
 
     if( connect( fd, addr, addrlen ) < 0 )
     {
@@ -598,11 +610,15 @@ static int socket_write( UThread* ut, UBuffer* port, const UCell* data )
     int n;
     ssize_t len = boron_sliceMem( ut, data, &buf );
 
+#ifndef __linux__
+#define MSG_NOSIGNAL    0
+#endif
+
     if( port->FD > -1 && len )
     {
         if( port->TCP )
         {
-            n = send( port->FD, buf, len, 0 );
+            n = send( port->FD, buf, len, MSG_NOSIGNAL );
         }
         else
         {
@@ -612,7 +628,7 @@ static int socket_write( UThread* ut, UBuffer* port, const UCell* data )
 
         if( n == -1 )
         {
-            ur_error( ut, UR_ERR_ACCESS, "send %d", SOCKET_ERR );
+            ur_error( ut, UR_ERR_ACCESS, "send %s", SOCKET_ERR );
 
             // An error occured; the socket must not be used again.
             closesocket( port->FD );
