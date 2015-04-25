@@ -1,5 +1,7 @@
 ---- make
 path! a/2
+lit-path! 'a/2
+set-path! a/2:
 hij
 "abc"
 none

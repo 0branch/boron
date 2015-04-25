@@ -1,5 +1,9 @@
 print "---- make"
-p: make path! [a 2]
+p: make path! blk: [a 2]
+print [type? p p]
+p: make lit-path! blk
+print [type? p p]
+p: make set-path! blk
 print [type? p p]
 
 

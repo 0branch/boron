@@ -4127,16 +4127,17 @@ USeriesType dt_paren =
 // UT_PATH
 
 
-int path_make( UThread* ut, const UCell* from, UCell* res )
+static int path_makeT( UThread* ut, const UCell* from, UCell* res, int ptype )
 {
-    if( ur_is(from, UT_BLOCK) )
+    int typeMask = 1 << ur_type(from);
+    if( typeMask & ((1<<UT_BLOCK) | (1<<UT_PAREN)) )
     {
         UBlockIter bi;
         UBuffer* blk;
 
         ur_blkSlice( ut, &bi, from );
         // Make invalidates bi.buf.
-        blk = ur_makeBlockCell( ut, UT_PATH, bi.end - bi.it, res );
+        blk = ur_makeBlockCell( ut, ptype, bi.end - bi.it, res );
 
         ur_foreach( bi )
         {
@@ -4145,7 +4146,19 @@ int path_make( UThread* ut, const UCell* from, UCell* res )
         }
         return UR_OK;
     }
+    else if( typeMask & ((1<<UT_PATH) | (1<<UT_LITPATH) | (1<<UT_SETPATH)) )
+    {
+        block_copy( ut, from, res );
+        ur_type(res) = ptype;
+        return UR_OK;
+    }
     return ur_error( ut, UR_ERR_TYPE, "make path! expected block!" );
+}
+
+
+int path_make( UThread* ut, const UCell* from, UCell* res )
+{
+    return path_makeT( ut, from, res, UT_PATH );
 }
 
 
@@ -4192,11 +4205,17 @@ USeriesType dt_path =
 // UT_LITPATH
 
 
+int litpath_make( UThread* ut, const UCell* from, UCell* res )
+{
+    return path_makeT( ut, from, res, UT_LITPATH );
+}
+
+
 USeriesType dt_litpath =
 {
     {
     "lit-path!",
-    path_make,              path_make,              block_copy,
+    litpath_make,           litpath_make,           block_copy,
     block_compare,          unset_operate,          block_select,
     path_toString,          path_toString,
     unset_recycle,          block_mark,             block_destroy,
@@ -4212,11 +4231,17 @@ USeriesType dt_litpath =
 // UT_SETPATH
 
 
+int setpath_make( UThread* ut, const UCell* from, UCell* res )
+{
+    return path_makeT( ut, from, res, UT_SETPATH );
+}
+
+
 USeriesType dt_setpath =
 {
     {
     "set-path!",
-    path_make,              path_make,              block_copy,
+    setpath_make,           setpath_make,           block_copy,
     block_compare,          unset_operate,          block_select,
     path_toString,          path_toString,
     unset_recycle,          block_mark,             block_destroy,
