@@ -197,7 +197,10 @@ static void _packU32( UBuffer* bin, uint32_t n )
 #define packU32(N)  _packU32( bin, N )
 #define packS32(N)  _packU32( bin, _zigZag32(N) )
 
-static void _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
+/*
+  Return zero if successful or unknown data type.
+*/
+static int _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
 {
     UBlockIter bi;
 
@@ -213,7 +216,6 @@ static void _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
 
         switch( type )
         {
-        default:
         case UT_UNSET:
             break;
 
@@ -226,7 +228,8 @@ static void _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
             }
             break;
 
-        //case UT_NONE:
+        case UT_NONE:
+            break;
 
         case UT_LOGIC:
         case UT_CHAR:
@@ -337,8 +340,12 @@ static void _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
 
         case UT_ERROR:
             break;
+
+        default:
+            return type;
         }
     }
+    return 0;
 }
 
 
@@ -417,6 +424,7 @@ int ur_serialize( UThread* ut, UIndex blkN, UCell* res )
     Serializer ser;
     UBuffer* bin;
     int ok = UR_OK;
+    int btype;
 
     ur_arrInit( &ser.atomMap, sizeof(UAtom), 0 );
     ur_arrInit( &ser.bufMap, sizeof(BufferIndex), 0 );
@@ -487,7 +495,10 @@ int ur_serialize( UThread* ut, UIndex blkN, UCell* res )
                 push8( buf->type );
                 packU32( buf->used );
                 if( buf->used )
-                    _serializeBlock( &ser, bin, buf );
+                {
+                    if( (btype = _serializeBlock( &ser, bin, buf )) )
+                        goto bad_type;
+                }
                 break;
 
             case UT_CONTEXT:
@@ -504,7 +515,8 @@ int ur_serialize( UThread* ut, UIndex blkN, UCell* res )
                         packU32( _mapAtom( &ser, ser.ctxAtoms.ptr.u16[ai] ) );
 
                     // Values
-                    _serializeBlock( &ser, bin, buf );
+                    if( (btype = _serializeBlock( &ser, bin, buf )) )
+                        goto bad_type;
                 }
                 break;
 
@@ -541,6 +553,11 @@ cleanup:
     ur_arrFree( &ser.bufMap );
     ur_arrFree( &ser.ctxAtoms );
     return ok;
+
+bad_type:
+
+    ok = ur_error( ut, UR_ERR_SCRIPT, "Cannot serialize data type %d", btype );
+    goto cleanup;
 }
 
 
