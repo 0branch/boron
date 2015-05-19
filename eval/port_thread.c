@@ -387,21 +387,25 @@ static int thread_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 }
 
 
+#ifdef _WIN32
+static int thread_waitFD( UBuffer* port, void** handle )
+{
+    ThreadExt* ext = (ThreadExt*) port->ptr.v;
+    *handle = (port->SIDE == SIDE_A) ? ext->B.eventH : ext->A.eventH;
+    return UR_PORT_HANDLE;
+}
+#else
 static int thread_waitFD( UBuffer* port )
 {
 #ifdef USE_EVENTFD
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
     return (port->SIDE == SIDE_A) ? ext->B.eventFD : ext->A.eventFD;
-#elif defined(_WIN32)
-    (void) port;
-    //ThreadExt* ext = (ThreadExt*) port->ptr.v;
-    //return (port->SIDE == SIDE_A) ? ext->B.eventH : ext->A.eventH;
-    return -1;
 #else
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
     return (port->SIDE == SIDE_A) ? ext->B.socketFD[0] : ext->A.socketFD[0];
 #endif
 }
+#endif
 
 
 UPortDevice port_thread =

@@ -36,9 +36,9 @@
 #ifdef _MSC_VER
 #define S_IRUSR _S_IREAD
 #define S_IWUSR _S_IWRITE
-#endif
 #define S_IRGRP 0
 #define S_IROTH 0
+#endif
 #define ssize_t int
 #else
 #include <unistd.h>
@@ -200,10 +200,20 @@ static int file_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 }
 
 
+#ifdef _WIN32
+static int file_waitFD( UBuffer* port, void** handle )
+{
+    if( port->FD < 0 )
+        return -1;
+    *handle = (void*) _get_osfhandle( port->FD );
+    return UR_PORT_HANDLE;
+}
+#else
 static int file_waitFD( UBuffer* port )
 {
     return port->FD;
 }
+#endif
 
 
 UPortDevice port_file =

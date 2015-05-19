@@ -33,7 +33,7 @@
 static char* WSAGetLastErrorMessage()
 {
     static char buf[40];
-    sprintf( buf, "%x", WSAGetLastError() );
+    sprintf( buf, "%d", WSAGetLastError() );
     return buf;
 }
 
@@ -65,6 +65,9 @@ typedef struct
     const UPortDevice* dev;
     struct sockaddr addr;
     socklen_t addrlen;
+#ifdef _WIN32
+    HANDLE event;
+#endif
 }
 SocketExt;
 
@@ -399,6 +402,9 @@ static int socket_open( UThread* ut, const UPortDevice* pdev,
 
     ext = (SocketExt*) memAlloc( sizeof(SocketExt) );
     ext->addrlen = 0;
+#ifdef _WIN32
+    ext->event = WSA_INVALID_EVENT;
+#endif
 
     //if( ur_is(from, UT_STRING) )
     {
@@ -502,6 +508,15 @@ static void socket_close( UBuffer* pbuf )
 {
     //printf( "KR socket_close %d\n", pbuf->FD );
 
+#ifdef _WIN32
+    SocketExt* ext = ur_ptr(SocketExt, pbuf);
+    if( ext->event != WSA_INVALID_EVENT )
+    {
+        WSACloseEvent( ext->event );
+        ext->event = WSA_INVALID_EVENT;
+    }
+#endif
+
     if( pbuf->FD > -1 )
     {
         closesocket( pbuf->FD );
@@ -576,6 +591,27 @@ static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int len )
 }
 
 
+#ifdef _WIN32
+static HANDLE _createSocketEvent( int socketFD, int accept )
+{
+    HANDLE event = WSACreateEvent();
+    if( event != WSA_INVALID_EVENT )
+    {
+        long mask = accept ? FD_ACCEPT
+                           : FD_CLOSE | FD_READ;
+
+        // NOTE: WSAEventSelect put the socket into non-blocking mode.
+        if( SOCKET_ERROR == WSAEventSelect( socketFD, event, mask ) )
+        {
+            WSACloseEvent( event );
+            event = WSA_INVALID_EVENT;
+        }
+    }
+    return event;
+}
+#endif
+
+
 static int socket_accept( UThread* ut, UBuffer* port, UCell* dest, int part )
 {
     SOCKET fd;
@@ -591,8 +627,23 @@ static int socket_accept( UThread* ut, UBuffer* port, UCell* dest, int part )
     if( INVALID(fd) )
     {
         memFree( ext );
-        return ur_error( ut, UR_ERR_INTERNAL, SOCKET_ERR );
+        return ur_error( ut, UR_ERR_INTERNAL, "accept %s", SOCKET_ERR );
     }
+
+#ifdef _WIN32
+    // Windows gives the accept fd the same WSAEventSelect association as
+    // the listener, so we must override it.
+#if 0
+    ext->event = _createSocketEvent( fd, 0 );
+#else
+    {
+    u_long flags = 0;
+    WSAEventSelect( fd, NULL, 0 );
+    ioctlsocket( fd, FIONBIO, &flags );
+    ext->event = WSA_INVALID_EVENT;
+    }
+#endif
+#endif
 
     buf = boron_makePort( ut, &port_socket, ext, dest );
     buf->TCP = 1;
@@ -654,10 +705,27 @@ static int socket_seek( UThread* ut, UBuffer* port, UCell* pos, int where )
 }
 
 
+#ifdef _WIN32
+static int socket_waitFD( UBuffer* port, void** handle )
+{
+    int fd = port->FD;
+    if( fd > -1 )
+    {
+        SocketExt* ext = ur_ptr(SocketExt, port);
+        if( ext->event == WSA_INVALID_EVENT )
+        {
+            ext->event = _createSocketEvent(fd, ext->dev == &port_listenSocket);
+        }
+        *handle = ext->event;
+    }
+    return fd;
+}
+#else
 static int socket_waitFD( UBuffer* port )
 {
     return port->FD;
 }
+#endif
 
 
 UPortDevice port_socket =

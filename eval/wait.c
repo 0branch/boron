@@ -48,11 +48,17 @@ PortInfo;
 
 typedef struct
 {
+#ifdef _WIN32
+    DWORD portCount;
+    DWORD timeout;
+    HANDLE handles[ MAX_PORTS ];
+#else
     struct timeval tv;
     fd_set readfds;
     int nfds;
     uint16_t timeout;
     uint16_t portCount;
+#endif
     PortInfo ports[ MAX_PORTS ];
 }
 WaitInfo;
@@ -64,10 +70,19 @@ static void _waitOnPort( UThread* ut, WaitInfo* wi, const UCell* portC )
     PORT_SITE(dev, pbuf, portC);
     if( dev )
     {
+        assert( wi->portCount < MAX_PORTS );
+#ifdef _WIN32
+        fd = dev->waitFD( pbuf, wi->handles + wi->portCount );
+        if( fd > -1 )
+        {
+            wi->ports[ wi->portCount ].cell = portC;
+            wi->ports[ wi->portCount ].fd   = fd;
+            ++wi->portCount;
+        }
+#else
         fd = dev->waitFD( pbuf );
         if( fd > -1 )
         {
-            assert( wi->portCount < MAX_PORTS );
             wi->ports[ wi->portCount ].cell = portC;
             wi->ports[ wi->portCount ].fd   = fd;
             ++wi->portCount;
@@ -78,6 +93,7 @@ static void _waitOnPort( UThread* ut, WaitInfo* wi, const UCell* portC )
             if( fd > wi->nfds )
                 wi->nfds = fd;
         }
+#endif
     }
 }
 
@@ -89,9 +105,13 @@ static int _fillWaitInfo( UThread* ut, WaitInfo* wi,
     {
         if( ur_is(it, UT_INT) )
         {
+#ifdef _WIN32
+            wi->timeout = ur_int(it) * 1000;
+#else
             wi->tv.tv_sec  = ur_int(it);
             wi->tv.tv_usec = 0;
             wi->timeout = 1;
+#endif
         }
         else if( ur_is(it, UT_WORD) )
         {
@@ -107,13 +127,15 @@ static int _fillWaitInfo( UThread* ut, WaitInfo* wi,
         }
         else if( ur_is(it, UT_DECIMAL) || ur_is(it, UT_TIME) )
         {
-            double n;
-
-            n = floor( ur_decimal(it) );
+#ifdef _WIN32
+            wi->timeout = (DWORD) (ur_decimal(it) * 1000.0);
+#else
+            double n = floor( ur_decimal(it) );
 
             wi->tv.tv_sec  = n ? ((long) n) : 0;
             wi->tv.tv_usec = (long) ((ur_decimal(it) - n) * 1000000.0);
             wi->timeout = 1;
+#endif
         }
 
         ++it;
@@ -134,8 +156,50 @@ static int _fillWaitInfo( UThread* ut, WaitInfo* wi,
 CFUNC_PUB( cfunc_wait )
 {
     WaitInfo wi;
-    int n;
 
+#ifdef _WIN32
+    DWORD n;
+
+    wi.timeout = INFINITE;
+    wi.portCount = 0;
+
+    if( ur_is(a1, UT_BLOCK) )
+    {
+        UBlockIter bi;
+        ur_blkSlice( ut, &bi, a1 );
+        if( ! _fillWaitInfo( ut, &wi, bi.it, bi.end ) )
+            return UR_THROW;
+    }
+    else
+    {
+        if( ! _fillWaitInfo( ut, &wi, a1, a1 + 1 ) )
+            return UR_THROW;
+    }
+
+    n = WaitForMultipleObjects( wi.portCount, wi.handles, FALSE, wi.timeout );
+    if( n == WAIT_FAILED )
+    {
+        return ur_error( ut, UR_ERR_INTERNAL,
+                         "WaitForMultipleObjects - %d\n", GetLastError() );
+    }
+    else if( n != WAIT_TIMEOUT )
+    {
+        WSANETWORKEVENTS nev;
+        int sock;
+
+        n -= WAIT_OBJECT_0;
+        assert( n >= 0 && n < wi.portCount );
+
+        // Sockets must reset the event object.
+        sock = wi.ports[ n ].fd;
+        if( sock != UR_PORT_HANDLE )
+            WSAEnumNetworkEvents( sock, wi.handles[ n ], &nev );
+
+        *res = *wi.ports[ n ].cell;
+        return UR_OK;
+    }
+#else
+    int n;
 
     wi.nfds = 0;
     wi.timeout = 0;
@@ -159,19 +223,11 @@ CFUNC_PUB( cfunc_wait )
 
     n = select( wi.nfds, &wi.readfds, NULL, NULL,
                 wi.timeout ? &wi.tv : NULL );
-#ifdef _WIN32
-    if( n == SOCKET_ERROR )
-    {
-        return ur_error( ut, UR_ERR_INTERNAL,
-                         "select - %d\n", WSAGetLastError() );
-    }
-#else
     if( n == -1 )
     {
         return ur_error( ut, UR_ERR_INTERNAL,
                          "select - %s\n", strerror(errno) );
     }
-#endif
     else if( n )
     {
         PortInfo* pi;
@@ -195,6 +251,8 @@ CFUNC_PUB( cfunc_wait )
             ++pi;
         }
     }
+#endif
+
     ur_setId( res, UT_NONE );
     return UR_OK;
 }

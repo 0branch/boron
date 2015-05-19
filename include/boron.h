@@ -84,6 +84,10 @@ enum PortSeek
 };
 
 
+#ifdef _WIN32
+#define UR_PORT_HANDLE  0x7fffffff
+#endif
+
 typedef struct UPortDevice  UPortDevice;
 
 struct UPortDevice
@@ -94,7 +98,11 @@ struct UPortDevice
     int  (*read) ( UThread*, UBuffer*, UCell*, int len );
     int  (*write)( UThread*, UBuffer*, const UCell* );
     int  (*seek) ( UThread*, UBuffer*, UCell*, int where );
-    int  (*waitFD)( UBuffer* );
+#ifdef _WIN32
+    int (*waitFD)( UBuffer*, void** );
+#else
+    int (*waitFD)( UBuffer* );
+#endif
     int  defaultReadLen;
 };
 
