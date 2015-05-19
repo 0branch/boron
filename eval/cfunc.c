@@ -3954,11 +3954,19 @@ static int _readBuffer( UThread* ut, uint32_t opt, const UCell* a1,
                     ur_arrReserve( buf, rlen );
                 }
                 else
+                {
                     ur_binReserve( buf, rlen );
+                }
+                //printf( "KR resb len:%d used:%d %d->%d\n",
+                //        len, buf->used, n, ur_avail( buf ) );
+                n = ur_avail( buf );
             }
-            else if( ! (opt & OPT_READ_PART) )
+
+            if( ! (opt & OPT_READ_PART) )
             {
                 len = n;
+                if( opt & OPT_READ_APPEND )
+                    len -= buf->used;
             }
 
             *res = *ic;

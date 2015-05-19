@@ -528,7 +528,7 @@ static int socket_read( UThread* ut, UBuffer* port, UCell* dest, int len )
     SOCKET fd = port->FD;
     UBuffer* buf = ur_buffer( dest->series.buf );
 
-    //printf( "KR socket_read %d %d\n", fd, port->TCP );
+    //printf( "KR socket_read fd:%d tcp:%d len:%d\n", fd, port->TCP, len );
 
     if( port->TCP )
     {
