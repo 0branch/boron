@@ -17,11 +17,14 @@ static void* threadRoutine( void* arg )
     {
         UBuffer str;
         UCell* ex = boron_exception( ut );
-        ur_strInit( &str, UR_ENC_UTF8, 0 );
-        ur_toText( ut, ex, &str );
-        ur_strTermNull( &str );
-        puts( str.ptr.c );
-        ur_strFree( &str );
+        if( ! ur_is(ex, UT_WORD) || ur_atom(ex) != UR_ATOM_QUIT )
+        {
+            ur_strInit( &str, UR_ENC_UTF8, 0 );
+            ur_toText( ut, ex, &str );
+            ur_strTermNull( &str );
+            puts( str.ptr.c );
+            ur_strFree( &str );
+        }
     }
     ur_destroyThread( ut );
     return 0;
