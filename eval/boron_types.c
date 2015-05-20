@@ -807,7 +807,9 @@ int port_compare( UThread* ut, const UCell* a, const UCell* b, int test )
         case UR_COMPARE_SAME:
         case UR_COMPARE_EQUAL:
         case UR_COMPARE_EQUAL_CASE:
-            return a->series.buf == b->series.buf;
+            if( ur_type(a) == ur_type(b) )
+                return a->series.buf == b->series.buf;
+            break;
 #if 0
         case UR_COMPARE_EQUAL:
         case UR_COMPARE_EQUAL_CASE:
