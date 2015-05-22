@@ -101,7 +101,7 @@ static int _initThreadQueue( ThreadQueue* queue )
         return 0;
     }
 #elif defined(_WIN32)
-    queue->eventH = CreateEvent( NULL, FALSE, FALSE, NULL );
+    queue->eventH = CreateEvent( NULL, TRUE, FALSE, NULL );
     if( queue->eventH == NULL )
     {
         fprintf( stderr, "CreateEvent error (%ld)\n", GetLastError() );
@@ -232,6 +232,7 @@ static inline void readEvent( ThreadQueue* q )
     result = WaitForSingleObject( q->eventH, INFINITE );
     if( result != WAIT_OBJECT_0 )
         fprintf( stderr, "WaitForSingleObject error (%ld)\n", GetLastError() );
+    ResetEvent( q->eventH );
 #else
     uint16_t n;
     read( q->socketFD[0], &n, sizeof(n) );
