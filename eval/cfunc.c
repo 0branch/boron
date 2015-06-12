@@ -689,7 +689,7 @@ CFUNC(cfunc_words_of)
         word    word!
     return: context!/datatype!
     group: data
-    see: bind
+    see: bind, unbind
 
     Get the context which a word is bound to.
 */
@@ -723,13 +723,15 @@ CFUNC(cfunc_bindingQ)
 }
 
 
+#define BIND_ERR_MSG    "%s expected words argument of word!/block!"
+
 /*-cf-
     bind
         words   word!/block!
         context word!/context!
     return: Bound words
     group: data
-    see: binding?
+    see: binding?, unbind
 */
 CFUNC(cfunc_bind)
 {
@@ -776,7 +778,36 @@ CFUNC(cfunc_bind)
         ur_bindCells( ut, res, res + 1, &bt );
         return UR_OK;
     }
-    return errorType( "bind expected words argument of word!/block!" );
+    return ur_error(ut, UR_ERR_TYPE, BIND_ERR_MSG, "bind" );
+}
+
+
+/*-cf-
+    unbind
+        words   word!/block!
+        /deep   If words is a block, unbind all sub-blocks.
+    return: Unbound words
+    group: data
+    see: bind, binding?
+*/
+CFUNC(cfunc_unbind)
+{
+#define OPT_UNBIND_DEEP   0x01
+    *res = *a1;
+    if( ur_is(a1, UT_BLOCK) )
+    {
+        UBlockIterM bi;
+        if( ! ur_blkSliceM( ut, &bi, a1 ) )
+            return UR_THROW;
+        ur_unbindCells( ut, bi.it, bi.end, CFUNC_OPTIONS & OPT_UNBIND_DEEP );
+        return UR_OK;
+    }
+    else if( ur_is(a1, UT_WORD) )
+    {
+        ur_unbindCells( ut, res, res + 1, 0 );
+        return UR_OK;
+    }
+    return ur_error(ut, UR_ERR_TYPE, BIND_ERR_MSG, "unbind" );
 }
 
 

@@ -689,6 +689,44 @@ void ur_bind( UThread* ut, UBuffer* blk, const UBuffer* ctx, int bindType )
 
 
 /**
+  Unbind all words an array of cells.
+
+  \param it     First cell.
+  \param end    End of cell array.
+  \param deep   Recursively unbinds all blocks if non-zero.
+*/
+void ur_unbindCells( UThread* ut, UCell* it, UCell* end, int deep )
+{
+    for( ; it != end; ++it )
+    {
+        switch( ur_type(it) )
+        {
+            case UT_WORD:
+            case UT_LITWORD:
+            case UT_SETWORD:
+            case UT_GETWORD:
+                ur_setBinding( it, UR_BIND_UNBOUND );
+                it->word.ctx = UR_INVALID_BUF;
+                break;
+
+            case UT_BLOCK:
+            case UT_PAREN:
+            case UT_PATH:
+            case UT_LITPATH:
+            case UT_SETPATH:
+                if( deep && ! ur_isShared(it->series.buf) )
+                {
+                    UBlockIterM bi;
+                    ur_blkSliceM( ut, &bi, it );
+                    ur_unbindCells( ut, bi.it, bi.end, 1 );
+                }
+                break;
+        }
+    }
+}
+
+
+/**
   Replace words in cells with their values from a context.
   This recursively infuses all sub-blocks.
  
