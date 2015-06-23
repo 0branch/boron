@@ -2,6 +2,8 @@
 #define BORON_INTERNAL_H
 
 
+#include "env.h"
+
 #ifdef CONFIG_RANDOM
 #include "well512.h"
 #endif
@@ -39,6 +41,16 @@ typedef struct
     uint16_t jumpEnd;
 }
 UCellFuncOpt;
+
+
+typedef struct
+{
+    UEnv    env;
+    UBuffer ports;
+}
+BoronEnv;
+
+#define BENV      ((BoronEnv*) ut->env)
 
 
 typedef struct BoronThread

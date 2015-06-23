@@ -34,7 +34,6 @@ struct UEnv
     UBuffer     dataStore;
     UBuffer     atomNames;
     UBuffer     atomTable;
-    UBuffer     ports;      // Boron UPortDevice (need way to extend UEnv).
     uint16_t    typeCount;
     uint16_t    _pad0;
     uint32_t    threadSize;

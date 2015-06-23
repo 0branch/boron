@@ -21,7 +21,6 @@
 #include "boron.h"
 #include "os.h"
 #include "os_file.h"
-#include "env.h"
 #include "urlan_atoms.h"
 #include "mem_util.h"
 #include "str.h"
@@ -796,6 +795,7 @@ extern CFUNC_PUB( cfunc_wait );
 UEnvParameters* boron_envParam( UEnvParameters* par )
 {
     ur_envParam( par );
+    par->envSize      = sizeof(BoronEnv);
     par->threadSize   = sizeof(BoronThread);
     par->threadMethod = boron_threadMethod;
     return par;
@@ -876,7 +876,7 @@ UThread* boron_makeEnvP( UEnvParameters* par )
 
 
     // Register ports.
-    ur_ctxInit( &ut->env->ports, 4 );
+    ur_ctxInit( &BENV->ports, 4 );
     boron_addPortDevice( ut, &port_file,   atoms[3] );
 #ifdef CONFIG_SOCKET
     boron_addPortDevice( ut, &port_socket, atoms[4] );
@@ -1128,7 +1128,7 @@ void boron_freeEnv( UThread* ut )
 {
     if( ut )
     {
-        ur_ctxFree( &ut->env->ports );
+        ur_ctxFree( &BENV->ports );
         ur_freeEnv( ut );
     }
 }

@@ -657,7 +657,7 @@ extern void binary_toShared( UCell* cell );
 */
 void boron_addPortDevice( UThread* ut, const UPortDevice* dev, UAtom name )
 {
-    UBuffer* ctx = &ut->env->ports;
+    UBuffer* ctx = &BENV->ports;
     int n = ur_ctxAddWordI( ctx, name );
     ((const UPortDevice**) ctx->ptr.v)[ n ] = dev;
     ur_ctxSort( ctx );
@@ -666,7 +666,7 @@ void boron_addPortDevice( UThread* ut, const UPortDevice* dev, UAtom name )
 
 static UPortDevice* portLookup( UThread* ut, UAtom name )
 {
-    UBuffer* ctx = &ut->env->ports;
+    UBuffer* ctx = &BENV->ports;
     int n = ur_ctxLookup( ctx, name );
     if( n < 0 )
         return 0;
