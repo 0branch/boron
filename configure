@@ -17,6 +17,9 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo "  --gnu-readline  Use GNU Readline for console editing and history"
   echo "  --timecode      Enable timecode! datatype"
   echo "  --thread        Enable thread functions"
+  echo -e "\nSet Default Limits:"
+  echo "  --atom-limit <N>  Maximum number of atoms"
+  echo "  --atom-names <N>  Atom names buffer size"
   exit
 fi
 
@@ -31,9 +34,11 @@ CFG_READLINE=linenoise
 CFG_SOCKET=1
 CFG_TIMECODE=0
 CFG_THREAD=0
+CFG_ATOM_LIMIT=none
+CFG_ATOM_NAMES=none
 
-for opt in "$@"; do
-  case $opt in
+while [ "$1" != "" ]; do
+  case $1 in
     --cleanA)
       CLEAN_A=1 ;;
     --no-checksum)
@@ -58,12 +63,55 @@ for opt in "$@"; do
       CFG_TIMECODE=1 ;;
     --thread)
       CFG_THREAD=1 ;;
+    --atom-limit)
+      shift
+      CFG_ATOM_LIMIT=$1 ;;
+    --atom-names)
+      shift
+      CFG_ATOM_NAMES=$1 ;;
     *)
       echo "Invalid option $opt"
       exit 1
       ;;
   esac
+  shift
 done
+
+
+echo "Generating project.config"
+rm -f project.config
+
+function m2-word {
+if [ $2 = 0 ]; then
+  echo "$1: false" >> project.config
+else
+  echo "$1: '$2" >> project.config
+fi
+}
+function m2-logic {
+if [ $2 = 0 ]; then
+  echo "$1: false" >> project.config
+else
+  echo "$1: true" >> project.config
+fi
+}
+function m2-int {
+if [ $2 != 'none' ]; then
+  echo "$1: $2" >> project.config
+fi
+}
+
+m2-logic "assemble" $CFG_ASSEM
+m2-logic "checksum" $CFG_CHECKSUM
+m2-word  "compress" $CFG_COMPRESS
+m2-logic "execute"  $CFG_EXECUTE
+m2-logic "random"   $CFG_RANDOM
+m2-word  "readline" $CFG_READLINE
+m2-logic "socket"   $CFG_SOCKET
+m2-logic "timecode" $CFG_TIMECODE
+m2-logic "thread"   $CFG_THREAD
+m2-int   "atom-limit" $CFG_ATOM_LIMIT
+m2-int   "atom-names" $CFG_ATOM_NAMES
 
 
 if command -v gcc >/dev/null; then
@@ -106,35 +154,6 @@ else
   echo "No compiler found; no Makefile generated."
   exit 1
 fi
-
-
-echo "Generating project.config"
-rm -f project.config
-
-function m2-word {
-if [ $2 = 0 ]; then
-  echo "$1: false" >> project.config
-else
-  echo "$1: '$2" >> project.config
-fi
-}
-function m2-logic {
-if [ $2 = 0 ]; then
-  echo "$1: false" >> project.config
-else
-  echo "$1: true" >> project.config
-fi
-}
-
-m2-logic "assemble" $CFG_ASSEM
-m2-logic "checksum" $CFG_CHECKSUM
-m2-word  "compress" $CFG_COMPRESS
-m2-logic "execute"  $CFG_EXECUTE
-m2-logic "random"   $CFG_RANDOM
-m2-word  "readline" $CFG_READLINE
-m2-logic "socket"   $CFG_SOCKET
-m2-logic "timecode" $CFG_TIMECODE
-m2-logic "thread"   $CFG_THREAD
 
 
 echo "Building GNU Makefile with m2"

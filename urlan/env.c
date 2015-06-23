@@ -292,8 +292,18 @@ extern UDatatype dt_timecode;
 */
 UEnvParameters* ur_envParam( UEnvParameters* par )
 {
+#ifdef CONFIG_ATOM_LIMIT
+    par->atomLimit     = CONFIG_ATOM_LIMIT;
+#else
     par->atomLimit     = 2048;
+#endif
+
+#ifdef CONFIG_ATOM_NAMES
+    par->atomNamesSize = CONFIG_ATOM_NAMES;
+#else
     par->atomNamesSize = 2048 * 12;
+#endif
+
     par->envSize       = sizeof(UEnv);
     par->threadSize    = sizeof(UThread);
     par->dtCount       = 0;
