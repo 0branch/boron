@@ -9,8 +9,8 @@ readline: 'linenoise
 socket:   true
 thread:   false
 timecode: false
-atom-limit: none
-atom-names: none
+atom-limit: 2048
+atom-names: mul atom-limit 16
 
 do-any %project.config
 
@@ -38,11 +38,9 @@ default [
 ]
 
 shlib [%boron 0,2,10] [
-    if atom-limit [
-        cflags join {-DCONFIG_ATOM_LIMIT=} atom-limit
-    ]
-    if atom-names [
-        cflags join {-DCONFIG_ATOM_NAMES=} atom-names
+    cflags rejoin [
+        {-DCONFIG_ATOM_LIMIT=} atom-limit
+        { -DCONFIG_ATOM_NAMES=} atom-names
     ]
     if checksum [
         cflags {-DCONFIG_CHECKSUM}
