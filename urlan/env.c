@@ -351,7 +351,7 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
     }
     if( thrSize > par.threadSize )
         par.threadSize = thrSize;
-    if( par.threadMethod )
+    if( thrMethod )
         par.threadMethod = thrMethod;
 
     return ur_makeEnvP( &par );
