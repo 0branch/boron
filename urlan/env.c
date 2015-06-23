@@ -41,7 +41,16 @@
   These descriptive codes are passed to ur_error().
 */
 /** \enum UThreadMethod
-  Operations on thread data.
+  Operations on thread data for the UEnvParameters::threadMethod.
+*/
+/** \var UThreadMethod::UR_THREAD_INIT
+  The new thread must be initialized.
+*/
+/** \var UThreadMethod::UR_THREAD_FREE
+  The thread is being freed.
+*/
+/** \var UThreadMethod::UR_THREAD_FREEZE
+  The thread dataStore is being moved to the shared environment.
 */
 /** \def ur_type
   Return UrlanDataType of cell.
@@ -80,7 +89,7 @@
 #endif
 
 
-static void _nopThreadFunc( UThread* ut, UThreadMethod op )
+static void _nopThreadFunc( UThread* ut, enum UThreadMethod op )
 {
     (void) ut;
     (void) op;
@@ -279,10 +288,29 @@ extern UDatatype dt_timecode;
 
 
 /**
-  Allocate UEnv and initial UThread.
+  Initialize UEnvParameters structure to default values.
+*/
+UEnvParameters* ur_envParam( UEnvParameters* par )
+{
+    par->atomLimit     = 2048;
+    par->atomNamesSize = 2048 * 12;
+    par->envSize       = sizeof(UEnv);
+    par->threadSize    = sizeof(UThread);
+    par->dtCount       = 0;
+    par->dtTable       = 0;
+    par->threadMethod  = _nopThreadFunc;
+
+    return par;
+}
+
+
+/**
+  Allocate UEnv and initial UThread.  This calls ur_makeEnvP() internally.
+
+  \deprecated       ur_makeEnvP() should be used instead of this function.
 
   \param atomLimit  Maximum number of atoms.
-                    Memory usage is (24 * atomLimit) bytes.
+                    Memory usage is ((12 + 12) * atomLimit) bytes.
   \param dtTable    Array of pointers to user defined datatypes.
                     Pass zero if dtCount is zero.
   \param dtCount    Number of datatypes in dtTable.
@@ -295,7 +323,37 @@ extern UDatatype dt_timecode;
 */
 UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
                      unsigned int dtCount, unsigned int thrSize,
-                     void (*thrMethod)(UThread*, UThreadMethod) )
+                     void (*thrMethod)(UThread*, enum UThreadMethod) )
+{
+    UEnvParameters par;
+
+    ur_envParam( &par );
+
+    if( atomLimit > 0 )
+    {
+        par.atomLimit     = atomLimit;
+        par.atomNamesSize = atomLimit * 12;
+    }
+    if( dtCount > 0 )
+    {
+        par.dtCount = dtCount;
+        par.dtTable = dtTable;
+    }
+    if( thrSize > par.threadSize )
+        par.threadSize = thrSize;
+    if( par.threadMethod )
+        par.threadMethod = thrMethod;
+
+    return ur_makeEnvP( &par );
+}
+
+
+/**
+  Allocate UEnv and initial UThread.
+
+  \param par    Environment parameters.
+*/
+UThread* ur_makeEnvP( const UEnvParameters* par )
 {
     UEnv* env;
     UThread* ut;
@@ -312,20 +370,20 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
     _validateEnv();
 #endif
 
-    env = memAlloc( sizeof(UEnv) );
+    env = memAlloc( par->envSize );
     if( ! env )
         return 0;
 
     ur_arrInit( &env->dataStore, sizeof(UBuffer), 0 );
 
-    ur_binInit( &env->atomNames, 12 * atomLimit );
-    ur_arrInit( &env->atomTable, sizeof(AtomRec), atomLimit );
+    ur_binInit( &env->atomNames, par->atomNamesSize );
+    ur_arrInit( &env->atomTable, sizeof(AtomRec), par->atomLimit );
     _rebuildAtomHash( &env->atomTable );
 
-    env->typeCount = UT_BI_COUNT + dtCount;
+    env->typeCount = UT_BI_COUNT + par->dtCount;
 
-    env->threadSize = (thrSize > sizeof(UThread)) ? thrSize : sizeof(UThread);
-    env->threadFunc = thrMethod ? thrMethod : _nopThreadFunc;
+    env->threadSize = par->threadSize;
+    env->threadFunc = par->threadMethod;
 
     env->threads = 0;
 
@@ -384,11 +442,12 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
     addDT( UT_ERROR,    &dt_error );
 
     i = UT_BI_COUNT;
-    if( dtCount )
+    if( par->dtCount )
     {
-        const UDatatype** dtEnd = dtTable + dtCount;
-        for( ; dtTable != dtEnd; ++dtTable, ++i )
-            addDT( i, *dtTable );
+        const UDatatype** tt = par->dtTable;
+        const UDatatype** dtEnd = tt + par->dtCount;
+        for( ; tt != dtEnd; ++tt, ++i )
+            addDT( i, *tt );
     }
 
     // Add atoms so the fixed atoms remain constant as the number of

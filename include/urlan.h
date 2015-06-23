@@ -73,7 +73,7 @@ enum UrlanDataType
     UT_BI_COUNT,
     UT_MAX      = 64,
     UT_TYPEMASK = 99,
-    UT_REFERENCE_BUF = UT_WORD,
+    UT_REFERENCE_BUF = UT_WORD
 };
 
 
@@ -285,13 +285,12 @@ typedef struct UThread      UThread;
 typedef struct UDatatype    UDatatype;
 
 
-typedef enum
+enum UThreadMethod
 {
     UR_THREAD_INIT,
     UR_THREAD_FREE,
     UR_THREAD_FREEZE
-}
-UThreadMethod;
+};
 
 
 struct UThread
@@ -453,13 +452,28 @@ typedef struct
 UAtomEntry;
 
 
+typedef struct
+{
+    unsigned int atomLimit;         //!< Maximum number of atoms.
+    unsigned int atomNamesSize;     //!< Fixed byte size of atom name buffer.
+    unsigned int envSize;           //!< Byte size of environment structure.
+    unsigned int threadSize;        //!< Byte size of thread structure.
+    unsigned int dtCount;           //!< Number of entries in dtTable.
+    const UDatatype** dtTable;      //!< Pointers to user defined datatypes.
+    void (*threadMethod)(UThread*, enum UThreadMethod);
+}
+UEnvParameters;
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+UEnvParameters* ur_envParam( UEnvParameters* par );
+UThread* ur_makeEnvP( const UEnvParameters* );
 UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
                      unsigned int dtCount, unsigned int thrSize,
-                     void (*thrMethod)(UThread*,UThreadMethod) );
+                     void (*thrMethod)(UThread*,enum UThreadMethod) );
 void     ur_freeEnv( UThread* );
 void     ur_freezeEnv( UThread* );
 UThread* ur_makeThread( const UThread* );

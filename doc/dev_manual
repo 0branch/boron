@@ -236,3 +236,16 @@ This is a basic example of how to use the Boron interpreter.
 /** \var UThread::wordCellM
   Method to get modifiable cell referenced by word for user-defined bindings.
 */
+
+
+/** \struct UEnvParameters urlan.h
+  \ingroup urlan_core
+  The UEnvParameters struct allows the user to override default buffer
+  and structure sizes.
+
+  This is initialized with the ur_envParam() or boron_envParam() functions.
+*/
+/** \fn void (*UEnvParameters::threadMethod)(UThread*, enum UThreadMethod)
+  Function to handle initialization and cleanup of user data attached to
+  threads.
+*/

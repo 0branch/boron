@@ -111,7 +111,9 @@ struct UPortDevice
 extern "C" {
 #endif
 
-UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount );
+UEnvParameters* boron_envParam( UEnvParameters* );
+UThread* boron_makeEnvP( UEnvParameters* );
+UThread* boron_makeEnv( const UDatatype** dtTable, unsigned int dtCount );
 void     boron_freeEnv( UThread* );
 void     boron_addCFunc( UThread*, BoronCFunc func, const char* sig );
 void     boron_overrideCFunc( UThread*, const char* name, BoronCFunc func );

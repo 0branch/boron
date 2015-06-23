@@ -217,7 +217,7 @@ static void boron_threadInit( UThread* ut )
 }
 
 
-static void boron_threadMethod( UThread* ut, UThreadMethod op )
+static void boron_threadMethod( UThread* ut, enum UThreadMethod op )
 {
     switch( op )
     {
@@ -791,16 +791,51 @@ extern CFUNC_PUB( cfunc_wait );
 
 
 /**
+  Initialize UEnvParameters structure to default Boron values.
+*/
+UEnvParameters* boron_envParam( UEnvParameters* par )
+{
+    ur_envParam( par );
+    par->threadSize   = sizeof(BoronThread);
+    par->threadMethod = boron_threadMethod;
+    return par;
+}
+
+
+/**
   Make Boron environment and initial thread.
+  This calls boron_makeEnvP() internally.
 
   \param dtTable    Array of pointers to user defined datatypes.
                     Pass zero if dtCount is zero.
   \param dtCount    Number of datatypes in dtTable.
 */
-UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
+UThread* boron_makeEnv( const UDatatype** dtTable, unsigned int dtCount )
+{
+    UEnvParameters par;
+
+    boron_envParam( &par );
+
+    if( dtCount > 0 )
+    {
+        par.dtCount = dtCount;
+        par.dtTable = dtTable;
+    }
+
+    return boron_makeEnvP( &par );
+}
+
+
+/**
+  Make Boron environment and initial thread.
+
+  \param par        Environment parameters.
+*/
+UThread* boron_makeEnvP( UEnvParameters* par )
 {
     UAtom atoms[ 7 ];
     UThread* ut;
+    unsigned int dtCount;
 
 //#define TIME_MAKEENV
 #ifdef TIME_MAKEENV
@@ -813,15 +848,20 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 
     {
     const UDatatype* table[ UT_MAX - UT_BI_COUNT ];
+    const UDatatype** tt;
     unsigned int i;
 
     for( i = 0; i < (sizeof(boron_types) / sizeof(UDatatype)); ++i )
         table[i] = boron_types + i;
-    for( dtCount += i; i < dtCount; ++i )
-        table[i] = *dtTable++;
+    dtCount = i + par->dtCount;
 
-    ut = ur_makeEnv( 2048, table, dtCount,
-                     sizeof(BoronThread), boron_threadMethod );
+    tt = par->dtTable;
+    for( ; i < dtCount; ++i )
+        table[i] = *tt++;
+    par->dtTable = table;
+    par->dtCount = dtCount;
+
+    ut = ur_makeEnvP( par );
     }
     if( ! ut )
         return 0;
@@ -1082,7 +1122,7 @@ UThread* boron_makeEnv( UDatatype** dtTable, unsigned int dtCount )
 /**
   Destroy Boron environment.
 
-  \param ut     Initial thread created by boron_makeEnv().
+  \param ut     Initial thread created by boron_makeEnvP().
 */
 void boron_freeEnv( UThread* ut )
 {
