@@ -37,7 +37,7 @@ default [
     ]
 ]
 
-shlib [%boron 0,2,10] [
+shlib [%boron 0,2,12] [
     cflags rejoin [
         {-DCONFIG_ATOM_LIMIT=} atom-limit
         { -DCONFIG_ATOM_NAMES=} atom-names

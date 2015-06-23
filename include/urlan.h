@@ -1,7 +1,7 @@
 #ifndef URLAN_H
 #define URLAN_H
 /*
-  Copyright 2009-2014 Karl Robillard
+  Copyright 2009-2015 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -30,8 +30,8 @@
 #endif
 
 
-#define UR_VERSION_STR  "0.2.10"
-#define UR_VERSION      0x000210
+#define UR_VERSION_STR  "0.2.12"
+#define UR_VERSION      0x000212
 
 
 enum UrlanDataType
