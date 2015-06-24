@@ -567,7 +567,11 @@ m2: context
 	; Private Helpers
 
 
-read-buf: func [file] [read/into file clear ""]
+rbuf: make string! 8192
+read-buf: func [file] [
+	read/into file rbuf
+	rbuf	; Read can return none
+]
 
 white: charset " ^-^/"
 non-white: complement copy white

@@ -12,3 +12,11 @@ This test file contains 104 bytes of data.
 
   Vidit numquam ad quo, eos antiopam electram consulatu in.
 This}
+---- eof returns none
+"This test file conta"
+"ins 104 bytes of dat"
+"a.^/^/  Vidit numquam "
+"ad quo, eos antiopam"
+" electram consulatu "
+"in.^/"
+[20 20 20 20 20 4]

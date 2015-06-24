@@ -18,6 +18,6 @@ do
 	echo Test: $FILE
 	GOOD=${FILE%.*}.good
 	OUT=${FILE%.*}.out
-	$INTERPRETER $FILE >$OUT
+	$INTERPRETER -s $FILE >$OUT
 	${DIFF} $OUT $GOOD
 done

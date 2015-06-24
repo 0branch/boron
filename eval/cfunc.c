@@ -4128,6 +4128,8 @@ CFUNC(cfunc_read)
     }
     else if( len < 0 )
         return UR_THROW;
+    else
+        ur_setId(res, UT_NONE);
     return UR_OK;
 }
 
