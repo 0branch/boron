@@ -270,7 +270,7 @@ int ur_readDir( UThread* ut, const char* filename, UCell* res )
 {
     char filespec[ _MAX_PATH ];
     struct _finddata_t fileinfo;
-    long handle;
+    intptr_t handle;
 
     // Look for all files.  We ensure there is a slash before the wildcard.
     // It's OK if the path is already terminated with a slash - multiple
