@@ -45,7 +45,7 @@ void destroyShader( Shader* );
 //void setUniform( UThread*, UAtom name, UCell* );
 void setShaderUniforms( const Shader*, const UBuffer* );
 int  shaderTextureUnit( const Shader*, UAtom name );
-const Shader* shaderContext( UThread*, const UCell*, const UBuffer** blkPtr );
+const Shader* shaderContext( UThread*, const UCell*, const UBuffer** ctxPtr );
 
 
 #endif /*SHADER_H*/

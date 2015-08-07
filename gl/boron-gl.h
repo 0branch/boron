@@ -167,6 +167,7 @@ void     ur_rasterBlit( const RasterHead* src,  uint16_t* srcRect,
                         RasterHead* dest, uint16_t* destRect );
 
 TexFont* ur_texFontV( UThread*, const UCell* );
+GLuint   ur_shaderProgram( UThread*, const UCell* );
 
 UIndex ur_makeVbo( UThread*, GLenum attrUsage, int acount, float* attr,
                    int icount, uint16_t* indices );

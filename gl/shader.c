@@ -308,7 +308,7 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
 
 
 const Shader* shaderContext( UThread* ut, const UCell* cell,
-                             const UBuffer** blkPtr )
+                             const UBuffer** ctxPtr )
 {
     const UBuffer* ctx;
 
@@ -327,12 +327,19 @@ const Shader* shaderContext( UThread* ut, const UCell* cell,
     if( ur_is(cell, UT_SHADER) )
     {
         const Shader* sh = (const Shader*) ur_bufferSer( cell )->ptr.v;
-        if( blkPtr )
-            *blkPtr = ctx;
+        if( ctxPtr )
+            *ctxPtr = ctx;
         return sh;
     }
 
     return 0;
+}
+
+
+GLuint ur_shaderProgram( UThread* ut, const UCell* cell )
+{
+    const Shader* sh = shaderContext( ut, cell, 0 );
+    return sh ? sh->program : 0;
 }
 
 
