@@ -395,6 +395,7 @@ static char layoutRules[] =
   "| 'text-edit get-word!/string!\n"
   "| 'text-edit\n"
   "| 'group string! block!\n"
+  "| 'group word! string! block!\n"
   "| 'read-only\n"
   "| 'on-event block!\n"
   "| 'spacer\n"
@@ -427,6 +428,7 @@ enum LayoutRules
     LD_TEXT_EDIT_STR,
     LD_TEXT_EDIT,
     LD_GROUP,
+    LD_GROUP_CHECKABLE,
     LD_READ_ONLY,
     LD_ON_EVENT,
     LD_SPACER,
@@ -650,10 +652,22 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                 break;
 
             case LD_GROUP:
+            case LD_GROUP_CHECKABLE:
             {
                 MAKE_WIDGET( SGroup )
 
                 val = cbp.values + 1;
+                if( match == LD_GROUP_CHECKABLE )
+                {
+                    const UCell* enabled;
+                    if( ! (enabled = ur_wordCell( ut, val )) )
+                        return 0;
+
+                    pw->setCheckable( true );
+                    pw->setChecked( ur_isTrue( enabled ) );
+                    ++val;
+                }
+
                 pw->setTitle( qstring( val ) );
                 ++val;
 
@@ -1171,6 +1185,19 @@ CFUNC( cfunc_widgetValue )
                 QTreeView* tree = (QTreeView*) rec->widget;
                 QModelIndex mi = tree->currentIndex();
                 ((UTreeModel*) tree->model())->blockSlice( mi, res );
+            }
+                return UR_OK;
+
+            case WT_Group:
+            {
+                QGroupBox* group = (QGroupBox*) rec->widget;
+                if( group->isCheckable() )
+                {
+                    ur_setId(res, UT_LOGIC);
+                    ur_int(res) = group->isChecked() ? 1 : 0;
+                }
+                else
+                    ur_setId(res, UT_NONE);
             }
                 return UR_OK;
 

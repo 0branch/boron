@@ -41,6 +41,23 @@ exec widget [
                     text-edit :text
                 ]
             ]
+            "Grouping" [vbox [
+                group "Group" [vbox [
+                    button "Checked Status" [
+                        print [
+                            "Checked Status^/  Group 1:" widget-value grp1
+                            "^/  Group 2:" widget-value grp2
+                        ]
+                    ] tip "Print checkable group status."
+                ]]
+                grp1: group true "Checkable Group 1" [vbox [
+                    label "Checked by default"
+                ]]
+                grp2: group false "Checkable Group 2" [vbox [
+                    label "Unchecked by default"
+                ]]
+                spacer
+            ]]
             "Dialogs" [
                 vbox [
                     button "Message" [

@@ -5,8 +5,8 @@ exe %boron-qt [
     ;release
     objdir %obj
 
-    qt [gui]
-    include_from [%. %.. %../urlan %../support %../util]
+    qt [widgets]
+    include_from [%. %../include %../urlan %../support %../util]
     libs_from %.. %boron
 
     macx [
