@@ -1,3 +1,8 @@
+print "---- print decimal"
+print [0.0 -0.0 1.0 -1.0 9.2 -9.2]
+print [0.0003 0.00003 343043.003432 222111.00343201 2221190.0034320109]
+print [-9.45e-06 9.0e+200 -9e-200 1e+308 1e+309 1e-311 /*1e-312*/]
+
 print "---- rounding"
 print div add 5 4 2     ; Rounded.
 print div add 5 4 2.0   ; Not rounded.

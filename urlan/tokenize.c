@@ -885,9 +885,11 @@ vector_white:
                                 if( ! buf->used )
                                 {
                                     const char* cp = token;
+                                    int vc;
                                     while( cp != it )
                                     {
-                                        if( *cp++ == '.' )
+                                        vc = *cp++;
+                                        if( vc=='.' || vc=='e' || vc=='E' )
                                         {
                                             buf->form = UR_VEC_F32;
                                             break;
@@ -1086,6 +1088,8 @@ number:
                     }
                     break;
                 case '.':   // UT_DECIMAL, UT_VEC3
+                case 'e':
+                case 'E':
                     cell = ur_blkAppendNew( blk, UT_DECIMAL );
                     ur_decimal(cell) = str_toDouble( token, end, &it );
                     if( (it != end) && (*it == ',') )

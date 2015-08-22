@@ -1,12 +1,13 @@
 print "---- tokenize"
-probe #[1 -22 3.55]
-probe #[1.0 -22 3.55]
+probe #[1 -22 3.55]     ; i32
+probe #[1.0 -22 3.55]   ; f32
 probe #[ 4 88/*89*/5 /*6*/]
 probe #[
     1 1 1
    ;2 2 2
     3 3 3
 ]
+probe #[9e+6 -9.45e-06 1e+38 1e+39 1e-42]   ; exponential notation
 
 
 print "---- append"
