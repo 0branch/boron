@@ -37,6 +37,7 @@ probe "^}^""
 print "^}^""
 probe "}"
 print "}"
+probe to-block mold "a^/b"
 
 
 print "---- caret hex"

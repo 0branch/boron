@@ -118,6 +118,66 @@ UBuffer* ur_makeStringCell( UThread* ut, int enc, int size, UCell* cell )
 extern int ur_caretChar( const uint8_t* it, const uint8_t* end,
                          const uint8_t** pos );
 
+/**
+  Generate and initialize a single string buffer from memory holding a
+  Latin-1 string.
+
+  This calls ur_makeString() internally.
+
+  \param it     Start of Latin-1 data.
+  \param end    End of Latin-1 data.
+
+  \return  Buffer id of string.
+*/
+UIndex ur_makeStringLatin1( UThread* ut, const uint8_t* it, const uint8_t* end )
+{
+    int len = end - it;
+    int ch;
+    uint8_t* out;
+    const uint8_t* start = it;
+    UIndex n = ur_makeString( ut, UR_ENC_LATIN1, len );
+    UBuffer* buf = ur_buffer(n);
+
+    out = buf->ptr.b;
+
+    while( it != end )
+    {
+        ch = *it++;
+        if( ch == '^' && it != end )
+        {
+            // Filter caret escape sequence.
+            ch = ur_caretChar( it, end, &it );
+            if( ch >= 256 )
+                goto make_ucs2;
+        }
+        *out++ = ch;
+    }
+
+    buf->used = out - buf->ptr.b;
+    return n;
+
+make_ucs2:
+    {
+    uint16_t* out2;
+
+    // Abandon latin1 string to GC.
+    n = ur_makeString( ut, UR_ENC_UCS2, len );
+    buf = ur_buffer(n);
+    out2 = buf->ptr.u16;
+    it = start;
+    while( it != end )
+    {
+        ch = *it++;
+        if( ch == '^' && it != end )
+            ch = ur_caretChar( it, end, &it );
+        *out2++ = ch;
+    }
+    buf->used = out2 - buf->ptr.u16;
+    }
+    return n;
+}
+
+
 /*
    Convert UTF-8 to UCS-2
 */

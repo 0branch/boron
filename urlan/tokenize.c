@@ -710,21 +710,10 @@ static const char* _errToken( UBuffer* bin, const char* it, const char* end )
 UIndex _makeStringEnc( UThread* ut, const uint8_t* it, const uint8_t* end,
                        int enc )
 {
-    UIndex n;
     if( enc == UR_ENC_LATIN1 )
-    {
-        UBuffer* str;
-        int len = end - it;
-        n = ur_makeString( ut, UR_ENC_LATIN1, len );
-        str = ur_buffer( n );
-        memCpy( str->ptr.b, it, len );
-        str->used = len;
-    }
+        return ur_makeStringLatin1( ut, it, end );
     else
-    {
-        n = ur_makeStringUtf8( ut, it, end );
-    }
-    return n;
+        return ur_makeStringUtf8( ut, it, end );
 }
 
 

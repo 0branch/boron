@@ -183,4 +183,5 @@ EXPORTS
     binary_toShared         @181
     block_markBuf           @182
     vec3_toString           @183
-;   ur_stringToTimeCode     @184
+    ur_makeStringLatin1     @184
+;   ur_stringToTimeCode     @185

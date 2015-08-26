@@ -546,6 +546,7 @@ void     ur_binToStr( UBuffer*, int encoding );
 
 UIndex   ur_makeString( UThread*, int enc, int size );
 UBuffer* ur_makeStringCell( UThread*, int enc, int size, UCell* cell );
+UIndex   ur_makeStringLatin1( UThread*, const uint8_t* it, const uint8_t* end );
 UIndex   ur_makeStringUtf8( UThread*, const uint8_t* it, const uint8_t* end );
 void     ur_strInit( UBuffer*, int enc, int size );
 void     ur_strAppendCStr( UBuffer*, const char* );

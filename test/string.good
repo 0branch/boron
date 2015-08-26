@@ -24,6 +24,7 @@ latin1 ucs2
 }"
 "}"
 }
+["a^/b"]
 ---- caret hex
 ucs2 20
 "hash: # AE: Ǣ xai: Ϧ"
