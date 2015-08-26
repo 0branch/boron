@@ -622,7 +622,7 @@ static char* _doubleToStr( double n, char* cp )
     bits.d = n;
     exp = ((bits.u >> 52) & 0x7ff) - 1022;  // IEEE 754 exponent.
 
-    if( exp < 22 && exp > -22 )     // 0x7ff - 1022 will go through "%g" path.
+    if( exp < 20 && exp > -20 )     // 0x7ff - 1022 will go through "%g" path.
     {
         //printf( "KR f %g\n", n );
         end = cp + strPrint( cp, "%f", n );
