@@ -21,7 +21,7 @@
     type        UT_STRING
     elemSize    1 or 2
     form        UR_ENC_*
-    flags       Unused
+    flags       UR_STRING_ENC_UP
     used        Number of characters used
     ptr.b/.u16  Character data
     ptr.i[-1]   Number of characters available
@@ -774,6 +774,19 @@ void ur_strAppendIndent( UBuffer* str, int depth )
 }
 
 
+static void convertLatin1ToUcs2( UBuffer* str )
+{
+    UBuffer tmp;
+
+    ur_strInit( &tmp, UR_ENC_UCS2, ur_testAvail(str) );
+    copyLatin1ToUcs2( tmp.ptr.u16, str->ptr.b, str->used );
+    tmp.used = str->used;
+
+    ur_arrFree( str );
+    *str = tmp;
+}
+
+
 /**
   Append another string buffer to this string.
 
@@ -792,6 +805,7 @@ void ur_strAppend( UBuffer* str, const UBuffer* strB, UIndex itB, UIndex endB )
         return;
     usedB = endB - itB;
 
+redo:
     switch( str->form )
     {
         case UR_ENC_LATIN1:
@@ -809,6 +823,11 @@ void ur_strAppend( UBuffer* str, const UBuffer* strB, UIndex itB, UIndex endB )
                 str->used += copyUtf8ToLatin1( dest, strB->ptr.b + itB, usedB );
                 break;
             case UR_ENC_UCS2:
+                if( str->flags & UR_STRING_ENC_UP )
+                {
+                    convertLatin1ToUcs2( str );
+                    goto redo;
+                }
                 str->used += copyUcs2ToLatin1( dest, strB->ptr.u16+itB, usedB );
                 break;
             }

@@ -280,6 +280,10 @@ struct UBuffer
 };
 
 
+/* Buffer flags */
+#define UR_STRING_ENC_UP    0x01
+
+
 typedef struct UEnv         UEnv;
 typedef struct UThread      UThread;
 typedef struct UDatatype    UDatatype;

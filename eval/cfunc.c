@@ -3483,8 +3483,8 @@ CFUNC(cfunc_reduce)
 CFUNC(cfunc_mold)
 {
 #define OPT_MOLD_CONTENTS   0x01
-    int enc = UR_ENC_LATIN1;
-    int len = 0;
+    UBuffer* buf;
+    int enc, len;
 
     if( ur_isStringType( ur_type(a1) ) )
     {
@@ -3492,9 +3492,16 @@ CFUNC(cfunc_mold)
         enc = str->form;
         len = str->used + 2;
     }
-    ur_toStr( ut, a1,
-              ur_makeStringCell( ut, enc, len, res ),
-              (CFUNC_OPTIONS & OPT_MOLD_CONTENTS) ? -1 : 0 );
+    else
+    {
+        enc = UR_ENC_LATIN1;
+        len = 0;
+    }
+
+    buf = ur_makeStringCell( ut, enc, len, res ),
+    buf->flags |= UR_STRING_ENC_UP;
+    ur_toStr( ut, a1, buf, (CFUNC_OPTIONS & OPT_MOLD_CONTENTS) ? -1 : 0 );
+    buf->flags &= ~UR_STRING_ENC_UP;
     return UR_OK;
 }
 
