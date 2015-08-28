@@ -3560,7 +3560,15 @@ int block_make( UThread* ut, const UCell* from, UCell* res )
         }
         else
         {
-            MAKE_NO_UCS2( "block!" );
+            UBuffer tmp;
+            UIndex n;
+            ur_strInit( &tmp, UR_ENC_UTF8, 0 );
+            ur_strAppend( &tmp, si.buf, si.it, si.end );
+            n = ur_tokenizeType( ut, UR_ENC_UTF8, tmp.ptr.c,
+                                 tmp.ptr.c + tmp.used, res );
+            ur_strFree( &tmp );
+            if( n )
+                return UR_OK;
         }
         return UR_THROW;
     }

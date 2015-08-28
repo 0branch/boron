@@ -4,6 +4,7 @@ u: "Sîne klâwen"
 print [encoding? u  encoding? encode 'ucs2 u]
 probe encode/bom 'utf8 u
 probe to-block {"Copyright © 1930"}
+probe to-block mold "^(100)"
 
 
 print "---- append"
