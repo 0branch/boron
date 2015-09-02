@@ -9,7 +9,7 @@ for FILE in $*
 do
 	echo Grinding $FILE
 	echo Test: $FILE >$OUT
-	valgrind $INTERPRETER $FILE >>$OUT 2>>$OUT
+	valgrind $INTERPRETER -s $FILE >>$OUT 2>>$OUT
 	grep ERROR $OUT
 done
 
