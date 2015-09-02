@@ -3,3 +3,8 @@ probe do :gwval
 gwval: 2
 probe do :gwval
 parse [10.0 :gwval] [decimal! tok: get-word! (probe do first tok)]
+
+print "---- Do functions"
+addf: func [a b] [add a b]
+probe do reduce [:add 2 3]
+probe do reduce [:addf 2 3]

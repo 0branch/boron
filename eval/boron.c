@@ -1464,7 +1464,8 @@ int boron_eval1( UThread* ut, UCell* blkC, UCell* res )
             ++blkC->series.it;
             break;
 
-        case UT_CFUNC:          // Required for cfunc_verifyFuncArgs.
+        case UT_FUNC:
+        case UT_CFUNC:
             goto call_func;
 
         default:
