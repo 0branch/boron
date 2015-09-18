@@ -249,7 +249,10 @@ usage_err:
             if( ur_is(ex, UT_ERROR) )
             {
                 reportError( ut, ex, &rstr );
-                goto prompt;
+                if( promptDisabled )
+                    ret = 1;
+                else
+                    goto prompt;
             }
             else if( ur_is(ex, UT_WORD) )
             {
@@ -260,7 +263,6 @@ usage_err:
 
                     case UR_ATOM_HALT:
                         goto prompt;
-                        break;
                 }
             }
         }
