@@ -551,9 +551,6 @@ int boron_addCFuncS( UThread* ut, BoronCFunc* funcTable,
 
     return UR_OK;
 }
-
-
-#include "cfuncTable.c"
 #endif
 
 
@@ -787,6 +784,10 @@ extern CFUNC_PUB( cfunc_with_flock );
 #endif
 extern CFUNC_PUB( cfunc_sleep );
 extern CFUNC_PUB( cfunc_wait );
+
+#ifdef CFUNC_TABLE
+#include "cfuncTable.c"
+#endif
 
 
 /**

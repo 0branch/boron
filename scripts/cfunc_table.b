@@ -2,17 +2,21 @@
 
 ft:  make string! 1024
 sig: make block! 512
+s2: empty: ""
 
 append ft "BoronCFunc _cfuncTable[] =^/{^/"
 parse read/text %boron.c [
     thru "CFUNC_TABLE_START^/"
     some [
-        "    addCFunc(" f: thru ',' :f thru '"' s: to '"' :s thru '^/' (
+        "    addCFunc(" f: thru ',' :f thru '"' s: to '"' :s thru '^/'
+            opt [some ' ' '"' s2: to '"' :s2 thru '^/']
+        (
             append ft rejoin ["    " f '^/']
 
-            blk: to-block join "^/" s
+            blk: probe to-block rejoin ["^/" s s2]
             blk/1: to-set-word blk/1
             append sig blk
+            s2: empty
         )
     ]
 ]
