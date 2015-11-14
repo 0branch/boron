@@ -7,6 +7,7 @@ execute:  true
 random:   true
 readline: 'linenoise
 socket:   true
+static:   false
 thread:   false
 timecode: false
 atom-limit: 2048
@@ -37,7 +38,7 @@ default [
     ]
 ]
 
-shlib [%boron 0,2,12] [
+lib-spec: [
     cflags rejoin [
         {-DCONFIG_ATOM_LIMIT=} atom-limit
         { -DCONFIG_ATOM_NAMES=} atom-names
@@ -120,9 +121,23 @@ shlib [%boron 0,2,12] [
     unix  [sources [%unix/os.c]]
     win32 [
         sources [%win32/os.c]
-        lflags either msvc ["/def:win32\boron.def"]["win32/boron.def"]
+        ifn static [
+            lflags either msvc ["/def:win32\boron.def"]["win32/boron.def"]
+        ]
         libs %ws2_32
     ]
+]
+
+either static [
+    exe-libs: []
+    libs-orig: :libs
+    libs: func [l] [append exe-libs l]
+
+    lib %boron lib-spec
+
+    libs: :libs-orig
+][
+    shlib [%boron 0,2,12] lib-spec
 ]
 
 exe %boron [
@@ -132,6 +147,9 @@ exe %boron [
         readline: false
     ]
     libs_from %. %boron
+    if static [
+        foreach l exe-libs [libs l]
+    ]
     switch readline [
         linenoise [
             cflags {-DCONFIG_LINENOISE}
