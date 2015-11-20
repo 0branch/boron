@@ -130,12 +130,9 @@ lib-spec: [
 
 either static [
     exe-libs: []
-    libs-orig: :libs
-    libs: func [l] [append exe-libs l]
-
-    lib %boron lib-spec
-
-    libs: :libs-orig
+    lib %boron bind lib-spec context [
+        libs: func [l] [append exe-libs l]
+    ]
 ][
     shlib [%boron 0,2,12] lib-spec
 ]
