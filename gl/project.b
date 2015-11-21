@@ -1,12 +1,12 @@
 project: "boron-gl"
 
-audio: true
-do-any %project.config
+options [
+    -debug: false   "Compile for debugging"
+    audio:  true    "Enable OpenAL audio"
+]
 
 default [
-    warn
-   ;debug
-    release
+    either -debug [debug] [release]
     objdir %obj
 
     include_from [

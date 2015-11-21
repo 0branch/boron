@@ -1,23 +1,23 @@
 project: "boron"
 
-assemble: false
-checksum: true
-compress: 'zlib
-execute:  true
-random:   true
-readline: 'linenoise
-socket:   true
-static:   false
-thread:   false
-timecode: false
-atom-limit: 2048
-atom-names: mul atom-limit 16
-
-do-any %project.config
+options [
+    -debug:   false         "Compile for debugging"
+    assemble: false         "Enable assemble function (requires libjit)"
+    checksum: true          "Enable checksum function"
+    compress: 'zlib         "Include compressor ('zlib/'bzip2/none)"
+    execute:  true          "Enable execute function"
+    random:   true          "Include random number generator"
+    readline: 'linenoise    "Console editing ('linenoise/'gnu/none)"
+    socket:   true          "Enable socket port!"
+    static:   false         "Build static library and stand-alone executable"
+    thread:   false         "Enable thread functions"
+    timecode: false         "Enable timecode! datatype"
+    atom-limit: 2048        "Set maximum number of words"
+    atom-names: mul atom-limit 16   "Set byte size of word name buffer"
+]
 
 default [
-   ;debug
-    release
+    either -debug [debug] [release]
 
     objdir %obj
     include_from [%include %urlan %eval %support]

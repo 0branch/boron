@@ -1,8 +1,8 @@
-#!/usr/bin/boron -s
+#!/usr/bin/boron -sp
 /*
 	M2 - A meta-make tool
 	Copyright 2001-2015 Karl Robillard
-	Version 1.3.0
+	Version 1.4.0
 
 	TODO:
 		* Remove files outside the build directory from dist rule.
@@ -26,9 +26,9 @@
 project_file: "project.b"
 template_file: any [
 	getenv "M2_TEMPLATE"
-	;"/usr/share/boron/m2/m2_template.b"
-	"/home/karl/src/urlan/boron/scripts/m2/m2_linux.b"
+	"/usr/share/boron/m2/m2_template.b"
 ]
+cli_options: ""
 debug_include: false
 
 
@@ -380,6 +380,19 @@ m2: context
 		if exists? file [do file]
 	]
 
+	options: func [spec | w1 w2] [
+		do spec
+		do-any %project.config
+
+		; Validate command line options.
+		w1: words-of context spec
+		w2: collect set-word! to-block cli_options
+		ifn empty? w2: difference w2 w1 [
+			error join "Invalid project options: " mold w2
+		]
+		do cli_options
+	]
+
 	bsd:
 	linux:
 	macx:
@@ -428,6 +441,10 @@ m2: context
 	libs_from: func [dir list] [
 		append ct/link_paths dir
 		libs list
+	]
+
+	lib_path: func [dir] [
+		append ct/link_paths dir
 	]
 
 	dist: func [arg block!] [
@@ -802,6 +819,34 @@ validate-qt: func [blk | pos] [
 ]
 
 
+show-help: func [| usage opt tok pw] [
+	usage: {m2 version 1.4.0
+
+M2 Options:
+  -t <file>       Specify template file   (default is M2_TEMPLATE env.)
+  -o <file>       Specify output makefile (default is Makefile)
+  -h              Print this help and quit
+  <project>       Specify project file    (default is project.b)
+  <opt>:<value>   Set project option
+
+Project Options:}
+
+	if opt: select load project_file 'options [
+		parse opt [some[
+			tok:
+			set-word! (
+				append usage rejoin ["^/  " pw: to-text first tok ':']
+			)
+			| string! (
+				append usage join skip "               " size? pw first tok
+			)
+			| skip
+		]]
+	]
+	prin terminate usage '^/'
+]
+
+
 ;------------------------------------------------------------------
 ; Read command line arguments and invoke build_makefile.
 
@@ -811,7 +856,14 @@ if args [
 		switch first args [
 			"-t" [template_file: second ++ args]
 			"-o" [m2/makefile:   second ++ args]
-			[project_file: first args]
+			"-h" [show-help quit]
+			[
+				either find a1: first args ':' [
+					append append cli_options a1 '^/'
+				][
+					project_file: a1
+				]
+			]
 		]
 	]
 ]
