@@ -112,6 +112,21 @@ int64_t str_hexToInt64( const char* start, const char* end, const char** pos )
 */
 double str_toDouble( const char* start, const char* end, const char** pos )
 {
+#if 1
+    char tmp[28];
+    char* tpos;
+    double n;
+    int len = end - start;
+
+    if( len > 26 )
+        len = 26;
+    memCpy( tmp, start, len );
+    tmp[ len ] = '\0';
+    n = strtod( tmp, &tpos );
+    if( pos )
+        *pos = start + (tpos - tmp);
+    return n;
+#else
     double cn;
     double n = 0.0;
     double dec = 0.0;
@@ -174,6 +189,7 @@ double str_toDouble( const char* start, const char* end, const char** pos )
     if( pos )
         *pos = cp;
     return n;
+#endif
 }
 
 
