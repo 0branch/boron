@@ -32,6 +32,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 
+#define DOT_ZERO
+
 /*
 #include "powers.h"
 */
@@ -346,8 +348,14 @@ static int emit_digits(char* digits, int ndigits, char* dest, int K, int neg)
     if(K >= 0 && (exp < (ndigits + 7))) {
         memcpy(dest, digits, ndigits);
         memset(dest + ndigits, '0', K);
-
+#ifdef DOT_ZERO
+        dest += ndigits + K;
+        dest[0] = '.';
+        dest[1] = '0';
+        return ndigits + K + 2;
+#else
         return ndigits + K;
+#endif
     }
 
 //#ifdef EMIT_EXP
@@ -422,7 +430,13 @@ static int filter_special(double fp, char* dest)
 
     if(fp == 0.0) {
         dest[0] = '0';
+#ifdef DOT_ZERO
+        dest[1] = '.';
+        dest[2] = '0';
+        return 3;
+#else
         return 1;
+#endif
     }
 
     bits = get_dbits(fp);
