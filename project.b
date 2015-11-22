@@ -111,6 +111,7 @@ lib-spec: [
         %support/str.c
         %support/mem_util.c
         %support/quickSortIndex.c
+        %support/fpconv.c
 
         %eval/boron.c
         %eval/port_file.c

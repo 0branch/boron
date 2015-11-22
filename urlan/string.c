@@ -655,77 +655,28 @@ void ur_strAppendHex( UBuffer* str, uint32_t n, uint32_t hi )
 }
 
 
-union DoubleUint
-{
-    double d;
-    uint64_t u;
-};
-
-/*
-  Returns pointer to end of number in cp.
-*/
-static char* _doubleToStr( double n, char* cp )
-{
-    union DoubleUint bits;
-    int exp;
-    int ch;
-    char* it;
-    char* end;
-
-    /*
-    Emit double without exceeding DBL_CHARS.
-    "%g" produces undesirable results by producing too many or too few
-    fractional digits, depending upon which printf modifiers are used with
-    certain numbers.  Therefore, if the exponent is not too large "%f" is used.
-    */
-
-    bits.d = n;
-    exp = ((bits.u >> 52) & 0x7ff) - 1022;  // IEEE 754 exponent.
-
-    if( exp < 20 && exp > -20 )     // 0x7ff - 1022 will go through "%g" path.
-    {
-        //printf( "KR f %g\n", n );
-        end = cp + strPrint( cp, "%f", n );
-        while( end[-1] == '0' && end[-2] != '.' )
-            --end;
-    }
-    else
-    {
-        //printf( "KR g %g\n", n );
-        end = cp + strPrint( cp, "%.12g", n );
-        for( it = cp; it != end; )
-        {
-            ch = *it++;
-            if( ch == '.' || ch == 'e' || ch == 'n' )
-                return end;
-        }
-        *end++ = '.';
-        *end++ = '0';
-    }
-    return end;
-}
-
+extern int fpconv_dtoa(double d, char* dest);
 
 /**
   Append a double to a string.
 */
 void ur_strAppendDouble( UBuffer* str, double n )
 {
-#define DBL_CHARS   32
-    char* cp;
+#define DBL_CHARS   30
+    int len;
 
     ur_arrReserve( str, str->used + DBL_CHARS );
     if( str->form == UR_ENC_UCS2 )
     {
         char tmp[ DBL_CHARS ];
-        cp = _doubleToStr( n, tmp );
+        len = fpconv_dtoa( n, tmp );
         str->used += copyLatin1ToUcs2( str->ptr.u16 + str->used,
-                                       (uint8_t*) tmp, cp - tmp );
+                                       (uint8_t*) tmp, len );
     }
     else
     {
-        cp = _doubleToStr( n, str->ptr.c + str->used );
-        str->used = cp - str->ptr.c;
+        len = fpconv_dtoa( n, str->ptr.c + str->used );
+        str->used += len;
     }
 }
 
