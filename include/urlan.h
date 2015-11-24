@@ -559,6 +559,7 @@ void     ur_strAppendInt( UBuffer*, int32_t );
 void     ur_strAppendInt64( UBuffer*, int64_t );
 void     ur_strAppendHex( UBuffer*, uint32_t n, uint32_t hi );
 void     ur_strAppendDouble( UBuffer*, double );
+void     ur_strAppendFloat( UBuffer*, float );
 void     ur_strAppendIndent( UBuffer*, int depth );
 void     ur_strAppend( UBuffer*, const UBuffer* strB, UIndex itB, UIndex endB );
 void     ur_strAppendBinary( UBuffer*, const uint8_t* it, const uint8_t* end,

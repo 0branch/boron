@@ -656,6 +656,7 @@ void ur_strAppendHex( UBuffer* str, uint32_t n, uint32_t hi )
 
 
 extern int fpconv_dtoa(double d, char* dest);
+extern int fpconv_ftoa(double d, char* dest);
 
 /**
   Append a double to a string.
@@ -676,6 +677,32 @@ void ur_strAppendDouble( UBuffer* str, double n )
     else
     {
         len = fpconv_dtoa( n, str->ptr.c + str->used );
+        str->used += len;
+    }
+}
+
+
+/**
+  Append a float to a string.
+
+  This emits fewer significant digits than ur_strAppendDouble().
+*/
+void ur_strAppendFloat( UBuffer* str, float n )
+{
+#define FLT_CHARS   18
+    int len;
+
+    ur_arrReserve( str, str->used + FLT_CHARS );
+    if( str->form == UR_ENC_UCS2 )
+    {
+        char tmp[ FLT_CHARS ];
+        len = fpconv_ftoa( n, tmp );
+        str->used += copyLatin1ToUcs2( str->ptr.u16 + str->used,
+                                       (uint8_t*) tmp, len );
+    }
+    else
+    {
+        len = fpconv_ftoa( n, str->ptr.c + str->used );
         str->used += len;
     }
 }

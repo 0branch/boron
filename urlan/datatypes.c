@@ -1398,6 +1398,8 @@ int time_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 }
 
 
+extern int fpconv_ftoa( double, char* );
+
 void time_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     int seg;
@@ -1431,7 +1433,19 @@ void time_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     // Seconds
     if( n < 10.0 )
         ur_strAppendChar( str, '0' );
+
+#if 1
+    {
+    // Limit significant digits and round as ur_strAppendFloat() does but
+    // without losing precision through float cast.
+    char buf[26];
+    int len = fpconv_ftoa( n, buf );
+    buf[ len ] = '\0';
+    ur_strAppendCStr( str, buf );
+    }
+#else
     ur_strAppendDouble( str, n );
+#endif
 }
 
 
@@ -1625,7 +1639,7 @@ void vec3_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     {
         if( depth )
             ur_strAppendChar( str, ',' );
-        ur_strAppendDouble( str, cell->vec3.xyz[ depth ] );
+        ur_strAppendFloat( str, cell->vec3.xyz[ depth ] );
     }
 }
 

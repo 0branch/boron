@@ -480,3 +480,180 @@ int fpconv_dtoa(double d, char dest[24])
 
     return str_len;
 }
+
+/*--------------------------------------------------------------------------*/
+
+/*
+    \param digits    Pointer to string of digits with room at digits[-1] for
+                     extra '1' if needed.
+    \param pos       Index into digits where rounding begins.
+
+    \return Zero if digits are unmodified, 1 if rounding was done, and -1 if
+            a '1' digit was prefixed.
+*/
+static int fpc_round_up( char* digits, int pos )
+{
+    char* cp = digits + pos;
+    int cv;
+
+#if 0
+    printf( "KR fpc_round_up " );
+    for( cv = 0; cv <= pos; ++cv )
+        printf( "%c", digits[cv] );
+    printf( "\n" );
+#endif
+
+    if( *cp < '5' )
+        return 0;
+
+    while( cp != digits )
+    {
+        cv = *--cp;
+        if( cv != '9' )
+        {
+            *cp = cv + 1;
+            return 1;
+        }
+        *cp = '0';
+    }
+    digits[ -1 ] = '1';
+    return -1;
+}
+
+
+int fpconv_ftoa(double d, char dest[24])
+{
+    char dbuf[18 + 1];
+    char* digits = dbuf + 1;
+    int str_len = 0;
+    int neg = 0;
+    int spec, K, ndigits;
+
+    if(get_dbits(d) & signmask) {
+        dest[0] = '-';
+        str_len++;
+        neg = 1;
+    }
+
+    spec = filter_special(d, dest + str_len);
+    if(spec)
+        return str_len + spec;
+
+    K = 0;
+    ndigits = grisu2(d, digits, &K);
+    //printf( "KR n:%d k:%d %d\n", ndigits, K, absv(K + ndigits - 1) );
+
+#define RPOS    9
+
+    if( ndigits > RPOS ) {
+        int res;
+        int i;
+
+        K += ndigits - RPOS;
+        ndigits = RPOS;
+        res = fpc_round_up( digits, RPOS );
+
+        /* Remove trailing zeros. */
+        for( i = RPOS - 1; i > 1; --i )
+        {
+            if( digits[i] != '0' )
+               break;
+            --ndigits;
+            ++K;
+        }
+
+        if( res < 0 )
+        {
+            --digits;
+            ++K;
+        }
+    }
+
+    str_len += emit_digits(digits, ndigits, dest + str_len, K, neg);
+    return str_len;
+}
+
+
+#ifdef UNIT_TEST
+/*
+    gcc -DUNIT_TEST -O3 fpconv.c
+
+    0x7f800001-0x7fffffff  nan -> 7fc00000
+    0xff800001-0xffffffff -nan -> 7fc00000
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+
+union UIntFloat
+{
+    uint32_t i;
+    float f;
+};
+
+int main( int argc, char** argv )
+{
+    union UIntFloat uf;
+    union UIntFloat c1;
+    union UIntFloat c2;
+    char str[26];
+    char str2[26];
+    char tmp[26];
+    uint64_t total = 0;
+    uint64_t modified = 0;
+    uint64_t failed = 0;
+    uint64_t per;
+    uint32_t rangeEnd = 0x7fffffff;
+    int len;
+
+    uf.i = 0;
+    if( argc > 1 )
+    {
+        uf.i = strtol( argv[1], NULL, 0 );
+        if( argc > 2 )
+            rangeEnd = strtol( argv[2], NULL, 0 );
+    }
+    printf( "Converting 0x%08x through 0x%08x\n", uf.i, rangeEnd );
+
+    for( ; uf.i <= rangeEnd; ++uf.i )
+    {
+        len = fpconv_ftoa( (double) uf.f, str );
+        str[ len ] = '\0';
+        c1.f = (float) strtod( str, 0 );
+
+        //printf( "KR ftoa %08x %s\n", uf.i, str );
+
+        if( c1.i != uf.i )
+        {
+            ++modified;
+#if 1
+            len = fpconv_dtoa( (double) uf.f, tmp );
+            tmp[ len ] = '\0';
+            printf( "modified %08x  %08x  %s  %s\n", uf.i, c1.i, str, tmp );
+#endif
+            len = fpconv_ftoa( (double) c1.f, str2 );
+            str2[ len ] = '\0';
+            c2.f = (float) strtod( str2, 0 );
+
+            if( c2.i != c1.i )
+            {
+                printf( "failed %08x  %08x  %s  %s\n", c1.i, c2.i, str, str2 );
+                ++failed;
+            }
+        }
+        ++total;
+
+        if( (uf.i & 0x000fffff) == 0 )
+        {
+            per = modified * 100 / total;
+            printf( "completed %08x: tot %ld, mod %ld (~%d%%), fail %ld\n",
+                    uf.i, total, modified, (int) per, failed );
+        }
+    }
+
+    per = modified * 100 / total;
+    printf( "fpconv_ftoa conversions: %ld, modified %ld (~%d%%), failed %ld\n",
+            total, modified, (int) per, failed );
+    return 0;
+}
+#endif

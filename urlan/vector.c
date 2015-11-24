@@ -291,7 +291,7 @@ void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
         case UR_VEC_F32:
             ur_foreach( si )
             {
-                ur_strAppendDouble( str, si.buf->ptr.f[ si.it ] ); 
+                ur_strAppendFloat( str, si.buf->ptr.f[ si.it ] );
                 ur_strAppendChar( str, ' ' );
             }
             break;
