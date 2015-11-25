@@ -312,7 +312,6 @@ dist:
 
 .PHONY: clean
 clean:
-^--rm -f core
 }
 
 
