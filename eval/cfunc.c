@@ -432,7 +432,7 @@ CFUNC(cfunc_do)
 
 /*-cf-
     set
-        words   word!/lit-word!/block!/path!
+        words   Any word type or block!/path!.
         values  Any value.
     return: unset!
     group: data
@@ -512,14 +512,14 @@ CFUNC(cfunc_set)
 
 /*-cf-
     get
-        word    word!/context!
+        word    Any word type or context!
     return: Value of word or block of values in context.
     group: data
     see: in, set
 */
 CFUNC(cfunc_get)
 {
-    if( ur_is(a1, UT_WORD) )
+    if( ur_isWordType( ur_type(a1) ) )
     {
         const UCell* cell;
         if( ! (cell = ur_wordCell( ut, a1 )) )
@@ -570,14 +570,14 @@ CFUNC(cfunc_valueQ)
 /*-cf-
     in
         context     context!
-        word        word!
+        word        Any word type.
     return: Word bound to context or none!.
     group: data
     see: set, value?
 */
 CFUNC(cfunc_in)
 {
-    if( ur_is(a1, UT_CONTEXT) && ur_is(a2, UT_WORD) )
+    if( ur_is(a1, UT_CONTEXT) && ur_isWordType( ur_type(a2) ) )
     {
         const UBuffer* ctx;
         int wrdN;
