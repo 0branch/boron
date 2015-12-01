@@ -260,6 +260,8 @@ UIndex ur_makeStringUtf8( UThread* ut, const uint8_t* it, const uint8_t* end )
         ch = *it++;
         if( ch > 0x7f )
         {
+            if( it == end )
+                break;          // Drop incomplete multi-byte char.
             if( ch <= 0xdf )
             {
                 // If the UTF-8 value is in the Latin-1 range then

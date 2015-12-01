@@ -135,3 +135,7 @@ probe find c: "Not a path" sep
 probe find/last a sep
 probe find/last b sep
 probe find/last c sep
+
+
+print "---- Invalid"
+probe to-string #{496E76616C69642031 A0}
