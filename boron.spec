@@ -16,6 +16,8 @@ BuildRequires: zlib1-devel
 BuildRequires: zlib-devel
 %endif
 
+%global debug_package %{nil}
+
 %description
 Boron is an interpreted, prototype-based, scripting language similar to Rebol.
 The interpreter and datatype system is a C library useful for building
