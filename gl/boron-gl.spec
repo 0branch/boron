@@ -19,6 +19,8 @@ BuildRequires: libglv0 boron libmesagl1-devel libmesaglu1-devel freetype2-devel 
 BuildRequires: libglv0 boron Mesa-devel freetype2-devel openal-devel libvorbis-devel libpng-devel
 %endif
 
+%global debug_package %{nil}
+
 %description
 Boron is an interpreted, prototype-based, scripting language similar to Rebol.
 Boron-gl expands Boron with datatypes, functions and dialects for using OpenGL
