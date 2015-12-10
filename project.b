@@ -25,7 +25,7 @@ default [
     macx [
         cflags {-std=c99}
         cflags {-pedantic}
-        universal
+        ;universal
     ]
     unix [
         ;cflags {-std=c99}
@@ -50,13 +50,13 @@ lib-spec: [
         cflags {-DCONFIG_COMPRESS=1}
         win32 [libs either msvc [%zdll] [%z]]
         macx  [libs %z]
-        unix  [libs {z m}]
+        unix  [libs %z]
     ]
     if eq? compress 'bzip2 [
         cflags {-DCONFIG_COMPRESS=2}
         win32 [libs %libbz2]
         macx  [libs %bz2]
-        unix  [libs {bz2 m}]
+        unix  [libs %bz2]
     ]
     if execute [
         cflags {-DCONFIG_EXECUTE}
@@ -119,7 +119,10 @@ lib-spec: [
     ]
 
     macx  [sources [%unix/os.c]]
-    unix  [sources [%unix/os.c]]
+    unix  [
+        sources [%unix/os.c]
+        libs %m
+    ]
     win32 [
         sources [%win32/os.c]
         ifn static [

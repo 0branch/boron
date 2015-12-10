@@ -32,6 +32,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 
+#ifdef _MSC_VER
+#define inline __inline
+#endif
+
 #define DOT_ZERO
 
 /*
