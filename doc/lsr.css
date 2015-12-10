@@ -87,13 +87,14 @@ h2.subtitle {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  color: #555;
+  color: #436976;
   background-color: transparent;
   margin: 0em;
   padding-top: 0.5em;
 }
 
 h1 {
+  color: #003a6b;
   font-size: 160%;
   margin-bottom: 0.5em;
   border-bottom: 2px solid #aaa;
@@ -179,23 +180,24 @@ p.admonition-title {
   padding-left: 30px;
 }
 
-table.docutils {
+table {
   text-align: left;
   border: 1px solid gray;
   border-collapse: collapse;
-  width: 50%;
+  width: 60%;
   margin: 1.5em 0em;
 }
 
-table.docutils caption {
+table caption {
   font-style: italic;
 }
 
-table.docutils td, table.docutils th {
+table td, table th {
+  border: 1px solid gray;
   padding: 0.25em 0.5em;
 }
 
-table.docutils th {
+table th {
   background-color: #dddddd;
 }
 
@@ -224,7 +226,7 @@ p.sidebar-subtitle {
 }
 
 
-pre.literal-block
+pre
 {
     font-family: monospace;
     padding: 0.5em 0.5em 0.5em 1.5em;

@@ -1,12 +1,7 @@
-==============================
-    Boron-GL User Manual
-==============================
-
-:Version:   0.2.4
-:Date:      |date|
-
-.. sectnum::
-.. contents::
+---
+title:  Boron-GL User Manual
+date:   Version 0.2.4, 2014-01-05
+---
 
 
 Overview
@@ -28,9 +23,8 @@ About This Document
 
 This manual is largely incomplete.
 
-There is a separate `function reference`_ available online at
-http://urlan.sourceforge.net/boron.
-
+There is a separate [function reference] available online at
+<http://urlan.sourceforge.net/boron>.
 
 
 Running Scripts
@@ -42,42 +36,38 @@ Shell Invocation
 
 The first line of a script may be a UNIX shell sha-bang (``#!``) command.
 
-::
-
     #!/usr/bin/boron-gl
 
 
 Command Line Usage
 ------------------
 
-Usage::
+Usage:
 
     boron-gl [options] [script] [arguments]
 
 
-Command Line Options
-~~~~~~~~~~~~~~~~~~~~
+### Command Line Options
 
-==========  ========================
+----------  ------------------------
 -a          Disable audio
 -e "*exp*"  Evaluate expression
 -h          Show help and exit
 -p          Disable prompt and exit on exception
 -s          Disable security
-==========  ========================
+----------  ------------------------
 
 
-Command Line Arguments
-~~~~~~~~~~~~~~~~~~~~~~
+### Command Line Arguments
 
 If the interpreter is invoked with a script then the *args* word will be set
 to either a block of strings, or *none* if no script arguments were given.
 
-So this command::
+So this command:
 
     boron-gl -e "probe args" file1 -p 2
 
-Will print this::
+Will print this:
 
     ["file1" "-p" "2"]
 
@@ -86,19 +76,18 @@ Will print this::
 GL Datatypes
 ============
 
-=============  =============================
-Type Name      Description
-=============  =============================
-`draw-prog!`_  Compiled draw program
-`raster!`_     Pixel image in main memory
-`texture!`_    OpenGL texture
-`font!`_       Texture-based font
-`shader!`_     OpenGL shader
-`fbo!`_        OpenGL frame buffer object
-`vbo!`_        OpenGL vertex buffer object
-`quat!`_       Quaternion
-`widget!`_     Widget
-=============  =============================
+Type Name                 Description
+------------------------  -----------------------------
+[draw-prog!](#draw-prog)  Compiled draw program
+[raster!](#raster)        Pixel image in main memory
+[texture!](#texture)      OpenGL texture
+[font!](#font)            Texture-based font
+[shader!](#shader)        OpenGL shader
+[fbo!](#fbo)              OpenGL frame buffer object
+[vbo!](#vbo)              OpenGL vertex buffer object
+[quat!](#quat)            Quaternion
+[widget!](#widget)        Widget
+------------------------  -----------------------------
 
 
 Draw-Prog!
@@ -107,8 +96,7 @@ Draw-Prog!
 A draw program is a list of display operations compiled to byte-code.
 It is reminiscent of the GL display list (now deprecated in OpenGL 3.0).
 
-.. note::
-    The terms "draw program" and "draw list" are used interchangeably.
+**NOTE**: The terms *draw program* and *draw list* are used interchangeably.
 
 
 Raster!
@@ -119,11 +107,10 @@ Texture!
 --------
 
 The simplest way to make textures is to use the *load-texture* function.
-::
 
     load-texture %skin.png
 
-Full specification::
+Full specification:
 
     make texture! [
         raster!/coord!/int!
@@ -137,7 +124,6 @@ Font!
 -----
 
 A texture-based font.
-::
 
     make font! [%font-file.ttf 20]
     make font! [%font-file.ttf face 1 20 "characters" 256,128]
@@ -147,7 +133,6 @@ A texture-based font.
 
 Shader!
 -------
-::
 
     make shader! [
         vertex {...}
@@ -178,8 +163,8 @@ Multiplying a quat! by a vec3! will return a transformed vec3!.
 
 Examples quaternions::
 
-   to-quat none     ; Identity
-   to-quat 10,0,240 ; From euler x,y,z angles
+    to-quat none     ; Identity
+    to-quat 10,0,240 ; From euler x,y,z angles
 
 
 Widget!
@@ -202,7 +187,6 @@ Box
 
 Draws a box given minimum and maximum extents.
 Internally, a vertex buffer with normals & texture coordinates is created.
-::
 
     box
         min   int!/decimal!/vec3!
@@ -212,36 +196,33 @@ Internally, a vertex buffer with normals & texture coordinates is created.
 Blend
 -----
 
-Sets the blending mode using glBlendFunc_.
-::
+Sets the blending mode using [glBlendFunc].
 
     blend
         mode    on/off/add/burn/trans
 
-=====  ======================
 Mode   Function
-=====  ======================
+-----  ----------------------
 on     glEnable( GL_BLEND )
 off    glDisable( GL_BLEND )
 add    glBlendFunc( GL_SRC_ALPHA, GL_ONE )
 burn   glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA )
 trans  glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA )
-=====  ======================
+-----  ----------------------
 
 
 Buffer
 ------
 
-Calls glBindBuffer_ and sets pointer offsets using glVertexPointer_,
-glNormalPointer_, etc.
+Calls [glBindBuffer] and sets pointer offsets using [glVertexPointer][],
+[glNormalPointer], etc.
 
 
 Camera
 ------
 
-Sets the camera context.  glViewport_ is called and the ``GL_PROJECTION``
-and ``GL_MODELVIEW`` matrices are set.
-::
+Sets the camera context.  [glViewport] is called and the `GL_PROJECTION`
+and `GL_MODELVIEW` matrices are set.
 
     camera
         which   context!
@@ -252,7 +233,6 @@ Call
 
 Calling a none! value does nothing and can be used to disable the display
 of an item.
-::
 
     call
         list    none!/draw-prog!/widget!/get-word!
@@ -261,14 +241,13 @@ of an item.
 Clear
 -----
 
-Calls glClear_ ( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT ).
+Calls [glClear] ( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT ).
 
 
 Color
 -----
 
-Sets the ``gl_Color`` for shaders.
-::
+Sets the `gl_Color` for shaders.
 
     color
         value   int!/coord!/vec3!/get-word!
@@ -283,8 +262,7 @@ The following all set the color to red::
 Color-Mask
 ----------
 
-Calls glColorMask_ with all GL_TRUE or GL_FALSE arguments.
-::
+Calls [glColorMask] with all GL_TRUE or GL_FALSE arguments.
 
     color-mask on/off
 
@@ -293,7 +271,6 @@ Cull
 ----
 
 Calls glEnable/glDisable with GL_CULL_FACE.
-::
 
     cull on/off
 
@@ -301,8 +278,7 @@ Calls glEnable/glDisable with GL_CULL_FACE.
 Depth-Mask
 ----------
 
-Calls glDepthMask_ with GL_TRUE/GL_FALSE.
-::
+Calls [glDepthMask] with GL_TRUE/GL_FALSE.
 
     depth-mask on/off
 
@@ -310,10 +286,9 @@ Calls glDepthMask_ with GL_TRUE/GL_FALSE.
 Font
 ----
 
-Sets the font for `text`_ instructions.  This only provides the glyph metrics
+Sets the font for [text][Text] instructions.  This only provides the glyph metrics
 needed to generate quads; it does not actually emit any data into the compiled
-draw-prog.  The `shader`_ instruction must be used to specify the texture.
-::
+draw-prog.  The [shader][Shader] instruction must be used to specify the texture.
 
     font
         which   font!
@@ -324,7 +299,6 @@ Image
 
 Display image at 1:1 texel to pixel scale.
 An optional X,Y position can be specified.
-::
 
     image texture!
     image coord!/vec3! texture!
@@ -339,19 +313,17 @@ Controls lights.
 Pop
 ---
 
-Calls glPopMatrix_.
+Calls [glPopMatrix].
 
 
 Point-Size
 ----------
-::
 
     point-size on/off
 
 
 Point-Sprite
 ------------
-::
 
     point-sprite on/off
 
@@ -359,14 +331,13 @@ Point-Sprite
 Push
 ----
 
-Calls glPushMatrix_.
+Calls [glPushMatrix].
 
 
 Rotate
 ------
 
 Rotate around axis or by quaternion.
-::
 
     rotate x/y/z decimal!
     rotate x/y/z get-word!
@@ -375,7 +346,6 @@ Rotate around axis or by quaternion.
 
 Scale
 -----
-::
 
     scale
         value   decimal!/get-word!
@@ -384,9 +354,8 @@ Scale
 Shader
 ------
 
-Calls glUseProgram_, binds and enables any textures used,
-and calls glUniform_ for any variables.
-::
+Calls [glUseProgram], binds and enables any textures used,
+and calls [glUniform] for any variables.
 
     shader
         which   shader!
@@ -397,7 +366,6 @@ Sphere
 
 Draws a sphere.
 Internally, a vertex buffer with normals & texture coordinates is created.
-::
 
     sphere
         radius          int!/decimal!
@@ -407,13 +375,11 @@ Text
 ----
 
 Draws quads for each character.
-::
 
     text x,y string!
     text/center/right rect [x,y] string!
 
-Text Center
-~~~~~~~~~~~
+### Text Center
 
 Using the *center* option centers the string horizontally and vertically within
 the *rect* argument.  To center only horizontally use a width (fourth value)
@@ -424,7 +390,6 @@ Translate
 ---------
 
 Translate the model view matrix.
-::
 
     translate
         distance    vec3!/get-word!
@@ -437,34 +402,26 @@ Uniform
 Framebuffer
 -----------
 
-Calls glBindFramebuffer_ with target GL_FRAMEBUFFER.  Pass zero to restore rendering to the display.
-::
+Calls [glBindFramebuffer] with target GL_FRAMEBUFFER.  Pass zero to restore rendering to the display.
 
     framebuffer
         which   fbo! or 0
 
 
-
-Widget Instructions
-===================
-
-.. include:: widgets.rst
+[comment]: <> (include widgets.md)
 
 
-
-.. |date| date::
-.. _`function reference`: http://urlan.sf.net/boron/doc/func_ref_gl.html
-.. _glBindBuffer: http://www.opengl.org/sdk/docs/man2/xhtml/glBindBuffer.xml
-.. _glBindFramebuffer: http://www.opengl.org/sdk/docs/man3/xhtml/glBindFramebuffer.xml
-.. _glBlendFunc: http://www.opengl.org/sdk/docs/man2/xhtml/glBlendFunc.xml
-.. _glClear: http://www.opengl.org/sdk/docs/man2/xhtml/glClear.xml
-.. _glColorMask: http://www.opengl.org/sdk/docs/man2/xhtml/glColorMask.xml
-.. _glDepthMask: http://www.opengl.org/sdk/docs/man2/xhtml/glDepthMask.xml
-.. _glNormalPointer: http://www.opengl.org/sdk/docs/man2/xhtml/glNormalPointer.xml
-.. _glPopMatrix: http://www.opengl.org/sdk/docs/man2/xhtml/glPopMatrix.xml
-.. _glPushMatrix: http://www.opengl.org/sdk/docs/man2/xhtml/glPushMatrix.xml
-.. _glUniform: http://www.opengl.org/sdk/docs/man2/xhtml/glUniform.xml
-.. _glUseProgram: http://www.opengl.org/sdk/docs/man2/xhtml/glUseProgram.xml
-.. _glVertexPointer: http://www.opengl.org/sdk/docs/man2/xhtml/glVertexPointer.xml
-.. _glViewport: http://www.opengl.org/sdk/docs/man2/xhtml/glViewport.xml
-
+[function reference]: http://urlan.sf.net/boron/doc/func_ref_gl.html
+[glBindBuffer]: http://www.opengl.org/sdk/docs/man2/xhtml/glBindBuffer.xml
+[glBindFramebuffer]: http://www.opengl.org/sdk/docs/man3/xhtml/glBindFramebuffer.xml
+[glBlendFunc]: http://www.opengl.org/sdk/docs/man2/xhtml/glBlendFunc.xml
+[glClear]: http://www.opengl.org/sdk/docs/man2/xhtml/glClear.xml
+[glColorMask]: http://www.opengl.org/sdk/docs/man2/xhtml/glColorMask.xml
+[glDepthMask]: http://www.opengl.org/sdk/docs/man2/xhtml/glDepthMask.xml
+[glNormalPointer]: http://www.opengl.org/sdk/docs/man2/xhtml/glNormalPointer.xml
+[glPopMatrix]: http://www.opengl.org/sdk/docs/man2/xhtml/glPopMatrix.xml
+[glPushMatrix]: http://www.opengl.org/sdk/docs/man2/xhtml/glPushMatrix.xml
+[glUniform]: http://www.opengl.org/sdk/docs/man2/xhtml/glUniform.xml
+[glUseProgram]: http://www.opengl.org/sdk/docs/man2/xhtml/glUseProgram.xml
+[glVertexPointer]: http://www.opengl.org/sdk/docs/man2/xhtml/glVertexPointer.xml
+[glViewport]: http://www.opengl.org/sdk/docs/man2/xhtml/glViewport.xml

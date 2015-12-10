@@ -1,4 +1,4 @@
-RST_STYLE = lsr.css
+STYLE = lsr.css
 
 
 dox:
@@ -7,21 +7,18 @@ dox:
 
 html: UserManual.html UserManualGL.html
 
-pdf: UserManual.pdf UserManualGL.pdf
+pdf: UserManual.pdf
 
 
-%.html: %.rst
-	rst2html --stylesheet=$(RST_STYLE) $^ >$@
+UserManual.html: UserManual.md
+	pandoc -s --css=$(STYLE) --toc -N -f markdown -o $@ $^
 
-# Must not use ".. sectnum::" when building PDF.
-# pdflatex must be run twice to insert the table of contents, and a third
-# time to re-adjust contents page numbers.
-%.pdf : %.rst
-	sed -e "s/.. sectnum:://" $< >tmp.out
-	rst2latex --use-latex-toc tmp.out $*.tex
-	pdflatex $*.tex
-	pdflatex $*.tex
-	pdflatex $*.tex
+UserManualGL.html: UserManualGL.md mkref-widgets.b
+	boron -s mkref-widgets.b
+	pandoc -s --css=$(STYLE) --toc -N -f markdown -o $@ UserManualGL.md widgets.md
+
+UserManual.pdf: UserManual.md
+	pandoc -s --toc -N -f markdown -o $@ $^
 
 clean:
 	rm -rf func_ref.html *.pdf *.aux *.log *.tex *.toc *.out
