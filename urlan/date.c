@@ -43,7 +43,7 @@ void date_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     char tmp[ 30 ];
     struct tm st;
     time_t tt;
-    int timeZone;
+    long timeZone;
     int hour;
     char* cp = tmp;
     double sec = ur_decimal(cell);
@@ -65,7 +65,12 @@ void date_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 #endif
 
 #if defined(_WIN32)
+#if _MSC_VER >= 1400
+    _get_timezone( &timeZone );
+    timeZone = -timeZone;
+#else
     timeZone = -timezone;
+#endif
 #elif defined(__sun__)
     {
         struct tm gt;
