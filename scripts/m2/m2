@@ -208,7 +208,7 @@ m2: context
 
 	;--------------------------------------
 
-	static_lib_targets: []
+	built_lib_targets: []
 
 	local_libs: func [
 		; Returns string of libraries from libs which are built by this
@@ -217,7 +217,7 @@ m2: context
 		| l str base path
 	][
 		str: make string! 0
-		foreach [base path] static_lib_targets [
+		foreach [base path] built_lib_targets [
 			if l: find libs base [
 				append str rejoin [' ' path]
 				;probe first l
@@ -526,8 +526,7 @@ m2: context
 				uc_name: join "LIB_" var-name name: basename
 				cfg: copy configuration
 			]) blk
-
-		append static_lib_targets reduce [basename ct/output_file]
+		append built_lib_targets reduce [basename ct/output_file]
 	]
 
 	; Builds shared library rule.
@@ -541,6 +540,7 @@ m2: context
 				cfg: copy configuration
 				version: ver
 			]) blk
+		append built_lib_targets reduce [basename ct/output_file]
 	]
 
 	; Builds generic make rule.
