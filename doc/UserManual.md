@@ -1,6 +1,6 @@
 ---
 title:  Boron User Manual
-date:   Version 0.2.8, 2014-05-23
+date:   Version 0.3.0, 2016-01-16
 ---
 
 
@@ -46,7 +46,7 @@ Comment examples:
 
     ; line comment
 
-    add 2 4	; result is 6
+    add 2 4 ; result is 6
 
     /*
       Block comment
@@ -114,7 +114,7 @@ Datatype                Examples
 [vec3!](#vec3)          0.0,255.0,100.0  -1.0, 0, 0
 [string!](#string)      "hello"  {hello}
 [file!](#file)          %main.c %"/mnt/Project Backup/"
-[binary!](#binary)      #{01afed}  #{00 33 ff a0}
+[binary!](#binary)      #{01afed}  #{00 33 ff a0}  2#{00010010}
 [bitset!](#bitset)      make bitset! "abc"
 time!                   10:02 -0:0:32.08
 [vector!](#vector)      #[1 2 3]  #[-85.33 2 44.8]
@@ -283,6 +283,29 @@ White space is allowed and ignored inside the braces.
 == #{68656C6C6F}
 ~~~~
 
+Alternative encodings for base 2 and base 64 can be used by putting the
+base number before the initial hash (#) character.
+
+    )> print to-string 2#{01101000 01100101 01101100 01101100 01101111}
+    hello
+
+    )> print to-string 64#{aGVsbG8=}
+    hello
+
+Partial base 64 triplets will automatically be padded with equal (=)
+characters.
+
+    )> print 64#{aGVsbG8}   ; "hello"
+    64#{aGVsbG8=}
+
+    )> print 64#{ZG9vcg}    ; "door"
+    64#{ZG9vcg==}
+
+Use the *encode* function to change the encoding base.
+
+    )> encode 16 2#{11001010 10110010}
+    == #{CAB2}
+
 
 Bitset!
 -------
@@ -328,9 +351,19 @@ Vector!
 
 Vectors hold a series of numbers using less memory than a block!.
 
-All numbers in a vector are either 32-bit integers or floating point values.
-If the first number is specified as a decimal!, all numbers will be floating
+All numbers in a vector are either 32-bit integers or 32-bit floating point
+values.
+If the first number contains a decimal point, all numbers will be floating
 point.
+
+    )> a: #[1 2 3 4]
+    == #[1 2 3 4]
+
+    )> b: #[1.0 2 3 4]
+    == #[1.0 2.0 3.0 4.0]
+
+    )> print [type? last a type? last b]
+    int! decimal!
 
 
 Block!
