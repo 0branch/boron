@@ -1,8 +1,5 @@
 /*
-Author: Peter Parente
-Date: 2008/01/22
-Version: 1.0
-Copyright: This stylesheet has been placed in the public domain - free to edit and use for all uses.
+Modified version of Peter Parente's public domain reST style (2008/01/22)
 */
 
 body {
@@ -141,45 +138,6 @@ dd {
   margin-bottom: 1.5em;
 }
 
-div.admonition, div.note, div.tip, div.caution, div.important {
-  margin: 2em 2em;
-  padding: 0em 1em;
-  border-top: 1px solid #aaa;
-  border-left: 1px solid #aaa;
-  border-bottom: 2px solid #555;
-  border-right: 2px solid #555;
-}
-
-div.important {
-  background: transparent url('../images/important.png') 10px 2px no-repeat;
-}
-
-div.caution {
-  background: transparent url('../images/caution.png') 10px 2px no-repeat;
-}
-
-div.note {
-  background: transparent url('../images/note.png') 10px 2px no-repeat;
-}
-
-div.tip {
-  background: transparent url('../images/tip.png') 10px 2px no-repeat;
-}
-
-div.admonition-example {
-  background: transparent url('../images/tip.png') 10px 2px no-repeat;
-}
-
-div.admonition-critical-example {
-  background: transparent url('../images/important.png') 10px 2px no-repeat;
-}
-
-p.admonition-title {
-  font-weight: bold;
-  border-bottom: 1px solid #aaa;
-  padding-left: 30px;
-}
-
 table {
   text-align: left;
   border: 1px solid gray;
@@ -224,7 +182,6 @@ p.sidebar-subtitle {
   font-style: italic;
   color: #003a6b;
 }
-
 
 pre
 {
