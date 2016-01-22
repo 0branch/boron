@@ -19,7 +19,8 @@ generate_makefile: does [
     emit case [
         not system-qt
             {MOC      = $(QTDIR)/bin/moc^/QTINC    = $(QTDIR)/include^/^/}
-        eq? qt-version 5 {MOC      = moc-qt5^/QTINC    = /usr/include/qt5^/^/}
+        eq? qt-version 5
+            {MOC      = moc-qt5^/QTINC    = /usr/include/qt5^/^/}
         true             {MOC      = moc-qt4^/QTINC    = /usr/include^/^/}
     ]
 
@@ -34,16 +35,16 @@ generate_makefile: does [
 
     emit "^/^/#------ Build rules^/^/all:"
     emit-sub-project-targets
-    foreach t targets [ emit [' ' t/output_file] ]
+    foreach t targets [emit [' ' t/output_file]]
     emit eol
 
     emit-sub-projects
-    foreach t targets [ emit ' ' t/rule_text ]
+    foreach t targets [emit ' ' t/rule_text]
 
-    emit [ "^/^/" do_tags copy gnu_other_rules ]
+    emit ["^/^/" do_tags copy gnu_other_rules]
 
     emit-sub-project-clean
-    foreach t targets [ emit t/clean ]
+    foreach t targets [emit t/clean]
 
     emit "^/^/#------ Compile rules^/^/"
     foreach t targets [
@@ -121,7 +122,7 @@ exe_target: make target_env
 
     config:
     [
-        obj_macro: rejoin [ "$(" uc_name "_OBJECTS)" ]
+        obj_macro: rejoin ["$(" uc_name "_OBJECTS)"]
 
         cflags {-pipe}
 
@@ -155,7 +156,7 @@ exe_target: make target_env
 
         if cfg/x11 [
             include_from {/usr/X11R6/include}
-            libs_from "/usr/X11R6/lib" {Xext X11 m}
+            libs_from %/usr/X11R6/lib {Xext X11 m}
         ]
     ]
 
@@ -183,7 +184,7 @@ exe_target: make target_env
             uc_name "_INCPATH  = " gnu_string "-I" include_paths eol
             uc_name "_LFLAGS   = " menv_lflags eol
             uc_name "_LIBS     = " gnu_string "-L" link_paths ' '
-                                   gnu_string "-l" link_libs eol
+                    gnu_string "-l" link_libs eol
         ]
 
         ;if cfg/qt [
@@ -212,10 +213,10 @@ exe_target: make target_env
         rejoin [" $(" uc_name "_SOURCES)"]
     ]
 
-    rule_text: does
-    [
-        emit [ eol output_file ": " obj_macro local_libs link_libs
-               sub-project-libs link_libs
+    rule_text: does [
+        emit [
+            eol output_file ": " obj_macro local_libs link_libs
+            sub-project-libs link_libs
             {^/^-$(}
                 either link_cxx ["LINK_CXX"]["LINK"]
                 {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
@@ -231,8 +232,7 @@ lib_target: make exe_target [
         do config
     ]
 
-    rule_text: does
-    [
+    rule_text: does [
         emit [eol output_file ": " obj_macro sub-project-libs link_libs]
         emit either empty? link_libs [[
             "^/^-ar rc $@ " obj_macro " $(" uc_name "_LFLAGS)"
@@ -302,7 +302,7 @@ CXX      = g++
 LINK     = gcc
 LINK_CXX = g++
 TAR      = tar -cf
-GZIP     = gzip -9f
+ZIP      = gzip -9f
 
 }
 ;#------ Project-wide settings
@@ -319,7 +319,7 @@ dist:
 ^-tar -C /tmp/$(ARCHIVE) -xf $(ARCHIVE).tar
 ^-tar -C /tmp -cf $(ARCHIVE).tar $(ARCHIVE)
 ^-rm -rf /tmp/$(ARCHIVE)
-^-$(GZIP) $(ARCHIVE).tar
+^-$(ZIP) $(ARCHIVE).tar
 
 .PHONY: clean
 clean:

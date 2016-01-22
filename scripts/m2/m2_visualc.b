@@ -16,9 +16,9 @@ generate_makefile: does [
     emit do_tags copy nmake_header
 
     emit "^/#------ Target settings"
-    foreach t targets [ emit "^/^/" t/macro_text ]
+    foreach t targets [emit "^/^/" t/macro_text]
 
-    emit [ {^/ARCHIVE = } project_version {^/DIST_FILES = \^/} ]
+    emit [{^/ARCHIVE = } project_version {^/DIST_FILES = \^/}]
     ifn empty? distribution_files [
         emit expand_list_gnu/part distribution_files
     ]
@@ -194,8 +194,7 @@ exe_target: make target_env
         ]
     ]
 
-    lib_string: func [items block! | str]
-    [
+    lib_string: func [items block! | str] [
         str: make string! 64
         forall items [
             append str either find items/1 ' ' [
@@ -218,7 +217,7 @@ exe_target: make target_env
             uc_name "_INCPATH  = " gnu_string "/I" include_paths eol
             uc_name "_LFLAGS   = " menv_lflags eol
             uc_name "_LIBS     = " gnu_string "/libpath:" link_paths ' '
-                              lib_string link_libs eol
+                    lib_string link_libs eol
         ]
 
         emit [
@@ -310,10 +309,10 @@ AS       = ml.exe
 CC       = cl.exe
 CXX      = cl.exe
 LINK     = link.exe
-TAR      = tar.exe -cf
-ZIP      = zip.exe -r -9
 MOC      = $(QTDIR)\bin\moc.exe
 MT       = mt.exe
+TAR      = tar.exe -cf
+ZIP      = zip.exe -r -9
 
 }
 

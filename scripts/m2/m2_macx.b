@@ -30,23 +30,21 @@ generate_makefile: does [
 
     emit "^/^/#------ Build rules^/^/all:"
     emit-sub-project-targets
-    foreach t targets [ emit [' ' t/output_file] ]
+    foreach t targets [emit [' ' t/output_file]]
     emit eol
 
     emit-sub-projects
-    foreach t targets [ emit ' ' t/rule_text ]
+    foreach t targets [emit ' ' t/rule_text]
 
-    emit [ "^/^/" do_tags copy gnu_other_rules ]
+    emit ["^/^/" do_tags copy gnu_other_rules]
 
     emit-sub-project-clean
-    foreach t targets [ emit t/clean ]
+    foreach t targets [emit t/clean]
 
     emit "^/^/#------ Compile rules^/^/"
     foreach t targets [
         emit t/built_obj_rule
-        if t/cfg/qt [
-            emit t/moc_rule
-        ]
+        if t/cfg/qt [emit t/moc_rule]
     ]
 
     emit "^/#EOF^/"
@@ -113,7 +111,7 @@ exe_target: make target_env
 
     config:
     [
-        obj_macro: rejoin [ "$(" uc_name "_OBJECTS)" ]
+        obj_macro: rejoin ["$(" uc_name "_OBJECTS)"]
 
         cflags {-pipe}
 
@@ -173,8 +171,7 @@ exe_target: make target_env
         do config
     ]
 
-    macro_text: func []
-    [
+    macro_text: does [
         ifn empty? menv_aflags [
             emit [uc_name "_AFLAGS   = " menv_aflags eol]
         ]
@@ -185,7 +182,7 @@ exe_target: make target_env
             uc_name "_INCPATH  = " gnu_string "-I" include_paths eol
             uc_name "_LFLAGS   = " menv_lflags eol
             uc_name "_LIBS     = " gnu_string "-L" link_paths ' '
-                              gnu_string "-l" link_libs eol
+                    gnu_string "-l" link_libs eol
         ]
 
         ;if cfg/qt [
@@ -211,13 +208,13 @@ exe_target: make target_env
     ]
 
     dist: does [
-        rejoin [" $(" uc_name "_SOURCES)" ]
+        rejoin [" $(" uc_name "_SOURCES)"]
     ]
 
-    rule_text: func [| bdir]
-    [
-        emit [ eol output_file ": " obj_macro local_libs link_libs
-               sub-project-libs link_libs
+    rule_text: func [| bdir] [
+        emit [
+            eol output_file ": " obj_macro local_libs link_libs
+            sub-project-libs link_libs
             {^/^-$(}
                 either link_cxx ["LINK_CXX"]["LINK"]
                 {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
@@ -240,13 +237,13 @@ exe_target: make target_env
 
 lib_target: make exe_target [
     configure: does [
-        output_file: rejoin [ output_dir "lib" name ".a" ]
+        output_file: rejoin [output_dir "lib" name ".a"]
         do config
     ]
 
-    rule_text: does
-    [
-        emit [ eol output_file ": " obj_macro sub-project-libs link_libs
+    rule_text: does [
+        emit [
+            eol output_file ": " obj_macro sub-project-libs link_libs
             "^/^-libtool -static -o $@ $^^ $(" uc_name "_LIBS)"
             "^/^-ranlib $@^/"
         ]
@@ -258,7 +255,7 @@ shlib_target: make exe_target [
     configure: does [
         output_file: rejoin [output_dir "lib" name ".dylib"]
         do config
-        ;cflags {-fPIC}	; Default on Mac.
+        ;cflags {-fPIC}     ; Default on Mac.
     ]
 
     rule_text: does [
@@ -289,9 +286,9 @@ CC       = gcc  # cc
 CXX      = g++  # c++
 LINK     = gcc  # cc
 LINK_CXX = g++  # c++
-TAR      = tar -cf
-GZIP     = gzip -9f
 MOC      = <moc_exe>
+TAR      = tar -cf
+ZIP      = gzip -9f
 
 }
 ;#------ Project-wide settings
@@ -308,7 +305,7 @@ dist:
 ^-tar -C /tmp/$(ARCHIVE) -xf $(ARCHIVE).tar
 ^-tar -C /tmp -cf $(ARCHIVE).tar $(ARCHIVE)
 ^-rm -rf /tmp/$(ARCHIVE)
-^-$(GZIP) $(ARCHIVE).tar
+^-$(ZIP) $(ARCHIVE).tar
 
 .PHONY: clean
 clean:
