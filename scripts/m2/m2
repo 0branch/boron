@@ -300,23 +300,29 @@ m2: context
 		write makefile generate_makefile
 	]
 
-	exec-rule: func [def str | targ cmd s w c2 rc] [
+	exec-rule: func [def str | targ cmd s w c1 c2 rc] [
 		cmd: new-block
 		parse str [some[
-			any '^/' targ: to ':' :targ
-			to "^-$"
-			some ['^-' s: to '^/' :s (append cmd mark-sol s) skip]
+			any '^/' targ: to ':' :targ to '^-'
+			some [
+				'^-' s: to '^/' :s (
+					if ne? '\' pick s -3 [append cmd mark-sol s]
+				) skip
+			]
 		]]
-		forall cmd [
-			c2: clear ""
-			parse s: first cmd [some[
-				'$' '(' w: some define-symbol :w ')' s:
-							 (append c2 get in def to-word w)
-			  | '$' '@' s:   (append c2 targ)
-			  | s: to '$' w: (append c2 slice s w)
-			]]
-			print append c2 s
-			ifn zero? rc: execute c2 [
+		foreach c1 cmd [
+			while [find c1 '$'] [
+			    c2: clear ""
+				parse s: c1 [some[
+					'$' '(' w: some define-symbol :w ')' s:
+								 (append c2 get in def to-word w)
+				  | '$' '@' s:   (append c2 targ)
+				  | s: to '$' w: (append c2 slice s w)
+				]]
+				c1: copy append c2 s
+			]
+			print c1
+			ifn zero? rc: execute c1 [
 				print "Build Failure!"
 				quit/return rc
 			]
@@ -325,14 +331,16 @@ m2: context
 
 	def-to-block: func [str | blk w s] [
 		blk: new-block
-		parse construct str [
-			" \^/^-" ' '
-			"^/^/"   '^/'
-		][some[
-			w: some define-symbol :w thru '='
-			some space s: to '^/' :s skip
-				(append append blk to-set-word w s)
-		]]
+		if str [
+			parse construct str [
+				" \^/^-" ' '
+				"^/^/"   '^/'
+			][some[
+				w: some define-symbol :w thru '='
+				some space s: to '^/' :s skip
+					(append append blk to-set-word w s)
+			]]
+		]
 		blk
 	]
 
@@ -343,8 +351,8 @@ m2: context
 				clear output_buf
 				d: make tools def-to-block t/macro_text
 
-				exec-rule d t/make_obj_rule
 				if t/cfg/qt [exec-rule d t/moc_rule]
+				exec-rule d t/make_obj_rule
 
 				clear output_buf
 				exec-rule d t/rule_text
