@@ -2,7 +2,7 @@
 /*
 	M2 - A meta-make tool
 	Copyright 2001-2015 Karl Robillard
-	Version 1.4.0
+	Version 1.5.0
 
 	TODO:
 		* Remove files outside the build directory from dist rule.
@@ -52,6 +52,7 @@ m2: context
 	targets: []
 	sub-projects: []
 	output_buf: make string! 2048
+	new-block: does [make block! 0]
 
 	; This contains file! block! pairs.  The block contains the files
 	; included in the file.
@@ -232,7 +233,7 @@ m2: context
 		; Returns a block containing all header files used in the project.
 		| blk f b
 	][
-		blk: copy [] 
+		blk: new-block
 		foreach [f b] include_dict [
 			append blk b
 		]
@@ -244,7 +245,7 @@ m2: context
 		; Returns a block all files included from files
 		files paths | headers blk f
 	][
-		headers: copy []
+		headers: new-block
 
 		; Should make include_dict a hash?
 		foreach f files [
@@ -300,8 +301,71 @@ m2: context
 		do bind load template 'emit
 		windows?: not same? :system-nop :win32
 		do bind load projfile 'emit
+
 		clear output_buf
 		write makefile generate_makefile
+	]
+
+	revar: func [str vars targ | out s w] [
+		out: make string! 80
+		parse s: str [some[
+			'$' '(' w: some define-symbol :w ')' s:
+						 (append out get in vars to-word w)
+		  | '$' '@' s:   (append out targ)
+		  | s: to '$' w: (append out slice s w)
+		]]
+		append out s
+	]
+
+	exec-rule: func [def str | targ cmd s rc] [
+		cmd: new-block
+		;probe def
+		parse str [some[
+			any '^/' targ: to ':' :targ
+			to "^-$"
+			some ['^-' s: to '^/' :s (append cmd mark-sol s) skip]
+		]]
+		foreach s cmd [
+			print s: revar s def targ
+			ifn zero? rc: execute s [
+				print "Build Failure!"
+				quit/return rc
+			]
+		]
+	]
+
+	def-to-block: func [str | blk w s] [
+		blk: new-block
+		parse construct str [
+			" \^/^-" ' '
+			"^/^/"   '^/'
+		][some[
+			w: some define-symbol :w thru '='
+			some space s: to '^/' :s skip
+				(append append blk to-set-word w s)
+		]]
+		blk
+	]
+
+	set 'build_targets func [projfile template] [
+		do bind load template 'emit
+		windows?: not same? :system-nop :win32
+		do bind load projfile 'emit
+
+		emit-makefile: func [description tool_def | tools d w s] [
+			tools: context def-to-block tool_def
+			foreach t targets [
+				clear output_buf
+				d: make tools def-to-block t/macro_text
+
+				exec-rule d t/make_obj_rule
+				if t/cfg/qt [exec-rule d t/moc_rule]
+
+				clear output_buf
+				exec-rule d t/rule_text
+			]
+		]
+		generate_makefile
 	]
 
 	;------------------------------------------------------------------
@@ -313,7 +377,7 @@ m2: context
 	dist_files: func [| str obj] [
 		str: make string! 64
 
-		obj: copy []
+		obj: new-block
 		foreach t targets [append obj t/objdir]
 		obj: intersect obj obj   ; Removes duplicates.
 		append str obj
@@ -431,8 +495,7 @@ clean:
 
 		emit "^/^/#------ Compile rules^/^/"
 		foreach t targets [
-		    emit t/built_obj_rule
-			;emit t/make_obj_rule
+			emit t/built_obj_rule
 			if t/cfg/qt [emit t/moc_rule]
 		]
 
@@ -788,7 +851,7 @@ included_files: func [
 	paths block!        "Paths to check for included files"
 	| blk tmp out
 ][
-	out: make block! 0
+	out: new-block
 
 	ifn exists? file [
 		print ["included_files:" file "not found"]
@@ -855,7 +918,7 @@ expand_list_gnu: func [
 
 add_moc_files: func [ct files block! | blk dir file]
 [
-	blk: make block! 0
+	blk: new-block
 	foreach file files [
 		if find/case read-buf file "Q_OBJECT" [
 			append ct/moc_files file
@@ -875,24 +938,25 @@ add_moc_files: func [ct files block! | blk dir file]
 ]
 
 validate-qt: func [blk | pos] [
-    if all [find blk 'widgets  not find blk 'gui] [
-        append blk 'gui
-    ]
-    if eq? qt-version 4 [
-        if pos: find blk 'widgets [remove pos]
-    ]
-    ifn find blk 'core [append blk 'core]
-    blk
+	if all [find blk 'widgets  not find blk 'gui] [
+		append blk 'gui
+	]
+	if eq? qt-version 4 [
+		if pos: find blk 'widgets [remove pos]
+	]
+	ifn find blk 'core [append blk 'core]
+	blk
 ]
 ]
 
 
 show-help: func [| usage opt tok pw] [
-	usage: {m2 version 1.4.0
+	usage: {m2 version 1.5.0
 
 M2 Options:
   -t <file>       Specify template file   (default is M2_TEMPLATE env.)
   -o <file>       Specify output makefile (default is Makefile)
+  -b              Build all targets
   -h              Print this help and quit
   <project>       Specify project file    (default is project.b)
   <opt>:<value>   Set project option
@@ -924,12 +988,14 @@ Project Options:}
 ; Read command line arguments and invoke build_makefile.
 
 
+bop: :build_makefile
 if args [
 	forall args [
 		switch first args [
 			"-t" [template_file: second ++ args]
 			"-o" [m2/makefile:   second ++ args]
 			"-h" [show-help quit]
+			"-b" [bop: :build_targets]
 			[
 				either find a1: first args ':' [
 					append append cli_options a1 '^/'
@@ -952,7 +1018,7 @@ ifn exists? template_file [
 ]
 
 either exists? project_file [
-	build_makefile project_file template_file
+	bop project_file template_file
 ][
 	print [project_file "does not exist; Please specify project file."]
 ]
