@@ -18,11 +18,11 @@ ZIP      = gzip -9f
 }
     case [
         not system-qt
-            {MOC      = $(QTDIR)/bin/moc^/QTINC    = $(QTDIR)/include^/^/}
+            {MOC      = $(QTDIR)/bin/moc^/QTINC    = $(QTDIR)/include^/}
         eq? qt-version 5
-            {MOC      = moc-qt5^/QTINC    = /usr/include/qt5^/^/}
+            {MOC      = moc-qt5^/QTINC    = /usr/include/qt5^/}
         true
-            {MOC      = moc-qt4^/QTINC    = /usr/include^/^/}
+            {MOC      = moc-qt4^/QTINC    = /usr/include^/}
     ]
 ]
 

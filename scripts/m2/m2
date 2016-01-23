@@ -899,7 +899,10 @@ M2 Options:
 
 Project Options:}
 
-	if opt: select load project_file 'options [
+	either all [
+		exists? project_file
+		opt: select load project_file 'options
+	][
 		parse opt [some[
 			tok:
 			set-word! (
@@ -910,6 +913,8 @@ Project Options:}
 			)
 			| skip
 		]]
+	][
+		append usage "^/  none"
 	]
 	prin terminate usage '^/'
 ]
