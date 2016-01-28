@@ -201,7 +201,7 @@ load-mtl: func [file | sfs surf cl sl data] [
 ]
 
 
-convert: func [file string!/file! | mtllib main geo cl sl data] [
+convert: func [file string!/file! | mtllib main geo cl data] [
     prin rejoin [
         "; Boron-GL Draw List^/; File: " file
          "^/; Date: " now/date "^/^/"
@@ -209,20 +209,22 @@ convert: func [file string!/file! | mtllib main geo cl sl data] [
 
     main: make wf-geom []
     cl: [data: to eol :data skip]
-    sl: [thru eol]
+    ;sl: [thru eol]
+    make-geo: does [
+        geo: make wf-geom [
+            name:    copy trim data
+            uvs:     main/uvs
+            normals: main/normals
+            verts:   main/verts
+        ]
+    ]
 
     parse read/text file [some[
           '#' thru eol
         | "mtllib" cl (mtllib: load-mtl trim data)
-        | "usemtl" cl (geo/surfs: select mtllib trim data)
-        | "g"  sl
-        | "o"  cl (if geo [write-geo geo]
-                   geo: make wf-geom [
-                     name:    copy trim data
-                     uvs:     main/uvs
-                     normals: main/normals
-                     verts:   main/verts
-                   ])
+        | "usemtl" cl (if mtllib [geo/surfs: select mtllib trim data])
+        | "g"  cl (ifn geo [make-geo])
+        | "o"  cl (if geo [write-geo geo] make-geo)
         | "vt" cl (append main/uvs     to-block data)
         | "vn" cl (append main/normals to-block data)
         | "v"  cl (append main/verts   to-block data)
