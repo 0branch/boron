@@ -394,7 +394,6 @@ static int socket_open( UThread* ut, const UPortDevice* pdev,
     //int port = 0;
     //int hostPort = 0;
     //UCell* initAddr = 0;
-    (void) opt;
 
 
     if( ! ur_is(from, UT_STRING) )
@@ -475,7 +474,7 @@ static int socket_open( UThread* ut, const UPortDevice* pdev,
     }
     else
     {
-        if( ns.node )
+        if( ns.node && ! (opt & UR_PORT_READ) )
         {
             socket = _openTcpClient( ut, &ext->addr, ext->addrlen );
         }
