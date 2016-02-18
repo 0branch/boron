@@ -740,4 +740,10 @@ UPortDevice port_listenSocket =
     socket_waitFD, 0
 };
 
+
+#ifdef CONFIG_SSL
+#include "port_ssl.c"
+#endif
+
+
 /*EOF*/

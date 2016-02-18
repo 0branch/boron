@@ -62,6 +62,9 @@ extern UPortDevice port_file;
 #ifdef CONFIG_SOCKET
 extern UPortDevice port_socket;
 #endif
+#ifdef CONFIG_SSL
+extern UPortDevice port_ssl;
+#endif
 #ifdef CONFIG_THREAD
 extern UPortDevice port_thread;
 #endif
@@ -834,7 +837,7 @@ UThread* boron_makeEnv( const UDatatype** dtTable, unsigned int dtCount )
 */
 UThread* boron_makeEnvP( UEnvParameters* par )
 {
-    UAtom atoms[ 7 ];
+    UAtom atoms[ 9 ];
     UThread* ut;
     unsigned int dtCount;
 
@@ -873,7 +876,11 @@ UThread* boron_makeEnvP( UEnvParameters* par )
     dt_context.make = context_make_override;
 
 
-    ur_internAtoms( ut, "none true false file udp tcp thread", atoms );
+    ur_internAtoms( ut, "none true false file udp tcp thread"
+#ifdef CONFIG_SSL
+        " udps tcps"
+#endif
+        , atoms );
 
 
     // Register ports.
@@ -888,6 +895,10 @@ UThread* boron_makeEnvP( UEnvParameters* par )
 
     // thread_queue() stores buffers in cells.
     assert( sizeof(UBuffer) <= sizeof(UCell) );
+#endif
+#ifdef CONFIG_SSL
+    boron_addPortDevice( ut, &port_ssl,    atoms[7] );
+    boron_addPortDevice( ut, &port_ssl,    atoms[8] );
 #endif
 
 

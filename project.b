@@ -9,6 +9,7 @@ options [
     random:   true          "Include random number generator"
     readline: 'linenoise    "Console editing ('linenoise/'gnu/none)"
     socket:   true          "Enable socket port!"
+    ssl:      false         "Enable SSL/TLS port! (requires mbedtls)"
     static:   false         "Build static library and stand-alone executable"
     thread:   false         "Enable thread functions"
     timecode: false         "Enable timecode! datatype"
@@ -67,6 +68,11 @@ lib-spec: [
             %support/well512.c
             %eval/random.c
         ]
+    ]
+    if ssl [
+        socket: true
+        cflags {-DCONFIG_SSL}
+        libs %mbedtls
     ]
     if socket [
         cflags {-DCONFIG_SOCKET}
