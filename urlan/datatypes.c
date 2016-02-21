@@ -3227,125 +3227,36 @@ void string_reverse( const USeriesIterM* si )
 }
 
 
-/*
-  Returns first occurance of pattern or 0 if it is not found.
-*/
-#define FIND_LC_PATTERN(T) \
-const T* find_lc_pattern_ ## T( const T* it, const T* end, \
-        const T* pit, const T* pend ) { \
-    T pfirst = *pit++; \
-    while( it != end ) { \
-        if( ur_charLowercase(*it) == pfirst ) { \
-            const T* in = it + 1; \
-            const T* p  = pit; \
-            while( p != pend && in != end ) { \
-                if( ur_charLowercase(*in) != *p ) \
-                    break; \
-                ++in; \
-                ++p; \
-            } \
-            if( p == pend ) \
-                return it; \
-        } \
-        ++it; \
-    } \
-    return 0; \
-}
-
-FIND_LC_PATTERN(uint8_t)
-FIND_LC_PATTERN(uint16_t)
-
-
 int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
     const UBuffer* buf = si->buf;
 
-    if( ur_is(val, UT_CHAR) )
+    switch( ur_type(val) )
     {
-        return ur_strFindChar( buf, si->it, si->end, ur_int(val), opt );
-    }
-    else if( ur_isStringType( ur_type(val) ) )
-    {
-        UBuffer pat;
-        USeriesIter siV;
-        int pos = -1;
+        case UT_CHAR:
+            return ur_strFindChar( buf, si->it, si->end, ur_int(val), opt );
 
-        ur_seriesSlice( ut, &siV, val );
-
-        if( (buf->form != siV.buf->form) || ! (opt & UR_FIND_CASE) )
+        case UT_BINARY:
+        case UT_STRING:
+        case UT_FILE:
         {
-            ur_strInit( &pat, buf->form, 0 );
-            ur_strAppend( &pat, siV.buf, siV.it, siV.end );
-            siV.buf = &pat;
+            USeriesIter pi;
+            ur_seriesSlice( ut, &pi, val );
+            if( opt & UR_FIND_LAST )
+                return -1;      // TODO: Implement UR_FIND_LAST.
+            return ur_strFind( si, &pi, opt & UR_FIND_CASE );
         }
-        else
-            pat.ptr.b = 0;
 
-        // TODO: Implement UR_FIND_LAST.
-        if( ur_strIsUcs2(buf) )
+        case UT_BITSET:
         {
-            const uint16_t* it = buf->ptr.u16;
-            const uint16_t* itV = siV.buf->ptr.u16;
-            if( opt & UR_FIND_CASE )
-            {
-                it = find_pattern_16( it + si->it, it + si->end,
-                                      itV + siV.it, itV + siV.end );
-            }
+            const UBuffer* bbuf = ur_bufferSer(val);
+            if( opt & UR_FIND_LAST )
+                return ur_strFindCharsRev( buf, si->it, si->end,
+                                           bbuf->ptr.b, bbuf->used );
             else
-            {
-                ur_strLowercase( &pat, 0, pat.used );
-                it = find_lc_pattern_uint16_t( it + si->it, it + si->end,
-                                               itV, itV + pat.used );
-            }
-            if( it )
-                pos = it - buf->ptr.u16;
+                return ur_strFindChars( buf, si->it, si->end,
+                                        bbuf->ptr.b, bbuf->used );
         }
-        else
-        {
-            const uint8_t* it = buf->ptr.b;
-            const uint8_t* itV = siV.buf->ptr.b;
-            if( opt & UR_FIND_CASE )
-            {
-                it = find_pattern_8( it + si->it, it + si->end,
-                                     itV + siV.it, itV + siV.end );
-            }
-            else
-            {
-                ur_strLowercase( &pat, 0, pat.used );
-                it = find_lc_pattern_uint8_t( it + si->it, it + si->end,
-                                              itV, itV + pat.used );
-            }
-            if( it )
-                pos = it - buf->ptr.b;
-        }
-
-        if( pat.ptr.b )
-            ur_strFree( &pat );
-        return pos;
-    }
-    else if( ur_is(val, UT_BINARY) )
-    {
-        UBinaryIter bi;
-        ur_binSlice( ut, &bi, val );
-        // TODO: Implement UR_FIND_LAST.
-        if( ! ur_strIsUcs2(buf) )
-        {
-            const uint8_t* it = buf->ptr.b;
-            it = find_pattern_8( it + si->it, it + si->end,
-                                 bi.it, bi.end );
-            if( it )
-                return it - buf->ptr.b;
-        }
-    }
-    else if( ur_is(val, UT_BITSET) )
-    {
-        const UBuffer* bbuf = ur_bufferSer(val);
-        if( opt & UR_FIND_LAST )
-            return ur_strFindCharsRev( buf, si->it, si->end,
-                                       bbuf->ptr.b, bbuf->used );
-        else
-            return ur_strFindChars( buf, si->it, si->end,
-                                    bbuf->ptr.b, bbuf->used );
     }
     return -1;
 }
