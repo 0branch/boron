@@ -510,8 +510,8 @@ void datatype_toString(UThread* ut, const UCell* cell, UBuffer* str, int depth)
     }
     else
     {
-        int mask;
-        int dtBits;
+        uint32_t mask;
+        uint32_t dtBits;
 
         dt = 0;
         dtBits = cell->datatype.mask0;
@@ -830,11 +830,12 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
         case UT_BIGNUM:
             ur_int(res) = (int32_t) bignum_l(from);
             break;
+        case UT_BINARY:
         case UT_STRING:
         {
             USeriesIter si;
             ur_seriesSlice( ut, &si, from );
-            if( ur_strIsUcs2(si.buf) )
+            if( ur_strIsUcs2(si.buf) && ur_is(from, UT_STRING) )
             {
                 return MAKE_NO_UCS2( "int!" );
             }

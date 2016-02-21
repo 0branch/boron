@@ -3616,6 +3616,21 @@ CFUNC(cfunc_to_text)
 }
 
 
+void ur_setCellI64( UCell* cell, int64_t n )
+{
+    if( n > INT32_MAX || n < INT32_MIN )
+    {
+        ur_setId(cell, UT_BIGNUM);
+        bignum_setl( cell, n );
+    }
+    else
+    {
+        ur_setId(cell, UT_INT);
+        ur_int(cell) = (int32_t) n;
+    }
+}
+
+
 /*-cf-
     exists?
         path    file!/string!
@@ -3701,16 +3716,7 @@ set_logic:
                                    ur_internAtom( ut, tn, tn + strLen(tn) ) );
                 ++cell;
 
-                if( info.size > INT32_MAX )
-                {
-                    ur_setId(cell, UT_BIGNUM);
-                    bignum_setl( cell, info.size );
-                }
-                else
-                {
-                    ur_setId(cell, UT_INT);
-                    ur_int(cell) = (int) info.size;
-                }
+                ur_setCellI64( cell, info.size );
                 ++cell;
 
                 ur_setId(cell, UT_DATE);
@@ -4939,28 +4945,49 @@ done:
 }
 
 
+extern int64_t str_hexToInt64( const char*, const char*, const char** pos );
+
 /*-cf-
     to-hex
-        number  char!/int!/bignum!
+        number  char!/int!/bignum!/binary!/string!
     return: Number shown as hexidecimal.
     group: data
 */
 CFUNC(cfunc_to_hex)
 {
-    if( ur_is(a1, UT_INT) || ur_is(a1, UT_BIGNUM) )
+    switch( ur_type(a1) )
     {
-        ur_setFlags(a1, UR_FLAG_INT_HEX);
-        *res = *a1;
-        return UR_OK;
+        case UT_CHAR:
+            *res = *a1;
+            ur_type(res) = UT_INT;
+            break;
+
+        case UT_INT:
+        case UT_BIGNUM:
+            *res = *a1;
+            break;
+
+        case UT_BINARY:
+        case UT_STRING:
+        {
+            int64_t n;
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, a1 );
+            if( ur_strIsUcs2( si.buf ) && ur_is(a1, UT_STRING) )
+                n = 0;  // TODO: Implement for UCS2.
+            else
+                n = str_hexToInt64( si.buf->ptr.c + si.it,
+                                    si.buf->ptr.c + si.end, 0 );
+            ur_setCellI64( res, n );
+        }
+            break;
+
+        default:
+            return ur_error( ut, UR_ERR_TYPE,
+                    "to-hex expected char!/int!/bignum!/binary!/string!" );
     }
-    else if( ur_is(a1, UT_CHAR) )
-    {
-        *res = *a1;
-        ur_type(res) = UT_INT;
-        ur_setFlags(res, UR_FLAG_INT_HEX);
-        return UR_OK;
-    }
-    return ur_error( ut, UR_ERR_TYPE, "to-hex expected char!/int!/bignum!" );
+    ur_setFlags(res, UR_FLAG_INT_HEX);
+    return UR_OK;
 }
 
 
