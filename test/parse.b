@@ -52,8 +52,9 @@ count: 0  parse/case in rules  print count
 
 
 print "---- string UCS2"
-a: none
-parse {Рабочий стол Plasma, Чувар екрана} [
-    thru "стол" some white a: to ',' :a
-]
+str: {Рабочий стол Plasma, Чувар екрана}
+a: b: none
+parse str [thru "стол" some white a: to ',' :a]
 probe a
+parse str [to "Plasma" b: to #{2C20} :b]
+probe b

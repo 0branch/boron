@@ -359,7 +359,7 @@ match_string:
                 size = bi.end - bi.it;
                 if( size > (inEnd - in) )
                     goto failed;
-                if( match_pattern_uint8_t(in, inEnd, bi.it, bi.end) == bi.end )
+                if( match_pattern_8(in, inEnd, bi.it, bi.end) == bi.end )
                 {
                     in += size;
                     ++rit;

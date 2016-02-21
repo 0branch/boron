@@ -109,14 +109,14 @@ FIND_LAST_CHARSET(uint16_t)
   TODO: Look at using a faster search algorithm such as Boyer-Moore or grep
         source.
 */
-#define FIND_PATTERN(T) \
-const T* find_pattern_ ## T( const T* it, const T* end, \
-        const T* pit, const T* pend ) { \
-    T pfirst = *pit++; \
+#define FIND_PATTERN(N,T,P) \
+const T* find_pattern_ ## N( const T* it, const T* end, \
+        const P* pit, const P* pend ) { \
+    int pfirst = *pit++; \
     while( it != end ) { \
         if( *it == pfirst ) { \
             const T* in = it + 1; \
-            const T* p  = pit; \
+            const P* p  = pit; \
             while( p != pend && in != end ) { \
                 if( *in != *p ) \
                     break; \
@@ -131,16 +131,18 @@ const T* find_pattern_ ## T( const T* it, const T* end, \
     return 0; \
 }
 
-FIND_PATTERN(uint8_t)
-FIND_PATTERN(uint16_t)
+FIND_PATTERN(8,uint8_t,uint8_t)
+FIND_PATTERN(16,uint16_t,uint16_t)
+FIND_PATTERN(8_16,uint8_t,uint16_t)
+FIND_PATTERN(16_8,uint16_t,uint8_t)
 
 
 /*
   Returns pointer in pattern at the end of the matching elements.
 */
-#define MATCH_PATTERN(T) \
-const T* match_pattern_ ## T( const T* it, const T* end, \
-        const T* pit, const T* pend ) { \
+#define MATCH_PATTERN(N,T,P) \
+const P* match_pattern_ ## N( const T* it, const T* end, \
+        const P* pit, const P* pend ) { \
     while( pit != pend ) { \
         if( it == end ) \
             return pit; \
@@ -152,8 +154,10 @@ const T* match_pattern_ ## T( const T* it, const T* end, \
     return pit; \
 }
 
-MATCH_PATTERN(uint8_t)
-MATCH_PATTERN(uint16_t)
+MATCH_PATTERN(8,uint8_t,uint8_t)
+MATCH_PATTERN(16,uint16_t,uint16_t)
+MATCH_PATTERN(8_16,uint8_t,uint16_t)
+MATCH_PATTERN(16_8,uint16_t,uint8_t)
 
 
 #define REVERSE(T) \

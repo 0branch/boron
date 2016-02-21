@@ -159,10 +159,10 @@ EXPORTS
     find_uint8_t            @157
     find_uint16_t           @158
     find_uint32_t           @159
-    find_pattern_uint8_t    @160
-    find_pattern_ic_uint8_t @161
-    find_pattern_uint16_t   @162
-    find_pattern_ic_uint16_t    @163
+    find_pattern_8          @160
+    find_pattern_ic_8       @161
+    find_pattern_16         @162
+    find_pattern_ic_16      @163
     boron_overrideCFunc     @164
     boron_eval1             @165
     boron_doBlock           @166

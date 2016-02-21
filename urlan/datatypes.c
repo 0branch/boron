@@ -2169,7 +2169,7 @@ int binary_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             {
                 const uint8_t* pos;
                 const uint8_t* end = bi.buf->ptr.b + bi.end;
-                pos = match_pattern_uint8_t( ai.buf->ptr.b + ai.it,
+                pos = match_pattern_8( ai.buf->ptr.b + ai.it,
                             ai.buf->ptr.b + ai.end,
                             bi.buf->ptr.b + bi.it, end );
                 return pos == end;
@@ -2440,7 +2440,7 @@ check_find:
 
         // TODO: Implement UR_FIND_LAST.
         itV = siV.buf->ptr.b;
-        it = find_pattern_uint8_t( ba, bb, itV + siV.it, itV + siV.end );
+        it = find_pattern_8( ba, bb, itV + siV.it, itV + siV.end );
         goto check_find;
     }
     else if( vt == UT_BITSET )
@@ -2645,8 +2645,8 @@ int bitset_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             {
                 const uint8_t* pos;
                 const uint8_t* end = bb->ptr.b + ord.small;
-                pos = match_pattern_uint8_t( ba->ptr.b, ba->ptr.b + ord.small,
-                                             bb->ptr.b, end );
+                pos = match_pattern_8( ba->ptr.b, ba->ptr.b + ord.small,
+                                       bb->ptr.b, end );
                 if( pos != end )
                     return 0;
 
@@ -3363,8 +3363,8 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
             const uint16_t* itV = siV.buf->ptr.u16;
             if( opt & UR_FIND_CASE )
             {
-                it = find_pattern_uint16_t( it + si->it, it + si->end,
-                                            itV + siV.it, itV + siV.end );
+                it = find_pattern_16( it + si->it, it + si->end,
+                                      itV + siV.it, itV + siV.end );
             }
             else
             {
@@ -3381,8 +3381,8 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
             const uint8_t* itV = siV.buf->ptr.b;
             if( opt & UR_FIND_CASE )
             {
-                it = find_pattern_uint8_t( it + si->it, it + si->end,
-                                           itV + siV.it, itV + siV.end );
+                it = find_pattern_8( it + si->it, it + si->end,
+                                     itV + siV.it, itV + siV.end );
             }
             else
             {
@@ -3406,8 +3406,8 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
         if( ! ur_strIsUcs2(buf) )
         {
             const uint8_t* it = buf->ptr.b;
-            it = find_pattern_uint8_t( it + si->it, it + si->end,
-                                       bi.it, bi.end );
+            it = find_pattern_8( it + si->it, it + si->end,
+                                 bi.it, bi.end );
             if( it )
                 return it - buf->ptr.b;
         }

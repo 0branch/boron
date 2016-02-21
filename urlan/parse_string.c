@@ -215,6 +215,7 @@ match:
                                 ++pos;
                             break;
 
+                        case UT_BINARY:
                         case UT_STRING:
                         {
                             USeriesIter si;
@@ -225,16 +226,6 @@ match:
                             si.end = pe->inputEnd;
 
                             ur_seriesSlice( ut, &sp, tval );
-#if 1
-                            // Required until ur_strFind is fully implemented.
-                            if( sp.buf->elemSize != istr->elemSize )
-                            {
-                                ur_error( ut, UR_ERR_INTERNAL,
-                                          "string parse requires string "
-                                          "pattern to match input encoding" );
-                                goto parse_err;
-                            }
-#endif
                             pos = ur_strFind( &si, &sp, pe->matchCase );
                             if( pos < 0 )
                                 goto failed;
@@ -415,6 +406,7 @@ match_block:
                 ++rit;
                 break;
 
+            case UT_BINARY:
             case UT_STRING:
                 tval = rit;
 match_string:
@@ -504,6 +496,7 @@ repeat:
                 pos += count;
                 break;
 
+            case UT_BINARY:
             case UT_STRING:
             {
                 USeriesIter si;
@@ -617,9 +610,6 @@ parse_err:
   \ingroup urlan_dsl
 
   Parse a string using the parse language.
-
-  \note Currently, the encoding of any pattern strings must be the same as
-        the input encoding.
 
   \note UR_ENC_UTF8 strings are accepted but multi-byte characters are not
         handled.
