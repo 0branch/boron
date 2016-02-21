@@ -1,5 +1,5 @@
 /*
-  Copyright 2005-2011 Karl Robillard
+  Copyright 2005-2016 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -46,6 +46,7 @@ typedef struct
     int      sliced;
     int      exception;
     int      matchCase;
+    int      ucs2;
 }
 StringParser;
 
@@ -235,7 +236,7 @@ match:
                             break;
 
                         case UT_BITSET:
-                            pos = ur_strIsUcs2(istr) ?
+                            pos = pe->ucs2 ?
                                 _scanToBitset_uint16_t( ut, istr->ptr.u16,
                                             pos, pe->inputEnd, tval ) :
                                 _scanToBitset_uint8_t( ut, istr->ptr.b,
@@ -308,7 +309,7 @@ skip:
                 UCell* cell = ur_wordCellM( ut, rit++ );
                 if( ! cell )
                     goto parse_err;
-                ur_setId( cell, UT_STRING );
+                ur_setId( cell, istr->type );
                 ur_setSlice( cell, pe->inputBuf, pos, pe->inputEnd );
             }
                 break;
@@ -318,8 +319,7 @@ skip:
                 UCell* cell = ur_wordCellM( ut, rit++ );
                 if( ! cell )
                     goto parse_err;
-                if( ur_is(cell, UT_STRING) &&
-                    (cell->series.buf == pe->inputBuf) )
+                if( cell->series.buf == pe->inputBuf )
                     cell->series.end = pos;
             }
                 break;
@@ -351,8 +351,8 @@ skip:
 match_char:
                 if( pos >= pe->inputEnd )
                     goto failed;
-                if( (ur_strIsUcs2(istr) ? istr->ptr.u16[ pos ] :
-                                          istr->ptr.b[ pos ]) != ur_int(tval) )
+                if( (pe->ucs2 ? istr->ptr.u16[ pos ] :
+                                istr->ptr.b[ pos ]) != ur_int(tval) )
                     goto failed;
                 ++rit;
                 ++pos;
@@ -488,7 +488,7 @@ repeat:
         switch( ur_type(tval) )
         {
             case UT_CHAR:
-                count = ur_strIsUcs2(istr) ?
+                count = pe->ucs2 ?
                     _repeatChar_uint16_t( istr->ptr.u16, pos, pe->inputEnd,
                                           repMax, ur_int(tval) ) :
                     _repeatChar_uint8_t( istr->ptr.b, pos, pe->inputEnd,
@@ -526,7 +526,7 @@ repeat:
                 break;
 
             case UT_BITSET:
-                count = ur_strIsUcs2(istr) ?
+                count = pe->ucs2 ?
                     _repeatBitset_uint16_t( ut, istr->ptr.u16,
                                             pos, pe->inputEnd, repMax, tval ) :
                     _repeatBitset_uint8_t( ut, istr->ptr.b,
@@ -609,7 +609,7 @@ parse_err:
 /**
   \ingroup urlan_dsl
 
-  Parse a string using the parse language.
+  Parse a string or binary using the parse language.
 
   \note UR_ENC_UTF8 strings are accepted but multi-byte characters are not
         handled.
@@ -639,6 +639,7 @@ int ur_parseString( UThread* ut, UBuffer* str, UIndex start, UIndex end,
     p.sliced    = (end != str->used);
     p.exception = PARSE_EX_NONE;
     p.matchCase = matchCase;
+    p.ucs2      = (str->type == UT_STRING) && ur_strIsUcs2(str);
 
     *parsePos = start;
     _parseStr( ut, &p, ruleBlk->ptr.cell,

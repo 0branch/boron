@@ -39,6 +39,9 @@
 // Emit inverted question mark for invalid Latin1 characters.
 #define NOT_LATIN1_CHAR     0xBF
 
+// Check encoding first since type will most commonly be UT_STRING.
+#define IS_UCS2_STRING(buf) (ur_strIsUcs2(buf) && buf->type == UT_STRING)
+
 
 /** \defgroup dt_string Datatype String
   \ingroup urlan
@@ -1126,16 +1129,16 @@ void ur_strUppercase( UBuffer* buf, UIndex start, UIndex send )
 /**
   Find the first instance of a character in a string.
 
-  \param str    Valid string buffer.
+  \param str    Valid string/binary buffer.
   \param start  Start index in str.
   \param end    Ending index in str.
-  \param ch     Bitset of characters to look for.
+  \param ch     Character to look for.
 
   \return First index where character is found or -1 if not found.
 */
 UIndex ur_strFindChar( const UBuffer* str, UIndex start, UIndex end, int ch )
 {
-    if( ur_strIsUcs2(str) )
+    if( IS_UCS2_STRING(str) )
     {
         const uint16_t* it;
         it = find_uint16_t( str->ptr.u16 + start, str->ptr.u16 + end, ch );
@@ -1270,10 +1273,9 @@ UIndex ur_strFind( const USeriesIter* ai, const USeriesIter* bi,
     const UBuffer* bufB = bi->buf;
     int ci = 0;
 
-    // Check Ucs2 first since type will most commonly be UT_STRING.
-    if( ur_strIsUcs2(bufA) && bufA->type == UT_STRING )
+    if( IS_UCS2_STRING(bufA) )
         ci += 1;
-    if( ur_strIsUcs2(bufB) && bufB->type == UT_STRING )
+    if( IS_UCS2_STRING(bufB) )
         ci += 2;
 
     switch( ci )
@@ -1374,10 +1376,9 @@ UIndex ur_strMatch( const USeriesIter* ai, const USeriesIter* bi,
     const UBuffer* bufB = bi->buf;
     int ci = 0;
 
-    // Check Ucs2 first since type will most commonly be UT_STRING.
-    if( ur_strIsUcs2(bufA) && bufA->type == UT_STRING )
+    if( IS_UCS2_STRING(bufA) )
         ci += 1;
-    if( ur_strIsUcs2(bufB) && bufB->type == UT_STRING )
+    if( IS_UCS2_STRING(bufB) )
         ci += 2;
 
     switch( ci )

@@ -196,7 +196,7 @@ audio-sample: context [
     group: audio, io
 */
 load-wav: func [file | csize format channels srate bps sdata] [
-    parse read file [
+    parse/binary read file [
         little-endian
         "RIFF" u32 "WAVEfmt "
         csize:    u32
