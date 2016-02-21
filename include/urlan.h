@@ -569,7 +569,7 @@ int      ur_strIsAscii( const UBuffer* );
 void     ur_strFlatten( UBuffer* );
 void     ur_strLowercase( UBuffer* str, UIndex start, UIndex send );
 void     ur_strUppercase( UBuffer* str, UIndex start, UIndex send );
-UIndex   ur_strFindChar( const UBuffer*, UIndex start, UIndex end, int ch );
+UIndex   ur_strFindChar( const UBuffer*, UIndex, UIndex, int ch, int opt );
 UIndex   ur_strFindChars( const UBuffer*, UIndex start, UIndex end,
                           uint8_t* charSet, int len );
 UIndex   ur_strFindCharsRev( const UBuffer*, UIndex start, UIndex end,

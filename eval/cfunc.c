@@ -2506,6 +2506,9 @@ CFUNC(cfunc_find)
     uint32_t opt = CFUNC_OPTIONS;
     int type = ur_type(a1);
 
+    assert( UR_FIND_LAST == 1 );
+    assert( UR_FIND_CASE == 2 );
+
     if( ! ur_isSeriesType( type ) )
         return errorType( "find expected series" );
     ur_seriesSlice( ut, &si, a1 );

@@ -1126,6 +1126,40 @@ void ur_strUppercase( UBuffer* buf, UIndex start, UIndex send )
 }
 
 
+/*
+  Returns pointer to val or zero if val not found.
+*/
+#define FIND_LC(T) \
+const T* find_lc_ ## T( const T* it, const T* end, T val ) { \
+    while( it != end ) { \
+        if( ur_charLowercase(*it) == val ) \
+            return it; \
+        ++it; \
+    } \
+    return 0; \
+}
+
+FIND_LC(uint8_t)
+FIND_LC(uint16_t)
+
+
+/*
+  Returns pointer to val or zero if val not found.
+*/
+#define FIND_LC_LAST(T) \
+const T* find_lc_last_ ## T( const T* it, const T* end, T val ) { \
+    while( it != end ) { \
+        --end; \
+        if( ur_charLowercase(*end) == val ) \
+            return end; \
+    } \
+    return 0; \
+}
+
+FIND_LC_LAST(uint8_t)
+FIND_LC_LAST(uint16_t)
+
+
 /**
   Find the first instance of a character in a string.
 
@@ -1133,22 +1167,52 @@ void ur_strUppercase( UBuffer* buf, UIndex start, UIndex send )
   \param start  Start index in str.
   \param end    Ending index in str.
   \param ch     Character to look for.
+  \param opt    Mask of UrlanFindOption (UR_FIND_CASE, UR_FIND_LAST).
 
   \return First index where character is found or -1 if not found.
 */
-UIndex ur_strFindChar( const UBuffer* str, UIndex start, UIndex end, int ch )
+UIndex ur_strFindChar( const UBuffer* str, UIndex start, UIndex end, int ch,
+                       int opt )
 {
+    int matchCase = (opt & UR_FIND_CASE) || (ch < 'A');
+
     if( IS_UCS2_STRING(str) )
     {
+        const uint16_t* (*func)( const uint16_t*, const uint16_t*, uint16_t );
         const uint16_t* it;
-        it = find_uint16_t( str->ptr.u16 + start, str->ptr.u16 + end, ch );
+
+        if( matchCase )
+        {
+            func = (opt & UR_FIND_LAST) ? find_last_uint16_t
+                                        : find_uint16_t;
+        }
+        else
+        {
+            ch = ur_charLowercase( ch );
+            func = (opt & UR_FIND_LAST) ? find_lc_last_uint16_t
+                                        : find_lc_uint16_t;
+        }
+        it = func( str->ptr.u16 + start, str->ptr.u16 + end, ch );
         if( it )
             return it - str->ptr.u16;
     }
     else
     {
+        const uint8_t* (*func)( const uint8_t*, const uint8_t*, uint8_t );
         const uint8_t* it;
-        it = find_uint8_t( str->ptr.b + start, str->ptr.b + end, ch );
+
+        if( matchCase )
+        {
+            func = (opt & UR_FIND_LAST) ? find_last_uint8_t
+                                        : find_uint8_t;
+        }
+        else
+        {
+            ch = ur_charLowercase( ch );
+            func = (opt & UR_FIND_LAST) ? find_lc_last_uint8_t
+                                        : find_lc_uint8_t;
+        }
+        it = func( str->ptr.b + start, str->ptr.b + end, ch );
         if( it )
             return it - str->ptr.b;
     }

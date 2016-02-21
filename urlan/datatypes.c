@@ -3228,40 +3228,6 @@ void string_reverse( const USeriesIterM* si )
 
 
 /*
-  Returns pointer to val or zero if val not found.
-*/
-#define FIND_LC(T) \
-const T* find_lc_ ## T( const T* it, const T* end, T val ) { \
-    while( it != end ) { \
-        if( ur_charLowercase(*it) == val ) \
-            return it; \
-        ++it; \
-    } \
-    return 0; \
-}
-
-FIND_LC(uint8_t)
-FIND_LC(uint16_t)
-
-
-/*
-  Returns pointer to val or zero if val not found.
-*/
-#define FIND_LC_LAST(T) \
-const T* find_lc_last_ ## T( const T* it, const T* end, T val ) { \
-    while( it != end ) { \
-        --end; \
-        if( ur_charLowercase(*end) == val ) \
-            return end; \
-    } \
-    return 0; \
-}
-
-FIND_LC_LAST(uint8_t)
-FIND_LC_LAST(uint16_t)
-
-
-/*
   Returns first occurance of pattern or 0 if it is not found.
 */
 #define FIND_LC_PATTERN(T) \
@@ -3296,49 +3262,7 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 
     if( ur_is(val, UT_CHAR) )
     {
-        int ch = ur_int(val);
-        if( ur_strIsUcs2(buf) )
-        {
-            const uint16_t* it = buf->ptr.u16;
-            if( opt & UR_FIND_CASE )
-            {
-                if( opt & UR_FIND_LAST )
-                    it = find_last_uint16_t( it + si->it, it + si->end, ch );
-                else
-                    it = find_uint16_t( it + si->it, it + si->end, ch );
-            }
-            else
-            {
-                ch = ur_charLowercase( ch );
-                if( opt & UR_FIND_LAST )
-                    it = find_lc_last_uint16_t( it + si->it, it + si->end, ch );
-                else
-                    it = find_lc_uint16_t( it + si->it, it + si->end, ch );
-            }
-            if( it )
-                return it - buf->ptr.u16;
-        }
-        else
-        {
-            const uint8_t* it = buf->ptr.b;
-            if( opt & UR_FIND_CASE )
-            {
-                if( opt & UR_FIND_LAST )
-                    it = find_last_uint8_t( it + si->it, it + si->end, ch );
-                else
-                    it = find_uint8_t( it + si->it, it + si->end, ch );
-            }
-            else
-            {
-                ch = ur_charLowercase( ch );
-                if( opt & UR_FIND_LAST )
-                    it = find_lc_last_uint8_t( it + si->it, it + si->end, ch );
-                else
-                    it = find_lc_uint8_t( it + si->it, it + si->end, ch );
-            }
-            if( it )
-                return it - buf->ptr.b;
-        }
+        return ur_strFindChar( buf, si->it, si->end, ur_int(val), opt );
     }
     else if( ur_isStringType( ur_type(val) ) )
     {
@@ -4660,7 +4584,7 @@ static void _lineToString( UThread* ut, const UCell* bc, UBuffer* str )
         ur_toStr( ut, bi.it, str, 0 );
         if( ur_is(bi.it, UT_BLOCK) || ur_is(bi.it, UT_PAREN) )
         {
-            fstart = ur_strFindChar( str, fstart, str->used, '\n' );
+            fstart = ur_strFindChar( str, fstart, str->used, '\n', 0 );
             if( fstart > -1 )
                 str->used = fstart;
         }

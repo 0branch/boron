@@ -209,7 +209,7 @@ match:
                     {
                         case UT_CHAR:
                             pos = ur_strFindChar( istr, pos, pe->inputEnd,
-                                                  ur_int(tval) );
+                                                  ur_int(tval), pe->matchCase );
                             if( pos < 0 )
                                 goto failed;
                             if( ratom == UR_ATOM_THRU )
@@ -638,7 +638,7 @@ int ur_parseString( UThread* ut, UBuffer* str, UIndex start, UIndex end,
     p.inputEnd  = end;
     p.sliced    = (end != str->used);
     p.exception = PARSE_EX_NONE;
-    p.matchCase = matchCase;
+    p.matchCase = matchCase ? UR_FIND_CASE : 0;
     p.ucs2      = (str->type == UT_STRING) && ur_strIsUcs2(str);
 
     *parsePos = start;
