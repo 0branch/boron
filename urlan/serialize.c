@@ -22,6 +22,29 @@
 #include "os.h"
 
 
+/*
+    Example serialized data for [1 "hello" [a plan]]
+
+    424F5231        ; "BOR1"
+    00000026        ; Atoms string offset
+    00000003        ; Buffer count
+
+    17 03           ; Buffer #1 block!
+        05 02       ;   int!
+        14 0100     ;   string!
+        17 0200     ;   block!
+
+    14 0005         ; Buffer #2 string!
+        68656C6C6F  ;   "hello"
+
+    17 02           ; Buffer #3 block!
+        0D 0000     ;   word!
+        0D 0001     ;   word!
+
+    6120706C616E00  ; Atoms string "a plan^0"
+*/
+
+
 typedef struct
 {
     UBuffer atomMap;
@@ -440,6 +463,8 @@ int ur_serialize( UThread* ut, UIndex blkN, UCell* res )
         const BufferIndex* it;
         const UBuffer* buf;
         int i;
+
+        // NOTE: ser.bufMap changes inside the loop as new buffers are seen.
 
         for( i = 0; i < ser.bufMap.used; ++i )
         {
