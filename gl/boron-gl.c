@@ -2545,6 +2545,10 @@ extern CFUNC_PUB( cfunc_save_png );
 //extern CFUNC_PUB( cfunc_particle_sim );
 
 
+#ifdef DEBUG
+#include <ctype.h>
+#endif
+
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
@@ -2552,7 +2556,7 @@ static void _createFixedAtoms( UThread* ut )
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
-        "add size loop repeat text wait close\n"
+        "add size loop repeat text binary wait close\n"
         "width height area rect raster texture\n"
         "gui-style value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
@@ -2563,18 +2567,37 @@ static void _createFixedAtoms( UThread* ut )
         "min mag mipmap gray\n"
         "burn color trans sprite\n"
         "once ping-pong pong\n"
-        "collide fall integrate attach anchor binary action face",
+        "collide fall integrate attach anchor action face",
         atoms );
 
 #ifdef DEBUG
     if( atoms[0] != UR_ATOM_ADD ||
         atoms[4] != UR_ATOM_TEXT ||
-        atoms[7] != UR_ATOM_WIDTH ||
+        atoms[8] != UR_ATOM_WIDTH ||
         atoms[FA_COUNT - 1] != UR_ATOM_FACE )
     {
-        int i;
+        char str[ 64 ]; // MAX_WORD_LEN
+        char* sp;
+        const char* cp;
+        int i, c;
+        UAtom ca, prev = 0xffff;
+
+        fprintf( stderr, "#ifndef GL_ATOMS_H\n#define GL_ATOMS_H\n\n"
+                 "enum GLFixedAtoms\n{\n" );
         for( i = 0; i < FA_COUNT; ++i )
-            fprintf( stderr, "KR %d %s\n", atoms[i], ur_atomCStr(ut, atoms[i]) );
+        {
+            ca = atoms[i];
+            cp = ur_atomCStr(ut, ca);
+            sp = str;
+            while( (c = *cp++) )
+                *sp++ = (c == '-') ? '_' : toupper( c );
+            *sp = '\0';
+            fprintf( stderr, "%s\tUR_ATOM_%s", i ? ",\n" : "", str );
+            if( ca != prev + 1 )
+                fprintf( stderr, "\t= %d", ca );
+            prev = ca;
+        }
+        fprintf( stderr, "\n};\n\n#endif\n" );
     }
 #endif
 
@@ -2583,9 +2606,10 @@ static void _createFixedAtoms( UThread* ut )
     assert( atoms[2] == UR_ATOM_LOOP );
     assert( atoms[3] == UR_ATOM_REPEAT );
     assert( atoms[4] == UR_ATOM_TEXT );
-    assert( atoms[5] == UR_ATOM_WAIT );
-    assert( atoms[6] == UR_ATOM_CLOSE );
-    assert( atoms[7] == UR_ATOM_WIDTH );
+    assert( atoms[5] == UR_ATOM_BINARY );
+    assert( atoms[6] == UR_ATOM_WAIT );
+    assert( atoms[7] == UR_ATOM_CLOSE );
+    assert( atoms[8] == UR_ATOM_WIDTH );
     assert( atoms[FA_COUNT - 1] == UR_ATOM_FACE );
 }
 
