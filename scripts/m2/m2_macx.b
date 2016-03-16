@@ -225,6 +225,7 @@ shlib_target: make exe_target [
         output_file: rejoin [output_dir "lib" name ".dylib"]
         do config
         ;cflags {-fPIC}     ; Default on Mac.
+        lflags join "-install_name @rpath/" output_file
     ]
 
     rule_text: does [
