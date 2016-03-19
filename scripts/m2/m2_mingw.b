@@ -100,7 +100,10 @@ exe_target: make target_env
 
         cflags {-pipe}
 
-        ifn cfg_console [
+        if all [
+            not cfg_console
+            eq? ".exe" skip tail output_file -4
+        ][
             lflags {-mwindows}
         ]
 
@@ -195,23 +198,23 @@ exe_target: make target_env
 
 lib_target: make exe_target [
     configure: does [
-        output_file: rejoin [output_dir name ".a"]
+        output_file: rejoin [output_dir name ".lib"]
         do config
     ]
 
     rule_text: does [
         emit [eol output_file ": " obj_macro sub-project-libs link_libs]
         emit either empty? link_libs [[
-            "^/^-ar rc $@ " obj_macro " $(" uc_name "_LFLAGS)"
+            "^/^-x86_64-w64-mingw32-ar rc $@ " obj_macro " $(" uc_name "_LFLAGS)"
         ]] [[
             ; Concatenate other libraries.
-            "^/^-ld -Ur -o " objdir name "lib.o $^^ $(" uc_name
-                "_LIBS) $(" uc_name "_LFLAGS)"
-            "^/^-ar rc $@ " objdir name "lib.o"
+            "^/^-x86_64-w64-mingw32-ld -Ur -o " objdir name
+                "lib.o $^^ $(" uc_name "_LIBS) $(" uc_name "_LFLAGS)"
+            "^/^-x86_64-w64-mingw32-ar rc $@ " objdir name "lib.o"
         ]]
-        emit "^/^-ranlib $@^/"
+        emit "^/^-x86_64-w64-mingw32-ranlib $@^/"
         if cfg/release [
-            emit "^-strip -d $@^/"
+            emit "^-x86_64-w64-mingw32-strip -d $@^/"
         ]
     ]
 ]
@@ -222,7 +225,7 @@ shlib_target: make exe_target [
         lib_full: rejoin [name ".dll"]
         output_file: join output_dir lib_full
         do config
-        lflags rejoin ["-shared -Wl,--out-implib," name ".a"]
+        lflags rejoin ["-shared -Wl,--out-implib," name ".lib"]
     ]
 ]
 
