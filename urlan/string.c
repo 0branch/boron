@@ -1233,7 +1233,7 @@ UIndex ur_strFindChar( const UBuffer* str, UIndex start, UIndex end, int ch,
           none are found.
 */
 UIndex ur_strFindChars( const UBuffer* str, UIndex start, UIndex end,
-                        uint8_t* charSet, int len )
+                        const uint8_t* charSet, int len )
 {
     if( ur_strIsUcs2(str) )
     {
@@ -1268,7 +1268,7 @@ UIndex ur_strFindChars( const UBuffer* str, UIndex start, UIndex end,
           none are found.
 */
 UIndex ur_strFindCharsRev( const UBuffer* str, UIndex start, UIndex end,
-                           uint8_t* charSet, int len )
+                           const uint8_t* charSet, int len )
 {
     if( ur_strIsUcs2(str) )
     {
