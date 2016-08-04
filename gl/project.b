@@ -107,6 +107,7 @@ exe %boron-gl [
         ;libs_from %/usr/X11R6/lib [%X11 %Xxf86vm]
         libs [%X11 %Xxf86vm]
         libs [%freetype %png %glv %GL %m]
+        libs [%z]
         if audio [
             libs [%openal %vorbis %vorbisfile %pthread]
         ]
