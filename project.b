@@ -84,6 +84,7 @@ lib-spec: [
     if thread [
         cflags {-DCONFIG_THREAD}
         linux [libs %pthread]
+        linux [libs %termcap]
         sources [%eval/port_thread.c]
     ]
     if assemble [
