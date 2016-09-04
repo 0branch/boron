@@ -143,7 +143,7 @@ void ur_rasterBlit( const RasterHead* src, uint16_t* srcRect,
     }
     else if( src->format == UR_RAST_RGB && dest->format == UR_RAST_RGBA )
     {
-        const char* end;
+        const uint8_t* end;
 
         ses *= sr.w;        // Source byte copy length.
         sskip -= ses;

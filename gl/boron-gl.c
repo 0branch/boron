@@ -2688,7 +2688,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     glEnv.guiThrow = 0;
 
     {
-    UDatatype* table[ UT_MAX - UT_GL_COUNT ];
+    const UDatatype* table[ UT_MAX - UT_GL_COUNT ];
     unsigned int i;
 
     for( i = 0; i < (sizeof(gl_types) / sizeof(UDatatype)); ++i )

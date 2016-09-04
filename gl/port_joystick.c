@@ -1,5 +1,5 @@
 /*
-  Copyright 2010 Karl Robillard
+  Copyright 2010,2016 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -37,8 +37,10 @@
 // STATE
 
 
-static int joy_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
+static int joy_open( UThread* ut, const UPortDevice* pdev, const UCell* from,
+                     int opt, UCell* res )
 {
+    UBuffer* port;
     const char* osDev = 0;
     int fd;
     (void) opt;
@@ -58,6 +60,7 @@ static int joy_open( UThread* ut, UBuffer* port, const UCell* from, int opt )
         ioctl( fd, JSIOCGBUTTONS, &buttons );
         //ioctl( fd, JSIOCGNAME(sizeof(name)), &name );
 
+        port = boron_makePort( ut, pdev, 0, res );
         port->AXIS_COUNT = axes;
         port->BTN_COUNT = buttons;
         port->FD = fd;
@@ -181,7 +184,7 @@ static int joy_waitFD( UBuffer* port )
 
 UPortDevice port_joystick =
 {
-    joy_open, joy_close, joy_read, joy_write, joy_seek, joy_waitFD
+    joy_open, joy_close, joy_read, joy_write, joy_seek, joy_waitFD, 0
 };
 
 
