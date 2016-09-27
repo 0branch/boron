@@ -733,7 +733,17 @@ void ur_genBuffers( UThread* ut, int count, UIndex* index )
     }
 #ifdef GC_HOLD_TEST
     else
+    {
         ur_recycle( ut );
+        {
+        UBuffer tmp;
+        ur_arrInit( &tmp, sizeof(UBuffer), store->used );
+        memcpy( tmp.ptr.buf, store->ptr.buf, sizeof(UBuffer) * store->used );
+        tmp.used = store->used;
+        ur_arrFree( store );
+        *store = tmp;
+        }
+    }
 #endif
 
     assert( ut->freeBufList > -1 );
