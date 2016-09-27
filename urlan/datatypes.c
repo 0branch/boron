@@ -4122,10 +4122,11 @@ int context_make( UThread* ut, const UCell* from, UCell* res )
         UBlockIterM bi;
         UBuffer* ctx;
 
+        ctx = ur_makeContextCell( ut, 0, res );     // gc!
+
         if( ! ur_blkSliceM( ut, &bi, from ) )
             return UR_THROW;
 
-        ctx = ur_makeContextCell( ut, 0, res );
         ur_ctxSetWords( ctx, bi.it, bi.end );
         ur_ctxSort( ctx );
         ur_bind( ut, bi.buf, ctx, UR_BIND_SELF );
