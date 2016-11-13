@@ -2,8 +2,8 @@
 " Language:		Boron
 " Maintainer:	Karl Robillard <wickedsmoke@users.sf.net>
 " Filenames:	*.b
-" Last Change:	19 Nov 2009
-" URL:			http://urlan.sf.net
+" Last Change:	13 Nov 2016
+" URL:			http://urlan.sf.net/boron
 
 
 " For version 5.x: Clear all syntax items
@@ -113,12 +113,12 @@ syn keyword     boronLogicFunction string? time? coord? word?
 syn keyword     boronLogicFunction exists? same?
 
 " Datatypes
-syn keyword     boronType	unset! datatype! none! logic! error!
-syn keyword     boronType	word! set-word! get-word! lit-word!
-syn keyword     boronType	char! int! bignum! decimal! coord! vec3! vector!
-syn keyword     boronType	binary! bitset! string! file!
-syn keyword     boronType	block! paren! path! set-path!
-syn keyword     boronType	date! time! context! func! cfunc!
+syn keyword     boronType	unset! datatype! none! logic! char! int!
+syn keyword     boronType	decimal! bignum! time! date! coord! vec3!
+syn keyword     boronType	word! lit-word! set-word! get-word! option!
+syn keyword     boronType	binary! bitset! string! file! vector!
+syn keyword     boronType	block! paren! path! lit-path! set-path!
+syn keyword     boronType	context! error! func! cfunc!
 "syn keyword     boronTypeFunction type?
 
 " Control statements
