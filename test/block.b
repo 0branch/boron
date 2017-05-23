@@ -65,6 +65,9 @@ probe difference [a b c d] [c 1 'a]
 probe difference b: ["h" 45 new 45] b
 probe difference [3 2 2 0] [1 3 4]
 probe union [3 2 2 0] [1 3 4]
+a: ["-a" "-A"]
+probe intersect a a
+probe intersect/case a a
 
 
 print "---- change"

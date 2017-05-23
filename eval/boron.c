@@ -1030,9 +1030,9 @@ UThread* boron_makeEnvP( UEnvParameters* par )
     addCFunc( cfunc_any_wordQ,  "any-word? val" );
     addCFunc( cfunc_complement, "complement val" );
     addCFunc( cfunc_negate,     "negate n" );
-    addCFunc( cfunc_intersect,  "intersect a b" );
-    addCFunc( cfunc_difference, "difference a b" );
-    addCFunc( cfunc_union,      "union a b" );
+    addCFunc( cfunc_intersect,  "intersect a b /case" );
+    addCFunc( cfunc_difference, "difference a b /case" );
+    addCFunc( cfunc_union,      "union a b /case" );
     addCFunc( cfunc_sort,       "sort ser /case /group size int!"
                                 " /field b block!" );
     addCFunc( cfunc_foreach,    "foreach 'w s body 0 /ghost" );

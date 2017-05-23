@@ -3864,6 +3864,8 @@ int block_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
     UBlockIter bi;
     const UBuffer* buf = si->buf;
+    int (*equal)(UThread*, const UCell*, const UCell*) =
+        (opt & UR_FIND_CASE) ? ur_equalCase : ur_equal;
 
     bi.it  = buf->ptr.cell + si->it;
     bi.end = buf->ptr.cell + si->end;
@@ -3873,7 +3875,7 @@ int block_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
         while( bi.it != bi.end )
         {
             --bi.end;
-            if( ur_equal( ut, val, bi.end ) )
+            if( equal( ut, val, bi.end ) )
                 return bi.end - buf->ptr.cell;
         }
     }
@@ -3881,7 +3883,7 @@ int block_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
     {
         ur_foreach( bi )
         {
-            if( ur_equal( ut, val, bi.it ) )
+            if( equal( ut, val, bi.it ) )
                 return bi.it - buf->ptr.cell;
         }
     }

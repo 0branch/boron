@@ -2969,7 +2969,7 @@ enum SetOperation
 
 
 static int set_relation( UThread* ut, const UCell* a1, UCell* res,
-                         enum SetOperation op )
+                         enum SetOperation op, int findOpt )
 {
     USeriesIter si;
     const USeriesType* dt;
@@ -3002,8 +3002,8 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
 
                 ur_foreach( bi )
                 {
-                    if( (dt->find( ut, &si, bi.it, 0 ) > -1) &&
-                        (dt->find( ut, &ri, bi.it, 0 ) == -1) )
+                    if( (dt->find( ut, &si, bi.it, findOpt ) > -1) &&
+                        (dt->find( ut, &ri, bi.it, findOpt ) == -1) )
                     {
                         ur_blkPush( blk, bi.it );
                         ++ri.end;
@@ -3017,7 +3017,7 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
 
                 ur_foreach( bi )
                 {
-                    if( dt->find( ut, &si, bi.it, 0 ) < 0 )
+                    if( dt->find( ut, &si, bi.it, findOpt ) < 0 )
                         ur_blkPush( blk, bi.it );
                 }
                 break;
@@ -3029,7 +3029,7 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
 union_loop:
                 ur_foreach( bi )
                 {
-                    if( dt->find( ut, &si, bi.it, 0 ) < 0 )
+                    if( dt->find( ut, &si, bi.it, findOpt ) < 0 )
                     {
                         ur_blkPush( blk, bi.it );
                         ++si.end;
@@ -3060,13 +3060,15 @@ union_loop:
     intersect
         setA    series
         setB    series
+        /case   Character case must match when comparing strings.
     return: New series that contains only the elements common to both sets.
     group: series
     see: difference, union
 */
 CFUNC(cfunc_intersect)
 {
-    return set_relation( ut, a1, res, SET_OP_INTERSECT );
+    return set_relation( ut, a1, res, SET_OP_INTERSECT,
+                         (CFUNC_OPTIONS & 1) ? UR_FIND_CASE : 0 );
 }
 
 
@@ -3074,6 +3076,7 @@ CFUNC(cfunc_intersect)
     difference
         setA    series
         setB    series
+        /case   Character case must match when comparing strings.
     return: New series that contains the elements of setA which are not in setB.
     group: series
     see: intersect, union
@@ -3083,7 +3086,8 @@ CFUNC(cfunc_intersect)
 */
 CFUNC(cfunc_difference)
 {
-    return set_relation( ut, a1, res, SET_OP_DIFF );
+    return set_relation( ut, a1, res, SET_OP_DIFF,
+                         (CFUNC_OPTIONS & 1) ? UR_FIND_CASE : 0 );
 }
 
 
@@ -3091,13 +3095,15 @@ CFUNC(cfunc_difference)
     union
         setA    series
         setB    series
+        /case   Character case must match when comparing strings.
     return: New series that contains the distinct elements of both sets.
     group: series
     see: difference, intersect
 */
 CFUNC(cfunc_union)
 {
-    return set_relation( ut, a1, res, SET_OP_UNION );
+    return set_relation( ut, a1, res, SET_OP_UNION,
+                         (CFUNC_OPTIONS & 1) ? UR_FIND_CASE : 0 );
 }
 
 
