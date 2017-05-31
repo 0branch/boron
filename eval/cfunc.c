@@ -4425,7 +4425,7 @@ check_str:
             else if( bin->used > (12 + 8) )
             {
                 const uint8_t* pat = (const uint8_t*) "BZh";
-                cp = find_pattern_uint8_t( cp, cp + 12, pat, pat + 3 );
+                cp = find_pattern_8( cp, cp + 12, pat, pat + 3 );
                 if( cp && (cp[3] >= '1') && (cp[3] <= '9') )
                 {
                     *args = *res;
