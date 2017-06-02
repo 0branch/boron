@@ -3118,7 +3118,7 @@ static inline UIndex _sliceEnd( const UBuffer* buf, const UCell* cell )
 /*-cf-
     foreach
         'words  word!/block!  Value of element(s).
-        series
+        series  Series or none!
         body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
@@ -3129,7 +3129,7 @@ static inline UIndex _sliceEnd( const UBuffer* buf, const UCell* cell )
 /*-cf-
     remove-each
         'words  word!/block!  Value of element(s).
-        series
+        series  Series or none!
         body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
@@ -3158,7 +3158,14 @@ CFUNC(cfunc_foreach)
 
     // TODO: Handle custom series type.
     if( ! ur_isSeriesType( ur_type(a2) ) )
+    {
+        if( ur_type(a2) == UT_NONE )
+        {
+            ur_setId(res, UT_NONE);
+            return UR_OK;
+        }
         return errorType( "foreach expected series" );
+    }
     if( ! ur_is(body, UT_BLOCK) )
         return errorType( "foreach expected block! body" );
 
@@ -3249,7 +3256,7 @@ loop:
 
 /*-cf-
     forall
-        'ref    word!   Reference to series.
+        'ref    word!   Reference to series or none!.
         body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
@@ -3268,7 +3275,7 @@ loop:
 CFUNC(cfunc_forall)
 {
     UCell* sarg;
-    UCell* body = a2;
+    const UCell* body = a2;
     USeriesIter si;
     int type;
 
@@ -3281,7 +3288,14 @@ CFUNC(cfunc_forall)
             return UR_THROW;
         type = ur_type(sarg);
         if( ! ur_isSeriesType( type ) )
+        {
+            if( type == UT_NONE )
+            {
+                ur_setId(res, UT_NONE);
+                return UR_OK;
+            }
             goto err;
+        }
 
         ur_seriesSlice( ut, &si, sarg );
         while( si.it < si.end )
