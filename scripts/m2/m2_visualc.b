@@ -1,7 +1,8 @@
 ; m2 Visual-C++ template
 
 
-embed-manifest: true
+embed-manifest: false
+vc-mach: 'x64   ;'x86
 
 win32: func [blk] [do blk]
 windows?: msvc: true
@@ -12,7 +13,8 @@ conv_slash: func [file] [replace/all copy file '/' '\']
 
 generate_makefile: does [
     emit-makefile "NMAKE Makefile for Visual-C++"
-{AS       = ml.exe
+    rejoin [
+{AS       = } select [x64: "ml64" x86: "ml"] vc-mach {.exe
 CC       = cl.exe
 CXX      = cl.exe
 LINK     = link.exe
@@ -21,6 +23,7 @@ MT       = mt.exe
 TAR      = tar.exe -cf
 ZIP      = zip.exe -r -9
 }
+    ]
 ]
 
 
@@ -219,8 +222,8 @@ exe_target: make target_env
         emit [
             eol output_file ": " obj_macro local_libs link_libs
             sub-project-libs link_libs
-            {^/^-$(LINK) /machine:x86 /out:$@ $(} uc_name {_LFLAGS) } obj_macro
-            { $(} uc_name {_LIBS)} eol
+            {^/^-$(LINK) /machine:} vc-mach { /out:$@ $(} uc_name {_LFLAGS) }
+            obj_macro { $(} uc_name {_LIBS)} eol
         ]
         if embed-manifest [
             emit [
