@@ -113,7 +113,7 @@
   "    data: none\n"
   "]\n"
   "load-wav: func [file | csize format channels srate bps sdata] [\n"
-  "    parse read file [\n"
+  "    parse/binary read file [\n"
   "        little-endian\n"
   "        \"RIFF\" u32 \"WAVEfmt \"\n"
   "        csize: u32\n"
