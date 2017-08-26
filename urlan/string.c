@@ -1401,6 +1401,36 @@ UIndex ur_strFind( const USeriesIter* ai, const USeriesIter* bi,
 }
 
 
+/**
+  Find last string in another string or binary series.
+
+  \param ai         String/binary to search.
+  \param bi         Pattern to look for.
+  \param matchCase  If non-zero, compare character cases.
+
+  \return Index of pattern in string or -1 if not found.
+*/
+UIndex ur_strFindRev( const USeriesIter* ai, const USeriesIter* bi,
+                      int matchCase )
+{
+    USeriesIter ci = *ai;
+    UIndex lpos = -1;
+    UIndex pos;
+
+    // TODO: Implement reverse search.
+
+    while( 1 )
+    {
+        pos = ur_strFind( &ci, bi, matchCase );
+        if( pos < 0 )
+            break;
+        lpos = pos;
+        ci.it = pos + 1;
+    }
+    return lpos;
+}
+
+
 /*
   Returns pointer in pattern at the end of the matching elements.
 */

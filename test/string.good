@@ -67,6 +67,9 @@ none
 "winter rests"
 ucs2
 "rests"
+"rel in winter rests"
+"rests"
+none
 ---- find bitset!
 "/tmp/path/file"
 "\Temp\path\file"

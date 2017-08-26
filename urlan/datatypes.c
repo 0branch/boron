@@ -3241,21 +3241,18 @@ int string_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
         case UT_FILE:
         {
             USeriesIter pi;
+            UIndex (*find)(const USeriesIter*, const USeriesIter*, int)
+                = (opt & UR_FIND_LAST) ? ur_strFindRev : ur_strFind;
             ur_seriesSlice( ut, &pi, val );
-            if( opt & UR_FIND_LAST )
-                return -1;      // TODO: Implement UR_FIND_LAST.
-            return ur_strFind( si, &pi, opt & UR_FIND_CASE );
+            return find( si, &pi, opt & UR_FIND_CASE );
         }
 
         case UT_BITSET:
         {
+            UIndex (*find)(const UBuffer*, UIndex, UIndex, const uint8_t*, int)
+                = (opt & UR_FIND_LAST) ? ur_strFindCharsRev : ur_strFindChars;
             const UBuffer* bbuf = ur_bufferSer(val);
-            if( opt & UR_FIND_LAST )
-                return ur_strFindCharsRev( buf, si->it, si->end,
-                                           bbuf->ptr.b, bbuf->used );
-            else
-                return ur_strFindChars( buf, si->it, si->end,
-                                        bbuf->ptr.b, bbuf->used );
+            return find( buf, si->it, si->end, bbuf->ptr.b, bbuf->used );
         }
     }
     return -1;

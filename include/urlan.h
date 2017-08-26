@@ -575,6 +575,7 @@ UIndex   ur_strFindChars( const UBuffer*, UIndex start, UIndex end,
 UIndex   ur_strFindCharsRev( const UBuffer*, UIndex start, UIndex end,
                              const uint8_t* charSet, int len );
 UIndex   ur_strFind( const USeriesIter*, const USeriesIter*, int matchCase );
+UIndex   ur_strFindRev( const USeriesIter*, const USeriesIter*, int matchCase );
 UIndex   ur_strMatch( const USeriesIter*, const USeriesIter*, int matchCase );
 int      ur_strChar( const UBuffer*, UIndex pos );
 char*    ur_cstring( const UBuffer*, UBuffer* bin, UIndex start, UIndex end );
