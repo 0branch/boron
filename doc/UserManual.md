@@ -1,6 +1,6 @@
 ---
 title:  Boron User Manual
-date:   Version 0.3.0, 2016-01-16
+date:   Version 0.3.2, 2017-08-26
 ---
 
 
