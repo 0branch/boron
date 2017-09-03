@@ -83,6 +83,7 @@ int requestAccess( UThread* ut, const char* msg )
     (void) ut;
 
     printf( "%s? (y/n/a) ", msg );
+    fflush( stdout );   /* Required on Windows. */
     fgets( answer, sizeof(answer), stdin );
 
     if( *answer == 'y' )
