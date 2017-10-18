@@ -182,21 +182,18 @@ make_ucs2:
 
 
 /*
-   Convert UTF-8 to UCS-2
+   Return character count and highest value in a UTF-8 string.
 */
-static void _makeString2( UBuffer* str, const uint8_t* it, const uint8_t* end )
+static int _statUtf8( const uint8_t* it, const uint8_t* end, int* highRes )
 {
-    uint16_t  ch;
-    uint16_t* out;
-
-    //ur_arrReserve( str, str->used + (end  - it) );
-    out = str->ptr.u16 + str->used;
+    int high = 0;
+    int len = 0;
+    int  ch;
 
     while( it != end )
     {
         ch = *it++;
-
-        if( ch <= 0x7f )
+        if( ch <= 0x7f )                // A single byte
         {
             if( ch == '^' )
             {
@@ -204,35 +201,134 @@ static void _makeString2( UBuffer* str, const uint8_t* it, const uint8_t* end )
                 if( it != end )
                     ch = ur_caretChar( it, end, &it );
             }
+        }
+        else if( (ch & 0xf0) == 0xf0 )
+        {
+            if( ch >= 0xfc )            // 6 bytes
+            {
+                if( (end - it) < 5 )
+                    break;
+                ch = ((ch    & 0x01) << 30) |
+                     ((it[0] & 0x3f) << 24) |
+                     ((it[1] & 0x3f) << 18);
+                it += 2;
+            }
+            else if( ch >= 0xf8 )       // 5 bytes
+            {
+                if( (end - it) < 4 )
+                    break;
+                ch = ((ch    & 0x03) << 24) |
+                     ((it[0] & 0x3f) << 18);
+                it += 1;
+            }
+            else                        // 4 bytes
+            {
+                if( (end - it) < 3 )
+                    break;
+                ch = (ch & 0x07) << 18;
+            }
+            ch += ((it[0] & 0x3f) << 12) |
+                  ((it[1] & 0x3f) <<  6) |
+                   (it[2] & 0x3f);
+            it += 3;
+        }
+        else if( ch >= 0xe0 )           // 3 bytes
+        {
+            if( (end - it) < 2 )
+                break;
+            ch = ((ch    & 0x0f) << 12) |
+                 ((it[0] & 0x3f) <<  6) |
+                  (it[1] & 0x3f);
+            it += 2;
+        }
+        else                            // 2 bytes
+        {
+            if( it == end )
+                break;
+            ch = ((ch & 0x1f) << 6) | (*it & 0x3f);
+            ++it;
+        }
+
+        ++len;
+        if( high < ch )
+            high = ch;
+    }
+
+    *highRes = high;
+    return len;
+}
+
+
+/*
+   Convert UTF-8 to UCS-2.
+
+   The caller must ensure that all characters are in the UCS-2 range.
+*/
+static void _convertString2( UBuffer* str, const uint8_t* it, const uint8_t* end )
+{
+    uint16_t  ch;
+    uint16_t* out = str->ptr.u16 + str->used;
+
+    while( it != end )
+    {
+        ch = *it++;
+        if( ch <= 0x7f )
+        {
+            if( ch == '^' && it != end )
+                ch = ur_caretChar( it, end, &it );
             *out++ = ch;
         }
         else if( ch >= 0xc2 && ch <= 0xdf )
         {
-            if( it != end )
-            {
-                *out++ = ((ch & 0x1f) << 6) | (*it & 0x3f);
-                ++it;
-            }
+            if( it == end )
+                break;
+            *out++ = ((ch & 0x1f) << 6) | (*it & 0x3f);
+            ++it;
         }
-        else if( ch >= 0xe0 && ch <= 0xef )
+        else if( ch >= 0xe0 )
         {
             if( (end - it) < 2 )
                 break;
-            *out++ = ((ch    & 0x0f) << 12) |
-                     ((it[0] & 0x3f) <<  6) |
-                      (it[1] & 0x3f);
+            *out++ = ((ch & 0x0f) << 12) | ((it[0] & 0x3f) << 6) | (it[1] & 0x3f);
             it += 2;
-        }
-        else if( ch >= 0xf0 && ch <= 0xf3 )
-        {
-            if( (end - it) < 3 )
-                break;
-            *out++ = 0;     // Only handle UCS-2
-            it += 3;
         }
     }
 
     str->used = out - str->ptr.u16;
+}
+
+
+static uint8_t* _emitUtf8( uint8_t* out, int c )
+{
+    if( c > 127 )
+    {
+        if( c < 0x800 )
+        {
+            *out++ = 0xC0 | (c >> 6);
+            c = 0x80 | (c & 0x3f);
+        }
+        else if( c < 0x10000 )
+        {
+            *out++ = 0xE0 | (c >> 12);
+            *out++ = 0x80 | ((c >> 6) & 0x3f);
+            c = 0x80 | (c & 0x3f);
+        }
+        else if( c < 0x200000 )
+        {
+            *out++ = 0xF0 | (c >> 18);
+            *out++ = 0x80 | ((c >> 12) & 0x3f);
+            *out++ = 0x80 | ((c >> 6) & 0x3f);
+            c = 0x80 | (c & 0x3f);
+        }
+        else
+        {
+            // Outside Unicode range (0x0 to 0x10FFFF).
+            *out++ = 0xC0 | (NOT_LATIN1_CHAR >> 6);
+            c = 0x80 | (NOT_LATIN1_CHAR & 0x3f);
+        }
+    }
+    *out++ = (uint8_t) c;
+    return out;
 }
 
 
@@ -249,57 +345,66 @@ static void _makeString2( UBuffer* str, const uint8_t* it, const uint8_t* end )
 */
 UIndex ur_makeStringUtf8( UThread* ut, const uint8_t* it, const uint8_t* end )
 {
-    int len = end - it;
-    int ch;
+    UBuffer* buf;
     uint8_t* out;
-    const uint8_t* start = it;
-    UIndex n = ur_makeString( ut, UR_ENC_LATIN1, len );
-    UBuffer* buf = ur_buffer(n);
+    int ch;
+    int clen;
+    int high;
+    UIndex bufN;
 
-    out = buf->ptr.b;
-
-    while( it != end )
+    clen = _statUtf8( it, end, &high );
+    if( high < 256 )
     {
-        ch = *it++;
-        if( ch > 0x7f )
+        bufN = ur_makeString( ut, UR_ENC_LATIN1, clen );
+        buf = ur_buffer(bufN);
+        out = buf->ptr.b;
+
+        while( it != end )
         {
-            if( it == end )
-                break;          // Drop incomplete multi-byte char.
-            if( ch <= 0xdf )
+            ch = *it++;
+            if( ch > 0x7f )
             {
-                // If the UTF-8 value is in the Latin-1 range then
-                // stay with an 8-bit string.
+                if( it == end )
+                    break;                          // Drop incomplete multi-byte char.
                 ch = ((ch & 0x1f) << 6) | (*it & 0x3f);
-                if( ch < 256 )
-                {
-                    ++it;
-                    goto output_char;
-                }
+                ++it;
             }
-make_ucs2:
-            // Abandon latin1 string to GC.
-            n = ur_makeString( ut, UR_ENC_UCS2, len );
-            _makeString2( ur_buffer(n), start, end );
-            return n;
-        }
-        else if( ch == '^' )
-        {
-            // Filter caret escape sequence.
-            if( it != end )
+            else if( ch == '^' && it != end )
             {
-                ch = ur_caretChar( it, end, &it );
-                if( ch >= 256 )
-                    goto make_ucs2;
+                ch = ur_caretChar( it, end, &it );  // Filter caret escape sequence.
+            }
+            *out++ = ch;
+        }
+        buf->used = out - buf->ptr.b;
+    }
+    else if( high < 0x10000 )
+    {
+        bufN = ur_makeString( ut, UR_ENC_UCS2, clen );
+        _convertString2( ur_buffer(bufN), it, end );
+    }
+    else
+    {
+        bufN = ur_makeString( ut, UR_ENC_UTF8, end - it );
+        buf = ur_buffer(bufN);
+        out = buf->ptr.b;
+
+        while( it != end )
+        {
+            ch = *it++;
+            if( ch == '^' && it != end )
+            {
+                ch = ur_caretChar( it, end, &it );  // Filter caret escape sequence.
+                out = _emitUtf8( out, ch );
+            }
+            else
+            {
+                *out++ = ch;
             }
         }
-output_char:
-        *out++ = ch;
+        buf->used = out - buf->ptr.b;
     }
 
-    //memCpy( buf->ptr.c, it, len );
-
-    buf->used = out - buf->ptr.b;
-    return n;
+    return bufN;
 }
 
 

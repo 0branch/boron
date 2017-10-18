@@ -4,6 +4,7 @@
     Greek-monotonic "ξεσκεπάζω την ψυχοφθόρα βδελυγμία"
     Icelandic "Sævör grét áðan því úlpan var ónýt."
     Russian {В чащах юга жил-был цитрус? Да, но фальшивый экземпляр! ёъ.}
+    Emoticons "😀 😵 🙌 🤧"
 ]
  -- French ucs2 --
 {Les naïfs ægithales hâtifs pondant à Noël où il gèle sont sûrs d'être déçus et de voir leurs drôles d'œufs abîmés.}
@@ -25,3 +26,7 @@
 {В чащах юга жил-был цитрус? Да, но фальшивый экземпляр! ёъ.}
 {В ЧАЩАХ ЮГА ЖИЛ-БЫЛ ЦИТРУС? ДА, НО ФАЛЬШИВЫЙ ЭКЗЕМПЛЯР! ЁЪ.}
 {в чащах юга жил-был цитрус? да, но фальшивый экземпляр! ёъ.}
+ -- Emoticons utf8 --
+"😀 😵 🙌 🤧"
+"😀 😵 🙌 🤧"
+"😀 😵 🙌 🤧"
