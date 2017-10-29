@@ -558,6 +558,20 @@ int vector_append( UThread* ut, UBuffer* buf, const UCell* val )
             vector_pokeFloatV( buf, buf->used - 3, val->vec3.xyz, 3 );
             break;
 
+        case UT_BINARY:
+        {
+            UBuffer src;
+            USeriesIter si;
+
+            ur_seriesSlice( ut, &si, val );
+
+            // Append binary data using ur_vecAppend() and dummy vector! src.
+            // TODO: Handle si.it when it's not aligned to elemSize.
+            ur_vecInit( &src, buf->form, 0, 0 );
+            src.ptr.v = si.buf->ptr.b + si.it;
+            ur_vecAppend( buf, &src, 0, (si.end - si.it) / buf->elemSize );
+        }
+
         case UT_VECTOR:
         {
             USeriesIter si;
@@ -580,7 +594,7 @@ int vector_append( UThread* ut, UBuffer* buf, const UCell* val )
 
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                 "append vector! expected char!/int!/decimal!/vec3!/vector!" );
+                 "append vector! expected char!/int!/decimal!/vec3!/binary!/vector!" );
     }
     return UR_OK;
 }
