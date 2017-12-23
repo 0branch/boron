@@ -625,10 +625,28 @@ int ur_datatypeCount( UThread* ut )
 /**
   Add a single atom to the shared environment.
 
+  \param name   Pointer to atom name.
+  \param len    Length of name.
+
+  \return Atom of word or UR_INVALID_ATOM if an error was generated.
+
+  \sa ur_internAtom, ur_internAtoms
+*/
+UAtom ur_intern( UThread* ut, const char* name, int len )
+{
+    return ur_internAtom( ut, name, name + len );
+}
+
+
+/**
+  Add a single atom to the shared environment.
+
   \param it   Start of word.
   \param end  End of word.
 
   \return Atom of word or UR_INVALID_ATOM if an error was generated.
+
+  \sa ur_intern, ur_internAtoms
 */
 UAtom ur_internAtom( UThread* ut, const char* it, const char* end )
 {
@@ -688,9 +706,9 @@ UAtom* ur_internAtoms( UThread* ut, const char* words, UAtom* atoms )
   \param index  Return array of buffer ids.  This must large enough to
                 to hold count indices.
 
-  \return The buffer indicies are stored in index.
+  \return Pointer to first buffer.  The buffer indicies are stored in index.
 */
-void ur_genBuffers( UThread* ut, int count, UIndex* index )
+UBuffer* ur_genBuffers( UThread* ut, int count, UIndex* index )
 {
     UBuffer* next;
     UBuffer* store = &ut->dataStore;
@@ -728,7 +746,7 @@ void ur_genBuffers( UThread* ut, int count, UIndex* index )
             }
 #endif
             store->used += newCount;
-            return;
+            return store->ptr.buf + index[ -count ];
         }
     }
 #ifdef GC_HOLD_TEST
@@ -759,6 +777,7 @@ void ur_genBuffers( UThread* ut, int count, UIndex* index )
         ut->freeBufList = next->used;
     }
     ut->freeBufCount -= count;
+    return store->ptr.buf + index[0];
 }
 
 
@@ -898,13 +917,8 @@ int ur_error( UThread* ut, int errorType, const char* fmt, ... )
     UCell* cell;
     va_list arg;
 
-    (void) errorType;
-
-    ur_genBuffers( ut, 2, bufN );
-
-    str = ur_buffer( bufN[0] );
+    str = ur_genBuffers( ut, 2, bufN );
     ur_strInit( str, UR_ENC_LATIN1, MAX_ERR_LEN );
-
     ur_blkInit( ur_buffer( bufN[1] ), UT_BLOCK, 0 );
 
     va_start( arg, fmt );
@@ -943,7 +957,7 @@ void ur_appendTrace( UThread* ut, UIndex blkN, UIndex it )
 
             buf = ur_buffer( cell->error.traceBlk );
             cell = ur_blkAppendNew( buf, UT_BLOCK );
-            ur_setSeries(cell, blkN, it );
+            ur_setSeries(cell, blkN, it);
         }
     }
 }
@@ -1231,6 +1245,13 @@ UBuffer* ur_bufferSeriesM( UThread* ut, const UCell* cell )
 }
 
 
+void ur_initSeries( UCell* cell, int type, UIndex buf )
+{
+    ur_setId(cell, type);
+    ur_setSeries(cell, buf, 0);
+}
+
+
 /**
   Set USeriesIter to series slice.
   
@@ -1278,8 +1299,7 @@ void dumpBuf( UThread* ut, UIndex bufN )
         UBuffer str;
         UCell cell;
 
-        ur_setId( &cell, buf->type );
-        ur_setSeries( &cell, bufN, 0 );
+        ur_initSeries( &cell, buf->type, bufN );
 
         ur_strInit( &str, UR_ENC_UTF8, 512 );
         ut->types[ buf->type ]->toString( ut, &cell, &str, 0 );

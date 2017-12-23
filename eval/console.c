@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #ifdef _WIN32
 #include <winsock2.h>
 #define setenv(name,val,over)   SetEnvironmentVariable(name, val)
@@ -48,6 +49,7 @@
 #define PROMPT      ")> "
 #define CMD_SIZE    2048
 #define PRINT_MAX   156
+
 #ifndef CONFIG_READLINE
 #define ESC         27
 #endif
@@ -91,6 +93,48 @@ int requestAccess( UThread* ut, const char* msg )
     if( *answer == 'a' )
         return UR_ACCESS_ALWAYS;
     return UR_ACCESS_DENY;
+}
+
+
+// Create args block for any command line parameters.
+void createArgs( UThread* ut, int argc, char** argv )
+{
+    UCell* cell;
+    UBuffer* blk;
+    UBuffer* str;
+    UIndex* bufN;
+    UIndex* bi;
+    int i, n;
+
+    cell = ur_ctxAddWord( ur_threadContext(ut), ur_intern(ut, "args", 4) );
+    if( argc > 0 )
+    {
+        n = argc + 1;
+        bufN = bi = (UIndex*) malloc( sizeof(UIndex) * n );
+        if( bufN )
+        {
+            blk = ur_genBuffers( ut, n, bufN );
+            ur_blkInit( blk, UT_BLOCK, argc );
+            blk->used = argc;
+            ur_initSeries( cell, UT_BLOCK, *bi++ );
+
+            cell = blk->ptr.cell;
+            for( i = 0; i < argc; ++cell, ++bi, ++i )
+            {
+                ur_initSeries( cell, UT_STRING, *bi );
+
+                str = ur_buffer(*bi);
+                n = strlen(argv[i]);
+                ur_strInit( str, UR_ENC_UTF8, n );
+                memcpy( str->ptr.c, argv[i], n );
+                str->used = n;
+            }
+
+            free( bufN );
+            return;
+        }
+    }
+    ur_setId(cell, UT_NONE);
 }
 
 
@@ -208,28 +252,10 @@ usage_err:
         else
             expression = 0;
 
+        createArgs( ut, argc - 1 - fileN, argv + 1 + fileN );
+
         pos = cmd = malloc( CMD_SIZE );
         cmd[ CMD_SIZE - 1 ] = -1;
-
-        // Create args block for any command line parameters.
-        if( (argc - fileN) > 1 )
-        {
-            int i;
-            pos = str_copy( pos, "args: [" );
-            for( i = fileN + 1; i < argc; ++i )
-            {
-                *pos++ = '"';
-                pos = str_copy( pos, argv[i] );
-                *pos++ = '"';
-                *pos++ = ' ';
-            }
-            *pos++ = ']';
-            *pos++ = '\n';
-        }
-        else
-        {
-            pos = str_copy( pos, "args: none\n" );
-        }
 
         if( expression )
         {

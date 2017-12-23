@@ -1275,10 +1275,7 @@ cleanup:
     ur_release( hold );
     ur_arrFree( &stack );
     if( blkN )
-    {
-        ur_setId( res, UT_BLOCK );
-        ur_setSeries( res, blkN, 0 );
-    }
+        ur_initSeries( res, UT_BLOCK, blkN );
     return blkN;
 
 set_sol:

@@ -79,7 +79,7 @@ void boron_installThreadPort( UThread* ut, const UCell* portC, UThread* utB )
     // Make port for SIDE_B.
 
     ctx = ur_threadContext( utB );
-    cell = ur_ctxAddWord( ctx, ur_internAtom(ut, portStr, portStr + 11) );
+    cell = ur_ctxAddWord( ctx, ur_intern(ut, portStr, 11) );
     buf = boron_makePort( utB, ext->dev, ext, cell );
     buf->SIDE = SIDE_B;
 }

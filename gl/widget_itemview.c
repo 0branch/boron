@@ -499,7 +499,7 @@ static GWidget* itemview_make( UThread* ut, UBlockIter* bi,
 
         ep->bindCtxN = ur_makeContext( ut, 1 );     // gc!
         ctx = ur_buffer( ep->bindCtxN );
-        ur_ctxAppendWord( ctx, ur_internAtom( ut, itemStr, itemStr + 4 ) );
+        ur_ctxAppendWord( ctx, ur_intern( ut, itemStr, 4 ) );
 
         if( ! (blk = ur_bufferSerM( bi.it )) )
             goto fail;
@@ -885,8 +885,7 @@ static void itemview_layout( GWidget* wp )
                 if( ! strN )
                     strN = ur_makeString( ut, UR_ENC_LATIN1, 32 );
 
-                ur_setId( rc, UT_STRING );
-                ur_setSeries( rc, strN, 0 );
+                ur_initSeries( rc, UT_STRING, strN );
 
                 str = ur_buffer( strN );
                 str->used = 0;

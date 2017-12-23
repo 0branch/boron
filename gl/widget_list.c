@@ -341,8 +341,7 @@ static void listw_layout( GWidget* wp )
                 if( ! strN )
                     strN = ur_makeString( ut, UR_ENC_LATIN1, 32 );
 
-                ur_setId( rc, UT_STRING );
-                ur_setSeries( rc, strN, 0 );
+                ur_initSeries( rc, UT_STRING, strN );
 
                 str = ur_buffer( strN );
                 str->used = 0;

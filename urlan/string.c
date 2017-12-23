@@ -85,8 +85,7 @@
 UIndex ur_makeString( UThread* ut, int enc, int size )
 {
     UIndex bufN;
-    ur_genBuffers( ut, 1, &bufN );
-    ur_strInit( ur_buffer( bufN ), enc, size );
+    ur_strInit( ur_genBuffers( ut, 1, &bufN ), enc, size );
     return bufN;
 }
 
@@ -107,12 +106,10 @@ UBuffer* ur_makeStringCell( UThread* ut, int enc, int size, UCell* cell )
     UBuffer* buf;
     UIndex bufN;
 
-    ur_genBuffers( ut, 1, &bufN );
-    buf = ur_buffer( bufN );
+    buf = ur_genBuffers( ut, 1, &bufN );
     ur_strInit( buf, enc, size );
 
-    ur_setId( cell, UT_STRING );
-    ur_setSeries( cell, bufN, 0 );
+    ur_initSeries( cell, UT_STRING, bufN );
 
     return buf;
 }

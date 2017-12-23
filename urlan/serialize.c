@@ -1000,8 +1000,7 @@ unser_block:
         }
     }
 
-    ur_setId( res, UT_BLOCK );
-    ur_setSeries( res, ids.ptr.i[0], 0 );
+    ur_initSeries( res, UT_BLOCK, ids.ptr.i[0] );
     goto cleanup;
 
 fail:

@@ -93,8 +93,7 @@ UContext;
 UIndex ur_makeContext( UThread* ut, int size )
 {
     UIndex bufN;
-    ur_genBuffers( ut, 1, &bufN );
-    ur_ctxInit( ur_buffer( bufN ), size );
+    ur_ctxInit( ur_genBuffers( ut, 1, &bufN ), size );
     return bufN;
 }
 
@@ -114,8 +113,7 @@ UBuffer* ur_makeContextCell( UThread* ut, int size, UCell* cell )
     UBuffer* buf;
     UIndex bufN;
 
-    ur_genBuffers( ut, 1, &bufN );
-    buf = ur_buffer( bufN );
+    buf = ur_genBuffers( ut, 1, &bufN );
     ur_ctxInit( buf, size );
 
     ur_setId( cell, UT_CONTEXT );
@@ -195,9 +193,8 @@ void ur_deepCopyCells( UThread* ut, UCell* dest, const UCell* src, int count )
         int type = ur_type(dest);
         if( ur_isBlockType( type ) )
         {
-            ur_genBuffers( ut, 1, &bufN );
+            copy = ur_genBuffers( ut, 1, &bufN );
             orig = ur_bufferSer( dest );
-            copy = ur_buffer( bufN );
             ur_blkInit( copy, UT_BLOCK, orig->used );
             copy->used = orig->used;
             dest->series.buf = bufN;

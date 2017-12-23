@@ -294,8 +294,7 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
         if( optTableLen )
             memCpy( mem + progLen, options, optTableLen );
 
-        ur_genBuffers( ut, 1, &pbufN );
-        pbuf = ur_buffer( pbufN );
+        pbuf = ur_genBuffers( ut, 1, &pbufN );
 
         pbuf->type  = UT_FUNC;
         pbuf->elemSize = optionCount;
@@ -698,8 +697,7 @@ UBuffer* boron_makePort( UThread* ut, const UPortDevice* pdev, void* ext,
     UBuffer* buf;
     UIndex bufN;
 
-    ur_genBuffers( ut, 1, &bufN );
-    buf = ur_buffer( bufN );
+    buf = ur_genBuffers( ut, 1, &bufN );
 
     buf->type = UT_PORT;
     if( ext )
@@ -714,8 +712,7 @@ UBuffer* boron_makePort( UThread* ut, const UPortDevice* pdev, void* ext,
         buf->ptr.v = (void*) pdev;
     }
 
-    ur_setId(res, UT_PORT);
-    ur_setSeries(res, bufN, 0);
+    ur_initSeries(res, UT_PORT, bufN);
     return buf;
 }
 

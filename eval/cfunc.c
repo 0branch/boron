@@ -3735,8 +3735,7 @@ set_logic:
                 cell = blk->ptr.cell;
 
                 ur_setId(cell, UT_WORD);
-                ur_setWordUnbound( cell,
-                                   ur_internAtom( ut, tn, tn + strLen(tn) ) );
+                ur_setWordUnbound( cell, ur_intern( ut, tn, strLen(tn) ) );
                 ++cell;
 
                 ur_setCellI64( cell, info.size );

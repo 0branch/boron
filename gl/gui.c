@@ -2074,8 +2074,7 @@ static void window_layout( GWidget* wp )
 
     // Set draw list variables.
     rc = style + CI_STYLE_LABEL;
-    ur_setId( rc, UT_STRING );
-    ur_setSeries( rc, ep->titleN, 0 );
+    ur_initSeries( rc, UT_STRING, ep->titleN );
 
     rc = style + CI_STYLE_AREA;
     gui_initRectCoord( rc, wp, UR_ATOM_RECT );

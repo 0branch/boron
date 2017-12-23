@@ -56,8 +56,7 @@
 UIndex ur_makeBinary( UThread* ut, int size )
 {
     UIndex bufN;
-    ur_genBuffers( ut, 1, &bufN );
-    ur_binInit( ur_buffer( bufN ), size );
+    ur_binInit( ur_genBuffers( ut, 1, &bufN ), size );
     return bufN;
 }
 
@@ -77,12 +76,10 @@ UBuffer* ur_makeBinaryCell( UThread* ut, int size, UCell* cell )
     UBuffer* buf;
     UIndex bufN;
 
-    ur_genBuffers( ut, 1, &bufN );
-    buf = ur_buffer( bufN );
+    buf = ur_genBuffers( ut, 1, &bufN );
     ur_binInit( buf, size );
 
-    ur_setId( cell, UT_BINARY );
-    ur_setSeries( cell, bufN, 0 );
+    ur_initSeries( cell, UT_BINARY, bufN );
 
     return buf;
 }

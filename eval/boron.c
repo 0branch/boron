@@ -185,8 +185,7 @@ static void boron_threadInit( UThread* ut )
     buf = ur_buffer(bufN[1]);
     ur_blkInit( buf, UT_BLOCK, 256 );
     ++ed;
-    ur_setId( ed, UT_BLOCK );
-    ur_setSeries( ed, bufN[1], 0 );
+    ur_initSeries( ed, UT_BLOCK, bufN[1] );
 
     // tos is freely changed.  When a recycle occurs, the cfunc recycle
     // method will sync. the dstackN block used value.
@@ -201,8 +200,7 @@ static void boron_threadInit( UThread* ut )
     // Set type to something so ur_gcReport() doesn't report bufN[2] as unused.
     buf->type = UT_VECTOR;
     ++ed;
-    ur_setId( ed, UT_BINARY );  // UT_VECTOR
-    ur_setSeries( ed, bufN[2], 0 );
+    ur_initSeries( ed, UT_BINARY, bufN[2] );    // UT_VECTOR
 
     // tof is freely changed.  When a recycle occurs, the cfunc recycle
     // method will sync. the fstackN block used value.
@@ -214,8 +212,7 @@ static void boron_threadInit( UThread* ut )
     BT->tempN = bufN[3];
     ur_binInit( ur_buffer(bufN[3]), 0 );
     ++ed;
-    ur_setId( ed, UT_BINARY );
-    ur_setSeries( ed, bufN[3], 0 );
+    ur_initSeries( ed, UT_BINARY, bufN[3] );
 }
 
 
@@ -560,7 +557,7 @@ int boron_addCFuncS( UThread* ut, BoronCFunc* funcTable,
 void boron_overrideCFunc( UThread* ut, const char* name, BoronCFunc func )
 {
     UBuffer* ctx = ur_threadContext( ut );
-    int n = ur_ctxLookup( ctx, ur_internAtom( ut, name, name + strLen(name) ) );
+    int n = ur_ctxLookup( ctx, ur_intern( ut, name, strLen(name) ) );
     if( n > -1 )
     {
         UCell* cell = ur_ctxCell( ctx, n );
@@ -1293,8 +1290,7 @@ prog_done:
         else
         {
             UCell tmp;
-            ur_setId(&tmp, UT_BLOCK);
-            ur_setSeries(&tmp, fcopy.m.f.bodyN, 0);
+            ur_initSeries(&tmp, UT_BLOCK, fcopy.m.f.bodyN);
 
             if( (ok = boron_framePush( ut, args, fcopy.m.f.bodyN )) )
             {
@@ -1335,8 +1331,7 @@ cleanup_trace:
         else
         {
             UCell tmp;
-            ur_setId(&tmp, UT_BLOCK);
-            ur_setSeries(&tmp, fcell->m.f.bodyN, 0);
+            ur_initSeries(&tmp, UT_BLOCK, fcell->m.f.bodyN);
 
             if( ! boron_doBlock( ut, &tmp, res ) )
             {

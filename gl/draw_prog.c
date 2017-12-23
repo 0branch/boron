@@ -2823,8 +2823,7 @@ dispatch:
         case DP_EVAL_BLOCK:
         {
             UCell tmp;
-            ur_setId(&tmp, UT_BLOCK);
-            ur_setSeries(&tmp, *pc++, 0);
+            ur_initSeries(&tmp, UT_BLOCK, *pc++);
 
             if( ! boron_doBlock( ut, &tmp, boron_result(ut) ) )
                 return UR_THROW;
@@ -3455,8 +3454,7 @@ dispatch:
         case DP_LIGHT:
         {
             UCell cell;
-            ur_setId( &cell, UT_BLOCK );
-            ur_setSeries( &cell, *pc++, 0 );
+            ur_initSeries( &cell, UT_BLOCK, *pc++ );
 
             dop_light( ut, &cell, GL_LIGHT0 );
         }

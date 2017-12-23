@@ -2772,8 +2772,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
         return UR_THROW;
 
 #if defined(__linux__) && ! defined(__ANDROID__)
-    boron_addPortDevice( ut, &port_joystick,
-                         ur_internAtom(ut, joyStr, joyStr + 8) );
+    boron_addPortDevice( ut, &port_joystick, ur_intern(ut, joyStr, 8) );
 #endif
 
 #ifndef NO_AUDIO

@@ -307,8 +307,7 @@ int ur_readDir( UThread* ut, const char* filename, UCell* res )
 
         ur_release( hold );
 
-        ur_setId(res, UT_BLOCK);
-        ur_setSeries(res, blkN, 0);
+        ur_initSeries(res, UT_BLOCK, blkN);
     }
     else
     {

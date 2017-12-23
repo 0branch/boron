@@ -298,8 +298,7 @@ static void button_layout( GWidget* wp )
     // Set draw list variables.
 
     rc = style + CI_STYLE_LABEL;
-    ur_setId( rc, UT_STRING );
-    ur_setSeries( rc, ep->labelN, 0 );
+    ur_initSeries( rc, UT_STRING, ep->labelN );
 
     rc = style + CI_STYLE_AREA;
     gui_initRectCoord( rc, wp, UR_ATOM_RECT );
@@ -339,14 +338,12 @@ static int button_select( GWidget* wp, UAtom atom, UCell* res )
     }
     else if( atom == UR_ATOM_TEXT )
     {
-        ur_setId(res, UT_STRING);
-        ur_setSeries(res, ep->labelN, 0);
+        ur_initSeries(res, UT_STRING, ep->labelN);
         return UR_OK;
     }
     else if( atom == UR_ATOM_ACTION )
     {
-        ur_setId(res, UT_BLOCK);
-        ur_setSeries(res, ep->actionN, 0);
+        ur_initSeries(res, UT_BLOCK, ep->actionN);
         return UR_OK;
     }
     return gui_areaSelect( wp, atom, res );

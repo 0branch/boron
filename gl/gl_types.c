@@ -50,8 +50,7 @@ int dprog_make( UThread* ut, const UCell* from, UCell* res )
         ur_endDP( ut, ur_buffer( n ), save );
 
         // Set result last since compile may evaluate parens.
-        ur_setId(res, UT_DRAWPROG);
-        ur_setSeries(res, n, 0 );
+        ur_initSeries(res, UT_DRAWPROG, n );
         return ok;
     }
     return ur_error( ut, UR_ERR_TYPE, "draw-prog! make expected block!" );
@@ -562,8 +561,7 @@ texture_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* tmp )
             UIndex ri = ur_texRast(cell);
             if( ri )
             {
-                ur_setId(tmp, UT_RASTER);
-                ur_setSeries(tmp, ri, 0);
+                ur_initSeries(tmp, UT_RASTER, ri);
             }
             else
             {
@@ -729,8 +727,7 @@ UR_CALL( to_rfont )
     else if( ur_datatype(tos) == UT_RASTER )
     {
         n = ur_fontRast(res);
-        ur_setId(res, UT_RASTER);
-        ur_setSeries(res, n, 0);
+        ur_initSeries(res, UT_RASTER, n);
     }
     else
     {
@@ -750,13 +747,11 @@ rfont_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
         switch( ur_atom(sel) )
         {
             case UR_ATOM_BINARY:
-                ur_setId(res, UT_BINARY);
-                ur_setSeries(res, ur_fontTF(cell), 0);
+                ur_initSeries(res, UT_BINARY, ur_fontTF(cell));
                 return res;
 
             case UR_ATOM_RASTER:
-                ur_setId(res, UT_RASTER);
-                ur_setSeries(res, ur_fontRast(cell), 0);
+                ur_initSeries(res, UT_RASTER, ur_fontRast(cell));
                 return res;
 
             case UR_ATOM_TEXTURE:
@@ -868,8 +863,7 @@ int shader_make( UThread* ut, const UCell* from, UCell* res )
                 UCell blkC;
                 ur_bind( ut, ur_buffer(defN), ur_bufferSer(res),
                          UR_BIND_THREAD );
-                ur_setId( &blkC, UT_BLOCK );
-                ur_setSeries( &blkC, defN, 0 );
+                ur_initSeries( &blkC, UT_BLOCK, defN );
                 return boron_doVoid( ut, &blkC );
             }
             return UR_OK;
@@ -1207,8 +1201,7 @@ int vbo_make( UThread* ut, const UCell* from, UCell* res )
 
 build:
 
-    ur_setId( res, UT_VBO );
-    ur_setSeries( res, n, 0 );
+    ur_initSeries( res, UT_VBO, n );
     return UR_OK;
 }
 

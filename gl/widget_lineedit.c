@@ -412,8 +412,7 @@ static void ledit_layout( GWidget* wp )
     // Set draw list variables.
 
     rc = style + CI_STYLE_LABEL;
-    ur_setId( rc, UT_STRING );
-    ur_setSeries( rc, ep->strN, 0 );
+    ur_initSeries( rc, UT_STRING, ep->strN );
 
     rc = style + CI_STYLE_AREA;
     gui_initRectCoord( rc, wp, UR_ATOM_RECT );
@@ -561,15 +560,13 @@ static int ledit_select( GWidget* wp, UAtom atom, UCell* res )
     if( atom == UR_ATOM_TEXT )
     {
         EX_PTR;
-        ur_setId(res, UT_STRING);
-        ur_setSeries(res, ep->strN, 0);
+        ur_initSeries(res, UT_STRING, ep->strN);
         return UR_OK;
     }
     else if( atom == UR_ATOM_ACTION )
     {
         EX_PTR;
-        ur_setId(res, UT_BLOCK);
-        ur_setSeries(res, ep->codeN, 0);
+        ur_initSeries(res, UT_BLOCK, ep->codeN);
         return UR_OK;
     }
     return gui_areaSelect( wp, atom, res );

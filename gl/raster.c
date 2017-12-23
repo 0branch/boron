@@ -66,8 +66,7 @@ UBuffer* ur_makeRaster( UThread* ut, int format, int w, int h, UCell* res )
     rh->height = h;
     rh->bytesPerRow = _bytesPerPixel[ format ] * w;
 
-    ur_setId( res, UT_RASTER );
-    ur_setSeries( res, binN, 0 );
+    ur_initSeries( res, UT_RASTER, binN );
 
     return bin;
 }

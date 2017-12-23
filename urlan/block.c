@@ -57,8 +57,7 @@
 UIndex ur_makeBlock( UThread* ut, int size )
 {
     UIndex bufN;
-    ur_genBuffers( ut, 1, &bufN );
-    ur_blkInit( ur_buffer( bufN ), UT_BLOCK, size );
+    ur_blkInit( ur_genBuffers( ut, 1, &bufN ), UT_BLOCK, size );
     return bufN;
 }
 
@@ -79,12 +78,10 @@ UBuffer* ur_makeBlockCell( UThread* ut, int type, int size, UCell* cell )
     UBuffer* buf;
     UIndex bufN;
 
-    ur_genBuffers( ut, 1, &bufN );
-    buf = ur_buffer( bufN );
+    buf = ur_genBuffers( ut, 1, &bufN );
     ur_blkInit( buf, type, size );
 
-    ur_setId( cell, type );
-    ur_setSeries( cell, bufN, 0 );
+    ur_initSeries( cell, type, bufN );
 
     return buf;
 }
@@ -283,9 +280,8 @@ UIndex ur_blkClone( UThread* ut, UIndex blkN )
     UBuffer* copy;
     const UBuffer* orig;
 
-    ur_genBuffers( ut, 1, &n );
+    copy = ur_genBuffers( ut, 1, &n );
     orig = ur_bufferE( blkN );
-    copy = ur_buffer( n );
     ur_blkInit( copy, UT_BLOCK, orig->used );
     copy->used = orig->used;
 

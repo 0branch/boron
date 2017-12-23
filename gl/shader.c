@@ -184,7 +184,7 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
 
         pi->type     = type;
         pi->location = glGetUniformLocation( shad.program, name );
-        pi->name     = ur_internAtom( ut, name, name + length );
+        pi->name     = ur_intern( ut, name, length );
         if( pi->name == UR_INVALID_ATOM )
             return UR_THROW;
 
@@ -301,8 +301,7 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
         res = ur_buffer( res->series.buf )->ptr.cell;
     }
 
-    ur_setId( res, UT_SHADER );
-    ur_setSeries( res, bufN, 0 );
+    ur_initSeries( res, UT_SHADER, bufN );
     return UR_OK;
 }
 

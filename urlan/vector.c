@@ -85,8 +85,8 @@ void ur_vecInit( UBuffer* buf, int type, int elemSize, int size )
 UIndex ur_makeVector( UThread* ut, enum UrlanVectorType type, int size )
 {
     UIndex bufN;
-    ur_genBuffers( ut, 1, &bufN );
-    ur_vecInit( ur_buffer( bufN ), type, ur_vecFormElemSize( type ), size );
+    UBuffer* buf = ur_genBuffers( ut, 1, &bufN );
+    ur_vecInit( buf, type, ur_vecFormElemSize( type ), size );
     return bufN;
 }
 
@@ -106,12 +106,10 @@ UBuffer* ur_makeVectorCell( UThread* ut, enum UrlanVectorType type, int size,
     UBuffer* buf;
     UIndex bufN;
 
-    ur_genBuffers( ut, 1, &bufN );
-    buf = ur_buffer( bufN );
+    buf = ur_genBuffers( ut, 1, &bufN );
     ur_vecInit( buf, type, ur_vecFormElemSize( type ), size );
 
-    ur_setId( cell, UT_VECTOR );
-    ur_setSeries( cell, bufN, 0 );
+    ur_initSeries( cell, UT_VECTOR, bufN );
 
     return buf;
 }
