@@ -330,30 +330,25 @@ static uint8_t* _emitUtf8( uint8_t* out, int c )
 
 
 /**
-  Generate and initialize a single string buffer from memory holding a
-  UTF-8 string.
+  Initialize a single string buffer from memory holding a UTF-8 string.
 
-  This calls ur_makeString() internally.
+  This calls ur_strInit() internally.
 
+  \param buf    Uninitialized buffer.
   \param it     Start of UTF-8 data.
   \param end    End of UTF-8 data.
-
-  \return  Buffer id of string.
 */
-UIndex ur_makeStringUtf8( UThread* ut, const uint8_t* it, const uint8_t* end )
+void ur_strInitUtf8( UBuffer* buf, const uint8_t* it, const uint8_t* end )
 {
-    UBuffer* buf;
     uint8_t* out;
     int ch;
     int clen;
     int high;
-    UIndex bufN;
 
     clen = _statUtf8( it, end, &high );
     if( high < 256 )
     {
-        bufN = ur_makeString( ut, UR_ENC_LATIN1, clen );
-        buf = ur_buffer(bufN);
+        ur_strInit( buf, UR_ENC_LATIN1, clen );
         out = buf->ptr.b;
 
         while( it != end )
@@ -376,13 +371,12 @@ UIndex ur_makeStringUtf8( UThread* ut, const uint8_t* it, const uint8_t* end )
     }
     else if( high < 0x10000 )
     {
-        bufN = ur_makeString( ut, UR_ENC_UCS2, clen );
-        _convertString2( ur_buffer(bufN), it, end );
+        ur_strInit( buf, UR_ENC_UCS2, clen );
+        _convertString2( buf, it, end );
     }
     else
     {
-        bufN = ur_makeString( ut, UR_ENC_UTF8, end - it );
-        buf = ur_buffer(bufN);
+        ur_strInit( buf, UR_ENC_UTF8, end - it );
         out = buf->ptr.b;
 
         while( it != end )
@@ -400,7 +394,22 @@ UIndex ur_makeStringUtf8( UThread* ut, const uint8_t* it, const uint8_t* end )
         }
         buf->used = out - buf->ptr.b;
     }
+}
 
+
+/**
+  Generate and initialize a single string buffer from memory holding a
+  UTF-8 string.
+
+  \param it     Start of UTF-8 data.
+  \param end    End of UTF-8 data.
+
+  \return  Buffer id of string.
+*/
+UIndex ur_makeStringUtf8( UThread* ut, const uint8_t* it, const uint8_t* end )
+{
+    UIndex bufN;
+    ur_strInitUtf8( ur_genBuffers( ut, 1, &bufN ), it, end );
     return bufN;
 }
 
@@ -408,6 +417,7 @@ UIndex ur_makeStringUtf8( UThread* ut, const uint8_t* it, const uint8_t* end )
 /**
   Initialize buffer to type UT_STRING.
 
+  \param buf    Uninitialized buffer.
   \param enc    Encoding type.
   \param size   Number of characters to reserve.
 */

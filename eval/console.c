@@ -101,7 +101,7 @@ void createArgs( UThread* ut, int argc, char** argv )
 {
     UCell* cell;
     UBuffer* blk;
-    UBuffer* str;
+    const uint8_t* cp;
     UIndex* bufN;
     UIndex* bi;
     int i, n;
@@ -123,11 +123,8 @@ void createArgs( UThread* ut, int argc, char** argv )
             {
                 ur_initSeries( cell, UT_STRING, *bi );
 
-                str = ur_buffer(*bi);
-                n = strlen(argv[i]);
-                ur_strInit( str, UR_ENC_UTF8, n );
-                memcpy( str->ptr.c, argv[i], n );
-                str->used = n;
+                cp = (const uint8_t*) argv[i];
+                ur_strInitUtf8( ur_buffer(*bi), cp, cp + strlen((char*)cp) );
             }
 
             free( bufN );
