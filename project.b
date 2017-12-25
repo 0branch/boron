@@ -168,6 +168,6 @@ exe %boron [
         ]
     ]
     sources [
-        %eval/console.c
+        %eval/main.c
     ]
 ]

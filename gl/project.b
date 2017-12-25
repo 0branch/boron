@@ -126,6 +126,6 @@ exe %boron-gl [
         libs %ws2_32
     ]
     sources [
-        %../eval/console.c
+        %../eval/main.c
     ]
 ]

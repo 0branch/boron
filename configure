@@ -133,7 +133,7 @@ if command -v gcc >/dev/null; then
   emit "	vector.o parse_binary.o parse_block.o parse_string.o \\"
   emit "	support/str.o support/mem_util.o support/quickSortIndex.o \\"
   emit "	support/fpconv.o \\"
-  emit "	unix/os.o eval/boron.o eval/console.o eval/port_file.o eval/wait.o"
+  emit "	unix/os.o eval/boron.o eval/main.o eval/port_file.o eval/wait.o"
   emit "\nboronA: \$(OBJS)\n\tgcc \$^ -o \$@ \$(LIBS)"
   emit "\n%.o: %.c\n\tgcc -c \$(CFLAGS) \$< -o \$@"
   emit "\n%.o: urlan/%.c\n\tgcc -c \$(CFLAGS) \$< -o \$@"
