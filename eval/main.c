@@ -1,5 +1,5 @@
 /*
-  Copyright 2009,2011 Karl Robillard
+  Copyright 2009,2011,2017 Karl Robillard
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -135,13 +135,38 @@ void createArgs( UThread* ut, int argc, char** argv )
 }
 
 
-void reportError( UThread* ut, UCell* err, UBuffer* str )
+UIndex handleException( UThread* ut, UBuffer* str, int* rc )
 {
-    str->used = 0;
-    ur_toText( ut, err, str );
-    ur_strTermNull( str );
+    const UCell* res = boron_exception( ut );
+    *rc = 1;
+    if( ur_is(res, UT_WORD) )
+    {
+        switch( ur_atom(res) )
+        {
+            case UR_ATOM_QUIT:
+                res = boron_result( ut );
+                if( ur_is(res, UT_INT) )
+                    *rc = ur_int(res) & 0xff;
+                return UR_ATOM_QUIT;
 
-    puts( str->ptr.c );
+            case UR_ATOM_HALT:
+                printf( "**halt\n" );
+                return UR_ATOM_HALT;
+
+            default:
+                printf( "**unhandled exception %s\n", ur_wordCStr( res ) );
+                break;
+        }
+    }
+    else
+    {
+        str->used = 0;
+        ur_toText( ut, res, str );
+        ur_strTermNull( str );
+
+        puts( str->ptr.c );
+    }
+    return 0;
 }
 
 
@@ -152,64 +177,59 @@ int main( int argc, char** argv )
     UBuffer rstr;
     UCell* val;
     int fileN = 0;
-    int ret = 0;
+    int returnCode = 0;
+    int i;
     char promptDisabled = 0;
     char secure = 1;
 
 
     // Parse arguments.
-    if( argc > 1 )
+    for( i = 1; i < argc; ++i )
     {
-        int i;
-        char* arg;
-
-        for( i = 1; i < argc; ++i )
+        const char* arg = argv[i];
+        if( arg[0] == '-' )
         {
-            arg = argv[i];
-            if( arg[0] == '-' )
+            // Handle concatenated option characters.  This is useful for
+            // shell sha-bang invocation which may only pass one argument.
+            for( ++arg; *arg != '\0'; ++arg )
             {
-                // Handle concatenated option characters.  This is useful for
-                // shell sha-bang invocation which may only pass one argument.
-                for( ++arg; *arg != '\0'; ++arg )
+                switch( *arg )
                 {
-                    switch( *arg )
-                    {
 #ifdef BORON_GL
-                        case 'a':
-                            setenv( "BORON_GL_AUDIO", "0", 1 );
-                            break;
+                    case 'a':
+                        setenv( "BORON_GL_AUDIO", "0", 1 );
+                        break;
 #endif
-                        case 'e':
-                            if( ++i >= argc )
-                                goto usage_err;
-                            fileN = -i;
-                            i = argc;
-                            break;
+                    case 'e':
+                        if( ++i >= argc )
+                            goto usage_err;
+                        fileN = -i;
+                        i = argc;
+                        break;
 
-                        case 'h':
-                            usage( argv[0] );
-                            return 0;
+                    case 'h':
+                        usage( argv[0] );
+                        return 0;
 
-                        case 'p':
-                            promptDisabled = 1;
-                            break;
+                    case 'p':
+                        promptDisabled = 1;
+                        break;
 
-                        case 's':
-                            secure = 0;
-                            break;
+                    case 's':
+                        secure = 0;
+                        break;
 
-                        default:
+                    default:
 usage_err:
-                            usage( argv[0] );
-                            return 64;      // EX_USAGE
-                    }
+                        usage( argv[0] );
+                        return 64;      // EX_USAGE
                 }
             }
-            else
-            {
-                fileN = i;
-                break;
-            }
+        }
+        else
+        {
+            fileN = i;
+            break;
         }
     }
 
@@ -236,59 +256,31 @@ usage_err:
     }
 #endif
 
-    if( fileN )
+    if( fileN > 0 )
     {
-        char* pos;
-        int expression;
-
-        if( fileN < 0 )
-        {
-            fileN = -fileN;
-            expression = 1;
-        }
-        else
-            expression = 0;
+        UIndex hold;
 
         createArgs( ut, argc - 1 - fileN, argv + 1 + fileN );
 
-        pos = cmd = malloc( CMD_SIZE );
-        cmd[ CMD_SIZE - 1 ] = -1;
+        val = boron_result( ut );
+        if( ! boron_load( ut, argv[fileN], val ) )
+            goto exception;
 
-        if( expression )
+        hold = ur_hold( val->series.buf );
+        i = boron_doBlock( ut, val, val );
+        ur_release( hold );
+        if( i == UR_THROW )
+            goto exception;
+    }
+    else if( fileN < 0 )
+    {
+        fileN = -fileN;
+        createArgs( ut, argc - 1 - fileN, argv + 1 + fileN );
+        if( ! boron_doCStr( ut, argv[fileN], -1 ) )
         {
-            pos = str_copy( pos, argv[fileN] );
-        }
-        else
-        {
-            pos = str_copy( pos, "do load {" );
-            pos = str_copy( pos, argv[fileN] );
-            *pos++ = '}';
-        }
-
-        assert( cmd[ CMD_SIZE - 1 ] == -1 && "cmd buffer overflow" );
-
-        if( ! boron_doCStr( ut, cmd, pos - cmd ) )
-        {
-            UCell* ex = boron_exception( ut );
-            if( ur_is(ex, UT_ERROR) )
-            {
-                reportError( ut, ex, &rstr );
-                if( promptDisabled )
-                    ret = 1;
-                else
-                    goto prompt;
-            }
-            else if( ur_is(ex, UT_WORD) )
-            {
-                switch( ur_atom(ex) ) 
-                {
-                    case UR_ATOM_QUIT:
-                        goto quit;
-
-                    case UR_ATOM_HALT:
-                        goto prompt;
-                }
-            }
+exception:
+            if( handleException( ut, &rstr, &returnCode ) == UR_ATOM_HALT )
+                goto prompt;
         }
     }
     else
@@ -303,8 +295,7 @@ prompt:
 #ifdef CONFIG_READLINE
         rl_bind_key( '\t', rl_insert );     // Disable tab completion.
 #elif ! defined(CONFIG_LINENOISE)
-        if( ! cmd )
-            cmd = malloc( CMD_SIZE );
+        cmd = malloc( CMD_SIZE );
 #endif
 
         while( 1 )
@@ -337,10 +328,6 @@ prompt:
             }
             else if( cmd[0] != '\n' )
             {
-#if 0
-                if( cmd[0] == 'q' )
-                    goto quit;
-#endif
                 if( boron_doCStr( ut, cmd, -1 ) )
                 {
                     val = boron_result( ut );
@@ -366,28 +353,8 @@ prompt:
                 }
                 else
                 {
-                    UCell* ex = boron_exception( ut );
-                    if( ur_is(ex, UT_ERROR) )
-                    {
-                        reportError( ut, ex, &rstr );
-                    }
-                    else if( ur_is(ex, UT_WORD) )
-                    {
-                        switch( ur_atom(ex) ) 
-                        {
-                            case UR_ATOM_QUIT:
-                                goto quit;
-
-                            case UR_ATOM_HALT:
-                                printf( "**halt\n" );
-                                break;
-
-                            default:
-                                printf( "**unhandled exception %s\n",
-                                        ur_wordCStr( ex ) );
-                                break;
-                        }
-                    }
+                    if( handleException( ut, &rstr, &returnCode ) == UR_ATOM_QUIT )
+                        goto cleanup;
                     boron_reset( ut );
                 }
             }
@@ -404,14 +371,7 @@ cleanup:
 #endif
 
     free( cmd );
-    return ret;
-
-quit:
-
-    val = boron_result( ut );
-    if( ur_is(val, UT_INT) )
-        ret = ur_int(val) & 0xff;
-    goto cleanup;
+    return returnCode;
 }
 
 

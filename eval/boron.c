@@ -1593,6 +1593,35 @@ void boron_bindDefault( UThread* ut, UIndex blkN )
 
 
 /**
+  Load block! from file and give it default bindings.
+
+  \param file     UTF-8 filename of Boron script or serialized data.
+  \param res      The result cell for the new block value.
+
+  \return UR_OK/UR_THROW.
+*/
+int boron_load( UThread* ut, const char* file, UCell* res )
+{
+    UBuffer* str;
+    UCell* arg;
+    UIndex bufN;
+    int ok;
+
+    str = ur_genBuffers( ut, 1, &bufN );        // gc!
+    ur_strInit( str, UR_ENC_UTF8, 0 );
+    ur_strAppendCStr( str, file );
+
+    if( ! (arg = boron_stackPush(ut)) )
+        return UR_THROW;
+    ur_initSeries( arg, UT_STRING, bufN );
+    ok = cfunc_load( ut, arg, res );
+    boron_stackPop(ut);
+
+    return ok;
+}
+
+
+/**
   Evaluate block and get result.
 
   blkC and res may point to the same cell.

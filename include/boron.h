@@ -122,6 +122,7 @@ UBuffer* boron_makePort( UThread*, const UPortDevice*, void* ext, UCell* res );
 void     boron_setAccessFunc( UThread*, int (*func)( UThread*, const char* ) );
 int      boron_requestAccess( UThread*, const char* msg, ... );
 void     boron_bindDefault( UThread*, UIndex blkN );
+int      boron_load( UThread*, const char* file, UCell* res );
 int      boron_doBlock( UThread*, const UCell* blkC, UCell* res );
 int      boron_doBlockN( UThread*, UIndex blkN, UCell* res );
 int      boron_doCStr( UThread*, const char* cmd, int len );
