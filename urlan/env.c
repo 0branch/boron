@@ -74,7 +74,6 @@
 //#define GC_HOLD_TEST  1
 
 #define BUF_ERROR_BLK   0
-#define BUF_THREAD_CTX  1
 
 #include "datatypes.c"
 #include "atoms.c"
@@ -112,7 +111,7 @@ static void _threadInitStore( UThread* ut )
 
     ur_genBuffers( ut, 2, bufN );
     ur_blkInit( ur_buffer(bufN[0]), UT_BLOCK, 0 );  // BUF_ERROR_BLK
-    ur_ctxInit( ur_buffer(bufN[1]), 0 );            // BUF_THREAD_CTX
+    ur_ctxInit( ur_buffer(bufN[1]), 0 );            // UR_MAIN_CONTEXT
     ur_hold( bufN[0] );
     ur_hold( bufN[1] );
 
@@ -879,7 +878,7 @@ UBuffer* ur_errorBlock( UThread* ut )
 */
 UBuffer* ur_threadContext( UThread* ut )
 {
-    return ur_buffer( BUF_THREAD_CTX );
+    return ur_buffer( UR_MAIN_CONTEXT );
 }
 
 
@@ -892,7 +891,7 @@ UBuffer* ur_envContext( UThread* ut )
 {
     UEnv* env = ut->env;
     if( env->dataStore.used )
-        return env->dataStore.ptr.buf + BUF_THREAD_CTX;
+        return env->dataStore.ptr.buf + UR_MAIN_CONTEXT;
     return 0;
 }
 

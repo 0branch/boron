@@ -312,6 +312,8 @@ struct UThread
     UCell* (*wordCellM)( UThread*, const UCell* );
 };
 
+#define UR_MAIN_CONTEXT     1
+
 
 typedef struct
 {

@@ -1552,7 +1552,7 @@ static void _bindDefaultB( UThread* ut, UIndex blkN )
                         if( ! ur_is( ur_ctxCell(envCtx, wrdN), UT_UNSET ) )
                         {
                             ur_setBinding( bi.it, UR_BIND_ENV );
-                            bi.it->word.ctx = -1; //-BUF_THREAD_CTX;
+                            bi.it->word.ctx = -UR_MAIN_CONTEXT;
                             bi.it->word.index = wrdN;
                             continue;
                         }
@@ -1562,7 +1562,7 @@ static void _bindDefaultB( UThread* ut, UIndex blkN )
             }
 assign:
             ur_setBinding( bi.it, UR_BIND_THREAD );
-            bi.it->word.ctx = 1; //BUF_THREAD_CTX;
+            bi.it->word.ctx = UR_MAIN_CONTEXT;
             bi.it->word.index = wrdN;
         }
         else if( ur_isBlockType(type) )

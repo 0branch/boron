@@ -312,8 +312,9 @@ static int _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
             {
                 case UR_BIND_THREAD:
                 case UR_BIND_ENV:
-                    // Avoiding global contexts (BUF_THREAD_CTX) for now.
-                    if( bi.it->word.ctx > 1 || bi.it->word.ctx < -1 )
+                    // Avoiding global contexts (UR_MAIN_CONTEXT) for now.
+                    if( bi.it->word.ctx > UR_MAIN_CONTEXT ||
+                        bi.it->word.ctx < -UR_MAIN_CONTEXT )
                     {
                         push8( UR_BIND_THREAD /*ur_binding(bi.it)*/ );
                         packU32( _mapBuffer( ser, bi.it->word.ctx ) );
