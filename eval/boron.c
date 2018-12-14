@@ -27,6 +27,7 @@
 #include "bignum.h"
 #include "boron_internal.h"
 //#include "cpuCounter.h"
+//#define CFUNC_SERIALIZED
 
 
 /** \defgroup boron Boron Interpreter
@@ -499,10 +500,16 @@ void boron_addCFunc( UThread* ut, BoronCFunc func, const char* sig )
 }
 
 
-//#define CFUNC_TABLE
-#ifdef CFUNC_TABLE
-int boron_addCFuncS( UThread* ut, BoronCFunc* funcTable,
-                     const uint8_t* sigs, int slen )
+/**
+  Add C functions to context.
+
+  \param ctxN   Context to add UT_CFUNC values to.
+  \param funcs  Table of BoronCFunc pointers.
+  \param spec   Function specification starting with name, one function
+                per line.
+*/
+int boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
+                       const char* sigs, int slen )
 {
     UBlockIter bi;
     UCell tmp;
@@ -512,8 +519,19 @@ int boron_addCFuncS( UThread* ut, BoronCFunc* funcTable,
     const UCell* next;
 
 
-    if( ! ur_unserialize( ut, sigs, sigs + slen, &tmp ) )
-        return UR_THROW;
+#ifdef CFUNC_SERIALIZED
+    if( ur_serializedHeader( (const uint8_t*) sigs, slen ) )
+    {
+        const uint8_t* usigs = (const uint8_t*) sigs;
+        if( ! ur_unserialize( ut, usigs, usigs + slen, &tmp ) )
+            return UR_THROW;
+    }
+    else
+#endif
+    {
+        if( ! ur_tokenize( ut, sigs, sigs + slen, &tmp ) )
+            return UR_THROW;
+    }
 
     hold = ur_hold( tmp.series.buf );
     ur_blkSlice( ut, &bi, &tmp );
@@ -528,7 +546,7 @@ int boron_addCFuncS( UThread* ut, BoronCFunc* funcTable,
         }
 
         //printf( "KR %s\n", ur_atomCStr( ut, ur_atom(bi.it) ) );
-        cell = (UCellFunc*) ur_ctxAddWord( ur_threadContext(ut),
+        cell = (UCellFunc*) ur_ctxAddWord( ur_buffer(ctxN),
                                            ur_atom(bi.it) );
         ur_setId(cell, UT_CFUNC);
         cell->argBufN = UR_INVALID_BUF;
@@ -551,7 +569,6 @@ int boron_addCFuncS( UThread* ut, BoronCFunc* funcTable,
 
     return UR_OK;
 }
-#endif
 
 
 void boron_overrideCFunc( UThread* ut, const char* name, BoronCFunc func )
@@ -785,8 +802,21 @@ extern CFUNC_PUB( cfunc_with_flock );
 extern CFUNC_PUB( cfunc_sleep );
 extern CFUNC_PUB( cfunc_wait );
 
-#ifdef CFUNC_TABLE
-#include "cfuncTable.c"
+#ifdef CFUNC_SERIALIZED
+#include "cfunc_table.c"
+#else
+#define DEF_CF(f,spec)  f,
+static BoronCFunc _cfuncs[] =
+{
+#include "cfunc_table.c"
+};
+
+#undef DEF_CF
+#define DEF_CF(f,spec)  spec
+static const char _cfuncSpecs[] =
+{
+#include "cfunc_table.c"
+};
 #endif
 
 
@@ -925,187 +955,25 @@ UThread* boron_makeEnvP( UEnvParameters* par )
 
     // Add C functions.
 
-#define addCFunc(func,spec)    boron_addCFunc(ut, func, spec)
-
     COUNTER( timeC );
-#ifdef CFUNC_TABLE
+#ifdef CFUNC_SERIALIZED
     // 1124363 / 1597020 = ~30% fewer cycles.
-    if( ! boron_addCFuncS( ut, _cfuncTable, _cfuncSigs, sizeof(_cfuncSigs) ) )
+    if( ! boron_defineCFunc( ut, UR_MAIN_CONTEXT, _cfuncTable,
+                             _cfuncSigs, sizeof(_cfuncSigs) ) )
     {
         ur_freeEnv( ut );
         return 0;
     }
 #else
-    // CFUNC_TABLE_START
-    addCFunc( cfunc_nop,     "nop" );
-    addCFunc( cfunc_quit,    "quit /return val" );
-    addCFunc( cfunc_halt,    "halt" );
-    addCFunc( cfunc_exit,    "exit" );
-    addCFunc( cfunc_return,  "return val" );
-    addCFunc( cfunc_break,   "break" );
-    addCFunc( cfunc_throw,   "throw val /name w word! /ghost" );
-    addCFunc( cfunc_catch,   "catch val /name w" );
-    addCFunc( cfunc_try,     "try val" );
-    addCFunc( cfunc_recycle, "recycle" );
-    addCFunc( cfunc_do,      "do" );            // val (eval-control)
-    addCFunc( cfunc_set,     "set w val" );
-    addCFunc( cfunc_get,     "get w" );
-    addCFunc( cfunc_valueQ,  "value? w" );
-    addCFunc( cfunc_in,      "in c w" );
-    addCFunc( cfunc_words_of,"words-of c 0" );
-    addCFunc( cfunc_words_of,"values-of c 1" );
-    addCFunc( cfunc_bindingQ,"binding? w" );
-    addCFunc( cfunc_bind,    "bind b w" );
-    addCFunc( cfunc_unbind,  "unbind w /deep" );
-    addCFunc( cfunc_infuse,  "infuse b w" );
-    addCFunc( cfunc_add,     "add a b" );
-    addCFunc( cfunc_sub,     "sub a b" );
-    addCFunc( cfunc_mul,     "mul a b" );
-    addCFunc( cfunc_div,     "div a b" );
-    addCFunc( cfunc_mod,     "mod a b" );
-    addCFunc( cfunc_and,     "and a b" );
-    addCFunc( cfunc_or,      "or a b" );
-    addCFunc( cfunc_xor,     "xor a b" );
-    addCFunc( cfunc_minimum, "minimum a b" );
-    addCFunc( cfunc_maximum, "maximum a b" );
-    addCFunc( cfunc_abs,     "abs n" );
-    addCFunc( cfunc_sqrt,    "sqrt n" );
-    addCFunc( cfunc_cos,     "cos n" );
-    addCFunc( cfunc_sin,     "sin n" );
-    addCFunc( cfunc_atan,    "atan n" );
-    addCFunc( cfunc_make,    "make type spec" );
-    addCFunc( cfunc_copy,    "copy val /deep" );
-    addCFunc( cfunc_reserve, "reserve ser size" );
-    addCFunc( cfunc_does,    "does body" );
-    addCFunc( cfunc_func,    "func spec body" );
-    addCFunc( cfunc_mold,    "mold val /contents" );
-    addCFunc( cfunc_probe,   "probe val" );
-    addCFunc( cfunc_prin,    "prin val" );
-    addCFunc( cfunc_print,   "print val" );
-    addCFunc( cfunc_to_text, "to-text val" );
-    addCFunc( cfunc_all,     "all val" );
-    addCFunc( cfunc_any,     "any val" );
-    addCFunc( cfunc_reduce,  "reduce val" );
-    addCFunc( cfunc_not,     "not val" );
-    addCFunc( cfunc_if,      "if exp body /ghost" );
-    addCFunc( cfunc_ifn,     "ifn exp body /ghost" );
-    addCFunc( cfunc_either,  "either exp a b /ghost" );
-    addCFunc( cfunc_while,   "while exp body /ghost" );
-    addCFunc( cfunc_forever, "forever body /ghost" );
-    addCFunc( cfunc_loop,    "loop n body /ghost" );
-    addCFunc( cfunc_select,  "select data val /last /case" );
-    addCFunc( cfunc_switch,  "switch val body" );
-    addCFunc( cfunc_case,    "case body" );
-    addCFunc( cfunc_first,   "first ser" );
-    addCFunc( cfunc_second,  "second ser" );
-    addCFunc( cfunc_third,   "third ser" );
-    addCFunc( cfunc_last,    "last ser" );
-    addCFunc( cfunc_2plus,   "++ 'w" );
-    addCFunc( cfunc_2minus,  "-- 'w" );
-    addCFunc( cfunc_prev,    "prev ser" );
-    addCFunc( cfunc_next,    "next ser" );
-    addCFunc( cfunc_head,    "head ser" );
-    addCFunc( cfunc_tail,    "tail ser" );
-    addCFunc( cfunc_pick,    "pick ser n" );
-    addCFunc( cfunc_poke,    "poke ser n val" );
-    addCFunc( cfunc_pop,     "pop ser" );
-    addCFunc( cfunc_skip,    "skip ser n /wrap" );
-    addCFunc( cfunc_append,  "append ser val /block /repeat a int!" );
-    addCFunc( cfunc_insert,  "insert ser val /block /part n /repeat a int!" );
-    addCFunc( cfunc_change,  "change ser val /slice /part n" );
-    addCFunc( cfunc_remove,  "remove ser /slice /part n" );
-    addCFunc( cfunc_reverse, "reverse ser /part n" );
-    addCFunc( cfunc_find,    "find ser val /last /case /part n" );
-    addCFunc( cfunc_clear,   "clear ser" );
-    addCFunc( cfunc_slice,   "slice ser n" );
-    addCFunc( cfunc_emptyQ,  "empty? ser" );
-    addCFunc( cfunc_headQ,   "head? ser" );
-    addCFunc( cfunc_sizeQ,   "size? ser" );
-    addCFunc( cfunc_indexQ,     "index? ser" );
-    addCFunc( cfunc_seriesQ,    "series? ser" );
-    addCFunc( cfunc_any_blockQ, "any-block? val" );
-    addCFunc( cfunc_any_wordQ,  "any-word? val" );
-    addCFunc( cfunc_complement, "complement val" );
-    addCFunc( cfunc_negate,     "negate n" );
-    addCFunc( cfunc_intersect,  "intersect a b /case" );
-    addCFunc( cfunc_difference, "difference a b /case" );
-    addCFunc( cfunc_union,      "union a b /case" );
-    addCFunc( cfunc_sort,       "sort ser /case /group size int!"
-                                " /field b block!" );
-    addCFunc( cfunc_foreach,    "foreach 'w s body 0 /ghost" );
-    addCFunc( cfunc_foreach,    "remove-each 'w s body 1 /ghost" );
-    addCFunc( cfunc_forall,     "forall 'w body /ghost" );
-    addCFunc( cfunc_map,        "map 'w ser body /ghost" );
-    addCFunc( cfunc_infoQ,      "exists? file 0" );
-    addCFunc( cfunc_infoQ,      "dir? file 1" );
-    addCFunc( cfunc_infoQ,      "info? file 2" );
-    addCFunc( cfunc_make_dir,   "make-dir path /all" );
-    addCFunc( cfunc_change_dir, "change-dir path" );
-    addCFunc( cfunc_current_dir,"current-dir" );
-    addCFunc( cfunc_getenv,     "getenv val" );
-    addCFunc( cfunc_open,       "open from /read /write /new /nowait" );
-    addCFunc( cfunc_read,       "read from /text /into b /append a"
-                                " /part size int!" );
-    addCFunc( cfunc_write,      "write to data /append /text" );
-    addCFunc( cfunc_delete,     "delete file" );
-    addCFunc( cfunc_rename,     "rename a b" );
-    addCFunc( cfunc_load,       "load from" );
-    addCFunc( cfunc_save,       "save to data" );
-    addCFunc( cfunc_parse,      "parse input rules /case /binary" );
-    addCFunc( cfunc_sameQ,      "same? a b" );
-    addCFunc( cfunc_equalQ,     "equal? a b" );
-    addCFunc( cfunc_neQ,        "ne? a b" );
-    addCFunc( cfunc_gtQ,        "gt? a b" );
-    addCFunc( cfunc_ltQ,        "lt? a b" );
-    addCFunc( cfunc_zeroQ,      "zero? a" );
-    addCFunc( cfunc_typeQ,      "type? a" );
-    addCFunc( cfunc_encodingQ,  "encoding? s" );
-    addCFunc( cfunc_encode,     "encode type s /bom" );
-    addCFunc( cfunc_decode,     "decode type word! s string!" );
-    addCFunc( cfunc_swap,       "swap b /group size" );
-    addCFunc( cfunc_lowercase,  "lowercase s" );
-    addCFunc( cfunc_uppercase,  "uppercase s" );
-    addCFunc( cfunc_trim,       "trim s /indent /lines" );
-    addCFunc( cfunc_terminate,  "terminate ser val /dir" );
-    addCFunc( cfunc_to_hex,     "to-hex n" );
-    addCFunc( cfunc_to_dec,     "to-dec n" );
-    addCFunc( cfunc_mark_sol,   "mark-sol val /block /clear" );
-    addCFunc( cfunc_now,        "now /date" );
-    addCFunc( cfunc_cpu_cycles, "cpu-cycles n int! b block!" );
-    addCFunc( cfunc_free,       "free s" );
-    addCFunc( cfunc_serialize,  "serialize b" );
-    addCFunc( cfunc_unserialize,"unserialize b" );
-    addCFunc( cfunc_collect,    "collect type datatype! a block!/paren!"
-                                " /unique /into b block!" );
-    addCFunc( cfunc_construct,  "construct s b" );
-    addCFunc( cfunc_sleep,      "sleep n" );
-    addCFunc( cfunc_wait,       "wait b" );
-    // CFUNC_TABLE_END
+#if 1
+    // timeC: 442680 ; ~23% fewer cycles.
+    boron_defineCFunc( ut, UR_MAIN_CONTEXT, _cfuncs,
+                       _cfuncSpecs, sizeof(_cfuncSpecs)-1 );
+#else
+    // timeC: 575832
+#define DEF_CF(func,spec)    boron_addCFunc(ut, func, spec);
+#include "cfunc_table.c"
 #endif
-#ifdef CONFIG_SOCKET
-    addCFunc( cfunc_set_addr,   "set-addr p host" );
-    addCFunc( cfunc_hostname,   "hostname p" );
-#endif
-#ifdef CONFIG_THREAD
-    addCFunc( cfunc_thread,     "thread body /port" );
-#endif
-#ifdef CONFIG_CHECKSUM
-    addCFunc( cfunc_hash,       "hash val" );
-    addCFunc( cfunc_checksum,   "checksum val /sha1 /crc16 /crc32" );
-#endif
-#ifdef CONFIG_COMPRESS
-    addCFunc( cfunc_compress,   "compress s" );
-    addCFunc( cfunc_decompress, "decompress b" );
-#endif
-#ifdef CONFIG_RANDOM
-    addCFunc( cfunc_random,     "random a /seed" );
-#endif
-#ifdef CONFIG_EXECUTE
-    addCFunc( cfunc_execute,    "execute s /in a /out b /err c /spawn /port" );
-    addCFunc( cfunc_with_flock, "with-flock file file! body block! /nowait" );
-#endif
-#ifdef CONFIG_ASSEMBLE
-    addCFunc( cfunc_assemble,   "assemble s block! body block!" );
 #endif
 
 

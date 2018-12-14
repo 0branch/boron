@@ -115,6 +115,8 @@ UEnvParameters* boron_envParam( UEnvParameters* );
 UThread* boron_makeEnvP( UEnvParameters* );
 UThread* boron_makeEnv( const UDatatype** dtTable, unsigned int dtCount );
 void     boron_freeEnv( UThread* );
+int      boron_defineCFunc( UThread*, UIndex ctxN, const BoronCFunc* funcs,
+                            const char* spec, int specLen );
 void     boron_addCFunc( UThread*, BoronCFunc func, const char* sig );
 void     boron_overrideCFunc( UThread*, const char* name, BoronCFunc func );
 void     boron_addPortDevice( UThread*, const UPortDevice*, UAtom name );
