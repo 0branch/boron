@@ -363,6 +363,9 @@ CFUNC(cfunc_do)
             if( ! ur_is(res, UT_BLOCK) )
                 return UR_OK;
             // Fall through to block...
+#if __GNUC__ == 7
+            __attribute__ ((fallthrough));
+#endif
 
         case UT_BLOCK:
         case UT_PAREN:

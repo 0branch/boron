@@ -569,6 +569,7 @@ int vector_append( UThread* ut, UBuffer* buf, const UCell* val )
             src.ptr.v = si.buf->ptr.b + si.it;
             ur_vecAppend( buf, &src, 0, (si.end - si.it) / buf->elemSize );
         }
+            break;
 
         case UT_VECTOR:
         {

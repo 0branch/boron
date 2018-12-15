@@ -295,7 +295,7 @@ int  unset_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
 {
     (void) res;
     return ur_error( ut, UR_ERR_SCRIPT, "%s operator is unset for types %s %s",
-                     operatorNames[ op ],
+                     operatorNames[ op & 7 ],
                      ur_atomCStr(ut, ur_type(a)),
                      ur_atomCStr(ut, ur_type(b)) );
 }

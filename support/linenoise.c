@@ -1004,6 +1004,7 @@ process_char:
                 return -1;
             }
             /* Otherwise fall through to delete char to right of cursor */
+            /* FALLTHRU */
         case SPECIAL_DELETE:
             if (remove_char(current, current->pos) == 1) {
                 refreshLine(current->prompt, current);
@@ -1171,6 +1172,7 @@ process_char:
         case ctrl('P'):
         case SPECIAL_UP:
             dir = 1;
+            /* FALLTHRU */
         case ctrl('N'):
         case SPECIAL_DOWN:
             if (history_len > 1) {
