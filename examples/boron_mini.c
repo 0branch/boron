@@ -15,6 +15,8 @@ CFUNC(printHello)
     return UR_OK;
 }
 
+static const BoronCFunc myFuncs[] = { printHello };
+static const char myFuncSpecs[] = "hello n";
 
 int main()
 {
@@ -22,7 +24,8 @@ int main()
     if( ! ut )
         return 255;
 
-    boron_addCFunc( ut, printHello, "hello n" );    // Add our cfunc!.
+    boron_defineCFunc( ut, UR_MAIN_CONTEXT, myFuncs, myFuncSpecs,
+                       sizeof(myFuncSpecs)-1 );     // Add our cfunc!.
     boron_doCStr( ut, "hello 3", -1 );              // Invoke it.
     boron_freeEnv( ut );                            // Cleanup.
     return 0;

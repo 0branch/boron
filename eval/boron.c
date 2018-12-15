@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2013 Karl Robillard
+  Copyright 2009-2018 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -455,6 +455,8 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 /**
   Add C function to the thread context.
 
+  \deprecated   boron_defineCFunc() should be used instead of this function.
+
   C Function Rules:
   \li Arguments are in a held block; they are safe from garbage collection.
   \li Result is part of a held block; it is safe from garbage collection.
@@ -465,38 +467,7 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 */
 void boron_addCFunc( UThread* ut, BoronCFunc func, const char* sig )
 {
-    UCellFunc* cell;
-    const char* cp;
-    const char* end;
-    UAtom atom;
-
-
-    cp  = str_skipWhite( sig );
-    end = str_toWhite( cp );
-    if( cp == end )
-        return;
-    atom = ur_internAtom( ut, cp, end );
-    if( atom == UR_INVALID_ATOM )
-        return;
-
-    cell = (UCellFunc*) ur_ctxAddWord( ur_threadContext(ut), atom );
-
-    ur_setId(cell, UT_CFUNC);
-    cell->argBufN = UR_INVALID_BUF;
-    cell->m.func  = func;
-
-    cp = str_skipWhite( end );
-    if( cp != end )
-    {
-        UCell tmp;
-        UIndex hold;
-        if( ur_tokenize( ut, cp, cp + strLen(cp), &tmp ) )
-        {
-            hold = ur_hold( tmp.series.buf );
-            cell->argBufN = boron_makeArgProgram( ut, &tmp, 0, 0, cell );
-            ur_release( hold );
-        }
-    }
+    boron_defineCFunc( ut, UR_MAIN_CONTEXT, &func, sig, strlen(sig) );
 }
 
 
@@ -505,65 +476,68 @@ void boron_addCFunc( UThread* ut, BoronCFunc func, const char* sig )
 
   \param ctxN   Context to add UT_CFUNC values to.
   \param funcs  Table of BoronCFunc pointers.
-  \param spec   Function specification starting with name, one function
+  \param spec   Function specifications starting with name, one function
                 per line.
+  \param slen   Specification string length.
 */
 int boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
-                       const char* sigs, int slen )
+                       const char* spec, int slen )
 {
     UBlockIter bi;
     UCell tmp;
     UIndex hold;
     UCellFunc* cell;
+    UCell* term;
     const UCell* start;
-    const UCell* next;
+    const UCell* specCells;
 
 
 #ifdef CFUNC_SERIALIZED
-    if( ur_serializedHeader( (const uint8_t*) sigs, slen ) )
+    if( ur_serializedHeader( (const uint8_t*) spec, slen ) )
     {
-        const uint8_t* usigs = (const uint8_t*) sigs;
-        if( ! ur_unserialize( ut, usigs, usigs + slen, &tmp ) )
+        const uint8_t* uspec = (const uint8_t*) spec;
+        if( ! ur_unserialize( ut, uspec, uspec + slen, &tmp ) )
             return UR_THROW;
     }
     else
 #endif
     {
-        if( ! ur_tokenize( ut, sigs, sigs + slen, &tmp ) )
+        if( ! ur_tokenize( ut, spec, spec + slen, &tmp ) )
             return UR_THROW;
     }
 
     hold = ur_hold( tmp.series.buf );
+
+    // Append terminator cell for loop below.
+    term = ur_blkAppendNew( ur_buffer(tmp.series.buf), UT_UNSET );
+    ur_setFlags(term, UR_FLAG_SOL);
+
     ur_blkSlice( ut, &bi, &tmp );
+    specCells = bi.buf->ptr.cell;   // bi.buf can change during gc below.
     start = bi.it;
-    while( bi.it != bi.end )
+    ur_foreach( bi )
     {
-        if( ! ur_is(bi.it, UT_SETWORD) )
+        if( ur_flags(bi.it, UR_FLAG_SOL) )
         {
-            ur_release( hold );
-            return ur_error( ut, UR_ERR_SCRIPT,
-                             "addCFuncS signature must start with set-word!" );
-        }
+            if( ur_is(start, UT_WORD) )
+            {
+                cell = (UCellFunc*) ur_ctxAddWord( ur_buffer(ctxN),
+                                                   ur_atom(start) );
+                ur_setId(cell, UT_CFUNC);
+                cell->argBufN = UR_INVALID_BUF;
+                cell->m.func  = *funcTable++;
 
-        //printf( "KR %s\n", ur_atomCStr( ut, ur_atom(bi.it) ) );
-        cell = (UCellFunc*) ur_ctxAddWord( ur_buffer(ctxN),
-                                           ur_atom(bi.it) );
-        ur_setId(cell, UT_CFUNC);
-        cell->argBufN = UR_INVALID_BUF;
-        cell->m.func  = *funcTable++;
+                //printf( "KR cfunc %s\n", ur_atomCStr(ut, ur_atom(start)) );
 
-        next = bi.it + 1;
-        tmp.series.it = next - start;
-        while( next != bi.end )
-        {
-            if( ur_is(next, UT_SETWORD) )
+                tmp.series.it  = (start - specCells) + 1;
+                tmp.series.end =  bi.it - specCells;
+                cell->argBufN = boron_makeArgProgram( ut, &tmp, 0, 0, cell );
+            }
+
+            if( ur_is(bi.it, UT_UNSET) )
                 break;
-            ++next;
+            start = bi.it;
         }
-        tmp.series.end = next - start;
-        bi.it = next;
-
-        cell->argBufN = boron_makeArgProgram( ut, &tmp, 0, 0, cell );
     }
     ur_release( hold );
 
@@ -743,10 +717,12 @@ static const char setupScript[] =
 static void _addDatatypeWords( UThread* ut, int typeCount )
 {
     UBuffer* ctx;
-    const char* typeName;
+    BoronCFunc* fbuf;
+    BoronCFunc* fi;
+    char* cbuf;
     char* cp;
-    char name[32];
-    char args[6];
+    char sig[8];
+    const char* typeName;
     int i;
 
 
@@ -756,35 +732,36 @@ static void _addDatatypeWords( UThread* ut, int typeCount )
         ur_makeDatatype( ur_ctxAddWord(ctx, i), i );
 
 
-    args[0] = ' ';
-    args[1] = 'v';
-    args[2] = ' ';
-
-    // Datatype cfuncs.
+    // Add datatype query & convert functions.
+    fbuf = fi = (BoronCFunc*) malloc(typeCount * (sizeof(BoronCFunc)*2+16+19));
+    cbuf = cp = (char*) (fbuf + (typeCount * 2));
+    strcpy( sig, " a  0\n" );
     for( i = 0; i < typeCount; ++i )
     {
         typeName = ur_atomCStr( ut, i );
+        if( *typeName == ':' )
+            continue;           // Skip unassigned types (see _addDT).
 
-        // Add variant number to argument string.
-        cp = args + 3;
+        // Set variant number in signature.
         if( i > 9 )
-            *cp++ = '0' + (i / 10);
-        *cp++ = '0' + (i % 10);
-        *cp = '\0';
+            sig[3] = '0' + (i / 10);
+        sig[4] = '0' + (i % 10);
 
-        cp = str_copy( name, typeName );
-        cp[-1] = '?';
-        cp = str_copy( cp, args );
-        *cp = '\0';
-        boron_addCFunc( ut, cfunc_datatypeQ, name );
-
-        cp = str_copy( name, "to-" );
         cp = str_copy( cp, typeName );
-        cp = str_copy( cp - 1, args );
-        *cp = '\0';
-        //printf( "KR cfunc %s\n", name );
-        boron_addCFunc( ut, cfunc_to_type, name );
+        cp[-1] = '?';           // Change ! to ?.
+        cp = str_copy( cp, sig );
+
+        cp = str_copy( cp, "to-" );
+        cp = str_copy( cp, typeName );
+        cp = str_copy( cp - 1, sig );
+
+        *fi++ = cfunc_datatypeQ;
+        *fi++ = cfunc_to_type;
     }
+    *cp = '\0';
+    //printf( "KR type functs (%ld chars)\n%s\n", cp - cbuf, cbuf );
+    boron_defineCFunc( ut, UR_MAIN_CONTEXT, fbuf, cbuf, cp - cbuf );
+    free( fbuf );
 }
 
 
@@ -954,32 +931,16 @@ UThread* boron_makeEnvP( UEnvParameters* par )
 
 
     // Add C functions.
-
     COUNTER( timeC );
-#ifdef CFUNC_SERIALIZED
-    // 1124363 / 1597020 = ~30% fewer cycles.
-    if( ! boron_defineCFunc( ut, UR_MAIN_CONTEXT, _cfuncTable,
-                             _cfuncSigs, sizeof(_cfuncSigs) ) )
-    {
-        ur_freeEnv( ut );
-        return 0;
-    }
-#else
-#if 1
-    // timeC: 442680 ; ~23% fewer cycles.
-    boron_defineCFunc( ut, UR_MAIN_CONTEXT, _cfuncs,
-                       _cfuncSpecs, sizeof(_cfuncSpecs)-1 );
-#else
-    // timeC: 575832
-#define DEF_CF(func,spec)    boron_addCFunc(ut, func, spec);
-#include "cfunc_table.c"
-#endif
-#endif
+    if( ! boron_defineCFunc( ut, UR_MAIN_CONTEXT, _cfuncs,
+                             _cfuncSpecs, sizeof(_cfuncSpecs)-1 ) )
+        goto fail;
 
 
     COUNTER( timeD );
     if( ! boron_doCStr( ut, setupScript, sizeof(setupScript)-1 ) )
     {
+fail:
         ur_freeEnv( ut );
         ut = 0;
     }

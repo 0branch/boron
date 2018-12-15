@@ -12,14 +12,14 @@ default [
     macx [
         cflags {-std=c99}
         cflags {-pedantic}
-        libs {m}
+        libs [%m %z]
         universal
     ]
     unix [
         cflags {-std=c99}
         ;cflags {-std=gnu99}    ; Try this if c99 fails.
         cflags {-pedantic}
-        libs {m}
+        libs [%m %z %pthread]
     ]
     win32 [
         include_from %../win32

@@ -30,7 +30,7 @@
 */
 /** \def CFUNC_OPTIONS
   Macro to get uint32_t option flags from inside a C function.
-  Only use this if options were declared in the boron_addCFunc() sig.
+  Only use this if options were declared in the boron_defineCFunc() signature.
 */
 
 

@@ -116,8 +116,7 @@ UThread* boron_makeEnvP( UEnvParameters* );
 UThread* boron_makeEnv( const UDatatype** dtTable, unsigned int dtCount );
 void     boron_freeEnv( UThread* );
 int      boron_defineCFunc( UThread*, UIndex ctxN, const BoronCFunc* funcs,
-                            const char* spec, int specLen );
-void     boron_addCFunc( UThread*, BoronCFunc func, const char* sig );
+                            const char* spec, int slen );
 void     boron_overrideCFunc( UThread*, const char* name, BoronCFunc func );
 void     boron_addPortDevice( UThread*, const UPortDevice*, UAtom name );
 UBuffer* boron_makePort( UThread*, const UPortDevice*, void* ext, UCell* res );
@@ -135,6 +134,9 @@ void     boron_reset( UThread* );
 int      boron_throwWord( UThread*, UAtom atom );
 char*    boron_cstr( UThread*, const UCell* strC, UBuffer* bin );
 char*    boron_cpath( UThread*, const UCell* strC, UBuffer* bin );
+
+/* Deprecated functions */
+void     boron_addCFunc( UThread*, BoronCFunc func, const char* sig );
 
 #ifdef __cplusplus
 }
