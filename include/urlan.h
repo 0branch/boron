@@ -88,8 +88,9 @@ enum UrlanDataType
 enum UrlanWordBindings
 {
     UR_BIND_UNBOUND = 0,    /* ur_setId zeros flags so this is default. */
-    UR_BIND_THREAD,
+    UR_BIND_THREAD,         /* Bound to buffer in thread dataStore. */
     UR_BIND_ENV,
+    UR_BIND_STACK,          /* Bound to thread stack. */
     UR_BIND_SELF,
     UR_BIND_USER
 };
@@ -300,6 +301,7 @@ enum UThreadMethod
 struct UThread
 {
     UBuffer     dataStore;
+    UBuffer     stack;
     UBuffer     holds;
     UBuffer     gcBits;
     UCell       tmpWordCell;
@@ -495,6 +497,8 @@ UIndex   ur_holdBuffer( UThread*, UIndex bufN );
 void     ur_releaseBuffer( UThread*, UIndex hold );
 void     ur_recycle( UThread* );
 int      ur_markBuffer( UThread*, UIndex bufN );
+UCell*   ur_push( UThread*, int type );
+UCell*   ur_pushCell( UThread*, const UCell* );
 int      ur_error( UThread*, int errorType, const char* fmt, ... );
 UBuffer* ur_errorBlock( UThread* );
 UBuffer* ur_threadContext( UThread* );
@@ -695,6 +699,7 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
     (c)->series.it = sit; \
     (c)->series.end = send
 
+#define ur_pop(ut)          --(ut)->stack.used
 #define ur_hold(n)          ur_holdBuffer(ut,n)
 #define ur_release(h)       ur_releaseBuffer(ut,h)
 #define ur_buffer(n)        (ut->dataStore.ptr.buf + (n))

@@ -74,6 +74,7 @@
 //#define GC_HOLD_TEST  1
 
 #define BUF_ERROR_BLK   0
+#define FREE_TERM       -1
 
 #include "datatypes.c"
 #include "atoms.c"
@@ -101,10 +102,11 @@ static void _threadInitStore( UThread* ut )
     UIndex bufN[2];
 
     ur_arrInit( &ut->dataStore, sizeof(UBuffer), INIT_BUF_COUNT );
+    ur_arrInit( &ut->stack,     sizeof(UCell),   0 );
     ur_arrInit( &ut->holds,     sizeof(UIndex),  16 );
     ur_binInit( &ut->gcBits, INIT_BUF_COUNT / 8 );
     ut->freeBufCount = 0;
-    ut->freeBufList = -1;
+    ut->freeBufList = FREE_TERM;
     ut->wordCell = 0;
 
     // Buffer index zero denotes an invalid buffer (UR_INVALID_BUF),
@@ -177,6 +179,7 @@ static void _threadFree( UThread* ut )
 {
     ut->env->threadFunc( ut, UR_THREAD_FREE );
     _destroyDataStore( ut->env, &ut->dataStore );
+    ur_arrFree( &ut->stack );
     ur_arrFree( &ut->holds );
     ur_binFree( &ut->gcBits );
     memFree( ut );
@@ -563,6 +566,7 @@ void ur_freezeEnv( UThread* ut )
     ur_recycle( ut );
 
     env->sharedStore = ut->dataStore;
+    ur_arrFree( &ut->stack );
     ur_arrFree( &ut->holds );
     ur_binFree( &ut->gcBits );
 
@@ -762,7 +766,7 @@ UBuffer* ur_genBuffers( UThread* ut, int count, UIndex* index )
     }
 #endif
 
-    assert( ut->freeBufList > -1 );
+    assert( ut->freeBufList > FREE_TERM );
 
     for( i = 0; i < count; ++i )
     {
@@ -914,6 +918,39 @@ void ur_releaseBuffer( UThread* ut, UIndex hold )
         while( (it != stop) && (*it == UR_INVALID_HOLD) );
         buf->used = it - buf->ptr.i + 1;
     }
+}
+
+
+/**
+  \def ur_pop
+  Decrement stack.used.  Must not be called if stack.used is zero.
+*/
+
+/**
+  Set id of cell on top of stack and increment stack.used.
+
+  \return Pointer to initilized cell on stack.
+*/
+UCell* ur_push( UThread* ut, int type )
+{
+    UCell* cell = ut->stack.ptr.cell + ut->stack.used;
+    ++ut->stack.used;
+    ur_setId(cell, type);
+    return cell;
+}
+
+
+/**
+  Copy cell to top of stack and increment stack.used.
+
+  \return Pointer to copy on stack.
+*/
+UCell* up_pushCell( UThread* ut, const UCell* src )
+{
+    UCell* cell = ut->stack.ptr.cell + ut->stack.used;
+    ++ut->stack.used;
+    *cell = *src;
+    return cell;
 }
 
 
@@ -1144,6 +1181,9 @@ const UCell* ur_wordCell( UThread* ut, const UCell* cell )
             return (ut->env->sharedStore.ptr.buf - cell->word.ctx)->ptr.cell +
                    cell->word.index;
 
+        case UR_BIND_STACK:
+            return ut->stack.ptr.cell + cell->word.index;
+
         case UR_BIND_SELF:
         {
             UCell* self = &ut->tmpWordCell;
@@ -1187,6 +1227,9 @@ UCell* ur_wordCellM( UThread* ut, const UCell* cell )
             ur_error( ut, UR_ERR_SCRIPT, "word '%s is in shared storage",
                       ur_wordCStr( cell ) );
             return 0;
+
+        case UR_BIND_STACK:
+            return ut->stack.ptr.cell + cell->word.index;
 
         case UR_BIND_SELF:
             ur_error( ut, UR_ERR_SCRIPT, "word '%s has self binding",
