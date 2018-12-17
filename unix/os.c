@@ -793,7 +793,7 @@ CFUNC_PUB( cfunc_with_flock )
 
     if( flock( fd, oper ) == 0 )
     {
-        ok = boron_doBlock( ut, a1 + 1, res );
+        ok = boron_doBlock( ut, a1 + 1, res ) ? UR_OK : UR_THROW;
         flock( fd, LOCK_UN );
     }
     else

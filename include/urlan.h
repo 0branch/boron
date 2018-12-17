@@ -273,6 +273,7 @@ struct UBuffer
         int16_t*    i16;    //!< int16_t
         uint16_t*   u16;    //!< uint16_t
         int32_t*    i;      //!< int32_t
+        int32_t*    i32;    //!< int32_t
         uint32_t*   u32;    //!< uint32_t
         double*     d;      //!< doubles
         float*      f;      //!< floats
@@ -500,9 +501,10 @@ int      ur_markBuffer( UThread*, UIndex bufN );
 UCell*   ur_push( UThread*, int type );
 UCell*   ur_pushCell( UThread*, const UCell* );
 int      ur_error( UThread*, int errorType, const char* fmt, ... );
-UBuffer* ur_errorBlock( UThread* );
 UBuffer* ur_threadContext( UThread* );
 UBuffer* ur_envContext( UThread* );
+void     ur_traceError( UThread*, const UCell* errC, UIndex blkN,
+                        const UCell* pos );
 void     ur_appendTrace( UThread*, UIndex blkN, UIndex it );
 UIndex   ur_tokenize( UThread*, const char* it, const char* end, UCell* res );
 UIndex   ur_tokenizeType( UThread*, int inputEncoding,
@@ -523,6 +525,7 @@ void     ur_seriesSlice( const UThread*, USeriesIter* si, const UCell* cell );
 int      ur_seriesSliceM( UThread*, USeriesIterM* si, const UCell* cell );
 void     ur_bind( UThread*, UBuffer* blk, const UBuffer* ctx, int bindType );
 void     ur_bindCells( UThread*, UCell* it, UCell* end, const UBindTarget* bt );
+void     ur_bindCopy( UThread*, const UBuffer* ctx, UCell* it, UCell* end );
 void     ur_unbindCells( UThread*, UCell* it, UCell* end, int deep );
 void     ur_infuse( UThread*, UCell* it, UCell* end, const UBuffer* ctx );
 int      ur_isTrue( const UCell* cell );
@@ -669,6 +672,7 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
 
 #define ur_atom(c)          (c)->word.atom
 #define ur_datatype(c)      (c)->datatype.n
+#define ur_logic(c)         (c)->number.i
 #define ur_int(c)           (c)->number.i
 #define ur_decimal(c)       (c)->number.d
 
@@ -699,6 +703,7 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
     (c)->series.it = sit; \
     (c)->series.end = send
 
+#define ur_exception(ut)    ut->stack.ptr.cell
 #define ur_pop(ut)          --(ut)->stack.used
 #define ur_hold(n)          ur_holdBuffer(ut,n)
 #define ur_release(h)       ur_releaseBuffer(ut,h)

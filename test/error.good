@@ -1,5 +1,5 @@
 ---- trace format
-Script Error: unset word 'b
+Script Error: Unset word 'b
 Trace:
  -> add b a "ok"
  -> f 3

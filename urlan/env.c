@@ -945,23 +945,12 @@ UCell* ur_push( UThread* ut, int type )
 
   \return Pointer to copy on stack.
 */
-UCell* up_pushCell( UThread* ut, const UCell* src )
+UCell* ur_pushCell( UThread* ut, const UCell* src )
 {
     UCell* cell = ut->stack.ptr.cell + ut->stack.used;
     ++ut->stack.used;
     *cell = *src;
     return cell;
-}
-
-
-/**
-  Get thread error block.
-
-  \return Pointer to block of errors.
-*/
-UBuffer* ur_errorBlock( UThread* ut )
-{
-    return ur_buffer( BUF_ERROR_BLK );
 }
 
 
@@ -991,7 +980,7 @@ UBuffer* ur_envContext( UThread* ut )
 
 
 /**
-  Append error! to the error block.
+  Create error! exception.
 
   The errorType is only descriptive, it has no real function.
 
@@ -999,8 +988,6 @@ UBuffer* ur_envContext( UThread* ut )
   \param fmt        Error message with printf() style formatting.
 
   \return UR_THROW
-
-  \sa ur_errorBlock
 */
 int ur_error( UThread* ut, int errorType, const char* fmt, ... )
 {
@@ -1020,12 +1007,27 @@ int ur_error( UThread* ut, int errorType, const char* fmt, ... )
     str->used = strLen(str->ptr.c);
 
 
-    cell = ur_blkAppendNew( ur_errorBlock(ut), UT_ERROR );
+    cell = ur_exception(ut);
+    ur_setId(cell, UT_ERROR);
     cell->error.exType = errorType;
     cell->error.messageStr = bufN[0];
     cell->error.traceBlk   = bufN[1];
 
     return UR_THROW;
+}
+
+
+void ur_traceError( UThread* ut, const UCell* errC, UIndex blkN,
+                    const UCell* pos )
+{
+    const UBuffer* blk;
+    UCell* cell;
+    if( ! ur_isShared(errC->error.traceBlk) )
+    {
+        blk = ur_bufferEnv(ut, blkN);
+        cell = ur_blkAppendNew(ur_buffer(errC->error.traceBlk), UT_BLOCK);
+        ur_setSeries( cell, blkN, pos - blk->ptr.cell );
+    }
 }
 
 

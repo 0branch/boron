@@ -13,10 +13,10 @@ static void* threadRoutine( void* arg )
 {
     UThread* ut = (UThread*) arg;
     UBuffer* bin = &BT->tbin;
-    if( ! boron_doCStr( ut, bin->ptr.c, bin->used ) )
+    if( ! boron_evalUtf8( ut, bin->ptr.c, bin->used ) )
     {
         UBuffer str;
-        UCell* ex = boron_exception( ut );
+        UCell* ex = ur_exception( ut );
         if( ! ur_is(ex, UT_WORD) || ur_atom(ex) != UR_ATOM_QUIT )
         {
             ur_strInit( &str, UR_ENC_UTF8, 0 );

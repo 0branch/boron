@@ -696,7 +696,7 @@ CFUNC_PUB( cfunc_with_flock )
 
     if( LockFileEx( fh, oper, 0, LOCK_ALL, LOCK_ALL, &over ) )
     {
-        ok = boron_doBlock( ut, a1 + 1, res );
+        ok = boron_doBlock( ut, a1 + 1, res ) ? UR_OK : UR_THROW;
         UnlockFileEx( fh, 0, LOCK_ALL, LOCK_ALL, &over );
     }
     else

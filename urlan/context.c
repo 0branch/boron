@@ -686,6 +686,53 @@ void ur_bind( UThread* ut, UBuffer* blk, const UBuffer* ctx, int bindType )
 
 
 /**
+  Recursively bind blocks to the bindings found in a context.
+
+  \param bt     Bind target.
+  \param it     First cell.
+  \param end    End of cell array.
+*/
+void ur_bindCopy( UThread* ut, const UBuffer* ctx, UCell* it, UCell* end )
+{
+    const UCell* cell;
+    int wrdN;
+
+    for( ; it != end; ++it )
+    {
+        switch( ur_type(it) )
+        {
+            case UT_WORD:
+            case UT_LITWORD:
+            case UT_SETWORD:
+            case UT_GETWORD:
+                wrdN = ur_ctxLookup( ctx, ur_atom(it) );
+                if( wrdN > -1 )
+                {
+                    cell = ur_ctxCell( ctx, wrdN );
+                    it->word.binding = cell->word.binding;
+                    it->word.ctx     = cell->word.ctx;
+                    it->word.index   = cell->word.index;
+                }
+                break;
+
+            case UT_BLOCK:
+            case UT_PAREN:
+            case UT_PATH:
+            case UT_LITPATH:
+            case UT_SETPATH:
+                if( ! ur_isShared(it->series.buf) )
+                {
+                    UBlockIterM bi;
+                    ur_blkSliceM( ut, &bi, it );
+                    ur_bindCopy( ut, ctx, bi.it, bi.end );
+                }
+                break;
+        }
+    }
+}
+
+
+/**
   Unbind all words an array of cells.
 
   \param it     First cell.

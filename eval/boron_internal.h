@@ -22,6 +22,7 @@
         (pbuf->ptr.v ? *((UPortDevice**) pbuf->ptr.v) : 0)
 
 
+#ifdef OLD_EVAL
 typedef struct
 {
     UCell* args;
@@ -41,12 +42,14 @@ typedef struct
     uint16_t jumpEnd;
 }
 UCellFuncOpt;
+#endif
 
 
 typedef struct
 {
     UEnv    env;
     UBuffer ports;
+    UAtom   compileAtoms[3];
 }
 BoronEnv;
 
@@ -58,6 +61,7 @@ typedef struct BoronThread
     UThread thread;
     UBuffer tbin;           // Temporary binary buffer.
     int (*requestAccess)( UThread*, const char* );
+#ifdef OLD_EVAL
     UCell*  evalData;
     UCell*  tos;
     UCell*  eos;
@@ -68,6 +72,10 @@ typedef struct BoronThread
     UIndex  dstackN;
     UIndex  fstackN;
     UCellFuncOpt fo;
+#else
+    UBuffer frames;         // Function body & locals stack position.
+    UCell   optionCell;
+#endif
 #ifdef CONFIG_RANDOM
     Well512 rand;
 #endif

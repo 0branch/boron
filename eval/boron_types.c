@@ -25,6 +25,7 @@
 // UT_FUNC
 
 
+#ifdef OLD_EVAL
 /*
   Function Argument UBuffer members:
     type        UT_FUNC
@@ -337,10 +338,34 @@ static void _rebindFunc( UThread* ut, UIndex blkN, UIndex new, UIndex old )
         }
     }
 }
+#else
+typedef struct
+{
+    uint8_t  type;
+    uint8_t  flags;
+    uint16_t argProgOffset;
+    UIndex   argProgN;      // Same location as UCellSeries buf.
+    union {
+        int (*func)( UThread*, UCell*, UCell* );
+#ifdef CONFIG_ASSEMBLE
+        jit_function_t jitFunc;
+#endif
+        struct
+        {
+            UIndex bodyN;
+            UIndex sigN;
+        } f;
+    } m;
+}
+UCellFunc;
+
+#define FCELL  ((UCellFunc*) cell)
+#endif
 
 
 void func_copy( UThread* ut, const UCell* from, UCell* res )
 {
+#ifdef OLD_EVAL
     UIndex newBodN;
     UIndex fromBodN = ur_funcBody(from);
 
@@ -349,6 +374,11 @@ void func_copy( UThread* ut, const UCell* from, UCell* res )
     ur_funcBody(res) = newBodN = ur_blkClone( ut, fromBodN );
 
     _rebindFunc( ut, newBodN, newBodN, fromBodN );
+#else
+    (void) ut;
+    (void) from;
+    (void) res;
+#endif
 }
 
 
@@ -364,7 +394,11 @@ int func_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             // Fall through...
 
         case UR_COMPARE_SAME:
+#ifdef OLD_EVAL
             return ur_funcBody(a) == ur_funcBody(b);
+#else
+            return a->series.buf == b->series.buf;
+#endif
     }
     return 0;
 }
@@ -373,6 +407,7 @@ int func_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 const UCell* func_select( UThread* ut, const UCell* cell, const UCell* sel,
                           UCell* tmp )
 {
+#ifdef OLD_EVAL
     const UBuffer* buf;
     const FuncOption* opt;
     const FuncOption* it;
@@ -411,6 +446,13 @@ const UCell* func_select( UThread* ut, const UCell* cell, const UCell* sel,
     }
     BT->fo.optionMask = 0;
     return 0;
+#else
+    (void) cell;
+    (void) sel;
+    (void) tmp;
+    ur_error( ut, UR_ERR_SCRIPT, "func_select not implemented!" );
+    return 0;
+#endif
 }
 
 
@@ -418,6 +460,7 @@ extern void block_toString( UThread*, const UCell*, UBuffer*, int );
 
 void func_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
+#ifdef OLD_EVAL
     UCell tmp;
 
     ur_setId(&tmp, UT_BLOCK);
@@ -435,6 +478,12 @@ void func_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 
     tmp.series.buf = FCELL->m.f.bodyN;
     block_toString( ut, &tmp, str, depth );
+#else
+    (void) ut;
+    (void) cell;
+    (void) depth;
+    ur_strAppendCStr( str, "<func>" );
+#endif
 }
 
 
@@ -444,6 +493,7 @@ void func_mark( UThread* ut, UCell* cell )
 {
     UIndex n;
 
+#ifdef OLD_EVAL
     n = FCELL->argBufN;
     if( n > UR_INVALID_BUF )
         ur_markBuffer( ut, n );
@@ -461,6 +511,14 @@ void func_mark( UThread* ut, UCell* cell )
         if( ur_markBuffer( ut, n ) )
             block_markBuf( ut, ur_buffer(n) );
     }
+#else
+    n = cell->series.buf;
+    if( n > UR_INVALID_BUF )
+    {
+        if( ur_markBuffer( ut, n ) )
+            block_markBuf( ut, ur_buffer(n) );
+    }
+#endif
 }
 
 
@@ -479,6 +537,7 @@ void func_toShared( UCell* cell )
 {
     UIndex n;
 
+#ifdef OLD_EVAL
     n = FCELL->argBufN;
     if( n > UR_INVALID_BUF )
         FCELL->argBufN = -n;
@@ -490,12 +549,21 @@ void func_toShared( UCell* cell )
     n = FCELL->m.f.sigN;
     if( n > UR_INVALID_BUF )
         FCELL->m.f.sigN = -n;
+#else
+    n = cell->series.buf;
+    if( n > UR_INVALID_BUF )
+        cell->series.buf = -n;
+#endif
 }
 
 
 void func_bind( UThread* ut, UCell* cell, const UBindTarget* bt )
 {
+#ifdef OLD_EVAL
     UIndex n = FCELL->m.f.bodyN;
+#else
+    UIndex n = cell->series.buf;
+#endif
     //printf( "KR func_bind\n" );
     if( n > UR_INVALID_BUF )
     {
@@ -521,7 +589,11 @@ int cfunc_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             // Fall through...
 
         case UR_COMPARE_SAME:
+#ifdef OLD_EVAL
             return ur_funcFunc(a) == ur_funcFunc(b);
+#else
+            return a->series.buf == b->series.buf;
+#endif
     }
     return 0;
 }
@@ -532,6 +604,7 @@ int cfunc_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 */
 void cfunc_recycle2( UThread* ut, int phase )
 {
+#ifdef OLD_EVAL
     if( phase == UR_RECYCLE_MARK && BT->dstackN )
     {
         // Sync data stack used with tos.
@@ -542,12 +615,20 @@ void cfunc_recycle2( UThread* ut, int phase )
         buf = ur_buffer(BT->fstackN);
         buf->used = BT->tof - ur_ptr(LocalFrame, buf);
     }
+#else
+    (void) ut;
+    (void) phase;
+#endif
 }
 
 
 void cfunc_mark( UThread* ut, UCell* cell )
 {
+#ifdef OLD_EVAL
     UIndex n = FCELL->argBufN;
+#else
+    UIndex n = FCELL->argProgN;
+#endif
     if( n > UR_INVALID_BUF )
         ur_markBuffer( ut, n );
 }
@@ -555,9 +636,15 @@ void cfunc_mark( UThread* ut, UCell* cell )
 
 void cfunc_toShared( UCell* cell )
 {
+#ifdef OLD_EVAL
     UIndex n = FCELL->argBufN;
     if( n > UR_INVALID_BUF )
         FCELL->argBufN = -n;
+#else
+    UIndex n = FCELL->argProgN;
+    if( n > UR_INVALID_BUF )
+        FCELL->argProgN = -n;
+#endif
 }
 
 
