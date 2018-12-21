@@ -489,6 +489,7 @@ const char* ur_atomCStr( UThread*, UAtom atom );
 void     ur_atomsSort( UAtomEntry* entries, int low, int high );
 int      ur_atomsSearch( const UAtomEntry* entries, int count, UAtom atom );
 UBuffer* ur_genBuffers( UThread*, int count, UIndex* index );
+UBuffer* ur_generate( UThread*, int count, UIndex* index, const uint8_t* );
 void     ur_destroyBuffer( UThread*, UBuffer* );
 UIndex   ur_holdBuffer( UThread*, UIndex bufN );
 void     ur_releaseBuffer( UThread*, UIndex hold );

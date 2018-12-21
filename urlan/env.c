@@ -97,6 +97,7 @@ static void _nopThreadFunc( UThread* ut, enum UThreadMethod op )
 
 static void _threadInitStore( UThread* ut )
 {
+    static const uint8_t _initType[2] = {UT_BLOCK, UT_CONTEXT};
     UIndex bufN[2];
 
     ur_arrInit( &ut->dataStore, sizeof(UBuffer), INIT_BUF_COUNT );
@@ -109,11 +110,9 @@ static void _threadInitStore( UThread* ut )
     // Buffer index zero denotes an invalid buffer (UR_INVALID_BUF),
     // so remove it from general use.  This will be our stack of errors.
 
-    ur_genBuffers( ut, 2, bufN );
-    ur_blkInit( ur_buffer(bufN[0]), UT_BLOCK, 0 );  // BUF_ERROR_BLK
-    ur_ctxInit( ur_buffer(bufN[1]), 0 );            // UR_MAIN_CONTEXT
-    ur_hold( bufN[0] );
-    ur_hold( bufN[1] );
+    ur_generate( ut, 2, bufN, _initType );
+    ur_hold( bufN[0] );     // BUF_ERROR_BLK
+    ur_hold( bufN[1] );     // UR_MAIN_CONTEXT
 
     ut->env->threadFunc( ut, UR_THREAD_INIT );
 }
@@ -781,6 +780,64 @@ UBuffer* ur_genBuffers( UThread* ut, int count, UIndex* index )
 
 
 /**
+  Generate and initialize buffers of given types.
+
+  Strings will have an UR_ENC_LATIN1 form.
+  Vectors will have an UR_VEC_I32 form.
+
+  \param count  Number of buffers to obtain.
+  \param index  Return array of buffer ids.  This must large enough to
+                to hold count indices.
+  \param types  Array of UrlanDataType.
+
+  \return Pointer to first buffer.  The buffer indicies are stored in index.
+*/
+UBuffer* ur_generate( UThread* ut, int count, UIndex* index,
+                      const uint8_t* types )
+{
+    UBuffer* first = ur_genBuffers( ut, count, index );
+    UBuffer* dsBuffers = ut->dataStore.ptr.buf;
+    UBuffer* buf;
+    UIndex* end = index + count;
+    UIndex n;
+
+    while( index != end )
+    {
+        n = *index++;
+        buf = dsBuffers + n;
+
+        // The following code is a semi-generic version of ur_binInit,
+        // ur_strInit, ur_vecInit, ur_blkInit, & ur_ctxInit when size is 0.
+
+        *((uint64_t*) buf) = 0;
+        buf->type = *types++;
+        buf->ptr.v = NULL;
+
+        switch( buf->type )
+        {
+            case UT_STRING:
+            case UT_FILE:
+                buf->elemSize = 1;
+                //buf->form = UR_ENC_LATIN1;
+                break;
+            case UT_VECTOR:
+                buf->elemSize = 4;
+                buf->form = UR_VEC_I32;
+                break;
+            case UT_BLOCK:
+            case UT_PAREN:
+            case UT_PATH:
+            case UT_LITPATH:
+            case UT_SETPATH:
+                buf->elemSize = sizeof(UCell);
+                break;
+        }
+    }
+    return first;
+}
+
+
+/**
   Destroy buffer in dataStore.
 
   The buffer must be valid.  This function must not be called with a
@@ -911,14 +968,14 @@ UBuffer* ur_envContext( UThread* ut )
 int ur_error( UThread* ut, int errorType, const char* fmt, ... )
 {
 #define MAX_ERR_LEN 256
+    static const uint8_t _types[2] = {UT_STRING, UT_BLOCK};
     UIndex bufN[2];
     UBuffer* str;
     UCell* cell;
     va_list arg;
 
-    str = ur_genBuffers( ut, 2, bufN );
-    ur_strInit( str, UR_ENC_LATIN1, MAX_ERR_LEN );
-    ur_blkInit( ur_buffer( bufN[1] ), UT_BLOCK, 0 );
+    str = ur_generate( ut, 2, bufN, _types );
+    ur_arrReserve( str, MAX_ERR_LEN );
 
     va_start( arg, fmt );
     vaStrPrint( str->ptr.c, MAX_ERR_LEN, fmt, arg );
