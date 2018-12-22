@@ -111,7 +111,7 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
     int optArgs = 0;
     int optCodeOffset = 0;
     UAtom optAtom = 0;
-    UBuffer* prog = ur_buffer( BT->tempN );
+    UBuffer* prog = &BT->tbin;
 
 
 #define ATOM_LOCAL      UR_ATOM_BAR

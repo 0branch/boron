@@ -55,7 +55,8 @@ BoronEnv;
 
 typedef struct BoronThread
 {
-    UThread ut;
+    UThread thread;
+    UBuffer tbin;           // Temporary binary buffer.
     int (*requestAccess)( UThread*, const char* );
     UCell*  evalData;
     UCell*  tos;
@@ -66,7 +67,6 @@ typedef struct BoronThread
     UIndex  holdData;
     UIndex  dstackN;
     UIndex  fstackN;
-    UIndex  tempN;
     UCellFuncOpt fo;
 #ifdef CONFIG_RANDOM
     Well512 rand;

@@ -12,7 +12,7 @@ static void* threadRoutine( void* arg )
 #endif
 {
     UThread* ut = (UThread*) arg;
-    UBuffer* bin = ur_buffer( BT->tempN );
+    UBuffer* bin = &BT->tbin;
     if( ! boron_doCStr( ut, bin->ptr.c, bin->used ) )
     {
         UBuffer str;
@@ -75,7 +75,7 @@ CFUNC( cfunc_thread )
 
     // Copy code to child temp. binary.
     {
-    UBuffer* bin = child->dataStore.ptr.buf + ((BoronThread*) child)->tempN;
+    UBuffer* bin = &((BoronThread*) child)->tbin;
     bin->used = 0;
     ur_binAppendData( bin, code.ptr.b, code.used );
     ur_strFree( &code );

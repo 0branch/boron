@@ -54,7 +54,6 @@ enum BoronEvalCells
     BT_RESULT,
     BT_DSTACK,
     BT_FSTACK,
-    BT_TEMP,
     BT_CELL_COUNT
 };
 
@@ -153,20 +152,21 @@ static UCell* boron_wordCellM( UThread* ut, const UCell* cell )
 
 static void boron_threadInit( UThread* ut )
 {
-    UIndex bufN[4];
+    UIndex bufN[3];
     UBuffer* buf;
     UCell* ed;
 
 
     ut->wordCell  = boron_wordCell;
     ut->wordCellM = boron_wordCellM;
-    BT->requestAccess = 0;
+    ur_binInit( &BT->tbin, 0 );
+    BT->requestAccess = NULL;
     ur_setId( &BT->fo, UT_LOGIC );
 
     // Create evalData block.  This never changes size so we can safely
     // keep a pointer to the cells.
 
-    ur_genBuffers( ut, 4, bufN );
+    ur_genBuffers( ut, 3, bufN );
     BT->holdData = ur_hold(bufN[0]);    // Hold evalData forever.
 
 
@@ -207,13 +207,6 @@ static void boron_threadInit( UThread* ut )
     // method will sync. the fstackN block used value.
     BT->tof = BT->bof = ur_ptr(LocalFrame, buf);
     BT->eof = BT->tof + ur_avail(buf);
-
-
-    // Temporary binary
-    BT->tempN = bufN[3];
-    ur_binInit( ur_buffer(bufN[3]), 0 );
-    ++ed;
-    ur_initSeries( ed, UT_BINARY, bufN[3] );
 }
 
 
@@ -226,7 +219,8 @@ static void boron_threadMethod( UThread* ut, enum UThreadMethod op )
             break;
 
         case UR_THREAD_FREE:
-            // All data is stored in dataStore, so there is nothing to free.
+            ur_binFree( &BT->tbin );
+            // Other data is in dataStore, so there is nothing more to free.
 #ifdef CONFIG_ASSEMBLE
             if( BT->jit )
                 jit_context_destroy( BT->jit );
@@ -276,7 +270,7 @@ void boron_reset( UThread* ut )
 */
 char* boron_cstr( UThread* ut, const UCell* strC, UBuffer* bin )
 {
-    return ur_cstr( strC, bin ? bin : ur_buffer( BT->tempN ) );
+    return ur_cstr( strC, bin ? bin : &BT->tbin );
 }
 
 
@@ -293,7 +287,7 @@ char* boron_cstr( UThread* ut, const UCell* strC, UBuffer* bin )
 char* boron_cpath( UThread* ut, const UCell* strC, UBuffer* bin )
 {
     if( ! bin )
-        bin = ur_buffer( BT->tempN );
+        bin = &BT->tbin;
     ur_cstr( strC, bin );
     if( bin->used )
     {
@@ -1591,14 +1585,6 @@ UCell* boron_exception( UThread* ut )
         return blk->ptr.cell + (blk->used - 1);
     return 0;
 }
-
-
-/*
-UBuffer* boron_tempBinary( UThread* ut )
-{
-    return ur_buffer( BT->tempN );
-}
-*/
 
 
 /** \enum UserAccess

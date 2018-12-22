@@ -204,7 +204,7 @@ CFUNC(cfunc_checksum)
                              "could not open file %s", filename );
         }
 
-        tmp = ur_buffer( BT->tempN );   // Same buffer as filename.
+        tmp = &BT->tbin;        // Same buffer as filename.
         ur_binReserve( tmp, CHECKSUM_BUF_SIZE );
 
         if( CFUNC_OPTIONS & OPT_CHECKSUM_CRC32 )

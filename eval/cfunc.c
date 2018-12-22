@@ -3810,7 +3810,7 @@ CFUNC(cfunc_make_dir)
 #define OPT_MAKE_DIR_ALL    0x01
     if( ur_isStringType( ur_type(a1) ) )
     {
-        UBuffer* bin = ur_buffer( BT->tempN );
+        UBuffer* bin = &BT->tbin;
         char* path = boron_cpath( ut, a1, bin );
 
         if( ! boron_requestAccess( ut, "Make directory \"%s\"", path ) )
