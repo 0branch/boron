@@ -31,7 +31,7 @@
 struct UEnv
 {
     OSMutex     mutex;
-    UBuffer     dataStore;
+    UBuffer     sharedStore;
     UBuffer     atomNames;
     UBuffer     atomTable;
     uint16_t    typeCount;

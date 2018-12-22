@@ -534,7 +534,7 @@ const UBuffer* ur_sortedContext( UThread* ut, const UCell* cell )
     int used;
 
     // Same as ur_bufferSeries().
-    ctx = ur_isShared(n) ? ut->env->dataStore.ptr.buf - n
+    ctx = ur_isShared(n) ? ut->env->sharedStore.ptr.buf - n
                          : ut->dataStore.ptr.buf + n;
     used = ctx->used;
     if( used > SEARCH_LEN && CC(ctx)->sorted != used )
@@ -677,7 +677,7 @@ void ur_bind( UThread* ut, UBuffer* blk, const UBuffer* ctx, int bindType )
     if( bindType == UR_BIND_THREAD )
         bt.ctxN = ctx - ut->dataStore.ptr.buf;
     else if( bindType == UR_BIND_ENV )
-        bt.ctxN = -(ctx - ut->env->dataStore.ptr.buf);
+        bt.ctxN = -(ctx - ut->env->sharedStore.ptr.buf);
     else
         bt.ctxN = UR_INVALID_BUF;
 

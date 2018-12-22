@@ -382,7 +382,7 @@ UThread* ur_makeEnvP( const UEnvParameters* par )
     if( ! env )
         return 0;
 
-    ur_arrInit( &env->dataStore, sizeof(UBuffer), 0 );
+    ur_arrInit( &env->sharedStore, sizeof(UBuffer), 0 );
 
     ur_binInit( &env->atomNames, par->atomNamesSize );
     ur_arrInit( &env->atomTable, sizeof(AtomRec), par->atomLimit );
@@ -531,7 +531,7 @@ void ur_freeEnv( UThread* ut )
     mutexFree( env->mutex );
 
 
-    _destroyDataStore( env, &env->dataStore );
+    _destroyDataStore( env, &env->sharedStore );
 
     ur_binFree( &env->atomNames );
     ur_arrFree( &env->atomTable );
@@ -555,14 +555,14 @@ void ur_freezeEnv( UThread* ut )
 {
     UEnv* env = ut->env;
 
-    if( ! env || env->dataStore.used )
+    if( ! env || env->sharedStore.used )
         return;
 
     env->threadFunc( ut, UR_THREAD_FREEZE );
 
     ur_recycle( ut );
 
-    env->dataStore = ut->dataStore;
+    env->sharedStore = ut->dataStore;
     ur_arrFree( &ut->holds );
     ur_binFree( &ut->gcBits );
 
@@ -573,8 +573,8 @@ void ur_freezeEnv( UThread* ut )
     ((1 << UT_BLOCK) | (1 << UT_PAREN) | (1 << UT_CONTEXT) | \
      (1 << UT_PATH) | (1 << UT_LITPATH) | (1 << UT_SETPATH))
 
-    UBuffer* it  = env->dataStore.ptr.buf;
-    UBuffer* end = it + env->dataStore.used;
+    UBuffer* it  = env->sharedStore.ptr.buf;
+    UBuffer* end = it + env->sharedStore.used;
     const UDatatype** dt = env->types;
 
     // TODO: Eliminate unused buffers.
@@ -588,7 +588,7 @@ void ur_freezeEnv( UThread* ut )
         {
             UCell* ci   = it->ptr.cell;
             UCell* cend = ci + it->used;
-            //printf( "KR freeze buf %ld\n", it - env->dataStore.ptr.buf );
+            //printf( "KR freeze buf %ld\n", it - env->sharedStore.ptr.buf );
             while( ci != cend )
             {
                 if( ur_type(ci) >= UT_REFERENCE_BUF )
@@ -947,8 +947,8 @@ UBuffer* ur_threadContext( UThread* ut )
 UBuffer* ur_envContext( UThread* ut )
 {
     UEnv* env = ut->env;
-    if( env->dataStore.used )
-        return env->dataStore.ptr.buf + UR_MAIN_CONTEXT;
+    if( env->sharedStore.used )
+        return env->sharedStore.ptr.buf + UR_MAIN_CONTEXT;
     return 0;
 }
 
@@ -1141,7 +1141,7 @@ const UCell* ur_wordCell( UThread* ut, const UCell* cell )
                    cell->word.index;
 
         case UR_BIND_ENV:
-            return (ut->env->dataStore.ptr.buf - cell->word.ctx)->ptr.cell +
+            return (ut->env->sharedStore.ptr.buf - cell->word.ctx)->ptr.cell +
                    cell->word.index;
 
         case UR_BIND_SELF:
@@ -1237,7 +1237,7 @@ int ur_setWord( UThread* ut, const UCell* word, const UCell* src )
 */
 
 /**
-  Get buffer from either the thread or shared environment dataStore.
+  Get buffer from either the thread dataStore or environment sharedStore.
   The macro ur_bufferE() should normally be used to call this function.
 
   \param n  Buffer identifier.
@@ -1247,7 +1247,7 @@ int ur_setWord( UThread* ut, const UCell* word, const UCell* src )
 const UBuffer* ur_bufferEnv( UThread* ut, UIndex n )
 {
     if( ur_isShared(n) )
-        return ut->env->dataStore.ptr.buf - n; 
+        return ut->env->sharedStore.ptr.buf - n;
     return ut->dataStore.ptr.buf + n;
 }
 
@@ -1274,7 +1274,7 @@ const UBuffer* ur_bufferSeries( const UThread* ut, const UCell* cell )
 {
     UIndex n = cell->series.buf;
     if( ur_isShared(n) )
-        return ut->env->dataStore.ptr.buf - n; 
+        return ut->env->sharedStore.ptr.buf - n;
     return ut->dataStore.ptr.buf + n;
 }
 
@@ -1294,7 +1294,7 @@ UBuffer* ur_bufferSeriesM( UThread* ut, const UCell* cell )
     if( ur_isShared(n) )
     {
         ur_error( ut, UR_ERR_SCRIPT, "Cannot modify %s in shared storage",
-                  ur_atomCStr( ut, ut->env->dataStore.ptr.buf[-n].type ) );
+                  ur_atomCStr( ut, ut->env->sharedStore.ptr.buf[-n].type ) );
         return 0;
     }
     return ut->dataStore.ptr.buf + n;
@@ -1348,7 +1348,7 @@ int ur_seriesSliceM( UThread* ut, USeriesIterM* si, const UCell* cell )
 #ifdef DEBUG
 void dumpBuf( UThread* ut, UIndex bufN )
 {
-    UBuffer* buf = ur_isShared(bufN) ? (ut->env->dataStore.ptr.buf - bufN)
+    UBuffer* buf = ur_isShared(bufN) ? (ut->env->sharedStore.ptr.buf - bufN)
                                      : ur_buffer(bufN);
     if( ur_isSeriesType(buf->type) || (buf->type == UT_CONTEXT) )
     {
