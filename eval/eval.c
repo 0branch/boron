@@ -556,6 +556,80 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
 }
 
 
+#if 0
+void boron_argProgramToStr( UThread* ut, const UBuffer* bin, UBuffer* str )
+{
+    const uint8_t* pc;
+    int op;
+
+    ur_strAppendChar( str, '[' );
+    while( (op = *pc++) < FO_end )
+    {
+        switch( op )
+        {
+            case FO_clearLocal:
+                ur_strAppendCStr( str, "| " );
+                break;
+
+            case FO_fetchArg:
+                ur_strAppendCStr( str, "a " );
+                break;
+
+            case FO_litArg:
+                ur_strAppendCStr( str, "'a " );
+                break;
+
+            case FO_checkType:
+                op = *pc++;
+                ur_strAppendCStr( str, ur_atomCStr(ut, op) );
+                break;
+
+            case FO_checkTypeMask:
+            {
+                UCell dt;
+                int64_t mask = 0;
+                int which = *pc++;
+                if( which & CHECK_TYPE_PAD )
+                    ++pc;
+                if( which & 1 )
+                {
+                    mask |= *((uint16_t*) pc);
+                    pc += 2;
+                }
+                if( which & 2 )
+                {
+                    mask |= ((int64_t) *((uint16_t*) pc)) << 16;
+                    pc += 2;
+                }
+                if( which & 4 )
+                {
+                    mask |= ((int64_t) *((uint16_t*) pc)) << 32;
+                    pc += 2;
+                }
+                ur_setId(&dt, UT_DATATYPE);
+                ur_datatype(&dt) = UT_TYPEMASK;
+                dt.datatype.mask0 = mask;
+                dt.datatype.mask1 = mask >> 32;
+                datatype_toString( ut, &dt, str, 0 );
+            }
+                break;
+
+            case FO_optionRecord:
+                break;
+
+            case FO_variant:
+                ur_strAppendInt( str, *pc++ );
+                break;
+
+            case FO_eval:
+                break;
+        }
+    }
+    ur_strAppendChar( str, ']' );
+}
+#endif
+
+
 /**
   Throw a standardized error for an unexpected function argument.
 
@@ -920,6 +994,8 @@ func_short:
 }
 
 
+extern void vector_pick( const UBuffer* buf, UIndex n, UCell* res );
+
 /**
   Evaluate one value.
 
@@ -961,11 +1037,13 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
             return it;
 
         case UT_SETWORD:
+        case UT_SETPATH:
         {
             UBlockItC sw;
             sw.it  = it;
             sw.end = it + 1;
-            while( sw.end != end && ur_is(sw.end, UT_SETWORD) )
+            while( sw.end != end &&
+                   (ur_is(sw.end, UT_SETWORD) || ur_is(sw.end, UT_SETPATH)) )
                 ++sw.end;
             if( sw.end == end )
                 return cp_error( ut, UR_ERR_SCRIPT, "End of block" );
@@ -973,8 +1051,16 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
             {
                 ur_foreach( sw )
                 {
-                    if( ! boron_setWordValue( ut, sw.it, res ) )
-                        return NULL;
+                    if( ur_is(sw.it, UT_SETWORD) )
+                    {
+                        if( ! boron_setWordValue( ut, sw.it, res ) )
+                            return NULL;
+                    }
+                    else
+                    {
+                        if( ! ur_setPath( ut, sw.it, res ) )
+                            return NULL;
+                    }
                 }
             }
         }
@@ -993,23 +1079,27 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
             return ++it;
 
         case UT_PATH:
+#if 1
         {
             UBlockItC path;
             const UCell* node;
+            int headType;
+
             ur_blockIt( ut, it, (UBlockIt*) &path );
-            assert( ur_type(path.it) == UT_WORD );
+            headType = ur_type(path.it);
+            assert( headType == UT_WORD || headType == UT_GETWORD );
             cell = boron_wordValue( ut, path.it );
             if( ! cell )
-            {   
+            {
                 it = path.it;
                 goto unbound;
             }
             ++it;
 
             while( ++path.it != path.end )
-            {   
+            {
                 if( ur_type(path.it) == UT_GETWORD )
-                {   
+                {
                     node = boron_wordValue( ut, path.it );
                     if( ! node )
                         goto unbound;
@@ -1023,39 +1113,131 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
                     return NULL;
                 */
                 switch( ur_type(cell) )
-                {   
-                    case UT_BLOCK:
+                {
+                    case UT_COORD:
                         if( ur_is(node, UT_INT) )
-                        {   
+                        {
+                            coord_pick( cell, ur_int(node) - 1, res );
+                            return it;
+                        }
+                        goto invalid_node;
+                    case UT_VEC3:
+                        if( ur_is(node, UT_INT) )
+                        {
+                            vec3_pick( cell, ur_int(node) - 1, res );
+                            return it;
+                        }
+                        goto invalid_node;
+                    case UT_VECTOR:
+                        if( ur_is(node, UT_INT) )
+                        {
+                            const UBuffer* buf = ur_bufferSer(cell);
+                            vector_pick( buf, cell->series.it+ur_int(node)-1,
+                                         res );
+                            return it;
+                        }
+                        goto invalid_node;
+                    case UT_BLOCK:
+                    case UT_PAREN:
+                    case UT_PATH:
+                        if( ur_is(node, UT_INT) )
+                        {
                             int64_t i = ur_int(node);
                             if( i > 0 )
-                            {   
+                            {
                                 const UBuffer* blk = ur_bufferSer(cell);
                                 if( --i < blk->used )
-                                {   
+                                {
                                     cell = blk->ptr.cell + i;
+                                    if( headType == UT_WORD )
+                                    {
+                                        if( ur_is(cell, UT_CFUNC) )
+                                        {
+                                            ++path.it;
+                                            goto call_cfunc;
+                                        }
+                                        if( ur_is(cell, UT_FUNC) )
+                                        {
+                                            ++path.it;
+                                            goto call_func;
+                                        }
+                                    }
                                     break;
                                 }
                             }
                             ur_setId(res, UT_NONE);
                             return it;
                         }
+                        else if( ur_is(node, UT_WORD) )
+                        {
+                            UBlockItC wi;
+                            UAtom atom = ur_atom(node);
+                            ur_blockIt( ut, cell, (UBlockIt*) &wi );
+                            ur_foreach( wi )
+                            {
+                                if( ur_isWordType( ur_type(wi.it) ) &&
+                                    (ur_atom(wi.it) == atom) )
+                                {
+                                    if( ++wi.it == wi.end )
+                                        goto blk_none;
+                                    cell = wi.it;
+                                    if( headType == UT_WORD )
+                                    {
+                                        if( ur_is(cell, UT_CFUNC) )
+                                        {
+                                            ++path.it;
+                                            goto call_cfunc;
+                                        }
+                                        if( ur_is(cell, UT_FUNC) )
+                                        {
+                                            ++path.it;
+                                            goto call_func;
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                            if( wi.it == wi.end )
+                            {
+blk_none:
+                                ur_setId(res, UT_NONE);
+                                return it;
+                            }
+                            break;
+                        }
                         goto invalid_node;
                     case UT_CONTEXT:
                         if( ur_is(node, UT_WORD) )
-                        {   
+                        {
                             const UBuffer* ctx = ur_bufferSer(cell);
                             int i = ur_ctxLookup( ctx, node->word.atom );
                             if( i >= 0 )
                             {
                                 cell = ctx->ptr.cell + i;
+                                if( headType == UT_WORD )
+                                {
+                                    if( ur_is(cell, UT_CFUNC) )
+                                    {
+                                        ++path.it;
+                                        goto call_cfunc;
+                                    }
+                                    if( ur_is(cell, UT_FUNC) )
+                                    {
+                                        ++path.it;
+                                        goto call_func;
+                                    }
+                                }
                                 break;
                             }
+                            if( node->word.atom == UR_ATOM_SELF )
+                                break;  // cell already set to this context.
                         }
                         goto invalid_node;
                     case UT_CFUNC:
+call_cfunc:
                         return boron_callC( ut, cell, &path, it, end, res );
                     case UT_FUNC:
+call_func:
                         return boron_call( ut, cell, &path, it, end, res );
                     default:
                         goto invalid_node;
@@ -1067,14 +1249,36 @@ invalid_node:
             return cp_error( ut, UR_ERR_SCRIPT, "Invalid path %s node",
                              ur_atomCStr(ut, ur_type(node)) );
         }
+#else
+        // Cannot use ur_pathCell() as it does not give us the path needed by
+        // boron_callC/boron_call.
+        {
+            int headType = ur_pathCell( ut, it++, res );
+            if( headType == UT_WORD )
+            {
+                if( ur_is(res, UT_CFUNC) )
+                {
+                    UCell* fc = ur_pushCell(ut, res);
+                    it = boron_callC( ut, fc, 0, it, end, res );
+                    ur_pop(ut);
+                }
+                if( ur_is(res, UT_FUNC) )
+                {
+                    UCell* fc = ur_pushCell(ut, res);
+                    it = boron_call( ut, fc, 0, it, end, res );
+                    ur_pop(ut);
+                }
+            }
+            else if( ! headType )
+                return NULL; //goto traceError;
+        }
+            return it;
+#endif
 
         case UT_LITPATH:
             *res = *it++;
             ur_type(res) = UT_PATH;
             return it;
-
-        //case UT_SETPATH:
-        //case UT_GETPATH:
 
         case UT_CFUNC:
             return boron_callC( ut, it, 0, it+1, end, res );

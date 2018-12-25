@@ -308,6 +308,32 @@ static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
     }
     return UR_INVALID_BUF;
 }
+#else
+typedef struct
+{
+    uint8_t  type;
+    uint8_t  flags;
+    uint16_t argProgOffset;
+    UIndex   argProgN;      // Same location as UCellSeries buf.
+    union {
+        int (*func)( UThread*, UCell*, UCell* );
+#ifdef CONFIG_ASSEMBLE
+        jit_function_t jitFunc;
+#endif
+        /*
+        struct
+        {
+            UIndex bodyN;
+            UIndex sigN;
+        } f;
+        */
+    } m;
+}
+UCellFunc;
+
+#define FCELL  ((UCellFunc*) cell)
+#define ur_funcBody(c)  (c)->series.buf
+#endif
 
 
 static void _rebindFunc( UThread* ut, UIndex blkN, UIndex new, UIndex old )
@@ -325,7 +351,7 @@ static void _rebindFunc( UThread* ut, UIndex blkN, UIndex new, UIndex old )
         type = ur_type(bi.it);
         if( ur_isWordType(type) )
         {
-            if( (ur_binding(bi.it) == UR_BIND_FUNC) &&
+            if( (ur_binding(bi.it) == BOR_BIND_FUNC) &&
                 (bi.it->word.ctx == old) )
             {
                 //printf( "KR rebind func %d\n", new );
@@ -338,34 +364,10 @@ static void _rebindFunc( UThread* ut, UIndex blkN, UIndex new, UIndex old )
         }
     }
 }
-#else
-typedef struct
-{
-    uint8_t  type;
-    uint8_t  flags;
-    uint16_t argProgOffset;
-    UIndex   argProgN;      // Same location as UCellSeries buf.
-    union {
-        int (*func)( UThread*, UCell*, UCell* );
-#ifdef CONFIG_ASSEMBLE
-        jit_function_t jitFunc;
-#endif
-        struct
-        {
-            UIndex bodyN;
-            UIndex sigN;
-        } f;
-    } m;
-}
-UCellFunc;
-
-#define FCELL  ((UCellFunc*) cell)
-#endif
 
 
 void func_copy( UThread* ut, const UCell* from, UCell* res )
 {
-#ifdef OLD_EVAL
     UIndex newBodN;
     UIndex fromBodN = ur_funcBody(from);
 
@@ -374,11 +376,6 @@ void func_copy( UThread* ut, const UCell* from, UCell* res )
     ur_funcBody(res) = newBodN = ur_blkClone( ut, fromBodN );
 
     _rebindFunc( ut, newBodN, newBodN, fromBodN );
-#else
-    (void) ut;
-    (void) from;
-    (void) res;
-#endif
 }
 
 
@@ -394,11 +391,7 @@ int func_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             // Fall through...
 
         case UR_COMPARE_SAME:
-#ifdef OLD_EVAL
             return ur_funcBody(a) == ur_funcBody(b);
-#else
-            return a->series.buf == b->series.buf;
-#endif
     }
     return 0;
 }
@@ -460,9 +453,9 @@ extern void block_toString( UThread*, const UCell*, UBuffer*, int );
 
 void func_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
-#ifdef OLD_EVAL
     UCell tmp;
 
+#ifdef OLD_EVAL
     ur_setId(&tmp, UT_BLOCK);
     tmp.series.it = 0;
     tmp.series.end = -1;
@@ -479,10 +472,19 @@ void func_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     tmp.series.buf = FCELL->m.f.bodyN;
     block_toString( ut, &tmp, str, depth );
 #else
-    (void) ut;
-    (void) cell;
-    (void) depth;
-    ur_strAppendCStr( str, "<func>" );
+    const UBuffer* blk = ur_bufferSer(cell);
+
+    if( cell->series.it )   // Argument program prelude
+    {
+        ur_strAppendCStr( str, "func " );
+        block_toString( ut, blk->ptr.cell + 1, str, depth );
+    }
+    else
+        ur_strAppendCStr( str, "does " );
+
+    ur_setId(&tmp, UT_BLOCK);
+    ur_setSeries(&tmp, cell->series.buf, cell->series.it);
+    block_toString( ut, &tmp, str, depth );
 #endif
 }
 

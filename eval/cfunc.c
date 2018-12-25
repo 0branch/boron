@@ -1109,7 +1109,7 @@ CFUNC(cfunc_func)
     UBuffer* prog;
     UBuffer* blk;
     UIndex bufN[2];
-    const int prelude = 1;  // arg-program cell.
+    const int prelude = 2;  // arg-program & signature cells.
 
     if( ! ur_is(a1, UT_BLOCK) || ! ur_is(a2, UT_BLOCK) )
     {
@@ -1126,7 +1126,9 @@ CFUNC(cfunc_func)
     body = ur_bufferSer(a2);
     ur_arrReserve( blk, prelude + body->used );
     ur_initSeries(blk->ptr.cell, UT_BINARY, bufN[1]);
-    memcpy( blk->ptr.cell + 1, body->ptr.cell, sizeof(UCell) * body->used );
+    blk->ptr.cell[1] = *a1;
+    memcpy( blk->ptr.cell + prelude, body->ptr.cell,
+            sizeof(UCell) * body->used );
     blk->used += prelude + body->used;
 
     prog = ur_buffer(bufN[1]);
