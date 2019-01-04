@@ -157,7 +157,7 @@ CFUNC(cfunc_throw)
 
     if( CFUNC_OPTIONS & 1 )
     {
-        *cell = a1[1];
+        *cell = a1[1];  // CFUNC_OPT_ARG(1)
         // Place value after ur_exception word! on stack.
         assert( cell == ut->stack.ptr.cell );
         ur_binding(cell) = UR_BIND_STACK;
@@ -187,6 +187,7 @@ CFUNC(cfunc_catch)
 
     if( ! boron_doBlock( ut, a1, res ) )
     {
+        const UCell* name;
         UCell* cell = ur_exception( ut );
 
         if( CFUNC_OPTIONS & 1 )
@@ -194,18 +195,19 @@ CFUNC(cfunc_catch)
             if( ! ur_is(cell, UT_WORD) )
                 return UR_THROW;
 
-            if( ur_is(a2, UT_WORD) )
+            name = a1 + 1;  // CFUNC_OPT_ARG(1)
+            if( ur_is(name, UT_WORD) )
             {
-                if( ur_atom(a2) == ur_atom(cell) )
+                if( ur_atom(name) == ur_atom(cell) )
                 {
                     ++cell;
                     goto set_result;
                 }
             }
-            else if( ur_is(a2, UT_BLOCK) )
+            else if( ur_is(name, UT_BLOCK) )
             {
                 UBlockIter bi;
-                ur_blkSlice( ut, &bi, a2 );
+                ur_blkSlice( ut, &bi, name );
                 ur_foreach( bi )
                 {
                     if( ur_is(bi.it, UT_WORD) &&
@@ -2104,7 +2106,7 @@ CFUNC(cfunc_append)
         dt = SERIES_DT( type );
         if( (opt = CFUNC_OPTIONS) )
         {
-            count = (opt & OPT_APPEND_REPEAT) ? ur_int(a3) : 1;
+            count = (opt & OPT_APPEND_REPEAT) ? ur_int(CFUNC_OPT_ARG(2)) : 1;
             if( (opt & OPT_APPEND_BLOCK) && (type == UT_BLOCK) )
             {
                 while( --count >= 0 )
@@ -2192,7 +2194,7 @@ CFUNC(cfunc_insert)
     if( (opt = CFUNC_OPTIONS) )
     {
         if( opt & OPT_INSERT_REPEAT )
-           count = ur_int(a1 + 3);
+           count = ur_int(CFUNC_OPT_ARG(3));
 
         if( (opt & OPT_INSERT_BLOCK) && (type == UT_BLOCK) )
         {
@@ -2202,7 +2204,7 @@ CFUNC(cfunc_insert)
         }
         else if( opt & OPT_INSERT_PART )
         {
-            UCell* parg = a3;
+            UCell* parg = CFUNC_OPT_ARG(2);
             if( ur_is(parg, UT_INT) )
                 part = ur_int(parg);
             else if( ur_isSeriesType( ur_type(parg) ) )
@@ -2257,7 +2259,7 @@ CFUNC(cfunc_change)
     }
     else if( opt & OPT_CHANGE_PART )
     {
-        UCell* parg = a3;
+        UCell* parg = CFUNC_OPT_ARG(2);
         if( ur_is(parg, UT_INT) )
             part = ur_int(parg);
         else if( ur_isSeriesType( ur_type(parg) ) )
@@ -2311,9 +2313,10 @@ CFUNC(cfunc_remove)
 
     if( opt & OPT_REMOVE_PART )
     {
-        if( ! ur_is(a2, UT_INT) )
+        UCell* parg = CFUNC_OPT_ARG(2);
+        if( ! ur_is(parg, UT_INT) )
             return ur_error( ut, UR_ERR_TYPE, "remove expected int! part" );
-        part = ur_int(a2);
+        part = ur_int(parg);
     }
     else if( opt & OPT_REMOVE_SLICE )
     {
@@ -2351,9 +2354,10 @@ CFUNC(cfunc_reverse)
 
     if( CFUNC_OPTIONS & OPT_REVERSE_PART )
     {
-        if( ! ur_is(a2, UT_INT) )
+        UCell* parg = CFUNC_OPT_ARG(1);
+        if( ! ur_is(parg, UT_INT) )
             return ur_error( ut, UR_ERR_TYPE, "reverse expected int! part" );
-        part = ur_int(a2);
+        part = ur_int(parg);
         if( part < 1 )
             goto done;
         if( part < (si.end - si.it) )
@@ -2398,7 +2402,7 @@ CFUNC(cfunc_find)
     if( opt & OPT_FIND_PART )
     {
         UIndex part;
-        UCell* parg = a3;
+        UCell* parg = CFUNC_OPT_ARG(3);
 
         if( ur_is(parg, UT_INT) )
             part = ur_int(parg);
@@ -3825,19 +3829,18 @@ static int _readBuffer( UThread* ut, uint32_t opt, const UCell* a1,
 
     if( opt & OPT_READ_PART )
     {
-        n = ur_int(a1 + 3);
+        n = ur_int(CFUNC_OPT_ARG(4));
         len = (n > 1) ? n : 0;
     }
 
     if( opt & (OPT_READ_INTO | OPT_READ_APPEND) )
     {
         UBuffer* buf;
-        const UCell* ic = a1 + 1;
+        const UCell* ic;
         int type;
         int rlen;
 
-        if( opt & OPT_READ_APPEND )
-            ++ic;
+        ic = CFUNC_OPT_ARG( (opt & OPT_READ_APPEND ? 3 : 2) );
         type = ur_type(ic);
 
         if( type == UT_BINARY || type == UT_STRING )
@@ -4574,7 +4577,7 @@ CFUNC(cfunc_swap)
         if( CFUNC_OPTIONS & OPT_SWAP_GROUP )
         {
             uint8_t* bp;
-            int group = ur_int(a2);
+            int group = ur_int(CFUNC_OPT_ARG(1));
             if( group < 2 || group > (si.end - si.it) )
                 return ur_error( ut, UR_ERR_SCRIPT,
                                  "swap group size (%d) is invalid", group );
@@ -5123,9 +5126,10 @@ CFUNC(cfunc_collect)
 
     if( opt & OPT_COLLECT_INTO )
     {
-        if( ! (dest = ur_bufferSerM(a3)) )
+        const UCell* into = CFUNC_OPT_ARG(2);
+        if( ! (dest = ur_bufferSerM(into)) )
             return UR_THROW;
-        *res = *a3;
+        *res = *into;
     }
     else
     {

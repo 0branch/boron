@@ -676,14 +676,14 @@ CFUNC_PUB( cfunc_execute )
         ok = UR_THROW;
         if( opt & OPT_EXECUTE_IN )
         {
-            in = _execBuf( ut, a1 + 1, 0 );
+            in = _execBuf( ut, CFUNC_OPT_ARG(1), 0 );
             if( ! in )
                 goto cleanup;
         }
 
         if( opt & OPT_EXECUTE_OUT )
         {
-            out = (UBuffer*) _execBuf( ut, a1 + 2, 1 );
+            out = (UBuffer*) _execBuf( ut, CFUNC_OPT_ARG(2), 1 );
             if( ! out )
                 goto cleanup;
             out->used = 0;
@@ -691,7 +691,7 @@ CFUNC_PUB( cfunc_execute )
 
         if( opt & OPT_EXECUTE_ERR )
         {
-            err = (UBuffer*) _execBuf( ut, a1 + 3, 2 );
+            err = (UBuffer*) _execBuf( ut, CFUNC_OPT_ARG(3), 2 );
             if( ! err )
                 goto cleanup;
             err->used = 0;

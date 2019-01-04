@@ -229,7 +229,7 @@ CFUNC(cfunc_sort)
         fld.opt = CFUNC_OPTIONS;
         if( fld.opt & OPT_SORT_GROUP )
         {
-            group = ur_int(a2);
+            group = ur_int(CFUNC_OPT_ARG(2));
             if( group < 1 )
                 group = 1;
             indexLen = len / group;
@@ -251,7 +251,7 @@ CFUNC(cfunc_sort)
         if( fld.opt & OPT_SORT_FIELD )
         {
             fld.ut = ut;
-            ur_blkSlice( ut, &fld.fb, a3 );
+            ur_blkSlice( ut, &fld.fb, CFUNC_OPT_ARG(3) );
 
             qs.user     = (void*) &fld;
             qs.compare  = (QuickSortFunc) _compareField;
