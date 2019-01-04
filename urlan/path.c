@@ -27,6 +27,7 @@
 */ 
 
 
+#ifdef OLD_EVAL
 /**
   Get the value which a path refers to.
 
@@ -83,6 +84,7 @@ bad_word:
         *res = *node;
     return type;
 }
+#endif
 
 
 /*

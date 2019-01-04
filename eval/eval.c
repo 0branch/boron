@@ -1018,6 +1018,66 @@ func_short:
 }
 
 
+/**
+  Get the value which a path refers to.
+
+  \param pi     Path iterator.
+  \param res    Set to value at end of path.
+
+  \return UT_WORD/UT_GETWORD/UR_THROW
+*/
+int boron_pathValue( UThread* ut, UBlockItC* pi, UCell* res )
+{
+    const UCell* node = 0;
+    const UCell* selector;
+    int type;
+
+    if( pi->it == pi->end )
+    {
+bad_word:
+        return ur_error( ut, UR_ERR_SCRIPT,
+                         "First path node must be a word!/get-word!");
+    }
+
+    type = ur_type(pi->it);
+    if( type != UT_WORD && type != UT_GETWORD )
+        goto bad_word;
+
+    if( ! (node = ur_wordCell( ut, pi->it )) )
+        return UR_THROW;
+    if( ur_is(node, UT_UNSET) )
+    {
+        return ur_error( ut, UR_ERR_SCRIPT, "Path word '%s is unset",
+                         ur_wordCStr( pi->it ) );
+    }
+
+    while( ++pi->it != pi->end )
+    {
+        // If a function is selected return with the remaining pi nodes
+        // assumed to be options.
+        if( ur_is(node, UT_CFUNC) || ur_is(node, UT_FUNC) )
+            break;
+
+        if( ur_is(pi->it, UT_GETWORD) )
+        {
+            if( ! (selector = ur_wordCell( ut, pi->it )) )
+                return UR_THROW;
+        }
+        else
+        {
+            selector = pi->it;
+        }
+
+        node = ut->types[ ur_type(node) ]->select( ut, node, selector, res );
+        if( ! node )
+            return UR_THROW;
+    }
+    if( node != res )
+        *res = *node;
+    return type;
+}
+
+
 extern void vector_pick( const UBuffer* buf, UIndex n, UCell* res );
 
 /**
@@ -1103,7 +1163,7 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
             return ++it;
 
         case UT_PATH:
-#if 1
+#if 0
         {
             UBlockItC path;
             const UCell* node;
@@ -1274,22 +1334,24 @@ invalid_node:
                              ur_atomCStr(ut, ur_type(node)) );
         }
 #else
-        // Cannot use ur_pathCell() as it does not give us the path needed by
-        // boron_callC/boron_call.
         {
-            int headType = ur_pathCell( ut, it++, res );
+            UBlockItC path;
+            int headType;
+
+            ur_blockIt( ut, it++, (UBlockIt*) &path );
+            headType = boron_pathValue( ut, &path, res );
             if( headType == UT_WORD )
             {
                 if( ur_is(res, UT_CFUNC) )
                 {
                     UCell* fc = ur_pushCell(ut, res);
-                    it = boron_callC( ut, fc, 0, it, end, res );
+                    it = boron_callC( ut, fc, &path, it, end, res );
                     ur_pop(ut);
                 }
-                if( ur_is(res, UT_FUNC) )
+                else if( ur_is(res, UT_FUNC) )
                 {
                     UCell* fc = ur_pushCell(ut, res);
-                    it = boron_call( ut, fc, 0, it, end, res );
+                    it = boron_call( ut, fc, &path, it, end, res );
                     ur_pop(ut);
                 }
             }
@@ -1716,40 +1778,44 @@ CFUNC_PUB( cf_do )
             }
             return resOk ? UR_OK : UR_THROW;
         }
-#if 0
         case UT_PATH:
         {
             UBlockItC path;
-            const UCell* cell;
+            UCell* tmp;
+            int ok;
 
-            ur_blockIt( ut, it, (UBlockIt*) &path );
-            cell = boron_wordValue( ut, path.it );
-            if( ! cell )
+            ur_blockIt( ut, res, (UBlockIt*) &path );
+
+            tmp = ur_push(ut, UT_UNSET);
+            ok = boron_pathValue( ut, &path, tmp );
+            if( ok != UR_THROW )
             {
-                return ur_error( ut, "Unbound word '%s",
-                                 ur_atomCStr(ut, path.it->word.atom) );
+                if( ok == UT_WORD )
+                {
+                    if( ur_is(tmp, UT_CFUNC) )
+                    {
+                        it = boron_callC( ut, tmp, &path, it, end, res );
+                        ur_pop(ut);
+                        goto end_func;
+                    }
+                    else if( ur_is(tmp, UT_FUNC) )
+                    {
+                        it = boron_call( ut, tmp, &path, it, end, res );
+                        ur_pop(ut);
+                        goto end_func;
+                    }
+                }
+                *res = *tmp;
+                ok = UR_OK;
             }
-            ++it;
-            printf( "KR %d\n", ur_type(cell) );
-            if( cell->type == UT_CFUNC )
-            {
-                ++path.it;
-                it = boron_callC( ut, cell, &path, it, end, res );
-                goto end_func;
-            }
-            if( cell->type == UT_FUNC )
-            {
-                ++path.it;
-                it = boron_call( ut, cell, &path, it, end, res );
-                goto end_func;
-            }
-            return ur_error( ut, "do path! not implemented!" );
+            ur_pop(ut);
+            return ok;
         }
 
         case UT_LITPATH:
-            res->type = UT_PATH;
+            ur_type(res) = UT_PATH;
             break;
-#endif
+
         case UT_CFUNC:
         case UT_FUNC:
         {
