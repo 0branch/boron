@@ -81,6 +81,7 @@ enum UrlanDataType
 
 #define UR_FLAG_INT_HEX         0x01
 #define UR_FLAG_TIMECODE_DF     0x01
+#define UR_FLAG_ERROR_SKIP_TRACE 0x01
 #define UR_FLAG_PRINT_RECURSION 0x40
 #define UR_FLAG_SOL             0x80
 

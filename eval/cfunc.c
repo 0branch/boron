@@ -1036,7 +1036,7 @@ CFUNC(cfunc_does)
 
 
 void boron_compileArgProgram( BoronThread*, const UCell* specC, UBuffer* prog,
-                              UIndex bodyN );
+                              UIndex bodyN, int* sigFlags );
 
 /*-cf-
     func
@@ -1109,6 +1109,7 @@ CFUNC(cfunc_func)
     UBuffer* prog;
     UBuffer* blk;
     UIndex bufN[2];
+    int sigFlags;
     const int prelude = 2;  // arg-program & signature cells.
 
     if( ! ur_is(a1, UT_BLOCK) || ! ur_is(a2, UT_BLOCK) )
@@ -1133,11 +1134,13 @@ CFUNC(cfunc_func)
 
     prog = ur_buffer(bufN[1]);
     //prog->storage |= UR_BUF_PROTECT;
-    boron_compileArgProgram( BT, a1, prog, bufN[0] );
+    boron_compileArgProgram( BT, a1, prog, bufN[0], &sigFlags );
 
     // Slice to skip arg-program.
     ur_setId(res, UT_FUNC);
     ur_setSeries(res, bufN[0], prelude);
+    if( sigFlags )
+        ur_setFlags(res, FUNC_FLAG_GHOST);
     return UR_OK;
 #endif
 }

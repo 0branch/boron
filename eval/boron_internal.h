@@ -49,7 +49,7 @@ typedef struct
 {
     UEnv    env;
     UBuffer ports;
-    UAtom   compileAtoms[3];
+    UAtom   compileAtoms[4];
 }
 BoronEnv;
 

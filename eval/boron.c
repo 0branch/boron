@@ -606,6 +606,7 @@ int boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
     UCell* term;
     UBuffer* argProg;
     UIndex binN;
+    int sigFlags;
     const UCell* start;
     const UCell* specCells;
 
@@ -654,7 +655,9 @@ int boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
 
                 tmp.series.it  = (start - specCells) + 1;
                 tmp.series.end =  bi.it - specCells;
-                boron_compileArgProgram( BT, &tmp, argProg, 0 );
+                boron_compileArgProgram( BT, &tmp, argProg, 0, &sigFlags );
+                if( sigFlags )
+                    ur_setFlags((UCell*) cell, FUNC_FLAG_GHOST);
             }
 
             if( ur_is(bi.it, UT_UNSET) )
@@ -965,7 +968,7 @@ UThread* boron_makeEnv( const UDatatype** dtTable, unsigned int dtCount )
 */
 UThread* boron_makeEnvP( UEnvParameters* par )
 {
-    UAtom atoms[ 12 ];
+    UAtom atoms[ 13 ];
     UThread* ut;
     unsigned int dtCount;
 
@@ -1005,14 +1008,14 @@ UThread* boron_makeEnvP( UEnvParameters* par )
 
 
     ur_internAtoms( ut, "none true false file udp tcp thread"
-        " func | extern"
+        " func | extern ghost"
 #ifdef CONFIG_SSL
         " udps tcps"
 #endif
         , atoms );
 
     // Set compileAtoms for boron_compileArgProgram.
-    memcpy( BENV->compileAtoms, atoms + 7, 3 * sizeof(UAtom) );
+    memcpy( BENV->compileAtoms, atoms + 7, 4 * sizeof(UAtom) );
 
     // Register ports.
     ur_ctxInit( &BENV->ports, 4 );

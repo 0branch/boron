@@ -1022,7 +1022,11 @@ void ur_traceError( UThread* ut, const UCell* errC, UIndex blkN,
 {
     const UBuffer* blk;
     UCell* cell;
-    if( ! ur_isShared(errC->error.traceBlk) )
+    if( ur_flags(errC, UR_FLAG_ERROR_SKIP_TRACE) )
+    {
+        ur_clrFlags((UCell*) errC, UR_FLAG_ERROR_SKIP_TRACE);
+    }
+    else if( ! ur_isShared(errC->error.traceBlk) )
     {
         blk = ur_bufferEnv(ut, blkN);
         cell = ur_blkAppendNew(ur_buffer(errC->error.traceBlk), UT_BLOCK);

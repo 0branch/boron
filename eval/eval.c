@@ -70,6 +70,7 @@ enum ArgRuleId
 
 #define LOCAL   1   // compileAtoms[1]  "|"
 #define EXTERN  2   // compileAtoms[2]  "extern"
+#define GHOST   3   // compileAtoms[3]  "ghost"
 
 static const uint8_t _argRules[] =
 {
@@ -264,6 +265,11 @@ emit_arg:
                     ur_arrAppendInt32( &ap->externWords, it->word.atom );
                 break;
             }
+            else if( it->word.atom == par->atoms[ GHOST ] )
+            {
+                par->rflag |= FUNC_FLAG_GHOST;
+                break;
+            }
 
             if( ap->optionCount < MAX_OPTIONS )
             {
@@ -408,6 +414,7 @@ extern const UAtom* boron_compileAtoms( BoronThread* );
   \param specC      Cell of specification UT_BLOCK slice.
   \param prog       Program is appended to this UT_BINARY buffer.
   \param bodyN      Buffer index of code block or 0 for cfunc!.
+  \param sigFlags   Contents set to non-zero if /ghost used in spec. block.
 
   The spec. block must only contain the following patterns:
       word!
@@ -429,7 +436,7 @@ extern const UAtom* boron_compileAtoms( BoronThread* );
   the optional agruments.
 */
 void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
-                              UBuffer* prog, UIndex bodyN )
+                              UBuffer* prog, UIndex bodyN, int* sigFlags )
 {
     ArgCompiler ac;
     ArgProgHeader* head;
@@ -532,6 +539,12 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
                 *endArg = localCount;
             }
         }
+
+        *sigFlags = ac.bp.rflag;
+    }
+    else
+    {
+        *sigFlags = 0;
     }
 
     if( ! ac.optionCount )
@@ -787,7 +800,15 @@ next_option:
     }
 
     if( ! ((UCellFunc*) funC)->m.func( ut, args, res ) )
+    {
+        if( ur_flags(funC, FUNC_FLAG_GHOST) )
+        {
+            r2 = ur_exception(ut);
+            if( ur_is(r2, UT_ERROR) )
+                ur_setFlags(r2, UR_FLAG_ERROR_SKIP_TRACE);
+        }
         it = NULL;
+    }
 
 cleanup:
     ut->stack.used = origStack;
@@ -973,7 +994,10 @@ eval_body:
             {
                 next = ur_exception(ut);
                 if( ur_is(next, UT_ERROR) )
-                    ur_traceError( ut, next, funC->series.buf, bi.it );
+                {
+                    if( ! ur_flags(funC, FUNC_FLAG_GHOST) )
+                        ur_traceError( ut, next, funC->series.buf, bi.it );
+                }
                 it = NULL;
             }
             break;

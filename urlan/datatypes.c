@@ -4370,10 +4370,14 @@ int error_make( UThread* ut, const UCell* from, UCell* res )
 {
     if( ur_is(from, UT_STRING) )
     {
+        uint8_t type = UT_BLOCK;
+
         ur_setId(res, UT_ERROR);
         res->error.exType     = UR_ERR_SCRIPT;
         res->error.messageStr = from->series.buf;
         res->error.traceBlk   = UR_INVALID_BUF;
+
+        ur_generate( ut, 1, &res->error.traceBlk, &type );      // gc!
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "make error! expected string! message" );
