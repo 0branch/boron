@@ -712,6 +712,7 @@ void ur_bindCopy( UThread* ut, const UBuffer* ctx, UCell* it, UCell* end )
                     it->word.binding = cell->word.binding;
                     it->word.ctx     = cell->word.ctx;
                     it->word.index   = cell->word.index;
+                    it->word.sel[0]  = cell->word.sel[0]; // BOR_BIND_OPTION_ARG
                 }
                 break;
 

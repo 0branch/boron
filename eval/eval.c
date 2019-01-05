@@ -72,6 +72,8 @@ enum ArgRuleId
 #define EXTERN  2   // compileAtoms[2]  "extern"
 #define GHOST   3   // compileAtoms[3]  "ghost"
 
+#define LWORD   47  // Index of word!/lit-word! type bitset.
+
 static const uint8_t _argRules[] =
 {
     PB_SomeR, 3, PB_End,
@@ -89,12 +91,15 @@ static const uint8_t _argRules[] =
     PB_Type, UT_LITWORD, PB_ReportEnd, AR_LITW,
 
     PB_Next, 6,
-    PB_Type, UT_OPTION, PB_AnyT, UT_WORD, PB_ReportEnd, AR_OPT,
+    PB_Type, UT_OPTION, PB_AnyTs, LWORD, PB_ReportEnd, AR_OPT,
 
     PB_Next, 4,
     PB_Type, UT_INT, PB_ReportEnd, AR_VARIANT,
 
-    PB_Type, UT_GETWORD, PB_ReportEnd, AR_EVAL
+    PB_Type, UT_GETWORD, PB_ReportEnd, AR_EVAL,
+
+    // LWORD word!/lit-word!
+    0x00,0x60,0x00,0x00,0x00,0x00,0x00,0x00,
 };
 
 
@@ -174,7 +179,7 @@ UBuffer* ur_blockIt( const UThread* ut, const UCell* cell, UBlockIt* bi )
 
 
 static void _defineArg( UBuffer* ctx, int binding, UIndex stackMapN,
-                        UIndex atom, UIndex index )
+                        UIndex atom, UIndex index, int16_t optArgN )
 {
     UCell* cell;
     ur_ctxAppendWord( ctx, atom );
@@ -184,6 +189,7 @@ static void _defineArg( UBuffer* ctx, int binding, UIndex stackMapN,
     cell->word.ctx   = stackMapN;
     cell->word.atom  = atom;
     cell->word.index = index;
+    cell->word.sel[0] = optArgN;
 }
 
 
@@ -255,7 +261,7 @@ emit_arg:
             EMIT( op );
             if( ap->stackMapN )
                 _defineArg( &ap->sval, BOR_BIND_FUNC, ap->stackMapN,
-                            it->word.atom, ap->sval.used );
+                            it->word.atom, ap->sval.used, 0 );
             break;
 
         case AR_OPT:
@@ -274,16 +280,12 @@ emit_arg:
             if( ap->optionCount < MAX_OPTIONS )
             {
                 OptionEntry* ent;
-                union {
-                    int16_t off[2];
-                    UIndex  ind;
-                } poff;
                 int n;
                 int argCount = 0;
 
                 if( ap->stackMapN )
                     _defineArg( &ap->sval, BOR_BIND_OPTION, ap->stackMapN,
-                                it->word.atom, ap->optionCount );
+                                it->word.atom, ap->optionCount, 0 );
 
                 if( ! ap->optionCount )
                 {
@@ -311,14 +313,12 @@ emit_arg:
                         }
                         else
                         {
-                            EMIT( FO_fetchArg );
+                            EMIT(ur_is(it,UT_LITWORD) ? FO_litArg:FO_fetchArg);
                             if( ap->stackMapN )
                             {
-                                poff.off[0] = -ap->optionCount;
-                                poff.off[1] = argCount;
                                 _defineArg( &ap->sval, BOR_BIND_OPTION_ARG,
                                             ap->stackMapN, it->word.atom,
-                                            poff.ind );
+                                            ap->optionCount - 1, argCount );
                             }
                             ++argCount;
                         }
@@ -417,9 +417,8 @@ extern const UAtom* boron_compileAtoms( BoronThread* );
   \param sigFlags   Contents set to non-zero if /ghost used in spec. block.
 
   The spec. block must only contain the following patterns:
-      word!
-      lit-word!
-      option! any word!
+      word!/lit-word!
+      option! any word!/lit-word!
       '| any word!
 
   If bodyN is not zero, all argument and local words in the block will be
@@ -489,7 +488,7 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
                 {
                     //printf( "KR local %s\n", ur_atomCStr(UT(bt), *ai) );
                     _defineArg( &ac.sval, BOR_BIND_FUNC, bodyN,
-                                *ai++, ac.sval.used );
+                                *ai++, ac.sval.used, 0 );
                 }
                 localCount = ac.localWords.used;
             }

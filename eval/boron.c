@@ -148,6 +148,8 @@ static const UCell* boron_wordCell( UThread* ut, const UCell* wordC )
                 ur_setId(res, UT_LOGIC);
                 if( CFUNC_OPTIONS & (1 << wordC->word.index) )
                     ur_logic(res) = 1;
+                else
+                    ur_logic(res) = 0;
                 return res;
             }
             break;
@@ -155,8 +157,17 @@ static const UCell* boron_wordCell( UThread* ut, const UCell* wordC )
         case BOR_BIND_OPTION_ARG:
             if( (a1 = _funcStackFrame( BT, wordC->word.ctx )) )
             {
-                const int16_t* off = (const int16_t*) &wordC->word.index;
-                return a1 + ((uint8_t*) a1)[ *off ] + off[1];
+                if( CFUNC_OPTIONS & (1 << wordC->word.index) )
+                {
+                    return CFUNC_OPT_ARG( (wordC->word.index + 1) ) +
+                           wordC->word.sel[0];
+                }
+                else
+                {
+                    UCell* res = &BT->optionCell;
+                    ur_setId(res, UT_NONE);
+                    return res;
+                }
             }
             break;
 #endif
@@ -229,7 +240,7 @@ static void boron_threadInit( UThread* ut )
 #ifndef OLD_EVAL
     ur_arrInit( &BT->frames, sizeof(UIndex), 0 );
 
-    ur_arrReserve( &ut->stack, 64 );
+    ur_arrReserve( &ut->stack, 512 );
     boron_reset( ut );
 #else
     ur_setId( &BT->fo, UT_LOGIC );
