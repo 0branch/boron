@@ -23,6 +23,11 @@ f1: func [v | local-f1] [local-f1: 44 f2 [v local-f1]]
 probe f1 "str"
 
 
+print "---- signature comments"
+cf: func [s "series" i "index" | n] [n: add 1 i print pick s n]
+cf [123 abc true] 1
+
+
 print "---- return"
 f: func [x] [if gt? x 4 [return "x > 4"] "x < 4"]
 print f 1

@@ -73,7 +73,7 @@ enum ArgRuleId
 #define GHOST   3   // compileAtoms[3]  "ghost"
 
 // _argRules offsets
-#define LWORD       47
+#define LWORD       52
 #define LOCAL_RULE  LWORD+8
 
 static const uint8_t _argRules[] =
@@ -98,7 +98,10 @@ static const uint8_t _argRules[] =
     PB_Next, 4,
     PB_Type, UT_INT, PB_ReportEnd, AR_VARIANT,
 
+    PB_Next, 4,
     PB_Type, UT_GETWORD, PB_ReportEnd, AR_EVAL,
+
+    PB_Type, UT_STRING, PB_End,     // Ignore comment string!
 
     // LWORD word!/lit-word!/set-word! (set-word! only needed by funct)
     0x00,0xE0,0x00,0x00,0x00,0x00,0x00,0x00,
