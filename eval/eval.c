@@ -705,7 +705,7 @@ const UCell* boron_callC( UThread* ut, const UCell* funC,
     const ArgProgHeader* head;
     const uint8_t* pc;
     UCell* args;
-    UCell* r2;
+    UCell* r2 = NULL;
     UIndex origStack = ut->stack.used;
     int op;
 
@@ -868,7 +868,7 @@ const UCell* boron_call( UThread* ut, const UCell* funC,
     const ArgProgHeader* head;
     const uint8_t* pc;
     UCell* optRec = 0;
-    UCell* r2;
+    UCell* r2 = NULL;
     UIndex origStack = ut->stack.used;
     UIndex argsPos = origStack;
     int needStackMap = 0;
