@@ -22,29 +22,6 @@
         (pbuf->ptr.v ? *((UPortDevice**) pbuf->ptr.v) : 0)
 
 
-#ifdef OLD_EVAL
-typedef struct
-{
-    UCell* args;
-    UIndex funcBuf;
-}
-LocalFrame;
-
-
-// UCellFuncOpt is stored on the data stack just before function arguments.
-typedef struct
-{
-    uint8_t  type;          // UT_LOGIC (For UR_BIND_OPTION result).
-    uint8_t  flags;
-    uint16_t optionMask;    // UCellId _pad0
-    uint8_t  optionJump[ MAX_OPT ];
-    uint16_t jumpIt;
-    uint16_t jumpEnd;
-}
-UCellFuncOpt;
-#endif
-
-
 typedef struct
 {
     UEnv    env;
@@ -61,21 +38,8 @@ typedef struct BoronThread
     UThread thread;
     UBuffer tbin;           // Temporary binary buffer.
     int (*requestAccess)( UThread*, const char* );
-#ifdef OLD_EVAL
-    UCell*  evalData;
-    UCell*  tos;
-    UCell*  eos;
-    LocalFrame* bof;
-    LocalFrame* tof;
-    LocalFrame* eof;
-    UIndex  holdData;
-    UIndex  dstackN;
-    UIndex  fstackN;
-    UCellFuncOpt fo;
-#else
     UBuffer frames;         // Function body & locals stack position.
     UCell   optionCell;
-#endif
 #ifdef CONFIG_RANDOM
     Well512 rand;
 #endif

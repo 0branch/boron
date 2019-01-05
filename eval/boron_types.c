@@ -25,290 +25,6 @@
 // UT_FUNC
 
 
-#ifdef OLD_EVAL
-/*
-  Function Argument UBuffer members:
-    type        UT_FUNC
-    elemSize    Number of options
-    form        Offset from ptr.b to option table
-    flags       Unused
-    used        Unused
-    ptr.b       Byte-code followed by atom/index for each option
-*/
-
-
-typedef struct
-{
-    UCellId  id;
-    UIndex   argBufN;
-    union {
-        int (*func)( UThread*, UCell*, UCell* );
-#ifdef CONFIG_ASSEMBLE
-        jit_function_t jitFunc;
-#endif
-        struct
-        {
-            UIndex bodyN;
-            UIndex sigN;
-        } f;
-    } m;
-}
-UCellFunc;
-
-#define FUNC_FLAG_GHOST     1
-#define FCELL  ((UCellFunc*) cell)
-#define ur_funcBody(c)  ((UCellFunc*) c)->m.f.bodyN
-#define ur_funcFunc(c)  ((UCellFunc*) c)->m.func
-#define ur_afuncRet(c)  (c)->id._pad0
-
-
-enum FuncArgumentOpcodes
-{
-    // Instruction       Data    Description
-    // -------------------------------------------------------------------
-    FO_clearLocal,    // n       Set locals on dstack to UT_NONE.
-    FO_clearLocalOpt, // n       Push options cell and set locals to UT_NONE.
-    FO_fetchArg,      //         Push _eval1 result onto dstack.
-    FO_litArg,        //         Push current UCell in block onto dstack.
-    FO_variant,       // n       Push variant int! onto dstack.
-    FO_checkArg,      // t       Check last argument type.
-    FO_checkArgMask,  // 2*u32   Check last argument type against mask.
-    FO_option,        //         Check for more optional arguments.
-    FO_setArgPos,     // n       Set dstack position for argument fetch.
-    FO_nop,           //         Ignore instruction.
-    FO_nop2,          // i       Ignore instruction and the next.
-    FO_end            //         End function program.
-};
-
-
-typedef struct
-{
-    UAtom    atom;
-    uint8_t  optN;      // Option number (to be used when table sorted by atom).
-    uint8_t  codeOffset;    // Index of option instructions in program.
-}
-FuncOption;
-
-#define func_optTable(buf)  ((FuncOption*) (buf->ptr.b + buf->form))
-
-
-/*
-  Convert function argument specification to byte-code program.
-
-  \param blkC       Valid block cell.
-  \param argCtx     Context buffer for arguments.  May be zero.
-  \param optCtx     Context buffer for options.  May be zero.
-
-  \return Function program buffer id.
-*/
-static UIndex boron_makeArgProgram( UThread* ut, const UCell* blkC,
-                                    UBuffer* argCtx, UBuffer* optCtx,
-                                    UCellFunc* fcell )
-{
-    UBlockIter bi;
-    FuncOption options[ MAX_OPT ];
-    int localCount = 0;
-    int optionCount = 0;
-    int optArgs = 0;
-    int optCodeOffset = 0;
-    UAtom optAtom = 0;
-    UBuffer* prog = &BT->tbin;
-
-
-#define ATOM_LOCAL      UR_ATOM_BAR
-#define FO_RESERVE(n)   ur_binReserve( prog, prog->used + n + 1 );
-#define FO_EMIT(op)     prog->ptr.b[ prog->used++ ] = op
-
-#define FO_EMIT2(op,data) \
-    prog->ptr.b[ prog->used ] = op; \
-    prog->ptr.b[ prog->used + 1 ] = data; \
-    prog->used += 2;
-
-#define FO_EMIT_R(op) \
-    FO_RESERVE(1); \
-    FO_EMIT(op)
-
-#define FO_EMIT2_R(op,data) \
-    FO_RESERVE(2); \
-    FO_EMIT2(op,data)
-
-#define COMPLETE_OPT_ARGS \
-    options[ optionCount - 1 ].codeOffset = optCodeOffset; \
-    FO_EMIT_R( FO_option )
-
-
-    ur_binReserve( prog, 16 );
-    prog->ptr.b[0] = FO_clearLocal;
-    prog->ptr.b[1] = 0;             // localCount set below.
-    prog->used = 2;
-
-    ur_blkSlice( ut, &bi, blkC );
-    ur_foreach( bi )
-    {
-        switch( ur_type(bi.it) )
-        {
-        case UT_DATATYPE:
-            if( localCount )
-            {
-                uint32_t* mask;
-                int type = ur_datatype(bi.it);
-                if( type < UT_MAX )
-                {
-                    FO_EMIT2_R( FO_checkArg, type );
-                }
-                else
-                {
-                    FO_RESERVE( 12 );
-                    switch( prog->used & 3 )    // Pad so masks are aligned.
-                    {
-                        case 0:
-                            FO_EMIT( FO_nop );
-                            // Fall through...
-                        case 1:
-                            FO_EMIT2( FO_nop2, FO_nop );
-                            break;
-                        case 2:
-                            FO_EMIT( FO_nop );
-                            break;
-                    }
-                    FO_EMIT( FO_checkArgMask );
-                    assert( (prog->used & 3) == 0 );
-                    mask = (uint32_t*) (prog->ptr.b + prog->used);
-                    *mask++ = bi.it->datatype.mask0;
-                    *mask   = bi.it->datatype.mask1;
-                    prog->used += 8;
-                }
-            }
-            break;
-
-        case UT_INT:
-            FO_EMIT2_R( FO_variant, ur_int(bi.it) );
-            ++localCount;
-            break;
-
-        case UT_WORD:
-        case UT_LITWORD:
-        case UT_SETWORD:    // Allows funct to avoid mapping set-word! to word!.
-            if( ur_atom(bi.it) < UT_MAX )
-            {
-                if( localCount )
-                {
-                    FO_EMIT2_R( FO_checkArg, (uint8_t) ur_atom(bi.it) );
-                }
-            }
-            else if( ur_atom(bi.it) == ATOM_LOCAL )
-            {
-                optAtom = ATOM_LOCAL;
-                if( optArgs )
-                {
-                    optArgs = 0;
-                    COMPLETE_OPT_ARGS;
-                }
-            }
-            else
-            {
-                if( optAtom )
-                {
-                    if( optAtom == ATOM_LOCAL )
-                    {
-                        ++localCount;
-                        if( argCtx )
-                            ur_ctxAddWordI( argCtx, ur_atom(bi.it) );
-                        break;
-                    }
-                    if( ! optArgs )
-                    {
-                        ++optArgs;
-                        FO_RESERVE( 3 );
-                        if( prog->ptr.b[ prog->used - 1 ] != FO_option )
-                        {
-                            FO_EMIT( FO_option );
-                        }
-                        optCodeOffset = prog->used;
-                        FO_EMIT2( FO_setArgPos, localCount );
-                    }
-                }
-                ++localCount;
-                if( argCtx )
-                    ur_ctxAddWordI( argCtx, ur_atom(bi.it) );
-                FO_EMIT_R( ur_is(bi.it, UT_WORD) ? FO_fetchArg : FO_litArg );
-            }
-            break;
-
-        case UT_OPTION:
-            // TODO: Throw error rather than assert.
-            assert( optAtom != ATOM_LOCAL );
-            assert( optionCount < MAX_OPT );
-            if( optArgs )
-            {
-                optArgs = 0;
-                COMPLETE_OPT_ARGS;
-            }
-            optAtom = ur_atom(bi.it);
-            if( optAtom == UR_ATOM_GHOST )
-            {
-                ur_setFlags(fcell, FUNC_FLAG_GHOST);
-                break;
-            }
-            options[ optionCount ].atom = optAtom;
-            options[ optionCount ].optN = optionCount;
-            options[ optionCount ].codeOffset = 0;
-            ++optionCount;
-            if( optCtx )
-                ur_ctxAddWordI( optCtx, ur_atom(bi.it) );
-            break;
-        }
-    }
-
-    if( optArgs )
-    {
-        COMPLETE_OPT_ARGS;      // Complete last option sequence.
-    }
-
-    if( optionCount )
-    {
-        prog->ptr.b[0] = FO_clearLocalOpt;
-        ++localCount;
-    }
-    prog->ptr.b[1] = localCount;
-
-    FO_EMIT( FO_end );      // FO_RESERVE reserves space for end instruction.
-
-
-    if( (prog->used > 3) || localCount )
-    {
-        UBuffer* pbuf;
-        uint8_t* mem;
-        UIndex pbufN;
-        int progLen = (prog->used + 3) & ~3;
-        int optTableLen = optionCount * sizeof(FuncOption);
-
-#if 0
-        for( pbufN = 0; pbufN < prog->used; ++pbufN )
-            printf( " %d", prog->ptr.b[ pbufN ] );
-        printf( "\n" );
-#endif
-
-        // Finish with prog before ur_genBuffers().
-        mem = (uint8_t*) memAlloc( progLen + optTableLen );
-        memCpy( mem, prog->ptr.v, prog->used );
-        if( optTableLen )
-            memCpy( mem + progLen, options, optTableLen );
-
-        pbuf = ur_genBuffers( ut, 1, &pbufN );
-
-        pbuf->type  = UT_FUNC;
-        pbuf->elemSize = optionCount;
-        pbuf->form  = progLen;
-        pbuf->flags = 0;
-        pbuf->used  = 0;
-        pbuf->ptr.v = mem;
-
-        return pbufN;
-    }
-    return UR_INVALID_BUF;
-}
-#else
 typedef struct
 {
     uint8_t  type;
@@ -334,7 +50,6 @@ UCellFunc;
 #define FUNC_FLAG_GHOST     1
 #define FCELL  ((UCellFunc*) cell)
 #define ur_funcBody(c)  (c)->series.buf
-#endif
 
 
 static void _rebindFunc( UThread* ut, UIndex blkN, UIndex new, UIndex old )
@@ -398,81 +113,11 @@ int func_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 }
 
 
-const UCell* func_select( UThread* ut, const UCell* cell, const UCell* sel,
-                          UCell* tmp )
-{
-#ifdef OLD_EVAL
-    const UBuffer* buf;
-    const FuncOption* opt;
-    const FuncOption* it;
-    const FuncOption* end;
-    UAtom atom;
-    (void) tmp;
-
-    if( ur_is(sel, UT_WORD) )
-    {
-        if( FCELL->argBufN )
-        {
-            buf = ur_bufferE( FCELL->argBufN );
-            opt = func_optTable(buf);
-            end = opt + buf->elemSize;
-            atom = ur_atom(sel);
-
-            for( it = opt; it != end; ++it )
-            {
-                if( atom == it->atom )
-                {
-                    // NOTE: If ur_pathCell() is called outside boron_eval1()
-                    // then jumpEnd could go past end of fo.optionJump.
-                    if( it->codeOffset /*&& called_from_eval1*/ )
-                        BT->fo.optionJump[ BT->fo.jumpEnd++ ] = it->codeOffset;
-                    BT->fo.optionMask |= 1 << it->optN;
-                    return cell;
-                }
-            }
-        }
-        ur_error( ut, UR_ERR_SCRIPT, "function has no option /%s",
-                  ur_wordCStr(sel) );
-    }
-    else
-    {
-        ur_error( ut, UR_ERR_SCRIPT, "function select expected word!" );
-    }
-    BT->fo.optionMask = 0;
-    return 0;
-#else
-    (void) cell;
-    (void) sel;
-    (void) tmp;
-    ur_error( ut, UR_ERR_SCRIPT, "func_select not implemented!" );
-    return 0;
-#endif
-}
-
-
 extern void block_toString( UThread*, const UCell*, UBuffer*, int );
 
 void func_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     UCell tmp;
-
-#ifdef OLD_EVAL
-    ur_setId(&tmp, UT_BLOCK);
-    tmp.series.it = 0;
-    tmp.series.end = -1;
-
-    if( FCELL->m.f.sigN )
-    {
-        ur_strAppendCStr( str, "func " );
-        tmp.series.buf = FCELL->m.f.sigN;
-        block_toString( ut, &tmp, str, depth );
-    }
-    else
-        ur_strAppendCStr( str, "does " );
-
-    tmp.series.buf = FCELL->m.f.bodyN;
-    block_toString( ut, &tmp, str, depth );
-#else
     const UBuffer* blk = ur_bufferSer(cell);
 
     if( cell->series.it )   // Argument program prelude
@@ -486,7 +131,6 @@ void func_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     ur_setId(&tmp, UT_BLOCK);
     ur_setSeries(&tmp, cell->series.buf, cell->series.it);
     block_toString( ut, &tmp, str, depth );
-#endif
 }
 
 
@@ -494,34 +138,12 @@ extern void block_markBuf( UThread* ut, UBuffer* buf );
 
 void func_mark( UThread* ut, UCell* cell )
 {
-    UIndex n;
-
-#ifdef OLD_EVAL
-    n = FCELL->argBufN;
-    if( n > UR_INVALID_BUF )
-        ur_markBuffer( ut, n );
-
-    n = FCELL->m.f.bodyN;
+    UIndex n = ur_funcBody(cell);
     if( n > UR_INVALID_BUF )
     {
         if( ur_markBuffer( ut, n ) )
             block_markBuf( ut, ur_buffer(n) );
     }
-
-    n = FCELL->m.f.sigN;
-    if( n > UR_INVALID_BUF )
-    {
-        if( ur_markBuffer( ut, n ) )
-            block_markBuf( ut, ur_buffer(n) );
-    }
-#else
-    n = cell->series.buf;
-    if( n > UR_INVALID_BUF )
-    {
-        if( ur_markBuffer( ut, n ) )
-            block_markBuf( ut, ur_buffer(n) );
-    }
-#endif
 }
 
 
@@ -538,35 +160,15 @@ void func_destroy( UBuffer* buf )
 
 void func_toShared( UCell* cell )
 {
-    UIndex n;
-
-#ifdef OLD_EVAL
-    n = FCELL->argBufN;
-    if( n > UR_INVALID_BUF )
-        FCELL->argBufN = -n;
-
-    n = FCELL->m.f.bodyN;
-    if( n > UR_INVALID_BUF )
-        FCELL->m.f.bodyN = -n;
-
-    n = FCELL->m.f.sigN;
-    if( n > UR_INVALID_BUF )
-        FCELL->m.f.sigN = -n;
-#else
-    n = cell->series.buf;
+    UIndex n = ur_funcBody(cell);
     if( n > UR_INVALID_BUF )
         cell->series.buf = -n;
-#endif
 }
 
 
 void func_bind( UThread* ut, UCell* cell, const UBindTarget* bt )
 {
-#ifdef OLD_EVAL
-    UIndex n = FCELL->m.f.bodyN;
-#else
-    UIndex n = cell->series.buf;
-#endif
+    UIndex n = ur_funcBody(cell);
     //printf( "KR func_bind\n" );
     if( n > UR_INVALID_BUF )
     {
@@ -592,46 +194,15 @@ int cfunc_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             // Fall through...
 
         case UR_COMPARE_SAME:
-#ifdef OLD_EVAL
-            return ur_funcFunc(a) == ur_funcFunc(b);
-#else
             return a->series.buf == b->series.buf;
-#endif
     }
     return 0;
 }
 
 
-/*
-  Updates used member of stack blocks before every recycle.
-*/
-void cfunc_recycle2( UThread* ut, int phase )
-{
-#ifdef OLD_EVAL
-    if( phase == UR_RECYCLE_MARK && BT->dstackN )
-    {
-        // Sync data stack used with tos.
-        UBuffer* buf = ur_buffer(BT->dstackN);
-        buf->used = BT->tos - buf->ptr.cell;
-
-        // Sync frame stack used with tof.
-        buf = ur_buffer(BT->fstackN);
-        buf->used = BT->tof - ur_ptr(LocalFrame, buf);
-    }
-#else
-    (void) ut;
-    (void) phase;
-#endif
-}
-
-
 void cfunc_mark( UThread* ut, UCell* cell )
 {
-#ifdef OLD_EVAL
-    UIndex n = FCELL->argBufN;
-#else
     UIndex n = FCELL->argProgN;
-#endif
     if( n > UR_INVALID_BUF )
         ur_markBuffer( ut, n );
 }
@@ -639,15 +210,9 @@ void cfunc_mark( UThread* ut, UCell* cell )
 
 void cfunc_toShared( UCell* cell )
 {
-#ifdef OLD_EVAL
-    UIndex n = FCELL->argBufN;
-    if( n > UR_INVALID_BUF )
-        FCELL->argBufN = -n;
-#else
     UIndex n = FCELL->argProgN;
     if( n > UR_INVALID_BUF )
         FCELL->argProgN = -n;
-#endif
 }
 
 
@@ -922,15 +487,15 @@ const UDatatype boron_types[] =
   {
     "func!",
     unset_make,             unset_make,             func_copy,
-    func_compare,           unset_operate,          func_select,
+    func_compare,           unset_operate,          unset_select,
     func_toString,          func_toString,
-    cfunc_recycle2,         func_mark,              func_destroy,
+    unset_recycle,          func_mark,              func_destroy,
     unset_markBuf,          func_toShared,          func_bind
   },
   {
     "cfunc!",
     unset_make,             unset_make,             unset_copy,
-    cfunc_compare,          unset_operate,          func_select,
+    cfunc_compare,          unset_operate,          unset_select,
     unset_toString,         unset_toText,
     unset_recycle,          cfunc_mark,             unset_destroy,
     unset_markBuf,          cfunc_toShared,         unset_bind

@@ -608,7 +608,6 @@ void     ur_blkCollectType( UThread*, const UCell* blkCell,
                             uint32_t typeMask, UBuffer* dest, int unique );
 #define  ur_blkFree ur_arrFree
 
-int      ur_pathCell( UThread*, const UCell* pc, UCell* res );
 int      ur_setPath( UThread*, const UCell* path, const UCell* src );
 
 UIndex   ur_makeContext( UThread*, int size );

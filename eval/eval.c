@@ -22,7 +22,7 @@
 
 
 #if UR_VERSION < 0x000400
-// FIXME: ur_wordCell throws error, boron_wordValue does not. 
+// FIXME: ur_wordCell throws error, boron_wordValue does not.
 #define boron_wordValue     ur_wordCell
 #define boron_setWordValue  ur_setWord
 
@@ -149,7 +149,7 @@ ArgCompiler;
 UBuffer* ur_generateBuf( UThread* ut, UIndex* index, int type )
 {
     uint8_t t = type;
-    return ur_generate( ut, 1, index, &t ); 
+    return ur_generate( ut, 1, index, &t );
 }
 
 
@@ -1181,177 +1181,6 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
             return ++it;
 
         case UT_PATH:
-#if 0
-        {
-            UBlockItC path;
-            const UCell* node;
-            int headType;
-
-            ur_blockIt( ut, it, (UBlockIt*) &path );
-            headType = ur_type(path.it);
-            assert( headType == UT_WORD || headType == UT_GETWORD );
-            cell = boron_wordValue( ut, path.it );
-            if( ! cell )
-            {
-                it = path.it;
-                goto unbound;
-            }
-            ++it;
-
-            while( ++path.it != path.end )
-            {
-                if( ur_type(path.it) == UT_GETWORD )
-                {
-                    node = boron_wordValue( ut, path.it );
-                    if( ! node )
-                        goto unbound;
-                }
-                else
-                    node = path.it;
-                
-                /*
-                UMethod method = ((UEnv*) ut->env)->method[ cell->type ];
-                if( ! method( ut, UR_DO_PICK, cell, node ) )
-                    return NULL;
-                */
-                switch( ur_type(cell) )
-                {
-                    case UT_COORD:
-                        if( ur_is(node, UT_INT) )
-                        {
-                            coord_pick( cell, ur_int(node) - 1, res );
-                            return it;
-                        }
-                        goto invalid_node;
-                    case UT_VEC3:
-                        if( ur_is(node, UT_INT) )
-                        {
-                            vec3_pick( cell, ur_int(node) - 1, res );
-                            return it;
-                        }
-                        goto invalid_node;
-                    case UT_VECTOR:
-                        if( ur_is(node, UT_INT) )
-                        {
-                            const UBuffer* buf = ur_bufferSer(cell);
-                            vector_pick( buf, cell->series.it+ur_int(node)-1,
-                                         res );
-                            return it;
-                        }
-                        goto invalid_node;
-                    case UT_BLOCK:
-                    case UT_PAREN:
-                    case UT_PATH:
-                        if( ur_is(node, UT_INT) )
-                        {
-                            int64_t i = ur_int(node);
-                            if( i > 0 )
-                            {
-                                const UBuffer* blk = ur_bufferSer(cell);
-                                if( --i < blk->used )
-                                {
-                                    cell = blk->ptr.cell + i;
-                                    if( headType == UT_WORD )
-                                    {
-                                        if( ur_is(cell, UT_CFUNC) )
-                                        {
-                                            ++path.it;
-                                            goto call_cfunc;
-                                        }
-                                        if( ur_is(cell, UT_FUNC) )
-                                        {
-                                            ++path.it;
-                                            goto call_func;
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-                            ur_setId(res, UT_NONE);
-                            return it;
-                        }
-                        else if( ur_is(node, UT_WORD) )
-                        {
-                            UBlockItC wi;
-                            UAtom atom = ur_atom(node);
-                            ur_blockIt( ut, cell, (UBlockIt*) &wi );
-                            ur_foreach( wi )
-                            {
-                                if( ur_isWordType( ur_type(wi.it) ) &&
-                                    (ur_atom(wi.it) == atom) )
-                                {
-                                    if( ++wi.it == wi.end )
-                                        goto blk_none;
-                                    cell = wi.it;
-                                    if( headType == UT_WORD )
-                                    {
-                                        if( ur_is(cell, UT_CFUNC) )
-                                        {
-                                            ++path.it;
-                                            goto call_cfunc;
-                                        }
-                                        if( ur_is(cell, UT_FUNC) )
-                                        {
-                                            ++path.it;
-                                            goto call_func;
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-                            if( wi.it == wi.end )
-                            {
-blk_none:
-                                ur_setId(res, UT_NONE);
-                                return it;
-                            }
-                            break;
-                        }
-                        goto invalid_node;
-                    case UT_CONTEXT:
-                        if( ur_is(node, UT_WORD) )
-                        {
-                            const UBuffer* ctx = ur_bufferSer(cell);
-                            int i = ur_ctxLookup( ctx, node->word.atom );
-                            if( i >= 0 )
-                            {
-                                cell = ctx->ptr.cell + i;
-                                if( headType == UT_WORD )
-                                {
-                                    if( ur_is(cell, UT_CFUNC) )
-                                    {
-                                        ++path.it;
-                                        goto call_cfunc;
-                                    }
-                                    if( ur_is(cell, UT_FUNC) )
-                                    {
-                                        ++path.it;
-                                        goto call_func;
-                                    }
-                                }
-                                break;
-                            }
-                            if( node->word.atom == UR_ATOM_SELF )
-                                break;  // cell already set to this context.
-                        }
-                        goto invalid_node;
-                    case UT_CFUNC:
-call_cfunc:
-                        return boron_callC( ut, cell, &path, it, end, res );
-                    case UT_FUNC:
-call_func:
-                        return boron_call( ut, cell, &path, it, end, res );
-                    default:
-                        goto invalid_node;
-                }
-            }
-            *res = *cell;
-            return it;
-invalid_node:
-            return cp_error( ut, UR_ERR_SCRIPT, "Invalid path %s node",
-                             ur_atomCStr(ut, ur_type(node)) );
-        }
-#else
         {
             UBlockItC path;
             int headType;
@@ -1377,7 +1206,6 @@ invalid_node:
                 return NULL; //goto traceError;
         }
             return it;
-#endif
 
         case UT_LITPATH:
             *res = *it++;
@@ -1509,174 +1337,13 @@ UCell* boron_reduceBlock( UThread* ut, const UCell* blkC, UCell* res )
     ur_blkSlice( ut, &bi, blkC );
     while( bi.it != bi.end )
     {
-        bi.it = boron_eval1( ut, bi.it, bi.end, 
+        bi.it = boron_eval1( ut, bi.it, bi.end,
                              ur_blkAppendNew(ur_buffer(ind), UT_UNSET) );
         if( ! bi.it )
             return NULL;
     }
     return res;
 }
-
-
-#ifdef OLD_EVAL
-/*
-  NOTE: This is an eval-control function.
-
-  -cf-
-    do
-        value
-    return: Result of value.
-    group: eval
-*/
-CFUNC(cfunc_do)
-{
-    if( ! boron_eval1( ut, a1, res ) )
-        return UR_THROW;
-
-    switch( ur_type(res) )
-    {
-        case UT_WORD:
-        {
-            const UCell* cell;
-            if( ! (cell = boron_wordValue( ut, res )) )
-                return UR_THROW; //goto traceError;
-            if( ur_is(cell, UT_CFUNC) || ur_is(cell, UT_FUNC) )
-                return boron_call( ut, (const UCellFunc*) cell, a1, res );
-            *res = *cell;
-        }
-            break;
-
-        case UT_LITWORD:
-            res->id.type = UT_WORD;
-            break;
-
-        case UT_GETWORD:
-        {
-            const UCell* cell;
-            if( ! (cell = boron_wordValue( ut, res )) )
-                return UR_THROW; //goto traceError;
-            *res = *cell;
-        }
-            break;
-
-        case UT_STRING:
-        {
-            USeriesIter si;
-            ur_seriesSlice( ut, &si, res );
-            if( si.it == si.end )
-            {
-                ur_setId( res, UT_UNSET );
-            }
-            else
-            {
-                UCell tmp;
-                UIndex hold;
-                UIndex blkN;
-                int ok;
-
-                if( ur_strIsUcs2(si.buf) )
-                    return ur_error( ut, UR_ERR_INTERNAL,
-                                     "FIXME: Cannot do ucs2 string!" );
-
-                blkN = ur_tokenize( ut, si.buf->ptr.c + si.it,
-                                        si.buf->ptr.c + si.end, &tmp );
-                if( ! blkN )
-                    return UR_THROW;
-
-                boron_bindDefault( ut, blkN );
-
-                hold = ur_hold( blkN );
-                ok = boron_doBlock( ut, &tmp, res );
-                ur_release( hold );
-                return ok;
-            }
-        }
-            break;
-
-        case UT_FILE:
-        {
-            int ok;
-            UCell* tmp;
-            if( ! (tmp = boron_stackPush(ut)) )     // Hold file arg.
-                return UR_THROW;
-            *tmp = *res;
-            ok = cfunc_load( ut, tmp, res );
-            boron_stackPop(ut);
-            if( ! ok )
-                return UR_THROW;
-        }
-            if( ! ur_is(res, UT_BLOCK) )
-                return UR_OK;
-            // Fall through to block...
-#if __GNUC__ == 7
-            __attribute__ ((fallthrough));
-#endif
-
-        case UT_BLOCK:
-        case UT_PAREN:
-            if( ur_isShared( res->series.buf ) )
-            {
-                return boron_doBlock( ut, res, res );
-            }
-            else
-            {
-                int ok;
-                UIndex hold = ur_hold( res->series.buf );
-                ok = boron_doBlock( ut, res, res );
-                ur_release( hold );
-                return ok;
-            }
-
-        case UT_PATH:
-        {
-            int ok;
-            UCell* tmp;
-            if( ! (tmp = boron_stackPush(ut)) )
-                return UR_THROW;
-            ok = ur_pathCell( ut, res, tmp );
-            if( ok != UR_THROW )
-            {
-                if( (ur_is(tmp, UT_CFUNC) || ur_is(tmp, UT_FUNC)) &&
-                    ok == UT_WORD )
-                {
-                    ok = boron_call( ut, (const UCellFunc*) tmp, a1, res );
-                }
-                else
-                {
-                    *res = *tmp;
-                    ok = UR_OK;
-                }
-            }
-            boron_stackPop(ut);
-            return ok;
-        }
-
-        case UT_LITPATH:
-            res->id.type = UT_PATH;
-            break;
-
-        case UT_FUNC:
-        case UT_CFUNC:
-        {
-            int ok;
-            UCell* tmp;
-            if( (tmp = boron_stackPush(ut)) )   // Hold func cell.
-            {
-                *tmp = *res;
-                ok = boron_call( ut, (UCellFunc*) tmp, a1, res );
-                boron_stackPop(ut);
-                return ok;
-            }
-        }
-            return UR_THROW;
-
-        default:
-            // Result already set.
-            break;
-    }
-    return UR_OK;
-}
-#endif
 
 
 CFUNC_PUB( cf_load );

@@ -1018,21 +1018,11 @@ CFUNC(cfunc_reserve)
 */
 CFUNC(cfunc_does)
 {
-#ifdef OLD_EVAL
-    UCellFunc* cell = (UCellFunc*) res;
-    UIndex bodyN = ur_blkClone( ut, a1->series.buf );   // gc!
-
-    ur_setId(cell, UT_FUNC);        // Sets funcProgSize to 0.
-    cell->argBufN   = UR_INVALID_BUF;
-    cell->m.f.bodyN = bodyN;
-    cell->m.f.sigN  = UR_INVALID_BUF;
-#else
     // Must copy block to preserve bindings when the same function defintion
     // is used in multiple contexts.
     UIndex bodyN = ur_blkClone( ut, a1->series.buf );   // gc!
     ur_setId(res, UT_FUNC);
     ur_setSeries(res, bodyN, 0);
-#endif
     return UR_OK;
 }
 
@@ -1052,60 +1042,6 @@ void boron_compileArgProgram( BoronThread*, const UCell* specC, UBuffer* prog,
 */
 CFUNC(cfunc_func)
 {
-#ifdef OLD_EVAL
-    UBuffer ctx;
-    UBuffer optCtx;
-    UBuffer* body;
-    UIndex bodyN;
-    UCellFunc* fc = (UCellFunc*) res;
-
-    if( ! ur_is(a1, UT_BLOCK) || ! ur_is(a2, UT_BLOCK) )
-    {
-        return ur_error( ut, UR_ERR_TYPE,
-                         "func expected block! for spec & body" );
-    }
-
-    ur_ctxInit( &ctx, 0 );
-    ur_ctxInit( &optCtx, 0 );
-
-    bodyN = ur_blkClone( ut, a2->series.buf );      // gc!
-
-    ur_setId(fc, UT_FUNC);
-    fc->argBufN   = UR_INVALID_BUF;
-    fc->m.f.bodyN = bodyN;
-    fc->m.f.sigN  = a1->series.buf;
-
-    // Assign after fc fully initialized to handle recycle.
-    // Body block is held since fc is the result.
-    fc->argBufN = boron_makeArgProgram( ut, a1, &ctx, &optCtx, fc );    // gc!
-
-    {
-    UBindTarget bt;
-
-    bt.ctxN = bodyN;
-    bt.self = UR_INVALID_ATOM;
-    body = ur_buffer( bt.ctxN );
-
-    if( ctx.used )
-    {
-        bt.ctx      = ur_ctxSort(&ctx);
-        bt.bindType = UR_BIND_FUNC;
-        ur_bindCells( ut, body->ptr.cell, body->ptr.cell + body->used, &bt );
-    }
-
-    if( optCtx.used )
-    {
-        bt.ctx      = ur_ctxSort(&optCtx);
-        bt.bindType = UR_BIND_OPTION;
-        ur_bindCells( ut, body->ptr.cell, body->ptr.cell + body->used, &bt );
-    }
-    }
-
-    ur_ctxFree( &optCtx );
-    ur_ctxFree( &ctx );
-
-    return UR_OK;
-#else
     static const uint8_t _types[2] = {UT_BLOCK, UT_BINARY};
     const UBuffer* body;
     UBuffer* prog;
@@ -1144,7 +1080,6 @@ CFUNC(cfunc_func)
     if( sigFlags )
         ur_setFlags(res, FUNC_FLAG_GHOST);
     return UR_OK;
-#endif
 }
 
 

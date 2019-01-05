@@ -124,20 +124,11 @@ void     boron_setAccessFunc( UThread*, int (*func)( UThread*, const char* ) );
 int      boron_requestAccess( UThread*, const char* msg, ... );
 void     boron_bindDefault( UThread*, UIndex blkN );
 int      boron_load( UThread*, const char* file, UCell* res );
-#ifdef OLD_EVAL
-int      boron_doBlock( UThread*, const UCell* blkC, UCell* res );
-int      boron_doBlockN( UThread*, UIndex blkN, UCell* res );
-int      boron_doCStr( UThread*, const char* cmd, int len );
-int      boron_eval1( UThread*, UCell* blkC, UCell* res );
-UCell*   boron_result( UThread* );
-UCell*   boron_exception( UThread* );
-#else
 const UCell*
          boron_eval1(UThread*, const UCell* it, const UCell* end, UCell* res);
 UCell*   boron_doBlock( UThread* ut, const UCell* blkC, UCell* res );
 UCell*   boron_reduceBlock( UThread* ut, const UCell* blkC, UCell* res );
 UCell*   boron_evalUtf8( UThread*, const char* script, int len );
-#endif
 void     boron_reset( UThread* );
 int      boron_throwWord( UThread*, UAtom atom, UIndex stackPos );
 int      boron_catchWord( UThread*, UAtom atom );
