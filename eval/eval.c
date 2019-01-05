@@ -72,7 +72,8 @@ enum ArgRuleId
 #define EXTERN  2   // compileAtoms[2]  "extern"
 #define GHOST   3   // compileAtoms[3]  "ghost"
 
-#define LWORD       47      // Index of word!/lit-word! type bitset.
+// _argRules offsets
+#define LWORD       47
 #define LOCAL_RULE  LWORD+8
 
 static const uint8_t _argRules[] =
@@ -80,7 +81,7 @@ static const uint8_t _argRules[] =
     PB_SomeR, 3, PB_End,
 
     PB_Next, 6,
-    PB_LitWord, LOCAL, PB_AnyT, UT_WORD, PB_ReportEnd, AR_LOCAL,
+    PB_LitWord, LOCAL, PB_AnyTs, LWORD, PB_ReportEnd, AR_LOCAL,
 
     PB_Next, 4,
     PB_Type, UT_WORD, PB_ReportEnd, AR_WORD,
@@ -99,8 +100,8 @@ static const uint8_t _argRules[] =
 
     PB_Type, UT_GETWORD, PB_ReportEnd, AR_EVAL,
 
-    // LWORD word!/lit-word!
-    0x00,0x60,0x00,0x00,0x00,0x00,0x00,0x00,
+    // LWORD word!/lit-word!/set-word! (set-word! only needed by funct)
+    0x00,0xE0,0x00,0x00,0x00,0x00,0x00,0x00,
 
     PB_ToLitWord, LOCAL, PB_End
 };
@@ -139,6 +140,7 @@ typedef struct
     UIndex stackMapN;
     int origUsed;
     int argEndPc;
+    int funcArgCount;
     int optionCount;
     OptionEntry opt[ MAX_OPTIONS ];
 }
@@ -262,6 +264,8 @@ static void _argRuleHandler( UBlockParser* par, int rule,
             op = FO_litArg;
 emit_arg:
             EMIT( op );
+            if( ! ap->optionCount )
+                ++ap->funcArgCount;
             if( ap->stackMapN )
                 _defineArg( &ap->sval, BOR_BIND_FUNC, ap->stackMapN,
                             it->word.atom, ap->sval.used, 0 );
@@ -350,6 +354,7 @@ emit_arg:
 }
 
 
+#ifdef AUTO_LOCALS
 static void _appendSetWords( UThread* ut, UBuffer* buf, const UCell* blkC )
 {
     UBlockIt bi;
@@ -363,6 +368,7 @@ static void _appendSetWords( UThread* ut, UBuffer* buf, const UCell* blkC )
             _appendSetWords( ut, buf, bi.it );
     }
 }
+#endif
 
 
 static void _zeroDuplicateU32( UBuffer* a )
@@ -434,12 +440,16 @@ extern const UAtom* boron_compileAtoms( BoronThread* );
                   a1
 
   The stack map (or a1 CFUNC argument) points to the first argument cell.
+
   The option record indicates which options were evaluated and holds offsets to
-  the optional agruments.
+  the optional agruments.  This is a single cell of type UT_UNSET.  Optional
+  argument values are only present on the stack if the associated option was
+  used and are ordered according to how the options occur in the invoking path!.
 */
 void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
                               UBuffer* prog, UIndex bodyN, int* sigFlags )
 {
+    UThread* ut = UT(bt);
     ArgCompiler ac;
     ArgProgHeader* head;
     const int headerSize = 4;
@@ -448,8 +458,9 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
 
     ac.origUsed = prog->used;
     ac.argEndPc = 0;
+    ac.funcArgCount = 0;
     ac.optionCount = 0;
-    ur_blockIt( UT(bt), specC, (UBlockIt*) &ac.bp.it );
+    ur_blockIt( ut, specC, (UBlockIt*) &ac.bp.it );
 
     ur_binReserve( prog, prog->used + 16 + headerSize );
     prog->used += headerSize;   // Reserve space for start of ArgProgHeader.
@@ -458,7 +469,7 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
 
     if( ac.bp.it != ac.bp.end )
     {
-        ac.bp.ut = UT(bt);
+        ac.bp.ut = ut;
         ac.bp.atoms  = boron_compileAtoms(bt);
         ac.bp.rules  = _argRules;
         ac.bp.report = _argRuleHandler;
@@ -489,10 +500,11 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
 
         if( bodyN )
         {
+#ifdef AUTO_LOCALS
             UCell tmp;
             ur_initSeries( &tmp, UT_BLOCK, bodyN );
-            _appendSetWords( UT(bt), &ac.localWords, &tmp );
-
+            _appendSetWords( ut, &ac.localWords, &tmp );
+#endif
             if( ac.localWords.used > 1 )
                 _zeroDuplicateU32( &ac.localWords );
             if( ac.externWords.used )
@@ -503,21 +515,24 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
             {
                 const UIndex* ai = ac.localWords.ptr.i32;
                 const UIndex* ae = ai + ac.localWords.used;
+                int localIndex = ac.funcArgCount;
+
                 while( ai != ae )
                 {
-                    //printf( "KR local %s\n", ur_atomCStr(UT(bt), *ai) );
+                    //printf( "KR local %d %s\n", localIndex,
+                    //        ur_atomCStr(ut, *ai) );
                     _defineArg( &ac.sval, BOR_BIND_FUNC, bodyN,
-                                *ai++, ac.sval.used, 0 );
+                                *ai++, localIndex++, 0 );
                 }
                 localCount = ac.localWords.used;
             }
 
             if( ac.sval.used )
             {
-                const UBuffer* body = ur_bufferEnv(UT(bt), bodyN);
+                const UBuffer* body = ur_bufferEnv(ut, bodyN);
 
                 ur_ctxSort( &ac.sval );
-                ur_bindCopy( UT(bt), &ac.sval,
+                ur_bindCopy( ut, &ac.sval,
                              body->ptr.cell, body->ptr.cell + body->used );
             }
         }
