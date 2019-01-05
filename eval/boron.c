@@ -210,7 +210,8 @@ static UCell* boron_wordCellM( UThread* ut, const UCell* wordC )
         case BOR_BIND_OPTION_ARG:
 #endif
         case BOR_BIND_OPTION:
-            ur_error( ut, UR_ERR_SCRIPT, "cannot modify local option" );
+            ur_error( ut, UR_ERR_SCRIPT, "cannot modify local option %s",
+                      ur_atomCStr(ut, ur_atom(wordC)) );
             break;
 
         default:

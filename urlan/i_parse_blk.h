@@ -2,7 +2,7 @@
 #define I_PARSE_BLK_H
 /*
   Bytecode interpreter for parsing blocks
-  Copyright 2016 Karl Robillard
+  Copyright 2016, 2019 Karl Robillard
 */
 
 
@@ -34,6 +34,7 @@ enum ParseBlockOperator
     PB_SomeTs,
     PB_ToT,
     PB_ToTs,
+    PB_ToLitWord,
     PB_ThruT,
     PB_ThruTs
 };

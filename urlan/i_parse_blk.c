@@ -1,6 +1,6 @@
 /*
   Bytecode interpreter for parsing blocks
-  Copyright 2016 Karl Robillard
+  Copyright 2016, 2019 Karl Robillard
 */
 
 
@@ -162,6 +162,16 @@ next_op:
             while( it != par->end )
             {
                 if( bitIsSet64(bset, ur_type(it)) )
+                    goto next_op;
+                ++it;
+            }
+            goto fail;
+
+        case PB_ToLitWord:
+            n = par->atoms[ *pc++ ];
+            while( it != par->end )
+            {
+                if( ur_is(it, UT_WORD) && ur_atom(it) == n )
                     goto next_op;
                 ++it;
             }

@@ -72,7 +72,8 @@ enum ArgRuleId
 #define EXTERN  2   // compileAtoms[2]  "extern"
 #define GHOST   3   // compileAtoms[3]  "ghost"
 
-#define LWORD   47  // Index of word!/lit-word! type bitset.
+#define LWORD       47      // Index of word!/lit-word! type bitset.
+#define LOCAL_RULE  LWORD+8
 
 static const uint8_t _argRules[] =
 {
@@ -100,6 +101,8 @@ static const uint8_t _argRules[] =
 
     // LWORD word!/lit-word!
     0x00,0x60,0x00,0x00,0x00,0x00,0x00,0x00,
+
+    PB_ToLitWord, LOCAL, PB_End
 };
 
 
@@ -466,7 +469,23 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
         ur_arrInit( &ac.localWords,  sizeof(uint32_t), 0 );
         ur_arrInit( &ac.externWords, sizeof(uint32_t), 0 );
 
-        ur_parseBlockI( &ac.bp, ac.bp.rules, ac.bp.it );
+        {
+        const UCell* start = ac.bp.it;
+        const UCell* end   = ac.bp.end;
+        const UCell* local;
+        if( ur_parseBlockI( &ac.bp, _argRules + LOCAL_RULE, start ) )
+            local = ac.bp.end = ac.bp.it;
+        else
+            local = NULL;
+        ac.bp.it = start;
+        ur_parseBlockI( &ac.bp, ac.bp.rules, start );
+        if( local )
+        {
+            ac.bp.it  = local;
+            ac.bp.end = end;
+            ur_parseBlockI( &ac.bp, ac.bp.rules, local );
+        }
+        }
 
         if( bodyN )
         {
