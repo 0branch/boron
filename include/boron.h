@@ -48,7 +48,7 @@ enum BoronWordBindings
 typedef int (*BoronCFunc)(UThread*,UCell*,UCell*);
 #define CFUNC(name)     static int name( UThread* ut, UCell* a1, UCell* res )
 #define CFUNC_PUB(name) int name( UThread* ut, UCell* a1, UCell* res )
-#define CFUNC_OPTIONS       a1[-1].id._pad0
+#define CFUNC_OPTIONS       a1[-1].id.ext
 #define CFUNC_OPT_ARG(opt)  (a1 + ((uint8_t*)a1)[-opt])
 
 

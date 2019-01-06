@@ -278,6 +278,8 @@ static jit_value_t _asmNextValue( const Assembler* as, UBlockIter* bi )
             switch( ur_type(arg) )
             {
                 case UT_LOGIC:
+                    return jit_value_create_nint_constant( as->jf,
+                                jit_type_ubyte, ur_logic(arg) );
                 case UT_CHAR:
                     return jit_value_create_nint_constant( as->jf,
                                 jit_type_ubyte, ur_int(arg) );

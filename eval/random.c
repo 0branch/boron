@@ -74,7 +74,7 @@ CFUNC_PUB(cfunc_random)
     {
         case UT_LOGIC:
             ur_setId(res, UT_LOGIC);
-            ur_int(res) = genrand_int32() & 1;
+            ur_logic(res) = genrand_int32() & 1;
             break;
 
         case UT_INT:

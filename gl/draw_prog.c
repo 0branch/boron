@@ -2071,6 +2071,9 @@ bad_quad:
                     switch( ur_type(val) )
                     {
                         case UT_LOGIC:
+                            emitOp2( DP_UNIFORM_1I, loc, ur_logic(val) );
+                            break;
+
                         case UT_INT:
                             emitOp2( DP_UNIFORM_1I, loc, ur_int(val) );
                             break;
@@ -2593,7 +2596,7 @@ static void _lightv3( GLenum light, GLenum pname, const UCell* cell, GLfloat w )
 
 static void _lightEn( GLenum light, const UCell* cell )
 {
-    if( ur_int(cell) )
+    if( ur_logic(cell) )
         glEnable( light );
     else
         glDisable( light );

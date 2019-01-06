@@ -607,25 +607,27 @@ int logic_make( UThread* ut, const UCell* from, UCell* res )
     switch( ur_type(from) )
     {
         case UT_NONE:
-            ur_int(res) = 0;
+            //ur_logic(res) = 0;
             break;
         case UT_LOGIC:
+            ur_logic(res) = ur_logic(from);
+            break;
         case UT_CHAR:
         case UT_INT:
-            ur_int(res) = ur_int(from) ? 1 : 0;
+            ur_logic(res) = ur_int(from) ? 1 : 0;
             break;
         case UT_DECIMAL:
-            ur_int(res) = ur_decimal(from) ? 1 : 0;
+            ur_logic(res) = ur_decimal(from) ? 1 : 0;
             break;
         case UT_BIGNUM:
         {
             UCell tmp;
             bignum_zero( &tmp );
-            ur_int(res) = bignum_equal(from, &tmp) ? 0 : 1;
+            ur_logic(res) = bignum_equal(from, &tmp) ? 0 : 1;
         }
             break;
         default:
-            ur_int(res) = 1;
+            ur_logic(res) = 1;
             break;
     }
     return UR_OK;
@@ -638,12 +640,12 @@ int logic_compare( UThread* ut, const UCell* a, const UCell* b, int test )
     switch( test )
     {
         case UR_COMPARE_SAME:
-            return ur_int(a) == ur_int(b);
+            return ur_logic(a) == ur_logic(b);
 
         case UR_COMPARE_EQUAL:
         case UR_COMPARE_EQUAL_CASE:
             if( ur_type(a) == ur_type(b) )
-                return ur_int(a) == ur_int(b);
+                return ur_logic(a) == ur_logic(b);
             break;
     }
     return 0;
@@ -654,17 +656,40 @@ void logic_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) ut;
     (void) depth;
-    ur_strAppendCStr( str, ur_int(cell) ? "true" : "false" );
+    ur_strAppendCStr( str, ur_logic(cell) ? "true" : "false" );
 }
 
 
-int int_operate( UThread* ut, const UCell* a, const UCell* b, UCell*, int );
+int logic_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
+                   int op )
+{
+    int la = ur_is(a, UT_LOGIC) ? ur_logic(a) : 0;
+    int lb = ur_is(b, UT_LOGIC) ? ur_logic(b) : 0;
+
+    ur_setId(res, UT_LOGIC);
+    switch( op )
+    {
+        case UR_OP_AND:
+            ur_logic(res) = la & lb;
+            break;
+        case UR_OP_OR:
+            ur_logic(res) = la | lb;
+            break;
+        case UR_OP_XOR:
+            ur_logic(res) = la ^ lb;
+            break;
+        default:
+            return unset_operate( ut, a, b, res, op );
+    }
+    return UR_OK;
+}
+
 
 UDatatype dt_logic =
 {
     "logic!",
     logic_make,             logic_make,             unset_copy,
-    logic_compare,          int_operate,            unset_select,
+    logic_compare,          logic_operate,          unset_select,
     logic_toString,         logic_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind,
@@ -786,7 +811,8 @@ void char_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 }
 
 
-int int_compare( UThread* ut, const UCell* a, const UCell* b, int test );
+int int_compare( UThread*, const UCell* a, const UCell* b, int test );
+int int_operate( UThread*, const UCell* a, const UCell* b, UCell* res, int op );
 
 UDatatype dt_char =
 {
@@ -818,6 +844,8 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
             ur_int(res) = 0;
             break;
         case UT_LOGIC:
+            ur_int(res) = ur_logic(from);
+            break;
         case UT_CHAR:
         case UT_INT:
             ur_int(res) = ur_int(from);
@@ -935,17 +963,20 @@ int int_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
     }
     else if( ur_is(a, UT_LOGIC) || ur_is(b, UT_LOGIC) )
     {
+        int va = ur_is(a, UT_LOGIC) ? ur_logic(a) : ur_int(a);
+        int vb = ur_is(b, UT_LOGIC) ? ur_logic(b) : ur_int(b);
+
         ur_setId(res, ur_type(a));
         switch( op )
         {
             case UR_OP_AND:
-                ur_int(res) = ur_int(a) & ur_int(b);
+                ur_int(res) = va & vb;
                 break;
             case UR_OP_OR:
-                ur_int(res) = ur_int(a) | ur_int(b);
+                ur_int(res) = va | vb;
                 break;
             case UR_OP_XOR:
-                ur_int(res) = ur_int(a) ^ ur_int(b);
+                ur_int(res) = va ^ vb;
                 break;
             default:
                 return unset_operate( ut, a, b, res, op );
@@ -1001,6 +1032,8 @@ int decimal_make( UThread* ut, const UCell* from, UCell* res )
             ur_decimal(res) = 0.0;
             break;
         case UT_LOGIC:
+            ur_decimal(res) = (double) ur_logic(from);
+            break;
         case UT_CHAR:
         case UT_INT:
             ur_decimal(res) = (double) ur_int(from);
@@ -1208,6 +1241,9 @@ int bignum_make( UThread* ut, const UCell* from, UCell* res )
             bignum_zero( res );
             break;
         case UT_LOGIC:
+            ur_setId(res, UT_BIGNUM);
+            bignum_seti( res, ur_logic(from) );
+            break;
         case UT_CHAR:
         case UT_INT:
             ur_setId(res, UT_BIGNUM);
@@ -1558,6 +1594,8 @@ int vec3_make( UThread* ut, const UCell* from, UCell* res )
             vec3_setf( res, 0.0f );
             break;
         case UT_LOGIC:
+            vec3_setf( res, (float) ur_logic(from) );
+            break;
         case UT_INT:
             vec3_setf( res, (float) ur_int(from) );
             break;

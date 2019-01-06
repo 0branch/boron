@@ -255,6 +255,9 @@ static int _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
             break;
 
         case UT_LOGIC:
+            packU32( ur_logic(bi.it) );
+            break;
+
         case UT_CHAR:
             packU32( ur_int(bi.it) );
             break;
@@ -706,6 +709,9 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
             break;
 
         case UT_LOGIC:
+            unpackU32( ur_logic(cell) );
+            break;
+
         case UT_CHAR:
             unpackU32( ur_int(cell) );
             break;

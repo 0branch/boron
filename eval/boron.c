@@ -110,8 +110,6 @@ static const UCell* boron_wordCell( UThread* ut, const UCell* wordC )
                 ur_setId(res, UT_LOGIC);
                 if( CFUNC_OPTIONS & (1 << wordC->word.index) )
                     ur_logic(res) = 1;
-                else
-                    ur_logic(res) = 0;
                 return res;
             }
             break;
@@ -850,11 +848,11 @@ UThread* boron_makeEnvP( UEnvParameters* par )
 
     cell = ur_ctxAddWord( ctx, atoms[1] );
     ur_setId(cell, UT_LOGIC);
-    ur_int(cell) = 1;
+    ur_logic(cell) = 1;
 
     cell = ur_ctxAddWord( ctx, atoms[2] );
     ur_setId(cell, UT_LOGIC);
-    ur_int(cell) = 0;
+    //ur_logic(cell) = 0;
     }
 
     _addDatatypeWords( ut, UT_BI_COUNT + dtCount );

@@ -241,7 +241,7 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
 
                 case GL_BOOL:
                     ur_setId( cval, UT_LOGIC );
-                    ur_int( cval ) = 0;
+                    //ur_logic( cval ) = 0;
                     break;
 
                 case GL_SAMPLER_2D:
@@ -485,6 +485,8 @@ void setUniform( UThread* ut, UAtom name, UCell* cell )
     switch( ur_type(cell) )
     {
         case UT_LOGIC:
+            glUniform1i( loc, ur_logic(cell) );
+            break;
         case UT_INT:
             glUniform1i( loc, ur_int(cell) );
             break;

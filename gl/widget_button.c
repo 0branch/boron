@@ -333,7 +333,7 @@ static int button_select( GWidget* wp, UAtom atom, UCell* res )
     if( atom == UR_ATOM_VALUE )
     {
         ur_setId(res, UT_LOGIC);
-        ur_int(res) = ep->checked;
+        ur_logic(res) = ep->checked;
         return UR_OK;
     }
     else if( atom == UR_ATOM_TEXT )

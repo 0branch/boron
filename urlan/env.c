@@ -1068,10 +1068,8 @@ void ur_appendTrace( UThread* ut, UIndex blkN, UIndex it )
 int ur_isTrue( const UCell* cell )
 {
     int t = ur_type(cell);
-    //return ! ((t == UT_NONE) ||
-    //          ((t == UT_LOGIC) && (ur_int(cell) == 0)));
     if( t == UT_LOGIC )
-        return ur_int(cell);
+        return ur_logic(cell);
     return t != UT_NONE;
 }
 

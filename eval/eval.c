@@ -130,7 +130,7 @@ typedef struct
 ArgProgHeader;
 
 
-#define OPTION_FLAGS    id._pad0
+#define OPTION_FLAGS    id.ext
 #define MAX_OPTIONS 8
 
 typedef struct

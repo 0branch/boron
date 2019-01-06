@@ -1152,7 +1152,7 @@ CFUNC( cfunc_widgetValue )
             {
                 Qt::CheckState state = ((QCheckBox*) rec->widget)->checkState();
                 ur_setId(res, UT_LOGIC);
-                ur_int(res) = (state == Qt::Unchecked) ? 0 : 1;
+                ur_logic(res) = (state == Qt::Unchecked) ? 0 : 1;
             }
                 return UR_OK;
 
@@ -1194,7 +1194,7 @@ CFUNC( cfunc_widgetValue )
                 if( group->isCheckable() )
                 {
                     ur_setId(res, UT_LOGIC);
-                    ur_int(res) = group->isChecked() ? 1 : 0;
+                    ur_logic(res) = group->isChecked() ? 1 : 0;
                 }
                 else
                     ur_setId(res, UT_NONE);
@@ -1254,7 +1254,7 @@ CFUNC( cfunc_setWidgetValue )
                 }
                 else if( ur_is(a2, UT_LOGIC) )
                 {
-                    ((QComboBox*)rec->widget)->setCurrentIndex( ur_int(a2) );
+                    ((QComboBox*)rec->widget)->setCurrentIndex( ur_logic(a2) );
                 }
                 break;
 

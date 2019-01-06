@@ -157,7 +157,7 @@ typedef struct
 {
     uint8_t  type;
     uint8_t  flags;
-    uint16_t _pad0;
+    uint16_t ext;
 }
 UCellId;
 
@@ -672,7 +672,7 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
 
 #define ur_atom(c)          (c)->word.atom
 #define ur_datatype(c)      (c)->datatype.n
-#define ur_logic(c)         (c)->number.i
+#define ur_logic(c)         (c)->id.ext
 #define ur_int(c)           (c)->number.i
 #define ur_decimal(c)       (c)->number.d
 

@@ -946,7 +946,7 @@ CFUNC( cfunc_visibleQ )
         hidden = 1;
 
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = hidden ? 0 : 1;
+    ur_logic(res) = hidden ? 0 : 1;
     return UR_OK;
 }
 
@@ -1649,7 +1649,7 @@ CFUNC( cfunc_animate )
         return ur_error( ut, UR_ERR_TYPE, "animate expected block!/context!" );
     }
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = playing;
+    ur_logic(res) = playing;
     return UR_OK;
 }
 
@@ -1766,7 +1766,7 @@ CFUNC( cfunc_point_in )
         else
             inside = 1;
         ur_setId(res, UT_LOGIC);
-        ur_int(res) = inside;
+        ur_logic(res) = inside;
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "point-in expected two coord! values" );

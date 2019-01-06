@@ -396,7 +396,7 @@ CFUNC(cfunc_valueQ)
            logic = 0;
     }
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = logic;
+    ur_logic(res) = logic;
     return UR_OK;
 }
 
@@ -1072,7 +1072,8 @@ CFUNC(cfunc_not)
 {
     (void) ut;
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = ur_isTrue(a1) ? 0 : 1;
+    if( ! ur_isTrue(a1) )
+        ur_logic(res) = 1;
     return UR_OK;
 }
 
@@ -1776,7 +1777,7 @@ CFUNC(cfunc_pick)
         }
     }
     else if( ur_is(a2, UT_LOGIC) )
-        n = ur_int(a2) ? 0 : 1;
+        n = ur_logic(a2) ? 0 : 1;
     else
         return boron_badArg( ut, ur_type(a2), 1 );
 
@@ -1825,7 +1826,7 @@ CFUNC(cfunc_poke)
             return errorScript( "poke position out of range" );
     }
     else if( ur_is(a2, UT_LOGIC) )
-        n = ur_int(a2) ? 0 : 1;
+        n = ur_logic(a2) ? 0 : 1;
     else
         return boron_badArg( ut, ur_type(a2), 1 );
 
@@ -1899,7 +1900,7 @@ CFUNC(cfunc_skip)
         if( ur_is(a2, UT_INT) )
             n = ur_int(a2);
         else if( ur_is(a2, UT_LOGIC) )
-            n = ur_int(a2) ? 1 : 0;
+            n = ur_logic(a2) ? 1 : 0;
         else
             return boron_badArg( ut, ur_type(a2), 1 );
 
@@ -2492,7 +2493,7 @@ CFUNC(cfunc_emptyQ)
 
 set_logic:
     ur_setId( res, UT_LOGIC );
-    ur_int(res) = si.it;
+    ur_logic(res) = si.it;
     return UR_OK;
 }
 
@@ -2512,7 +2513,8 @@ CFUNC(cfunc_headQ)
         return boron_badArg( ut, ur_type(a1), 0 );
 
     ur_setId( res, UT_LOGIC );
-    ur_int(res) = (a1->series.it < 1) ? 1 : 0;
+    if( a1->series.it < 1 )
+        ur_logic(res) = 1;
     return UR_OK;
 }
 
@@ -2582,7 +2584,8 @@ CFUNC(cfunc_seriesQ)
 {
     (void) ut;
     ur_setId( res, UT_LOGIC );
-    ur_int(res) = ur_isSeriesType( ur_type(a1) ) ? 1 : 0;
+    if( ur_isSeriesType( ur_type(a1) ) )
+        ur_logic(res) = 1;
     return UR_OK;
 }
 
@@ -2599,7 +2602,8 @@ CFUNC(cfunc_any_blockQ)
 {
     (void) ut;
     ur_setId( res, UT_LOGIC );
-    ur_int(res) = ur_isBlockType( ur_type(a1) ) ? 1 : 0;
+    if( ur_isBlockType( ur_type(a1) ) )
+        ur_logic(res) = 1;
     return UR_OK;
 }
 
@@ -2616,7 +2620,8 @@ CFUNC(cfunc_any_wordQ)
 {
     (void) ut;
     ur_setId( res, UT_LOGIC );
-    ur_int(res) = ur_isWordType( ur_type(a1) ) ? 1 : 0;
+    if( ur_isWordType( ur_type(a1) ) )
+        ur_logic(res) = 1;
     return UR_OK;
 }
 
@@ -2634,7 +2639,7 @@ CFUNC(cfunc_complement)
     switch( ur_type(a1) )
     {
         case UT_LOGIC:
-            ur_int(res) ^= 1;
+            ur_logic(res) ^= 1;
             break;
 
         case UT_CHAR:
@@ -3145,7 +3150,7 @@ CFUNC(cfunc_all)
     }
 
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = 1;
+    ur_logic(res) = 1;
     return UR_OK;
 }
 
@@ -3174,7 +3179,7 @@ CFUNC(cfunc_any)
     }
 
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = 0;
+    //ur_logic(res) = 0;
     return UR_OK;
 }
 
@@ -3413,7 +3418,7 @@ CFUNC(cfunc_infoQ)
         case 0:
 set_logic:
             ur_setId(res, UT_LOGIC);
-            ur_int(res) = ok ? 1 : 0;
+            ur_logic(res) = ok ? 1 : 0;
             return UR_OK;
 
         case 1:
@@ -4068,14 +4073,10 @@ bind_sb:
     }
     else
     {
-        UCell args[3];
+        UCell args[2];
 
-        ur_setId(args, UT_LOGIC);
-        OPT_BITS(args) = 0;             // Clear options.
-
+        ur_setId(args, UT_UNSET);       // Clear read CFUNC_OPTIONS.
         args[1] = *a1;
-
-        ur_setId(args + 2, UT_NONE);
 
         if( cfunc_read( ut, args + 1, res ) )
         {
@@ -4157,9 +4158,7 @@ CFUNC(cfunc_save)
     UCell args[3];
     UBuffer* str;
 
-    ur_setId(args, UT_LOGIC);
-    OPT_BITS(args) = 0;             // Clear options.
-
+    ur_setId(args, UT_UNSET);       // Clear write CFUNC_OPTIONS.
     args[1] = *a1;
 
     str = ur_makeStringCell( ut, UR_ENC_UTF8, 0, res );
@@ -4245,7 +4244,7 @@ CFUNC(cfunc_parse)
     }
 
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = pos ? 1 : 0;
+    ur_logic(res) = pos ? 1 : 0;
     return UR_OK;
 }
 
@@ -4261,7 +4260,7 @@ CFUNC(cfunc_parse)
 CFUNC(cfunc_sameQ)
 {
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = ur_same( ut, a1, a2 ) ? 1 : 0;
+    ur_logic(res) = ur_same( ut, a1, a2 ) ? 1 : 0;
     return UR_OK;
 }
 
@@ -4277,7 +4276,7 @@ CFUNC(cfunc_sameQ)
 CFUNC(cfunc_equalQ)
 {
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = ur_equal( ut, a1, a2 ) ? 1 : 0;
+    ur_logic(res) = ur_equal( ut, a1, a2 ) ? 1 : 0;
     return UR_OK;
 }
 
@@ -4293,7 +4292,7 @@ CFUNC(cfunc_equalQ)
 CFUNC(cfunc_neQ)
 {
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = ur_equal( ut, a1, a2 ) ? 0 : 1;
+    ur_logic(res) = ur_equal( ut, a1, a2 ) ? 0 : 1;
     return UR_OK;
 }
 
@@ -4309,7 +4308,7 @@ CFUNC(cfunc_neQ)
 CFUNC(cfunc_gtQ)
 {
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = (ur_compare( ut, a1, a2 ) > 0) ? 1 : 0;
+    ur_logic(res) = (ur_compare( ut, a1, a2 ) > 0) ? 1 : 0;
     return UR_OK;
 }
 
@@ -4325,7 +4324,7 @@ CFUNC(cfunc_gtQ)
 CFUNC(cfunc_ltQ)
 {
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = (ur_compare( ut, a1, a2 ) < 0) ? 1 : 0;
+    ur_logic(res) = (ur_compare( ut, a1, a2 ) < 0) ? 1 : 0;
     return UR_OK;
 }
 
@@ -4351,7 +4350,7 @@ CFUNC(cfunc_zeroQ)
         logic = 0;
 
     ur_setId(res, UT_LOGIC);
-    ur_int(res) = logic;
+    ur_logic(res) = logic;
     return UR_OK;
 }
 
@@ -4886,9 +4885,9 @@ CFUNC(cfunc_hash)
 CFUNC(cfunc_datatypeQ)
 {
     (void) ut;
-    // Type variation is in a2.
-    ur_int(res) = (ur_type(a1) == ur_int(a2)) ? 1 : 0;
     ur_setId(res, UT_LOGIC);
+    if( ur_type(a1) == ur_int(a2) )     // Type variation is in a2.
+        ur_logic(res) = 1;
     return UR_OK;
 }
 
