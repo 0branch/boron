@@ -13,3 +13,8 @@
  195412578     121104 ./boron test/func.b
   51248605     554816 ./boron -s scripts/m2/m2 -o /tmp/Makefile
   16180834     247032 ./boron -e loop 10 [load %scripts/m2/m2]
+; signature type checking
+   1340445     111208 ./boron -e quit
+ 195445039     121104 ./boron test/func.b
+  51180209     554800 ./boron -s scripts/m2/m2 -o /tmp/Makefile
+  16213017     247000 ./boron -e loop 10 [load %scripts/m2/m2]

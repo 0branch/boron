@@ -11,6 +11,8 @@ none
 yes
 no
 eval-yes
+e-yes
+e-no
 ---- all
 true
 false

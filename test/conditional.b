@@ -18,6 +18,8 @@ print either false ['yes]['no]
 a: ['eval-yes]
 b: ['eval-no]
 print either equal? 2 add 1 1  a b
+print either true 'e-yes 'e-no
+print either none 'e-yes 'e-no
 
 
 print "---- all"
