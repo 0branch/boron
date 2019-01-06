@@ -72,42 +72,65 @@ extern UPortDevice port_thread;
 #include "boron_types.c"
 
 
-static const UCell* boron_wordCell( UThread* ut, const UCell* cell )
+// Lookup stack position of arguments in function frames.
+static UCell* _funcStackFrame( BoronThread* bt, UIndex funcN )
 {
-    switch( ur_binding(cell) )
+    const UIndex* fi;
+    const UBuffer* fr = &bt->frames;
+    if( fr->used )
     {
-        case UR_BIND_FUNC:
+        fi = fr->ptr.i32 + fr->used;
+        do
         {
-            LocalFrame* bottom = BT->bof;
-            LocalFrame* top = BT->tof;
-            while( top != bottom )
-            {
-                --top;
-                if( top->funcBuf == cell->word.ctx )
-                    return top->args + cell->word.index;
-            }
+            fi -= 2;
+            if( fi[0] == funcN )
+                return bt->thread.stack.ptr.cell + fi[1];
         }
-            ur_error( ut, UR_ERR_SCRIPT, "local word is out of scope" );
+        while( fi != fr->ptr.i32 );
+    }
+    return NULL;
+}
+
+
+static const UCell* boron_wordCell( UThread* ut, const UCell* wordC )
+{
+	UCell* a1;
+
+    switch( ur_binding(wordC) )
+    {
+        case BOR_BIND_FUNC:
+            if( (a1 = _funcStackFrame( BT, wordC->word.ctx )) )
+                return a1 + wordC->word.index;
             break;
 
-        case UR_BIND_OPTION:
-        {
-            LocalFrame* bottom = BT->bof;
-            LocalFrame* top = BT->tof;
-            while( top != bottom )
+        case BOR_BIND_OPTION:
+            if( (a1 = _funcStackFrame( BT, wordC->word.ctx )) )
             {
-                --top;
-                if( top->funcBuf == cell->word.ctx )
+                UCell* res = &BT->optionCell;
+                ur_setId(res, UT_LOGIC);
+                if( CFUNC_OPTIONS & (1 << wordC->word.index) )
+                    ur_logic(res) = 1;
+                else
+                    ur_logic(res) = 0;
+                return res;
+            }
+            break;
+
+        case BOR_BIND_OPTION_ARG:
+            if( (a1 = _funcStackFrame( BT, wordC->word.ctx )) )
+            {
+                if( CFUNC_OPTIONS & (1 << wordC->word.index) )
                 {
-                    // Return option logic! value.
-                    UCell* opt = top->args - 1;
-                    ur_int(opt) = (OPT_BITS(opt) & (1 << cell->word.index))
-                                  ? 1 : 0;
-                    return opt;
+                    return CFUNC_OPT_ARG( (wordC->word.index + 1) ) +
+                           wordC->word.sel[0];
+                }
+                else
+                {
+                    UCell* res = &BT->optionCell;
+                    ur_setId(res, UT_NONE);
+                    return res;
                 }
             }
-        }
-            ur_error( ut, UR_ERR_SCRIPT, "local option is out of scope" );
             break;
 
         default:
@@ -118,26 +141,22 @@ static const UCell* boron_wordCell( UThread* ut, const UCell* cell )
 }
 
 
-static UCell* boron_wordCellM( UThread* ut, const UCell* cell )
+static UCell* boron_wordCellM( UThread* ut, const UCell* wordC )
 {
-    switch( ur_binding(cell) )
+    switch( ur_binding(wordC) )
     {
-        case UR_BIND_FUNC:
+        case BOR_BIND_FUNC:
         {
-            LocalFrame* bottom = BT->bof;
-            LocalFrame* top = BT->tof;
-            while( top != bottom )
-            {
-                --top;
-                if( top->funcBuf == cell->word.ctx )
-                    return top->args + cell->word.index;
-            }
+            UCell* a1;
+            if( (a1 = _funcStackFrame( BT, wordC->word.ctx )) )
+                return a1 + wordC->word.index;
         }
-            ur_error( ut, UR_ERR_SCRIPT, "local word is out of scope" );
             break;
 
-        case UR_BIND_OPTION:
-            ur_error( ut, UR_ERR_SCRIPT, "cannot modify local option" );
+        case BOR_BIND_OPTION:
+        case BOR_BIND_OPTION_ARG:
+            ur_error( ut, UR_ERR_SCRIPT, "cannot modify local option %s",
+                      ur_atomCStr(ut, ur_atom(wordC)) );
             break;
 
         default:
@@ -146,67 +165,19 @@ static UCell* boron_wordCellM( UThread* ut, const UCell* cell )
     }
     return 0;
 }
-
-//typedef const UCell* (*wc_func)( UThread*, const UCell* );
 
 
 static void boron_threadInit( UThread* ut )
 {
-    UIndex bufN[3];
-    UBuffer* buf;
-    UCell* ed;
-
-
     ut->wordCell  = boron_wordCell;
     ut->wordCellM = boron_wordCellM;
     ur_binInit( &BT->tbin, 0 );
     BT->requestAccess = NULL;
-    ur_setId( &BT->fo, UT_LOGIC );
 
-    // Create evalData block.  This never changes size so we can safely
-    // keep a pointer to the cells.
+    ur_arrInit( &BT->frames, sizeof(UIndex), 0 );
 
-    ur_genBuffers( ut, 3, bufN );
-    BT->holdData = ur_hold(bufN[0]);    // Hold evalData forever.
-
-
-    // evalData block
-    buf = ur_buffer(bufN[0]);
-    ur_blkInit( buf, UT_BLOCK, BT_CELL_COUNT );
-    buf->used = BT_CELL_COUNT;
-    BT->evalData = ed = buf->ptr.cell;
-
-
-    // Default Result.
-    ur_setId( ed + BT_RESULT, UT_UNSET );
-
-
-    // Data Stack block
-    BT->dstackN = bufN[1];
-    buf = ur_buffer(bufN[1]);
-    ur_blkInit( buf, UT_BLOCK, 256 );
-    ++ed;
-    ur_initSeries( ed, UT_BLOCK, bufN[1] );
-
-    // tos is freely changed.  When a recycle occurs, the cfunc recycle
-    // method will sync. the dstackN block used value.
-    BT->tos = buf->ptr.cell;
-    BT->eos = buf->ptr.cell + ur_avail(buf);
-
-
-    // Frame Stack (array of pointers to cells on Data Stack).
-    BT->fstackN = bufN[2];
-    buf = ur_buffer(bufN[2]);
-    ur_arrInit( buf, sizeof(LocalFrame), 256 / 2 );
-    // Set type to something so ur_gcReport() doesn't report bufN[2] as unused.
-    buf->type = UT_VECTOR;
-    ++ed;
-    ur_initSeries( ed, UT_BINARY, bufN[2] );    // UT_VECTOR
-
-    // tof is freely changed.  When a recycle occurs, the cfunc recycle
-    // method will sync. the fstackN block used value.
-    BT->tof = BT->bof = ur_ptr(LocalFrame, buf);
-    BT->eof = BT->tof + ur_avail(buf);
+    ur_arrReserve( &ut->stack, 512 );
+    boron_reset( ut );
 }
 
 
@@ -219,6 +190,7 @@ static void boron_threadMethod( UThread* ut, enum UThreadMethod op )
             break;
 
         case UR_THREAD_FREE:
+            ur_arrFree( &BT->frames );
             ur_binFree( &BT->tbin );
             // Other data is in dataStore, so there is nothing more to free.
 #ifdef CONFIG_ASSEMBLE
@@ -228,10 +200,6 @@ static void boron_threadMethod( UThread* ut, enum UThreadMethod op )
             break;
 
         case UR_THREAD_FREEZE:
-            ur_buffer(BT->dstackN)->used = 0;
-            ur_buffer(BT->fstackN)->used = 0;
-            ur_release( BT->holdData );
-            BT->dstackN = 0;    // Disables cfunc_recycle2.
             break;
     }
 }
@@ -243,19 +211,13 @@ static void boron_threadMethod( UThread* ut, enum UThreadMethod op )
 */
 void boron_reset( UThread* ut )
 {
-    UBuffer* buf;
+    UCell* it = ut->stack.ptr.cell;
+    ur_setId( it, UT_UNSET );           // Exception.
+    ur_setId( it + 1, UT_UNSET );       // Value for named exception.
+    ur_setId( it + 2, UT_UNSET );       // Initial result.
+    ut->stack.used = 3;
 
-    // Clear data stack.
-    buf = ur_buffer( BT->dstackN );
-    BT->tos = buf->ptr.cell;
-
-    // Clear frame stack.
-    buf = ur_buffer( BT->fstackN );
-    BT->tof = ur_ptr(LocalFrame, buf);
-
-    // Clear exceptions.
-    buf = ur_errorBlock(ut);
-    buf->used = 0;
+    BT->frames.used = 0;
 }
 
 
@@ -319,77 +281,40 @@ char* boron_cstrSave( UThread* ut, const UCell* src, UBuffer* dstStr )
 
 
 /**
-  Append word cell to ur_errorBlock().
+  Throw named exception.
+
+  \param atom       Exception name.
+  \param stackPos   If not zero, set word binding to UR_BIND_STACK.
+
   \return UR_THROW
 */
-int boron_throwWord( UThread* ut, UAtom atom )
+int boron_throwWord( UThread* ut, UAtom atom, UIndex stackPos )
 {
-    UBuffer* blk = ur_errorBlock(ut);
-    UCell* cell = ur_blkAppendNew( blk, UT_WORD );
-    ur_setWordUnbound( cell, atom );
+    UCell* cell = ur_exception(ut);
+    ur_setId( cell, UT_WORD );
+    if( stackPos )
+        ur_binding(cell) = UR_BIND_STACK;
+    cell->word.ctx   = UR_INVALID_BUF;
+    cell->word.atom  = atom;
+    cell->word.index = stackPos;
     return UR_THROW;
 }
 
 
-static int _catchThrownWord( UThread* ut, UAtom atom )
+/**
+  Check if named exception was thrown.
+
+  \param atom       Exception name.
+
+  \return Non-zero if the thrown exception is the named word.
+*/
+int boron_catchWord( UThread* ut, UAtom atom )
 {
-    UBuffer* blk = ur_errorBlock(ut);
-    UCell* cell = blk->ptr.cell + (blk->used - 1);
-    if( ur_is(cell, UT_WORD) && (ur_atom(cell) == atom) )
-    {
-        --blk->used;
+    UCell* cell = ur_exception(ut);
+    if( ur_is(cell, UT_WORD) && ur_atom(cell) == atom )
         return 1;
-    }
     return 0;
 }
-
-
-#if 0
-static void reportStack( UThread* ut )
-{
-    printf( "KR stack used: %ld\n",
-            BT->tos - ur_buffer(BT->dstackN)->ptr.cell );
-}
-#endif
-
-UCell* boron_stackPush( UThread* ut )
-{
-    if( BT->tos == BT->eos )
-    {
-        ur_error( ut, UR_ERR_INTERNAL, "data stack overflow" );
-        return 0;
-    }
-    return BT->tos++;
-}
-
-UCell* boron_stackPushN( UThread* ut, int n )
-{
-    UCell* top = BT->tos;
-    if( n > (BT->eos - BT->tos) )
-    {
-        ur_error( ut, UR_ERR_INTERNAL, "data stack overflow" );
-        return 0;
-    }
-    BT->tos += n;
-    return top;
-}
-
-#define boron_stackPop(ut)      --((BoronThread*) ut)->tos
-#define boron_stackPopN(ut,N)   ((BoronThread*) ut)->tos -= N
-
-
-int boron_framePush( UThread* ut, UCell* args, UIndex funcBuf )
-{
-    LocalFrame* frame = BT->tof;
-    if( frame == BT->eof )
-        return ur_error( ut, UR_ERR_INTERNAL, "frame stack overflow" );
-    frame->args = args;
-    frame->funcBuf = funcBuf;
-    ++BT->tof;
-    return UR_OK;
-}
-
-#define boron_framePop(ut)      --BT->tof
 
 
 /*
@@ -399,13 +324,10 @@ int boron_doVoid( UThread* ut, const UCell* blkC )
 {
     int ok;
     UCell* tmp;
-    if( (tmp = boron_stackPush(ut)) )   // Hold result.
-    {
-        ok = boron_doBlock( ut, blkC, tmp );
-        boron_stackPop(ut);
-        return ok;
-    }
-    return UR_THROW;
+    tmp = ur_push(ut,UT_UNSET);     // Hold result.
+    ok = boron_doBlock( ut, blkC, tmp ) ? UR_OK : UR_THROW;
+    ur_pop(ut);
+    return ok;
 }
 
 
@@ -436,6 +358,7 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 #include "encode.c"
 #include "sort.c"
 #include "cfunc.c"
+#include "eval.c"
 
 #ifdef CONFIG_THREAD
 #include "thread.c"
@@ -479,9 +402,12 @@ int boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
 {
     UBlockIter bi;
     UCell tmp;
-    UIndex hold;
+    UIndex hold[2];
     UCellFunc* cell;
     UCell* term;
+    UBuffer* argProg;
+    UIndex binN;
+    int sigFlags;
     const UCell* start;
     const UCell* specCells;
 
@@ -500,7 +426,11 @@ int boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
             return UR_THROW;
     }
 
-    hold = ur_hold( tmp.series.buf );
+    argProg = ur_genBuffers( ut, 1, &binN );
+    ur_binInit( argProg, 0 );
+
+    hold[0] = ur_hold( tmp.series.buf );
+    hold[1] = ur_hold( binN );
 
     // Append terminator cell for loop below.
     term = ur_blkAppendNew( ur_buffer(tmp.series.buf), UT_UNSET );
@@ -518,14 +448,17 @@ int boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
                 cell = (UCellFunc*) ur_ctxAddWord( ur_buffer(ctxN),
                                                    ur_atom(start) );
                 ur_setId(cell, UT_CFUNC);
-                cell->argBufN = UR_INVALID_BUF;
+                cell->argProgOffset = argProg->used;
+                cell->argProgN = binN;
                 cell->m.func  = *funcTable++;
 
                 //printf( "KR cfunc %s\n", ur_atomCStr(ut, ur_atom(start)) );
 
                 tmp.series.it  = (start - specCells) + 1;
                 tmp.series.end =  bi.it - specCells;
-                cell->argBufN = boron_makeArgProgram( ut, &tmp, 0, 0, cell );
+                boron_compileArgProgram( BT, &tmp, argProg, 0, &sigFlags );
+                if( sigFlags )
+                    ur_setFlags((UCell*) cell, FUNC_FLAG_GHOST);
             }
 
             if( ur_is(bi.it, UT_UNSET) )
@@ -533,7 +466,8 @@ int boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
             start = bi.it;
         }
     }
-    ur_release( hold );
+    ur_release( hold[0] );
+    ur_release( hold[1] );
 
     return UR_OK;
 }
@@ -547,7 +481,7 @@ void boron_overrideCFunc( UThread* ut, const char* name, BoronCFunc func )
     {
         UCell* cell = ur_ctxCell( ctx, n );
         if( ur_is(cell, UT_CFUNC) )
-            ur_funcFunc(cell) = func;
+            ((UCellFunc*) cell)->m.func = func;
     }
 }
 
@@ -835,7 +769,7 @@ UThread* boron_makeEnv( const UDatatype** dtTable, unsigned int dtCount )
 */
 UThread* boron_makeEnvP( UEnvParameters* par )
 {
-    UAtom atoms[ 9 ];
+    UAtom atoms[ 13 ];
     UThread* ut;
     unsigned int dtCount;
 
@@ -875,11 +809,14 @@ UThread* boron_makeEnvP( UEnvParameters* par )
 
 
     ur_internAtoms( ut, "none true false file udp tcp thread"
+        " func | extern ghost"
 #ifdef CONFIG_SSL
         " udps tcps"
 #endif
         , atoms );
 
+    // Set compileAtoms for boron_compileArgProgram.
+    memcpy( BENV->compileAtoms, atoms + 7, 4 * sizeof(UAtom) );
 
     // Register ports.
     ur_ctxInit( &BENV->ports, 4 );
@@ -895,8 +832,8 @@ UThread* boron_makeEnvP( UEnvParameters* par )
     assert( sizeof(UBuffer) <= sizeof(UCell) );
 #endif
 #ifdef CONFIG_SSL
-    boron_addPortDevice( ut, &port_ssl,    atoms[7] );
-    boron_addPortDevice( ut, &port_ssl,    atoms[8] );
+    boron_addPortDevice( ut, &port_ssl,    atoms[10] );
+    boron_addPortDevice( ut, &port_ssl,    atoms[11] );
 #endif
 
 
@@ -932,7 +869,7 @@ UThread* boron_makeEnvP( UEnvParameters* par )
 
 
     COUNTER( timeD );
-    if( ! boron_doCStr( ut, setupScript, sizeof(setupScript)-1 ) )
+    if( ! boron_evalUtf8( ut, setupScript, sizeof(setupScript)-1 ) )
     {
 fail:
         ur_freeEnv( ut );
@@ -966,452 +903,9 @@ void boron_freeEnv( UThread* ut )
 }
 
 
-/*
-  Evaluate arguments and invoke function.
-  blkC->series.it is advanced.
-
-  \param fcell  Function cell.  This cell must be in a held block.
-  \param blkC   Block cell where series.it < series.end.
-                The series.buf must be held.
-  \param res    Result.  This cell must be in a held block.
-
-  \return UR_OK/UR_THROW.
-*/
-static int boron_call( UThread* ut, const UCellFunc* fcell, UCell* blkC,
-                       UCell* res )
+const UAtom* boron_compileAtoms( BoronThread* bt )
 {
-    if( fcell->argBufN )
-    {
-        UCellFunc fcopy;
-        UCell* args;
-        int ok;
-        int nc = 0;
-
-        // Copy fcell since it can become invalid in boron_eval1 (it may
-        // be in a context which grows).  Only needed if FO_fetchArg used.
-        fcopy = *fcell;
-
-        // Run function argument program.
-        {
-            UCell* it;
-            UCell* end;
-            const uint8_t* progStart = ur_bufferE( fcopy.argBufN )->ptr.b;
-            const uint8_t* pc = progStart;
-            while( (ok = *pc++) < FO_end ) 
-            {
-                switch( ok )
-                {
-                    case FO_clearLocal:
-                    case FO_clearLocalOpt:
-                        nc = *pc++;
-
-                        if( ! (args = boron_stackPushN( ut, nc )) )
-                        {
-                            BT->fo.optionMask = 0;
-                            goto traceError;
-                        }
-                        end = args + nc;
-                        if( ok == FO_clearLocalOpt )
-                        {
-                            *args++ = *((UCell*) &BT->fo);
-                            BT->fo.optionMask = 0;
-                        }
-
-                        for( it = args; it != end; ++it )
-                            ur_setId(it, UT_NONE);
-                        it = args;
-                        break;
-
-                    case FO_fetchArg:
-                        if( blkC->series.it >= blkC->series.end ) 
-                            goto func_short;
-                        if( ! (ok = boron_eval1( ut, blkC, it++ )) )
-                            goto cleanup;
-                        break;
-
-                    case FO_litArg:
-                        if( blkC->series.it >= blkC->series.end ) 
-                            goto func_short;
-                        {
-                        const UBuffer* blk = ur_bufferSer(blkC);
-                        *it++ = blk->ptr.cell[ blkC->series.it++ ];
-                        }
-                        break;
-
-                    case FO_variant:
-                        ur_setId(it, UT_INT);
-                        ur_int(it) = *pc++;
-                        ++it;
-                        break;
-
-                    case FO_checkArg:
-                        if( ur_type(it - 1) != *pc++ )
-                        {
-bad_arg:
-                            ur_error( ut, UR_ERR_TYPE,
-                                      "function argument %d is invalid",
-                                      it - args );
-                            goto cleanup_trace;
-                        }
-                        break;
-
-                    case FO_checkArgMask:
-                    {
-                        const uint32_t* mask = (const uint32_t*) pc;
-                        int tm = ur_type(it - 1);
-                        if( tm > 31 )
-                        {
-                            ++mask;
-                            tm -= 32;
-                        }
-                        if( ! (*mask & (1 << tm)) )
-                            goto bad_arg;
-                    }
-                        pc += sizeof(uint32_t) * 2;
-                        break;
-
-                    case FO_option:
-                    {
-                        UCellFuncOpt* fopt = (UCellFuncOpt*) (args - 1);
-                        if( fopt->jumpIt < fopt->jumpEnd )
-                        {
-                            pc = progStart + fopt->optionJump[ fopt->jumpIt++ ];
-                        }
-                        else
-                        {
-                            // TODO: Should continue with program
-                            //       (there may be a variant, etc).
-                            goto prog_done;
-                        }
-                    }
-                        break;
-
-                    case FO_setArgPos:
-                        it = args + *pc++;
-                        break;
-
-                    case FO_nop:
-                        break;
-
-                    case FO_nop2:
-                        ++pc;
-                        break;
-                }
-            }
-        }
-
-prog_done:
-
-        assert( nc );
-
-        if( fcopy.id.type == UT_CFUNC )
-        {
-            ok = fcopy.m.func( ut, args, res );
-            if( ! ok && ! (fcopy.id.flags & FUNC_FLAG_GHOST) )
-                goto cleanup_trace;
-        }
-        else
-        {
-            UCell tmp;
-            ur_initSeries(&tmp, UT_BLOCK, fcopy.m.f.bodyN);
-
-            if( (ok = boron_framePush( ut, args, fcopy.m.f.bodyN )) )
-            {
-                ok = boron_doBlock( ut, &tmp, res );
-                boron_framePop( ut );
-                if( ! ok && ! (fcopy.id.flags & FUNC_FLAG_GHOST) )
-                {
-                    if( _catchThrownWord( ut, UR_ATOM_RETURN ) )
-                        ok = UR_OK;
-                    else
-                        goto cleanup_trace;
-                }
-            }
-        }
-
-cleanup:
-
-        boron_stackPopN( ut, nc );
-        return ok;
-
-func_short:
-
-        ur_error( ut, UR_ERR_SCRIPT, "Unexpected end of block" );
-
-cleanup_trace:
-
-        boron_stackPopN( ut, nc );
-        goto traceError;
-    }
-    else
-    {
-        if( fcell->id.type == UT_CFUNC )
-        {
-            // Pass blkC so 'eval-control' cfuncs can do custom evaluation.
-            if( ! fcell->m.func( ut, blkC, res ) )
-                goto traceError;
-        }
-        else
-        {
-            UCell tmp;
-            ur_initSeries(&tmp, UT_BLOCK, fcell->m.f.bodyN);
-
-            if( ! boron_doBlock( ut, &tmp, res ) )
-            {
-                if( ! _catchThrownWord( ut, UR_ATOM_RETURN ) )
-                    goto traceError;
-            }
-        }
-        return UR_OK;
-    }
-
-traceError:
-
-    // NOTE: This slows down throw of non-error values.
-    ur_appendTrace( ut, blkC->series.buf, blkC->series.it-1 );
-    return UR_THROW;
-}
-
-
-/**
-  Evaluate one value in block.
-
-  blkC->series.it is advanced.
-
-  \param blkC   Block cell where series.it < series.end.
-                The series.buf must be held.
-  \param res    Result.  This cell must be in a held block.
-
-  \return UR_OK/UR_THROW.
-*/
-int boron_eval1( UThread* ut, UCell* blkC, UCell* res )
-{
-    const UCell* cell;
-
-    cell = ur_bufferSer(blkC)->ptr.cell + blkC->series.it;
-
-    switch( ur_type(cell) )
-    {
-        case UT_WORD:
-            if( ! (cell = ur_wordCell( ut, cell )) )
-                goto traceError;
-            if( ur_is(cell, UT_CFUNC) || ur_is(cell, UT_FUNC) )
-                goto call_func;
-#ifdef CONFIG_ASSEMBLE
-            if( ur_is(cell, UT_AFUNC) )
-            {
-                ++blkC->series.it;
-                return _asmCall( ut, (UCellFunc*) cell, blkC, res );
-            }
-#endif
-            if( ur_is(cell, UT_UNSET) )
-            {
-                ur_error( ut, UR_ERR_SCRIPT, "unset word '%s",
-                          ur_wordCStr( ur_bufferSer(blkC)->ptr.cell +
-                                       blkC->series.it ) );
-                goto traceError;
-            }
-            goto set_res;
-
-        case UT_LITWORD:
-            *res = *cell;
-            res->id.type = UT_WORD;
-            ++blkC->series.it;
-            break;
-
-        case UT_SETWORD:
-        case UT_SETPATH:
-        {
-            const UCell* scell = cell;
-            UIndex sit = blkC->series.it;
-            do
-            {
-                ++cell;
-                ++sit;
-                if( sit == blkC->series.end )
-                    goto end_of_block;
-            }
-            while( ur_is(cell, UT_SETWORD) || ur_is(cell, UT_SETPATH) );
-
-            blkC->series.it = sit;
-            if( ! boron_eval1( ut, blkC, res ) )
-                return UR_THROW;
-
-            for( ; scell != cell; ++scell )
-            {
-                if( ur_is(scell, UT_SETWORD) )
-                {
-                    if( ! ur_setWord( ut, scell, res ) )
-                    {
-                        --blkC->series.it;
-                        goto traceError;
-                    }
-                }
-                else
-                {
-                    if( ! ur_setPath( ut, scell, res ) )
-                    {
-                        --blkC->series.it;
-                        goto traceError;
-                    }
-                }
-            }
-        }
-            break;
-
-        case UT_GETWORD:
-            if( ! (cell = (UCell*) ur_wordCell( ut, cell )) )
-                goto traceError;
-            goto set_res;
-
-        case UT_PAREN:
-            if( ! boron_doBlock( ut, cell, res ) )
-                return UR_THROW;
-            ++blkC->series.it;
-            break;
-
-        case UT_PATH:
-        {
-            int headType;
-
-            BT->fo.jumpEnd = 0;
-            headType = ur_pathCell( ut, cell, res );
-            if( ! headType )
-                goto traceError;
-            if( (ur_is(res, UT_CFUNC) || ur_is(res, UT_FUNC)) &&
-                headType == UT_WORD )
-            {
-                cell = res;
-                goto call_func_option;
-            }
-        }
-            ++blkC->series.it;
-            break;
-
-        case UT_LITPATH:
-            *res = *cell;
-            res->id.type = UT_PATH;
-            ++blkC->series.it;
-            break;
-
-        case UT_FUNC:
-        case UT_CFUNC:
-            goto call_func;
-
-        default:
-set_res:
-            *res = *cell;
-            ++blkC->series.it;
-            break;
-    }
-    return UR_OK;
-
-call_func:
-
-    BT->fo.jumpEnd = 0;
-
-call_func_option:
-
-    ++blkC->series.it;
-    if( boron_call( ut, (UCellFunc*) cell, blkC, res ) )
-        return UR_OK;
-    return UR_THROW;
-
-end_of_block:
-
-    ur_error( ut, UR_ERR_SCRIPT, "Unexpected end of block" );
-
-traceError:
-
-    // NOTE: This slows down throw of non-error values.
-    ur_appendTrace( ut, blkC->series.buf, blkC->series.it );
-    return UR_THROW;
-}
-
-
-static void _bindDefaultB( UThread* ut, UIndex blkN )
-{
-    UBlockIterM bi;
-    int type;
-    int wrdN;
-    UBuffer* threadCtx = ur_threadContext(ut);
-    UBuffer* envCtx = ur_envContext(ut);
-
-    bi.buf = ur_buffer( blkN );
-    bi.it  = bi.buf->ptr.cell;
-    bi.end = bi.it + bi.buf->used;
-
-    ur_foreach( bi )
-    {
-        type = ur_type(bi.it);
-        if( ur_isWordType(type) )
-        {
-            if( threadCtx->used )
-            {
-                wrdN = ur_ctxLookup( threadCtx, ur_atom(bi.it) );
-                if( wrdN > -1 )
-                    goto assign;
-            }
-
-            if( type == UT_SETWORD )
-            {
-                wrdN = ur_ctxAppendWord( threadCtx, ur_atom(bi.it) );
-                if( envCtx )
-                {
-                    // Lift default value of word from environment.
-                    int ewN = ur_ctxLookup( envCtx, ur_atom(bi.it) );
-                    if( ewN > -1 )
-                        *ur_ctxCell(threadCtx, wrdN) = *ur_ctxCell(envCtx, ewN);
-                }
-            }
-            else
-            {
-                if( envCtx )
-                {
-                    wrdN = ur_ctxLookup( envCtx, ur_atom(bi.it) );
-                    if( wrdN > -1 )
-                    {
-                        // TODO: Have ur_freezeEnv() remove unset words.
-                        if( ! ur_is( ur_ctxCell(envCtx, wrdN), UT_UNSET ) )
-                        {
-                            ur_setBinding( bi.it, UR_BIND_ENV );
-                            bi.it->word.ctx = -UR_MAIN_CONTEXT;
-                            bi.it->word.index = wrdN;
-                            continue;
-                        }
-                    }
-                }
-                wrdN = ur_ctxAppendWord( threadCtx, ur_atom(bi.it) );
-            }
-assign:
-            ur_setBinding( bi.it, UR_BIND_THREAD );
-            bi.it->word.ctx = UR_MAIN_CONTEXT;
-            bi.it->word.index = wrdN;
-        }
-        else if( ur_isBlockType(type) )
-        {
-            if( ! ur_isShared( bi.it->series.buf ) )
-                _bindDefaultB( ut, bi.it->series.buf );
-        }
-        /*
-        else if( type >= UT_BI_COUNT )
-        {
-            ut->types[ type ]->bind( ut, it, bt );
-        }
-        */
-    }
-}
-
-
-extern UBuffer* ur_ctxSortU( UBuffer*, int unsorted );
-
-/**
-  Bind block in thread dataStore to default contexts.
-*/
-void boron_bindDefault( UThread* ut, UIndex blkN )
-{
-    ur_ctxSortU( ur_threadContext( ut ), 16 );
-    _bindDefaultB( ut, blkN );
+    return ((BoronEnv*) bt->thread.env)->compileAtoms;
 }
 
 
@@ -1434,156 +928,12 @@ int boron_load( UThread* ut, const char* file, UCell* res )
     ur_strInit( str, UR_ENC_UTF8, 0 );
     ur_strAppendCStr( str, file );
 
-    if( ! (arg = boron_stackPush(ut)) )
-        return UR_THROW;
-    ur_initSeries( arg, UT_STRING, bufN );
+    arg = ur_push( ut, UT_STRING );
+    ur_setSeries( arg, bufN, 0 );
     ok = cfunc_load( ut, arg, res );
-    boron_stackPop(ut);
+    ur_pop(ut);
 
     return ok;
-}
-
-
-/**
-  Evaluate block and get result.
-
-  blkC and res may point to the same cell.
-
-  \param blkC   Block to do.  This buffer must be held.
-  \param res    Result. This cell must be in a held block.
-
-  \return UR_OK/UR_THROW.
-*/
-int boron_doBlock( UThread* ut, const UCell* blkC, UCell* res )
-{
-    UCell bc2;
-
-    //ur_blkSlice( ut, &bi, blkC );
-    {
-        const UBuffer* buf = ur_bufferSer(blkC);
-        if( ! buf->ptr.b )
-        {
-            bc2.series.it = bc2.series.end = 0;
-        }
-        else
-        {
-            bc2 = *blkC;
-            if( (bc2.series.end < 0) || (bc2.series.end > buf->used) )
-                bc2.series.end = buf->used;
-        }
-    }
-
-    ur_setId( res, UT_UNSET );
-
-    while( bc2.series.it < bc2.series.end )
-    {
-        if( ! boron_eval1( ut, &bc2, res ) )
-            return UR_THROW;
-    }
-    //reportStack( ut );
-
-    return UR_OK;
-}
-
-
-/**
-  Evaluate block and get result.
-
-  \param blkN   Index of block to do.  This buffer must be held.
-  \param res    Result. This cell must be in a held block.
-
-  \return UR_OK/UR_THROW.
-*/
-int boron_doBlockN( UThread* ut, UIndex blkN, UCell* res )
-{
-    UCell bc2;
-
-    ur_setId( res, UT_UNSET );
-
-    ur_setId( &bc2, UT_BLOCK );
-    bc2.series.buf = blkN;
-    bc2.series.it  = 0;
-    bc2.series.end = ur_bufferE( blkN )->used;
-
-    while( bc2.series.it < bc2.series.end )
-    {
-        if( ! boron_eval1( ut, &bc2, res ) )
-            return UR_THROW;
-    }
-    return UR_OK;
-}
-
-
-/**
-  Evaluate C string.
-
-  \param cmd  String to evaluate.
-  \param len  Length of cmd string.  May be -1 if cmd is null terminated.
-
-  \return UR_OK/UR_THROW.
-*/
-int boron_doCStr( UThread* ut, const char* cmd, int len )
-{
-    const char* end;
-    UIndex blkN;
-
-    if( ! cmd )
-        return UR_OK;
-
-    if( len < 0 )
-    {
-        end = cmd;
-        while( *end )
-            ++end;
-    }
-    else
-    {
-        end = cmd + len;
-    }
-
-    if( end != cmd )
-    {
-        UCell tmp;
-        UIndex hold;
-        int ok;
-
-        blkN = ur_tokenize( ut, cmd, end, &tmp );
-        if( blkN )
-        {
-            boron_bindDefault( ut, blkN );
-
-            hold = ur_hold( blkN );
-            ok = boron_doBlock( ut, &tmp, RESULT );
-            ur_release( hold );
-            return ok;
-        }
-        return UR_THROW;
-    }
-    return UR_OK;
-}
-
-
-/**
-  Get result of last boron_doCStr() call.
-*/
-UCell* boron_result( UThread* ut )
-{
-    return RESULT;
-}
-
-
-/**
-  Get most recent exception.
-
-  \return Pointer to top cell on ur_errorBlock(), or zero if there are no
-          exceptions.
-*/
-UCell* boron_exception( UThread* ut )
-{
-    UBuffer* blk = ur_errorBlock(ut);
-    if( blk->used )
-        return blk->ptr.cell + (blk->used - 1);
-    return 0;
 }
 
 

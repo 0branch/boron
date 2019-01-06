@@ -21,6 +21,8 @@
 #include "urlan.h"
 #include "os.h"
 
+extern void block_markBuf( UThread*, UBuffer* );
+
 
 #ifdef DEBUG
 //#define GC_REPORT   1
@@ -178,6 +180,10 @@ void ur_recycle( UThread* ut )
     memSet(markBits, 0, byteSize);
 
 
+    // Mark buffers referenced by stack as used.
+    block_markBuf( ut, &ut->stack );
+
+
     // Mark held buffers as used.
     {
     UIndex bufN;
@@ -213,7 +219,7 @@ void ur_recycle( UThread* ut )
     if( ut->freeBufCount )
     {
         UIndex n = ut->freeBufList;
-        while( n > -1 )
+        while( n > -1 )     // FREE_TERM
         {
             setBit( markBits, n );
             n = bufStart[n].used;

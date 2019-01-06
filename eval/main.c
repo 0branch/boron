@@ -137,16 +137,18 @@ void createArgs( UThread* ut, int argc, char** argv )
 
 UIndex handleException( UThread* ut, UBuffer* str, int* rc )
 {
-    const UCell* res = boron_exception( ut );
+    const UCell* res = ur_exception( ut );
     *rc = 1;
     if( ur_is(res, UT_WORD) )
     {
         switch( ur_atom(res) )
         {
             case UR_ATOM_QUIT:
+                /*
                 res = boron_result( ut );
                 if( ur_is(res, UT_INT) )
                     *rc = ur_int(res) & 0xff;
+                */
                 return UR_ATOM_QUIT;
 
             case UR_ATOM_HALT:
@@ -175,7 +177,7 @@ int main( int argc, char** argv )
     char* cmd = 0;
     UThread* ut;
     UBuffer rstr;
-    UCell* val;
+    UCell* res;
     int fileN = 0;
     int returnCode = 0;
     int i;
@@ -258,25 +260,23 @@ usage_err:
 
     if( fileN > 0 )
     {
-        UIndex hold;
-
         createArgs( ut, argc - 1 - fileN, argv + 1 + fileN );
 
-        val = boron_result( ut );
-        if( ! boron_load( ut, argv[fileN], val ) )
+        res = ut->stack.ptr.cell + ut->stack.used - 1;
+        if( ! boron_load( ut, argv[fileN], res ) )
             goto exception;
 
-        hold = ur_hold( val->series.buf );
-        i = boron_doBlock( ut, val, val );
-        ur_release( hold );
-        if( i == UR_THROW )
+        res = boron_doBlock( ut, res, ur_push(ut, UT_UNSET) );
+        ur_pop(ut);
+        if( ! res )
             goto exception;
     }
     else if( fileN < 0 )
     {
         fileN = -fileN;
         createArgs( ut, argc - 1 - fileN, argv + 1 + fileN );
-        if( ! boron_doCStr( ut, argv[fileN], -1 ) )
+        res = boron_evalUtf8( ut, argv[fileN], -1 );
+        if( ! res )
         {
 exception:
             if( handleException( ut, &rstr, &returnCode ) == UR_ATOM_HALT )
@@ -328,17 +328,16 @@ prompt:
             }
             else if( cmd[0] != '\n' )
             {
-                if( boron_doCStr( ut, cmd, -1 ) )
+                res = boron_evalUtf8( ut, cmd, -1 );
+                if( res )
                 {
-                    val = boron_result( ut );
-
-                    if( ur_is(val, UT_UNSET) ||
-                        ur_is(val, UT_CONTEXT) ) //||
-                        //ur_is(val, UT_FUNC) )
+                    if( ur_is(res, UT_UNSET) ||
+                        ur_is(res, UT_CONTEXT) ) //||
+                        //ur_is(res, UT_FUNC) )
                         continue;
 
                     rstr.used = 0;
-                    ur_toStr( ut, val, &rstr, 0 );
+                    ur_toStr( ut, res, &rstr, 0 );
                     if( rstr.ptr.c )
                     {
                         ur_strTermNull( &rstr );

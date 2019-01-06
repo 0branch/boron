@@ -27,64 +27,6 @@
 */ 
 
 
-/**
-  Get the value which a path refers to.
-
-  \param pc     Valid UT_PATH cell.
-  \param res    Set to value at end of path.
-
-  \return UT_WORD/UT_GETWORD/UR_THROW
-*/
-int ur_pathCell( UThread* ut, const UCell* pc, UCell* res )
-{
-    UBlockIter bi;
-    const UCell* node = 0;
-    const UCell* selector;
-    int type;
-
-    ur_blkSlice( ut, &bi, pc );
-
-    if( bi.it == bi.end )
-    {
-bad_word:
-        return ur_error( ut, UR_ERR_SCRIPT,
-                         "First path node must be a word!/get-word!");
-    }
-
-    type = ur_type(bi.it);
-    if( type != UT_WORD && type != UT_GETWORD )
-        goto bad_word;
-
-    if( ! (node = ur_wordCell( ut, bi.it )) )
-        return UR_THROW;
-    if( ur_is(node, UT_UNSET) )
-    {
-        return ur_error( ut, UR_ERR_SCRIPT, "Path word '%s is unset",
-                         ur_wordCStr( bi.it ) );
-    }
-
-    while( ++bi.it != bi.end )
-    {
-        if( ur_is(bi.it, UT_GETWORD) )
-        {
-            if( ! (selector = ur_wordCell( ut, bi.it )) )
-                return UR_THROW;
-        }
-        else
-        {
-            selector = bi.it;
-        }
-
-        node = ut->types[ ur_type(node) ]->select( ut, node, selector, res );
-        if( ! node )
-            return UR_THROW;
-    }
-    if( node != res )
-        *res = *node;
-    return type;
-}
-
-
 /*
   Returns zero if word not found.
 */

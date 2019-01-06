@@ -81,6 +81,7 @@ enum UrlanDataType
 
 #define UR_FLAG_INT_HEX         0x01
 #define UR_FLAG_TIMECODE_DF     0x01
+#define UR_FLAG_ERROR_SKIP_TRACE 0x01
 #define UR_FLAG_PRINT_RECURSION 0x40
 #define UR_FLAG_SOL             0x80
 
@@ -88,8 +89,9 @@ enum UrlanDataType
 enum UrlanWordBindings
 {
     UR_BIND_UNBOUND = 0,    /* ur_setId zeros flags so this is default. */
-    UR_BIND_THREAD,
+    UR_BIND_THREAD,         /* Bound to buffer in thread dataStore. */
     UR_BIND_ENV,
+    UR_BIND_STACK,          /* Bound to thread stack. */
     UR_BIND_SELF,
     UR_BIND_USER
 };
@@ -272,6 +274,7 @@ struct UBuffer
         int16_t*    i16;    //!< int16_t
         uint16_t*   u16;    //!< uint16_t
         int32_t*    i;      //!< int32_t
+        int32_t*    i32;    //!< int32_t
         uint32_t*   u32;    //!< uint32_t
         double*     d;      //!< doubles
         float*      f;      //!< floats
@@ -300,6 +303,7 @@ enum UThreadMethod
 struct UThread
 {
     UBuffer     dataStore;
+    UBuffer     stack;
     UBuffer     holds;
     UBuffer     gcBits;
     UCell       tmpWordCell;
@@ -495,10 +499,13 @@ UIndex   ur_holdBuffer( UThread*, UIndex bufN );
 void     ur_releaseBuffer( UThread*, UIndex hold );
 void     ur_recycle( UThread* );
 int      ur_markBuffer( UThread*, UIndex bufN );
+UCell*   ur_push( UThread*, int type );
+UCell*   ur_pushCell( UThread*, const UCell* );
 int      ur_error( UThread*, int errorType, const char* fmt, ... );
-UBuffer* ur_errorBlock( UThread* );
 UBuffer* ur_threadContext( UThread* );
 UBuffer* ur_envContext( UThread* );
+void     ur_traceError( UThread*, const UCell* errC, UIndex blkN,
+                        const UCell* pos );
 void     ur_appendTrace( UThread*, UIndex blkN, UIndex it );
 UIndex   ur_tokenize( UThread*, const char* it, const char* end, UCell* res );
 UIndex   ur_tokenizeType( UThread*, int inputEncoding,
@@ -519,6 +526,7 @@ void     ur_seriesSlice( const UThread*, USeriesIter* si, const UCell* cell );
 int      ur_seriesSliceM( UThread*, USeriesIterM* si, const UCell* cell );
 void     ur_bind( UThread*, UBuffer* blk, const UBuffer* ctx, int bindType );
 void     ur_bindCells( UThread*, UCell* it, UCell* end, const UBindTarget* bt );
+void     ur_bindCopy( UThread*, const UBuffer* ctx, UCell* it, UCell* end );
 void     ur_unbindCells( UThread*, UCell* it, UCell* end, int deep );
 void     ur_infuse( UThread*, UCell* it, UCell* end, const UBuffer* ctx );
 int      ur_isTrue( const UCell* cell );
@@ -600,7 +608,6 @@ void     ur_blkCollectType( UThread*, const UCell* blkCell,
                             uint32_t typeMask, UBuffer* dest, int unique );
 #define  ur_blkFree ur_arrFree
 
-int      ur_pathCell( UThread*, const UCell* pc, UCell* res );
 int      ur_setPath( UThread*, const UCell* path, const UCell* src );
 
 UIndex   ur_makeContext( UThread*, int size );
@@ -665,6 +672,7 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
 
 #define ur_atom(c)          (c)->word.atom
 #define ur_datatype(c)      (c)->datatype.n
+#define ur_logic(c)         (c)->number.i
 #define ur_int(c)           (c)->number.i
 #define ur_decimal(c)       (c)->number.d
 
@@ -695,6 +703,8 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
     (c)->series.it = sit; \
     (c)->series.end = send
 
+#define ur_exception(ut)    ut->stack.ptr.cell
+#define ur_pop(ut)          --(ut)->stack.used
 #define ur_hold(n)          ur_holdBuffer(ut,n)
 #define ur_release(h)       ur_releaseBuffer(ut,h)
 #define ur_buffer(n)        (ut->dataStore.ptr.buf + (n))

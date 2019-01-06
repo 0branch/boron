@@ -63,6 +63,8 @@ CFUNC(cfunc_nop)
 */
 CFUNC(cfunc_quit)
 {
+    UIndex n = ut->stack.used;
+    res = ut->stack.ptr.cell + n;
     if( CFUNC_OPTIONS & 1 )
     {
         *res = *a1;
@@ -72,7 +74,7 @@ CFUNC(cfunc_quit)
         ur_setId(res, UT_INT);
         ur_int(res) = 0;
     }
-    return boron_throwWord( ut, UR_ATOM_QUIT );
+    return boron_throwWord( ut, UR_ATOM_QUIT, n );
 }
 
 
@@ -87,7 +89,7 @@ CFUNC(cfunc_halt)
 {
     (void) a1;
     (void) res;
-    return boron_throwWord( ut, UR_ATOM_HALT );
+    return boron_throwWord( ut, UR_ATOM_HALT, 0 );
 }
 
 
@@ -102,7 +104,7 @@ CFUNC(cfunc_exit)
 {
     (void) a1;
     ur_setId(res, UT_UNSET);
-    return boron_throwWord( ut, UR_ATOM_RETURN );
+    return boron_throwWord( ut, UR_ATOM_RETURN, 0 );
 }
 
 
@@ -117,7 +119,7 @@ CFUNC(cfunc_exit)
 CFUNC(cfunc_return)
 {
     *res = *a1;
-    return boron_throwWord( ut, UR_ATOM_RETURN );
+    return boron_throwWord( ut, UR_ATOM_RETURN, 0 );
 }
 
 
@@ -131,8 +133,8 @@ CFUNC(cfunc_return)
 CFUNC(cfunc_break)
 {
     (void) a1;
-    ur_setId(res, UT_UNSET);
-    return boron_throwWord( ut, UR_ATOM_BREAK );
+    (void) res;
+    return boron_throwWord( ut, UR_ATOM_BREAK, 0 );
 }
 
 
@@ -150,12 +152,19 @@ CFUNC(cfunc_break)
 */
 CFUNC(cfunc_throw)
 {
-    UBuffer* blk = ur_errorBlock(ut);
+    UCell* cell = ur_exception(ut);
     (void) res;
 
-    ur_blkPush( blk, a1 );
     if( CFUNC_OPTIONS & 1 )
-        ur_blkPush( blk, a2 );
+    {
+        *cell = a1[1];  // CFUNC_OPT_ARG(1)
+        // Place value after ur_exception word! on stack.
+        assert( cell == ut->stack.ptr.cell );
+        ur_binding(cell) = UR_BIND_STACK;
+        cell->word.index = 1;
+        ++cell;
+    }
+    *cell = *a1;
     return UR_THROW;
 }
 
@@ -178,40 +187,38 @@ CFUNC(cfunc_catch)
 
     if( ! boron_doBlock( ut, a1, res ) )
     {
-        UBuffer* blk = ur_errorBlock(ut);
-        UCell* cell = blk->ptr.cell + (blk->used - 1);
-        assert(blk->used);
+        const UCell* name;
+        UCell* cell = ur_exception( ut );
 
         if( CFUNC_OPTIONS & 1 )
         {
             if( ! ur_is(cell, UT_WORD) )
                 return UR_THROW;
-            if( ur_is(a2, UT_WORD) )
+
+            name = a1 + 1;  // CFUNC_OPT_ARG(1)
+            if( ur_is(name, UT_WORD) )
             {
-                if( ur_atom(a2) == ur_atom(cell) )
+                if( ur_atom(name) == ur_atom(cell) )
                 {
-caught_word:
-                    --cell;
-                    blk->used -= 2;
+                    ++cell;
                     goto set_result;
                 }
             }
-            else if( ur_is(a2, UT_BLOCK) )
+            else if( ur_is(name, UT_BLOCK) )
             {
                 UBlockIter bi;
-                ur_blkSlice( ut, &bi, a2 );
+                ur_blkSlice( ut, &bi, name );
                 ur_foreach( bi )
                 {
                     if( ur_is(bi.it, UT_WORD) &&
                         ur_atom(bi.it) == ur_atom(cell) )
-                        goto caught_word;
+                    {
+                        ++cell;
+                        goto set_result;
+                    }
                 }
             }
             return UR_THROW;
-        }
-        else
-        {
-            --blk->used;
         }
 
 set_result:
@@ -233,24 +240,17 @@ set_result:
 */
 CFUNC(cfunc_try)
 {
-    int ok;
-
     if( ! ur_is(a1, UT_BLOCK) )
         return ur_error( ut, UR_ERR_TYPE, "try expected block!" );
 
-    if( ! (ok = boron_doBlock( ut, a1, res )) )
+    if( ! boron_doBlock( ut, a1, res ) )
     {
-        UBuffer* blk = ur_errorBlock(ut);
-        UCell* cell = blk->ptr.cell + (blk->used - 1);
-        assert( blk->used > 0 );
-        if( ur_is(cell, UT_ERROR) )
-        {
-            --blk->used;
-            *res = *cell;
-            ok = UR_OK;
-        }
+        UCell* cell = ur_exception(ut);
+        if( ! ur_is(cell, UT_ERROR) )
+            return UR_THROW;
+        *res = *cell;
     }
-    return ok;
+    return UR_OK;
 }
 
 
@@ -266,169 +266,6 @@ CFUNC(cfunc_recycle)
     (void) a1;
     (void) res;
     ur_recycle( ut );
-    return UR_OK;
-}
-
-
-static int boron_call( UThread*, const UCellFunc* fcell, UCell* blkC,
-                       UCell* res );
-static int cfunc_load( UThread*, UCell*, UCell* );
-
-/*
-  NOTE: This is an eval-control function.
-
-  -cf-
-    do
-        value
-    return: Result of value.
-    group: eval
-*/
-CFUNC(cfunc_do)
-{
-    if( ! boron_eval1( ut, a1, res ) )
-        return UR_THROW;
-
-    switch( ur_type(res) )
-    {
-        case UT_WORD:
-        {
-            const UCell* cell;
-            if( ! (cell = ur_wordCell( ut, res )) )
-                return UR_THROW; //goto traceError;
-            if( ur_is(cell, UT_CFUNC) || ur_is(cell, UT_FUNC) )
-                return boron_call( ut, (const UCellFunc*) cell, a1, res );
-            *res = *cell;
-        }
-            break;
-
-        case UT_LITWORD:
-            res->id.type = UT_WORD;
-            break;
-
-        case UT_GETWORD:
-        {
-            const UCell* cell;
-            if( ! (cell = ur_wordCell( ut, res )) )
-                return UR_THROW; //goto traceError;
-            *res = *cell;
-        }
-            break;
-
-        case UT_STRING:
-        {
-            USeriesIter si;
-            ur_seriesSlice( ut, &si, res );
-            if( si.it == si.end )
-            {
-                ur_setId( res, UT_UNSET );
-            }
-            else
-            {
-                UCell tmp;
-                UIndex hold;
-                UIndex blkN;
-                int ok;
-
-                if( ur_strIsUcs2(si.buf) )
-                    return ur_error( ut, UR_ERR_INTERNAL,
-                                     "FIXME: Cannot do ucs2 string!" );
-
-                blkN = ur_tokenize( ut, si.buf->ptr.c + si.it,
-                                        si.buf->ptr.c + si.end, &tmp );
-                if( ! blkN )
-                    return UR_THROW;
-
-                boron_bindDefault( ut, blkN );
-
-                hold = ur_hold( blkN );
-                ok = boron_doBlock( ut, &tmp, res );
-                ur_release( hold );
-                return ok;
-            }
-        }
-            break;
-
-        case UT_FILE:
-        {
-            int ok;
-            UCell* tmp;
-            if( ! (tmp = boron_stackPush(ut)) )     // Hold file arg.
-                return UR_THROW;
-            *tmp = *res;
-            ok = cfunc_load( ut, tmp, res );
-            boron_stackPop(ut);
-            if( ! ok )
-                return UR_THROW;
-        }
-            if( ! ur_is(res, UT_BLOCK) )
-                return UR_OK;
-            // Fall through to block...
-#if __GNUC__ == 7
-            __attribute__ ((fallthrough));
-#endif
-
-        case UT_BLOCK:
-        case UT_PAREN:
-            if( ur_isShared( res->series.buf ) )
-            {
-                return boron_doBlock( ut, res, res );
-            }
-            else
-            {
-                int ok;
-                UIndex hold = ur_hold( res->series.buf );
-                ok = boron_doBlock( ut, res, res );
-                ur_release( hold );
-                return ok;
-            }
-
-        case UT_PATH:
-        {
-            int ok;
-            UCell* tmp;
-            if( ! (tmp = boron_stackPush(ut)) )
-                return UR_THROW;
-            ok = ur_pathCell( ut, res, tmp );
-            if( ok != UR_THROW )
-            {
-                if( (ur_is(tmp, UT_CFUNC) || ur_is(tmp, UT_FUNC)) &&
-                    ok == UT_WORD )
-                {
-                    ok = boron_call( ut, (const UCellFunc*) tmp, a1, res );
-                }
-                else
-                {
-                    *res = *tmp;
-                    ok = UR_OK;
-                }
-            }
-            boron_stackPop(ut);
-            return ok;
-        }
-
-        case UT_LITPATH:
-            res->id.type = UT_PATH;
-            break;
-
-        case UT_FUNC:
-        case UT_CFUNC:
-        {
-            int ok;
-            UCell* tmp;
-            if( (tmp = boron_stackPush(ut)) )   // Hold func cell.
-            {
-                *tmp = *res;
-                ok = boron_call( ut, (UCellFunc*) tmp, a1, res );
-                boron_stackPop(ut);
-                return ok;
-            }
-        }
-            return UR_THROW;
-
-        default:
-            // Result already set.
-            break;
-    }
     return UR_OK;
 }
 
@@ -708,12 +545,12 @@ CFUNC(cfunc_bindingQ)
             ur_setSeries( res, a1->word.ctx, 0 );
             break;
 
-        case UR_BIND_FUNC:
+        case BOR_BIND_FUNC:
             ur_setId( res, UT_WORD );
             ur_setWordUnbound( res, UT_FUNC );
             break;
 
-        case UR_BIND_OPTION:
+        case BOR_BIND_OPTION:
             ur_setId( res, UT_WORD );
             ur_setWordUnbound( res, UT_OPTION );
             break;
@@ -1181,16 +1018,17 @@ CFUNC(cfunc_reserve)
 */
 CFUNC(cfunc_does)
 {
-    UCellFunc* cell = (UCellFunc*) res;
+    // Must copy block to preserve bindings when the same function defintion
+    // is used in multiple contexts.
     UIndex bodyN = ur_blkClone( ut, a1->series.buf );   // gc!
-
-    ur_setId(cell, UT_FUNC);        // Sets argCount, localCount to 0.
-    cell->argBufN   = UR_INVALID_BUF;
-    cell->m.f.bodyN = bodyN;
-    cell->m.f.sigN  = UR_INVALID_BUF;
+    ur_setId(res, UT_FUNC);
+    ur_setSeries(res, bodyN, 0);
     return UR_OK;
 }
 
+
+void boron_compileArgProgram( BoronThread*, const UCell* specC, UBuffer* prog,
+                              UIndex bodyN, int* sigFlags );
 
 /*-cf-
     func
@@ -1204,11 +1042,13 @@ CFUNC(cfunc_does)
 */
 CFUNC(cfunc_func)
 {
-    UBuffer ctx;
-    UBuffer optCtx;
-    UBuffer* body;
-    UIndex bodyN;
-    UCellFunc* fc = (UCellFunc*) res;
+    static const uint8_t _types[2] = {UT_BLOCK, UT_BINARY};
+    const UBuffer* body;
+    UBuffer* prog;
+    UBuffer* blk;
+    UIndex bufN[2];
+    int sigFlags;
+    const int prelude = 2;  // arg-program & signature cells.
 
     if( ! ur_is(a1, UT_BLOCK) || ! ur_is(a2, UT_BLOCK) )
     {
@@ -1216,45 +1056,29 @@ CFUNC(cfunc_func)
                          "func expected block! for spec & body" );
     }
 
-    ur_ctxInit( &ctx, 0 );
-    ur_ctxInit( &optCtx, 0 );
+    // UT_FUNC references a block which holds the argument program cell
+    // followed by a copy of the function body.
 
-    bodyN = ur_blkClone( ut, a2->series.buf );      // gc!
+    blk = ur_generate( ut, 2, bufN, _types );       // gc!
+    //printf( "KR func blk:%d\n", bufN[0] );
 
-    ur_setId(fc, UT_FUNC);
-    fc->argBufN   = UR_INVALID_BUF;
-    fc->m.f.bodyN = bodyN;
-    fc->m.f.sigN  = a1->series.buf;
+    body = ur_bufferSer(a2);
+    ur_arrReserve( blk, prelude + body->used );
+    ur_initSeries(blk->ptr.cell, UT_BINARY, bufN[1]);
+    blk->ptr.cell[1] = *a1;
+    memcpy( blk->ptr.cell + prelude, body->ptr.cell,
+            sizeof(UCell) * body->used );
+    blk->used += prelude + body->used;
 
-    // Assign after fc fully initialized to handle recycle.
-    // Body block is held since fc is the result.
-    fc->argBufN = boron_makeArgProgram( ut, a1, &ctx, &optCtx, fc );    // gc!
+    prog = ur_buffer(bufN[1]);
+    //prog->storage |= UR_BUF_PROTECT;
+    boron_compileArgProgram( BT, a1, prog, bufN[0], &sigFlags );
 
-    {
-    UBindTarget bt;
-
-    bt.ctxN = bodyN;
-    bt.self = UR_INVALID_ATOM;
-    body = ur_buffer( bt.ctxN );
-
-    if( ctx.used )
-    {
-        bt.ctx      = ur_ctxSort(&ctx);
-        bt.bindType = UR_BIND_FUNC;
-        ur_bindCells( ut, body->ptr.cell, body->ptr.cell + body->used, &bt );
-    }
-
-    if( optCtx.used )
-    {
-        bt.ctx      = ur_ctxSort(&optCtx);
-        bt.bindType = UR_BIND_OPTION;
-        ur_bindCells( ut, body->ptr.cell, body->ptr.cell + body->used, &bt );
-    }
-    }
-
-    ur_ctxFree( &optCtx );
-    ur_ctxFree( &ctx );
-
+    // Slice to skip arg-program.
+    ur_setId(res, UT_FUNC);
+    ur_setSeries(res, bufN[0], prelude);
+    if( sigFlags )
+        ur_setFlags(res, FUNC_FLAG_GHOST);
     return UR_OK;
 }
 
@@ -1291,7 +1115,7 @@ CFUNC(cfunc_if)
     {
         UCell* bc = a2;
         if( ur_is(bc, UT_BLOCK) )
-            return boron_doBlock( ut, bc, res );
+            return boron_doBlock( ut, bc, res ) ? UR_OK : UR_THROW;
         *res = *bc;
         return UR_OK;
     }
@@ -1316,7 +1140,7 @@ CFUNC(cfunc_ifn)
     {
         UCell* bc = a2;
         if( ur_is(bc, UT_BLOCK) )
-            return boron_doBlock( ut, bc, res );
+            return boron_doBlock( ut, bc, res ) ? UR_OK : UR_THROW;
         *res = *bc;
         return UR_OK;
     }
@@ -1338,7 +1162,7 @@ CFUNC(cfunc_either)
 {
     UCell* bc = ur_isTrue(a1) ? a2 : a3;
     if( ur_is(bc, UT_BLOCK) )
-        return boron_doBlock( ut, bc, res );
+        return boron_doBlock( ut, bc, res ) ? UR_OK : UR_THROW;
     return ur_error( ut, UR_ERR_TYPE, "either expected block! body" );
 }
 
@@ -1370,7 +1194,7 @@ CFUNC(cfunc_while)
             break;
         if( ! boron_doBlock( ut, body, res ) )
         {
-            if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+            if( boron_catchWord( ut, UR_ATOM_BREAK ) )
                 break;
             return UR_THROW;
         }
@@ -1396,7 +1220,7 @@ CFUNC(cfunc_forever)
     {
         if( ! boron_doBlock( ut, a1, res ) )
         {
-            if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+            if( boron_catchWord( ut, UR_ATOM_BREAK ) )
                 break;
             return UR_THROW;
         }
@@ -1429,7 +1253,7 @@ CFUNC(cfunc_loop)
         {
             if( ! boron_doBlock( ut, body, res ) )
             {
-                if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+                if( boron_catchWord( ut, UR_ATOM_BREAK ) )
                     break;
                 return UR_THROW;
             }
@@ -1483,7 +1307,7 @@ CFUNC(cfunc_loop)
             }
             if( ! boron_doBlock( ut, body, res ) )
             {
-                if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+                if( boron_catchWord( ut, UR_ATOM_BREAK ) )
                     break;
                 return UR_THROW;
             }
@@ -1566,7 +1390,7 @@ CFUNC(cfunc_switch)
     if( found )
     {
         if( ur_is(found, UT_BLOCK) || ur_is(found, UT_PAREN) )
-            return boron_doBlock( ut, found, res );
+            return boron_doBlock( ut, found, res ) ? UR_OK : UR_THROW;
 
         *res = *found;
         return UR_OK;
@@ -1585,36 +1409,28 @@ CFUNC(cfunc_switch)
 */
 CFUNC(cfunc_case)
 {
-    UCell bc2;
-    const UCell* found;
+    UBlockIter bi;
 
     if( ! ur_is(a1, UT_BLOCK) )
         return ur_error( ut, UR_ERR_TYPE, "case expected block! body" );
 
-    ur_setId( &bc2, UT_BLOCK );
-    bc2.series.buf = a1->series.buf;
-    bc2.series.it  = 0;
-    bc2.series.end = ur_bufferSer( a1 )->used;
-
-    while( bc2.series.it < bc2.series.end )
+    ur_blkSlice( ut, &bi, a1 );
+    while( bi.it != bi.end )
     {
-        if( ! boron_eval1( ut, &bc2, res ) )
+        bi.it = boron_eval1( ut, bi.it, bi.end, res );
+        if( ! bi.it )
             return UR_THROW;
         if( ur_isTrue( res ) )
         {
-            if( bc2.series.it >= bc2.series.end )
+            if( bi.it == bi.end )
                 break;
-            found = ur_bufferSer( a1 )->ptr.cell + bc2.series.it;
-            if( ur_is(found, UT_BLOCK) || ur_is(found, UT_PAREN) )
-                return boron_doBlock( ut, found, res );
+            if( ur_is(bi.it, UT_BLOCK) || ur_is(bi.it, UT_PAREN) )
+                return boron_doBlock( ut, bi.it, res ) ? UR_OK : UR_THROW;
 
-            *res = *found;
+            *res = *bi.it;
             return UR_OK;
         }
-        else
-        {
-            ++bc2.series.it;
-        }
+        ++bi.it;
     }
 
     ur_setId(res, UT_NONE);
@@ -2225,7 +2041,7 @@ CFUNC(cfunc_append)
         dt = SERIES_DT( type );
         if( (opt = CFUNC_OPTIONS) )
         {
-            count = (opt & OPT_APPEND_REPEAT) ? ur_int(a3) : 1;
+            count = (opt & OPT_APPEND_REPEAT) ? ur_int(CFUNC_OPT_ARG(2)) : 1;
             if( (opt & OPT_APPEND_BLOCK) && (type == UT_BLOCK) )
             {
                 while( --count >= 0 )
@@ -2313,7 +2129,7 @@ CFUNC(cfunc_insert)
     if( (opt = CFUNC_OPTIONS) )
     {
         if( opt & OPT_INSERT_REPEAT )
-           count = ur_int(a1 + 3);
+           count = ur_int(CFUNC_OPT_ARG(3));
 
         if( (opt & OPT_INSERT_BLOCK) && (type == UT_BLOCK) )
         {
@@ -2323,7 +2139,7 @@ CFUNC(cfunc_insert)
         }
         else if( opt & OPT_INSERT_PART )
         {
-            UCell* parg = a3;
+            UCell* parg = CFUNC_OPT_ARG(2);
             if( ur_is(parg, UT_INT) )
                 part = ur_int(parg);
             else if( ur_isSeriesType( ur_type(parg) ) )
@@ -2378,7 +2194,7 @@ CFUNC(cfunc_change)
     }
     else if( opt & OPT_CHANGE_PART )
     {
-        UCell* parg = a3;
+        UCell* parg = CFUNC_OPT_ARG(2);
         if( ur_is(parg, UT_INT) )
             part = ur_int(parg);
         else if( ur_isSeriesType( ur_type(parg) ) )
@@ -2432,9 +2248,10 @@ CFUNC(cfunc_remove)
 
     if( opt & OPT_REMOVE_PART )
     {
-        if( ! ur_is(a2, UT_INT) )
+        UCell* parg = CFUNC_OPT_ARG(2);
+        if( ! ur_is(parg, UT_INT) )
             return ur_error( ut, UR_ERR_TYPE, "remove expected int! part" );
-        part = ur_int(a2);
+        part = ur_int(parg);
     }
     else if( opt & OPT_REMOVE_SLICE )
     {
@@ -2472,9 +2289,10 @@ CFUNC(cfunc_reverse)
 
     if( CFUNC_OPTIONS & OPT_REVERSE_PART )
     {
-        if( ! ur_is(a2, UT_INT) )
+        UCell* parg = CFUNC_OPT_ARG(1);
+        if( ! ur_is(parg, UT_INT) )
             return ur_error( ut, UR_ERR_TYPE, "reverse expected int! part" );
-        part = ur_int(a2);
+        part = ur_int(parg);
         if( part < 1 )
             goto done;
         if( part < (si.end - si.it) )
@@ -2519,7 +2337,7 @@ CFUNC(cfunc_find)
     if( opt & OPT_FIND_PART )
     {
         UIndex part;
-        UCell* parg = a3;
+        UCell* parg = CFUNC_OPT_ARG(3);
 
         if( ur_is(parg, UT_INT) )
             part = ur_int(parg);
@@ -3238,7 +3056,7 @@ loop:
         }
         if( ! boron_doBlock( ut, body, res ) )
         {
-            if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+            if( boron_catchWord( ut, UR_ATOM_BREAK ) )
                 break;
             return UR_THROW;
         }
@@ -3305,7 +3123,7 @@ CFUNC(cfunc_forall)
         {
             if( ! boron_doBlock( ut, body, res ) )
             {
-                if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+                if( boron_catchWord( ut, UR_ATOM_BREAK ) )
                     break;
                 return UR_THROW;
             }
@@ -3362,7 +3180,7 @@ CFUNC(cfunc_map)
         dt->pick( ur_bufferSer(sarg), si.it, cell ); 
         if( ! boron_doBlock( ut, body, res ) )
         {
-            if( _catchThrownWord( ut, UR_ATOM_BREAK ) )
+            if( boron_catchWord( ut, UR_ATOM_BREAK ) )
                 break;
             return UR_THROW;
         }
@@ -3384,23 +3202,19 @@ CFUNC(cfunc_map)
 */
 CFUNC(cfunc_all)
 {
-    USeriesIter si;
+    UBlockIter bi;
 
     if( ! ur_is(a1, UT_BLOCK) )
         return ur_error( ut, UR_ERR_TYPE, "all expected block!" );
 
-    ur_seriesSlice( ut, &si, a1 );
-    if( si.it != si.end )
+    ur_blkSlice( ut, &bi, a1 );
+    while( bi.it != bi.end )
     {
-        UCell ec2 = *a1;
-        ec2.series.end = si.end;
-        while( ec2.series.it < ec2.series.end )
-        {
-            if( ! boron_eval1( ut, &ec2, res ) )
-                return UR_THROW;
-            if( ! ur_isTrue( res ) )
-                return UR_OK;
-        }
+        bi.it = boron_eval1( ut, bi.it, bi.end, res );
+        if( ! bi.it )
+            return UR_THROW;
+        if( ! ur_isTrue( res ) )
+            return UR_OK;
     }
 
     ur_setId(res, UT_LOGIC);
@@ -3420,23 +3234,19 @@ CFUNC(cfunc_all)
 */
 CFUNC(cfunc_any)
 {
-    USeriesIter si;
+    UBlockIter bi;
 
     if( ! ur_is(a1, UT_BLOCK) )
         return ur_error( ut, UR_ERR_TYPE, "any expected block!" );
 
-    ur_seriesSlice( ut, &si, a1 );
-    if( si.it != si.end )
+    ur_blkSlice( ut, &bi, a1 );
+    while( bi.it != bi.end )
     {
-        UCell ec2 = *a1;
-        ec2.series.end = si.end;
-        while( ec2.series.it < ec2.series.end )
-        {
-            if( ! boron_eval1( ut, &ec2, res ) )
-                return UR_THROW;
-            if( ur_isTrue( res ) )
-                return UR_OK;
-        }
+        bi.it = boron_eval1( ut, bi.it, bi.end, res );
+        if( ! bi.it )
+            return UR_THROW;
+        if( ur_isTrue( res ) )
+            return UR_OK;
     }
 
     ur_setId(res, UT_LOGIC);
@@ -3457,42 +3267,10 @@ CFUNC(cfunc_any)
 CFUNC(cfunc_reduce)
 {
     if( ur_is(a1, UT_BLOCK) )
-    {
-        UBlockIter bi;
-        int ok = UR_OK;
+        return boron_reduceBlock( ut, a1, res ) ? UR_OK : UR_THROW;
 
-        ur_blkSlice( ut, &bi, a1 );
-        if( bi.it == bi.end )
-        {
-            ur_makeBlockCell( ut, UT_BLOCK, 0, res );
-        }
-        else
-        {
-            UCell ec2;
-            UCell* bres;
-            UIndex n;
-
-            ec2 = *a1;
-            ec2.series.end = bi.end - bi.buf->ptr.cell;
-
-            bres = ur_makeBlockCell(ut, UT_BLOCK, bi.buf->used, res)->ptr.cell;
-            n = res->series.buf;
-
-            while( ec2.series.it < ec2.series.end )
-            {
-                ++ur_buffer(n)->used;
-                ur_setId( bres, UT_UNSET );
-                if( ! (ok = boron_eval1( ut, &ec2, bres++ )) )
-                    break;
-            }
-        }
-        return ok;
-    }
-    else
-    {
-        *res = *a1;
-        return UR_OK;
-    }
+    *res = *a1;
+    return UR_OK;
 }
 
 
@@ -3986,19 +3764,18 @@ static int _readBuffer( UThread* ut, uint32_t opt, const UCell* a1,
 
     if( opt & OPT_READ_PART )
     {
-        n = ur_int(a1 + 3);
+        n = ur_int(CFUNC_OPT_ARG(4));
         len = (n > 1) ? n : 0;
     }
 
     if( opt & (OPT_READ_INTO | OPT_READ_APPEND) )
     {
         UBuffer* buf;
-        const UCell* ic = a1 + 1;
+        const UCell* ic;
         int type;
         int rlen;
 
-        if( opt & OPT_READ_APPEND )
-            ++ic;
+        ic = CFUNC_OPT_ARG( (opt & OPT_READ_APPEND ? 3 : 2) );
         type = ur_type(ic);
 
         if( type == UT_BINARY || type == UT_STRING )
@@ -4735,7 +4512,7 @@ CFUNC(cfunc_swap)
         if( CFUNC_OPTIONS & OPT_SWAP_GROUP )
         {
             uint8_t* bp;
-            int group = ur_int(a2);
+            int group = ur_int(CFUNC_OPT_ARG(1));
             if( group < 2 || group > (si.end - si.it) )
                 return ur_error( ut, UR_ERR_SCRIPT,
                                  "swap group size (%d) is invalid", group );
@@ -5284,9 +5061,10 @@ CFUNC(cfunc_collect)
 
     if( opt & OPT_COLLECT_INTO )
     {
-        if( ! (dest = ur_bufferSerM(a3)) )
+        const UCell* into = CFUNC_OPT_ARG(2);
+        if( ! (dest = ur_bufferSerM(into)) )
             return UR_THROW;
-        *res = *a3;
+        *res = *into;
     }
     else
     {
