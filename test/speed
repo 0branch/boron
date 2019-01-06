@@ -1,0 +1,21 @@
+#!/bin/bash
+
+SPATH=scripts
+INTERPRETER=./boron
+RESULTS=test/speed.results
+
+echo "; " >>$RESULTS
+
+valgrind --tool=massif --massif-out-file=massif.out $INTERPRETER -e "quit" >out
+$SPATH/vm-summary.b massif.out >>$RESULTS
+
+valgrind --tool=massif --massif-out-file=massif.out $INTERPRETER test/func.b >out
+$SPATH/vm-summary.b massif.out >>$RESULTS
+
+valgrind --tool=massif --massif-out-file=massif.out $INTERPRETER -s $SPATH/m2/m2 -o /tmp/Makefile >out
+$SPATH/vm-summary.b massif.out >>$RESULTS
+
+valgrind --tool=massif --massif-out-file=massif.out $INTERPRETER -e "loop 10 [load %scripts/m2/m2]"
+$SPATH/vm-summary.b massif.out >>$RESULTS
+
+cat $RESULTS
