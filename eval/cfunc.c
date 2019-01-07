@@ -3566,7 +3566,7 @@ CFUNC(cfunc_current_dir)
 
 /*-cf-
     getenv
-        val string!
+        name string!
     return: string! or none!
     group: os
 
@@ -3590,6 +3590,41 @@ CFUNC(cfunc_getenv)
     }
     else
         ur_setId(res, UT_NONE);
+    return UR_OK;
+}
+
+
+/*-cf-
+    setenv
+        name string!
+        value
+    return: value
+    group: os
+
+    Set operating system environment variable.  Pass a value of none! to
+    unset the variable.
+*/
+CFUNC(cfunc_setenv)
+{
+#ifdef _WIN32
+#define setenv(name,val,over)   SetEnvironmentVariable(name, val)
+#define unsetenv(name)          SetEnvironmentVariable(name, 0)
+#endif
+    const char* name = boron_cstr(ut, a1, 0);
+
+    if( ur_is(a1, UT_NONE) )
+    {
+        unsetenv( name );
+    }
+    else
+    {
+        UBuffer* str = ur_makeStringCell( ut, UR_ENC_UTF8, 0, res );
+        ur_toStr( ut, a2, str, 0 );
+        ur_strTermNull( str );
+        setenv( name, str->ptr.c, 1 );
+    }
+
+    *res = *a2;
     return UR_OK;
 }
 
