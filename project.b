@@ -105,7 +105,6 @@ lib-spec: [
         %gc.c
         %serialize.c
         %tokenize.c
-        %bignum.c
         %vector.c
 
         %parse_binary.c

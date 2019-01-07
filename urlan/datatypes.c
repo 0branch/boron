@@ -217,7 +217,6 @@
 
 
 #include "urlan_atoms.h"
-#include "bignum.h"
 
 
 //#define ANY3(c,t1,t2,t3)    ((1<<ur_type(c)) & ((1<<t1) | (1<<t2) | (1<<t3)))
@@ -619,13 +618,6 @@ int logic_make( UThread* ut, const UCell* from, UCell* res )
         case UT_DECIMAL:
             ur_logic(res) = ur_decimal(from) ? 1 : 0;
             break;
-        case UT_BIGNUM:
-        {
-            UCell tmp;
-            bignum_zero( &tmp );
-            ur_logic(res) = bignum_equal(from, &tmp) ? 0 : 1;
-        }
-            break;
         default:
             ur_logic(res) = 1;
             break;
@@ -855,9 +847,6 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
         case UT_DATE:
             ur_int(res) = ur_decimal(from);
             break;
-        case UT_BIGNUM:
-            ur_int(res) = (int32_t) bignum_l(from);
-            break;
         case UT_BINARY:
         case UT_STRING:
         {
@@ -1043,9 +1032,6 @@ int decimal_make( UThread* ut, const UCell* from, UCell* res )
         case UT_DATE:
             ur_decimal(res) = ur_decimal(from);
             break;
-        case UT_BIGNUM:
-            ur_decimal(res) = bignum_d(from);
-            break;
         case UT_STRING:
         {
             USeriesIter si;
@@ -1220,142 +1206,6 @@ UDatatype dt_decimal =
     decimal_make,           decimal_make,           unset_copy,
     decimal_compare,        decimal_operate,        unset_select,
     decimal_toString,       decimal_toString,
-    unset_recycle,          unset_mark,             unset_destroy,
-    unset_markBuf,          unset_toShared,         unset_bind
-};
-
-
-//----------------------------------------------------------------------------
-// UT_BIGNUM
-
-
-#include "bignum.h"
-
-
-int bignum_make( UThread* ut, const UCell* from, UCell* res )
-{
-    switch( ur_type(from) )
-    {
-        case UT_NONE:
-            ur_setId(res, UT_BIGNUM);
-            bignum_zero( res );
-            break;
-        case UT_LOGIC:
-            ur_setId(res, UT_BIGNUM);
-            bignum_seti( res, ur_logic(from) );
-            break;
-        case UT_CHAR:
-        case UT_INT:
-            ur_setId(res, UT_BIGNUM);
-            bignum_seti( res, ur_int(from) );
-            break;
-        case UT_DECIMAL:
-            ur_setId(res, UT_BIGNUM);
-            bignum_setd( res, ur_decimal(from) );
-            break;
-        case UT_BIGNUM:
-            *res = *from;
-            break;
-        case UT_STRING:
-        {
-            USeriesIter si;
-            ur_seriesSlice( ut, &si, from );
-            ur_setId(res, UT_BIGNUM);
-            if( ur_strIsUcs2(si.buf) )
-            {
-                return MAKE_NO_UCS2( "bignum!" );
-            }
-            else
-            {
-                const char* cp = si.buf->ptr.c;
-                if( (si.end - si.it) > 2 && (cp[0] == '0') && (cp[1] == 'x') )
-                {
-                    bignum_setl(res, str_hexToInt64(cp + si.it + 2,
-                                                    cp + si.end, 0) );
-                    ur_setFlags(res, UR_FLAG_INT_HEX);
-                }
-                else
-                    bignum_setl(res, str_toInt64(cp + si.it,
-                                                 cp + si.end, 0) );
-            }
-        }
-            break;
-        default:
-            return ur_error( ut, UR_ERR_TYPE,
-                "make bignum! expected number or none!/logic!/char!/string!" );
-    }
-    return UR_OK;
-}
-
-
-void bignum_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
-{
-    int64_t n = bignum_l(cell);
-    (void) ut;
-    (void) depth;
-    if( ur_flags(cell, UR_FLAG_INT_HEX) )
-    {
-        ur_strAppendCStr( str, "0x" );
-        ur_strAppendHex( str, n & 0xffffffff, n >> 32 );
-    }
-    else
-        ur_strAppendInt64( str, n );
-}
-
-
-int bignum_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
-                    int op )
-{
-    UCell tmp;
-
-    if( ur_isIntType( ur_type(a) ) )
-    {
-        bignum_seti( &tmp, ur_int(a) );
-        a = &tmp;
-    }
-    else if( ur_is(a, UT_DECIMAL) )
-    {
-        bignum_setd( &tmp, ur_decimal(a) );
-        a = &tmp;
-    }
-    else if( ur_isIntType( ur_type(b) ) )
-    {
-        bignum_seti( &tmp, ur_int(b) );
-        b = &tmp;
-    }
-    else if( ur_is(b, UT_DECIMAL) )
-    {
-        bignum_setd( &tmp, ur_decimal(b) );
-        b = &tmp;
-    }
-    else if( ! ur_is(a, UT_BIGNUM) || ! ur_is(b, UT_BIGNUM) )
-        goto unset;
-
-    ur_setId(res, UT_BIGNUM);
-    switch( op )
-    {
-        case UR_OP_ADD:
-            bignum_add( a, b, res );
-            return UR_OK;
-        case UR_OP_SUB:
-            bignum_sub( a, b, res );
-            return UR_OK;
-        case UR_OP_MUL:
-            bignum_mul( a, b, res );
-            return UR_OK;
-    }
-
-unset:
-    return unset_operate( ut, a, b, res, op );
-}
-
-
-UDatatype dt_bignum =
-{
-    "bignum!",
-    bignum_make,            bignum_make,            unset_copy,
-    unset_compare,          bignum_operate,         unset_select,
-    bignum_toString,        bignum_toString,
     unset_recycle,          unset_mark,             unset_destroy,
     unset_markBuf,          unset_toShared,         unset_bind
 };

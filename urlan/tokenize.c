@@ -21,7 +21,6 @@
 #include <math.h>
 #include "urlan.h"
 #include "urlan_atoms.h"
-#include "bignum.h"
 #include "mem_util.h"
 #include "os.h"
 
@@ -530,7 +529,7 @@ static UCell* _tokenizePath( UThread* ut, UBuffer* blk,
         if( isDigit(ch) || (ch == '-') )
         {
             pc = ur_blkAppendNew( path, UT_INT );
-            ur_int(pc) = (int32_t) str_toInt64( it, ew, 0 );
+            ur_int(pc) = str_toInt64( it, ew, 0 );
         }
         else if( IS_PATH(ch) )
         {
@@ -628,19 +627,10 @@ static const char* blockComment( const char* it, const char* end, int* lines )
 }
 
 
-static UCell* appendInt( UBuffer* blk, int64_t n, uint32_t max )
+static UCell* appendInt( UBuffer* blk, int64_t n )
 {
-    UCell* cell;
-    if( n > max || n < INT32_MIN )
-    {
-        cell = ur_blkAppendNew( blk, UT_BIGNUM );
-        bignum_setl( cell, n );
-    }
-    else
-    {
-        cell = ur_blkAppendNew( blk, UT_INT );
-        ur_int(cell) = (int32_t) n;
-    }
+    UCell* cell = ur_blkAppendNew( blk, UT_INT );
+    ur_int(cell) = n;
     return cell;
 }
 
@@ -1141,8 +1131,7 @@ number:
                     {
                         syntaxErrorT( "Invalid int" );
                     }
-                    cell = appendInt( blk, str_toInt64( token, end, &it ),
-                                      INT32_MAX );
+                    cell = appendInt( blk, str_toInt64( token, end, &it ) );
                     break;
                 }
                 }
@@ -1152,8 +1141,7 @@ number:
 hex_number:
                 token = ++it;
                 // Treating hex values as unsigned here ($ffffffff -> int!)
-                cell = appendInt( BLOCK, str_hexToInt64( token, end, &it ),
-                                  UINT32_MAX );
+                cell = appendInt( BLOCK, str_hexToInt64( token, end, &it ) );
                 if( it == token )
                 {
                     --token;

@@ -24,7 +24,6 @@
 #include "urlan_atoms.h"
 #include "mem_util.h"
 #include "str.h"
-#include "bignum.h"
 #include "boron_internal.h"
 //#include "cpuCounter.h"
 //#define CFUNC_SERIALIZED

@@ -797,7 +797,7 @@ CFUNC(cfunc_maximum)
 
 /*-cf-
     abs
-        n   int!/decimal!/time!/bignum!
+        n   int!/decimal!/time!
     return: Absolute value of n.
     group: math
 */
@@ -815,11 +815,6 @@ CFUNC(cfunc_abs)
         case UT_TIME:
             ur_setId(res, type);
             ur_decimal(res) = fabs( ur_decimal(a1) );
-            break;
-
-        case UT_BIGNUM:
-            *res = *a1;
-            bignum_abs( res );
             break;
 
         default:
@@ -2669,7 +2664,7 @@ CFUNC(cfunc_complement)
 
 /*-cf-
     negate
-        value   int!/decimal!/time!/bignum!/coord!/vec3!/bitset!
+        value   int!/decimal!/time!/coord!/vec3!/bitset!
     return: Negated value.
     group: data
     see: complement, not
@@ -2688,12 +2683,6 @@ CFUNC( cfunc_negate )
         case UT_TIME:
             ur_setId(res, type);
             ur_decimal(res) = -ur_decimal(a1);
-            break;
-
-        case UT_BIGNUM:
-            // Must setId before bignum call (clears first Limb).
-            ur_setId(res, type);
-            bignum_negate( a1, res );
             break;
 
         case UT_COORD:
@@ -3351,16 +3340,8 @@ CFUNC(cfunc_to_text)
 
 void ur_setCellI64( UCell* cell, int64_t n )
 {
-    if( n > INT32_MAX || n < INT32_MIN )
-    {
-        ur_setId(cell, UT_BIGNUM);
-        bignum_setl( cell, n );
-    }
-    else
-    {
-        ur_setId(cell, UT_INT);
-        ur_int(cell) = (int32_t) n;
-    }
+    ur_setId(cell, UT_INT);
+    ur_int(cell) = n;
 }
 
 
@@ -4626,7 +4607,7 @@ extern int64_t str_hexToInt64( const char*, const char*, const char** pos );
 
 /*-cf-
     to-hex
-        number  char!/int!/bignum!/binary!/string!
+        number  char!/int!/binary!/string!
     return: Number shown as hexidecimal.
     group: data
 */
@@ -4640,7 +4621,6 @@ CFUNC(cfunc_to_hex)
             break;
 
         case UT_INT:
-        case UT_BIGNUM:
             *res = *a1;
             break;
 
@@ -4669,13 +4649,13 @@ CFUNC(cfunc_to_hex)
 
 /*-cf-
     to-dec
-        number  int!/bignum!
+        number  int!
     return: Number shown as decimal.
     group: data
 */
 CFUNC(cfunc_to_dec)
 {
-    if( ur_is(a1, UT_INT) || ur_is(a1, UT_BIGNUM) )
+    if( ur_is(a1, UT_INT) )
     {
         ur_clrFlags(a1, UR_FLAG_INT_HEX);
         *res = *a1;
@@ -4744,28 +4724,13 @@ CFUNC(cfunc_now)
 }
 
 
-void ur_setCellU64( UCell* res, uint64_t n )
-{
-    if( n > 0x7fffffff )
-    {
-        ur_setId(res, UT_BIGNUM);
-        bignum_setl(res, n);
-    }
-    else
-    {
-        ur_setId(res, UT_INT);
-        ur_int(res) = (int32_t) n;
-    }
-}
-
-
 #include "cpuCounter.h"
 
 /*-cf-
     cpu-cycles
         loop    int!  Number of times to evaluate block.
         block   block!
-    return: int!/bignum!
+    return: int!
     group: io
 
     Get the number of CPU cycles used to evaluate a block.
@@ -4791,7 +4756,8 @@ CFUNC(cfunc_cpu_cycles)
             low = cycles;
     }
 
-    ur_setCellU64( res, cycles );
+    ur_setId(res, UT_INT);
+    ur_int(res) = (int64_t) cycles;
     return UR_OK;
 #else
     (void) a1;

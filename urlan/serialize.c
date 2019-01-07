@@ -48,10 +48,14 @@
 typedef struct
 {
     UBuffer atomMap;
-    UBuffer bufMap;
+    UBuffer bufMap;     // BufferIndex
     UBuffer ctxAtoms;   // Temporary buffer for ur_ctxWordAtoms().
 }
 Serializer;
+
+#define CTYPE_MASK  0x3f    // Handle UT_MAX
+#define CTYPE_FLAG  0x40
+#define CTYPE_SOL   0x80    // Currently identical to UR_FLAG_SOL
 
 
 typedef struct
@@ -125,6 +129,18 @@ static inline uint32_t _zigZag32( int32_t n )
 
 
 static inline int32_t _undoZigZag32( uint32_t n )
+{
+    return (n & 1) ? -(n >> 1) - 1 : n >> 1;
+}
+
+
+static inline uint64_t _zigZag64( int64_t n )
+{
+    return (n < 0) ? (((uint64_t)(-n)) << 1) - 1 : ((uint64_t) n) << 1;
+}
+
+
+static inline int64_t _undoZigZag64( uint64_t n )
 {
     return (n & 1) ? -(n >> 1) - 1 : n >> 1;
 }
@@ -216,9 +232,34 @@ static void _packU32( UBuffer* bin, uint32_t n )
 
 
 #define push8(N)    bin->ptr.b[ bin->used++ ] = N
+
+static void _packU64( UBuffer* bin, uint64_t n )
+{
+    if( n > 0x3fffff )
+    {
+        uint32_t high = n >> 32;
+        if( high )
+        {
+            if( high < 0x3f )
+            {
+                push8( PACK_5 + high );
+            }
+            else
+            {
+                push8( PACK_5 + 0x3f );
+                _packU32( bin, high );
+            }
+        }
+    }
+    _packU32( bin, n );
+}
+
+
 #define pushU32(N)  _pushU32( bin, N )
 #define packU32(N)  _packU32( bin, N )
 #define packS32(N)  _packU32( bin, _zigZag32(N) )
+#define packU64(N)  _packU64( bin, N )
+#define packS64(N)  _packU64( bin, _zigZag64(N) )
 
 /*
   Return zero if successful or unknown data type.
@@ -255,7 +296,8 @@ static int _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
             break;
 
         case UT_LOGIC:
-            packU32( ur_logic(bi.it) );
+            if( ur_logic(bi.it) )
+                bin->ptr.b[ bin->used - 1 ] |= CTYPE_FLAG;
             break;
 
         case UT_CHAR:
@@ -263,12 +305,12 @@ static int _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
             break;
 
         case UT_INT:
-            // UR_FLAG_INT_HEX
-            packS32( ur_int(bi.it) );
+            if( ur_flags(bi.it, UR_FLAG_INT_HEX) )
+                bin->ptr.b[ bin->used - 1 ] |= CTYPE_FLAG;
+            packS64( ur_int(bi.it) );
             break;
 
         case UT_DECIMAL:
-        case UT_BIGNUM:
         case UT_TIME:
         case UT_DATE:
             _pushU64( bin, (uint64_t*) &ur_decimal(bi.it) );
@@ -458,7 +500,7 @@ int ur_serialize( UThread* ut, UIndex blkN, UCell* res )
     ur_arrInit( &ser.ctxAtoms, sizeof(UAtom), 0 );
 
     bin = ur_makeBinaryCell( ut, 256, res );
-    ur_binAppendData( bin, (const uint8_t*) "BOR1", 4 );
+    ur_binAppendData( bin, (const uint8_t*) "BOR2", 4 );
     _pushU32( bin, 0 );     // Reserve atoms offset.
     _pushU32( bin, 0 );     // Reserve buffer count.
     _mapBuffer( &ser, blkN );
@@ -661,10 +703,33 @@ static uint32_t _unpackU32( BinaryIter* bi )
 }
 
 
+static uint64_t _unpackU64( BinaryIter* bi )
+{
+    uint64_t n;
+    int p = bi->it[0];
+    if( p > PACK_5 )
+    {
+        ++bi->it;
+        if( p == PACK_5 + 0x3f )
+            n = _unpackU32( bi );
+        else
+            n = p & 0x3f;
+        n <<= 32;
+    }
+    else
+    {
+        n = 0;
+    }
+    return n + _unpackU32( bi );
+}
+
+
 #define pull8(N)        N = *bi->it++
 #define pullU32(N)      N = _pullU32(bi)
 #define unpackU32(N)    N = _unpackU32(bi)
 #define unpackS32(N)    N = _undoZigZag32( _unpackU32(bi) )
+#define unpackU64(N)    N = _unpackU64(bi)
+#define unpackS64(N)    N = _undoZigZag64( _unpackU64(bi) )
 
 /*
   Returns non-zero if successful
@@ -683,12 +748,12 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
             return 0;
 
         n = *bi->it++;
-        type = n & 0x7f;
+        type = n & CTYPE_MASK;
         if( type > UT_ERROR )
             return 0;
 
         ur_setId( cell, type );
-        if( n & 0x80 )
+        if( n & CTYPE_SOL )
             ur_setFlags( cell, UR_FLAG_SOL );
 
         switch( type )
@@ -709,7 +774,7 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
             break;
 
         case UT_LOGIC:
-            unpackU32( ur_logic(cell) );
+            ur_logic(cell) = (n & CTYPE_FLAG) ? 1 : 0;
             break;
 
         case UT_CHAR:
@@ -717,11 +782,12 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
             break;
             
         case UT_INT:
-            unpackS32( ur_int(cell) );
+            if( n & CTYPE_FLAG )
+                ur_setFlags( cell, UR_FLAG_INT_HEX );
+            unpackS64( ur_int(cell) );
             break;
 
         case UT_DECIMAL:
-        case UT_BIGNUM:
         case UT_TIME:
         case UT_DATE:
             _pullU64( bi, (uint64_t*) &ur_decimal(cell) );
@@ -750,7 +816,7 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
         case UT_TIMECODE:
             pull8( n );
             if( n )
-                ur_setFlags(cell, UR_FLAG_TIMECODE_DF );
+                ur_setFlags( cell, UR_FLAG_TIMECODE_DF );
         {
             int16_t* np = cell->coord.n;
             int16_t* nend = np + 4;
@@ -827,7 +893,7 @@ int ur_serializedHeader( const uint8_t* data, int len )
     if( len > 12 )
     {
         return data[0] == 'B' && data[1] == 'O' && data[2] == 'R' &&
-               data[3] == '1' && data[12] == UT_BLOCK;
+               data[3] == '2' && data[12] == UT_BLOCK;
     }
     return 0;
 }

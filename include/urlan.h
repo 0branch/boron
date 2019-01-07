@@ -1,7 +1,7 @@
 #ifndef URLAN_H
 #define URLAN_H
 /*
-  Copyright 2009-2015 Karl Robillard
+  Copyright 2009-2015,2019 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -178,8 +178,11 @@ UCellDatatype;
 typedef struct
 {
     UCellId  id;
-    int32_t  i;
-    double   d;         /* On 8 byte boundary. */
+    int32_t  i32;
+    union {
+        int64_t  i64;
+        double   d;
+    } eb;
 }
 UCellNumber;
 
@@ -673,8 +676,9 @@ UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
 #define ur_atom(c)          (c)->word.atom
 #define ur_datatype(c)      (c)->datatype.n
 #define ur_logic(c)         (c)->id.ext
-#define ur_int(c)           (c)->number.i
-#define ur_decimal(c)       (c)->number.d
+#define ur_char(c)          (c)->number.eb.i64
+#define ur_int(c)           (c)->number.eb.i64
+#define ur_decimal(c)       (c)->number.eb.d
 
 #define ur_isWordType(t)    ((t) >= UT_WORD && (t) <= UT_OPTION)
 #define ur_binding(c)       (c)->word.binding
