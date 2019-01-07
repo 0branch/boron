@@ -520,7 +520,7 @@ void boron_overrideCFunc( UThread* ut, const char* name, BoronCFunc func )
 
 static const char setupScript[] =
     "environs: make context! [\n"
-    "  version: 0,3,3\n"
+    "  version: 1,99,1\n"
     "  os: '" OS_WORD " arch: '" ARCH_WORD " big-endian: " ARCH_BIG
     "]\n"
     "q: :quit  yes: true  no: false\n"
