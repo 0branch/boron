@@ -1,3 +1,7 @@
+print "---- Do various types"
+probe do [1 2 3]
+probe type? do 'hi
+
 print "---- Do get-word!"
 probe do :gwval
 gwval: 2

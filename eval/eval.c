@@ -1241,8 +1241,9 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
     return ++it;
 
 unbound:
-    return cp_error( ut, UR_ERR_SCRIPT, "Unbound word '%s",
-                     ur_atomCStr(ut, it->word.atom) );
+    return UR_THROW;
+    //return cp_error( ut, UR_ERR_SCRIPT, "Unbound word '%s",
+    //                 ur_atomCStr(ut, it->word.atom) );
 }
 
 
@@ -1364,8 +1365,6 @@ UCell* boron_reduceBlock( UThread* ut, const UCell* blkC, UCell* res )
 }
 
 
-CFUNC_PUB( cf_load );
-
 /*
   -cf-
     do
@@ -1373,7 +1372,7 @@ CFUNC_PUB( cf_load );
     return: Result of value.
     group: eval
 */
-CFUNC_PUB( cf_do )
+CFUNC_PUB( cfunc_do )
 {
     // NOTE: This is an FO_eval function.
     const UCell* it  = evalPos(a1);
@@ -1381,6 +1380,7 @@ CFUNC_PUB( cf_do )
 
     if( ! (it = boron_eval1( ut, it, end, res )) )
         return UR_THROW;
+    evalPos(a1) = it;
 
     switch( ur_type(res) )
     {
@@ -1389,8 +1389,9 @@ CFUNC_PUB( cf_do )
             const UCell* cell;
             if( ! (cell = boron_wordValue( ut, res )) )
             {
-                return ur_error( ut, UR_ERR_SCRIPT, "Unbound word '%s",
-                                 ur_atomCStr(ut, res->word.atom) );
+                return UR_THROW;
+                //return ur_error( ut, UR_ERR_SCRIPT, "Unbound word '%s",
+                //                 ur_atomCStr(ut, res->word.atom) );
                 //goto traceError;
             }
             if( ur_is(cell, UT_CFUNC) )
@@ -1403,9 +1404,6 @@ CFUNC_PUB( cf_do )
                 it = boron_call( ut, cell, 0, it, end, res );
                 goto end_func;
             }
-            if( ur_is(cell, UT_UNSET) )
-                return ur_error( ut, UR_ERR_SCRIPT, "Unset word '%s",
-                                 ur_atomCStr(ut, res->word.atom) );
             *res = *cell;
         }
             break;
@@ -1460,7 +1458,7 @@ CFUNC_PUB( cf_do )
                 return UR_THROW;
         }
             if( res->id.type != UT_BLOCK )
-                return UR_OK;
+                break;
             // Fall through to block...
             /* FALLTHRU */
 
