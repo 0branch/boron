@@ -26,7 +26,7 @@ int main()
 
     boron_defineCFunc( ut, UR_MAIN_CONTEXT, myFuncs, myFuncSpecs,
                        sizeof(myFuncSpecs)-1 );     // Add our cfunc!.
-    boron_doCStr( ut, "hello 3", -1 );              // Invoke it.
+    boron_evalUtf8( ut, "hello 3", -1 );            // Invoke it.
     boron_freeEnv( ut );                            // Cleanup.
     return 0;
 }

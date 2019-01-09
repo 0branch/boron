@@ -1,5 +1,5 @@
 /*
-  Copyright 2009 Karl Robillard
+  Copyright 2009,2019 Karl Robillard
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -193,6 +193,7 @@ void defineWords( UThread* ut )
 
 int main( int argc, char** argv )
 {
+    UEnvParameters envParam;
     UThread* ut;
     char cmd[ 2048 ];
     double result;
@@ -202,12 +203,15 @@ int main( int argc, char** argv )
 
     printf( "Urlan Calculator Example %s (%s)\n", UR_VERSION_STR, __DATE__ );
 
-    ut = ur_makeEnv( 256, 0, 0, 0, 0 );
+    ut = ur_makeEnv( ur_envParam(&envParam) );
     if( ! ut )
     {
         printf( "ur_makeEnv failed\n" );
         return 255;
     }
+
+    // Create stack to hold exception.
+    ur_blkAppendNew( &ut->stack, UT_UNSET );
 
     defineWords( ut );
 
@@ -233,21 +237,14 @@ int main( int argc, char** argv )
             }
             else
             {
-                UBuffer* blk = ur_errorBlock(ut);
-                if( blk->used )
-                {
-                    UBuffer str;
+                UBuffer str;
+                ur_strInit( &str, UR_ENC_UTF8, 0 );
 
-                    ur_strInit( &str, UR_ENC_UTF8, 0 );
-                    ur_toStr( ut, blk->ptr.cell, &str, 0 );
-                    ur_strTermNull( &str );
-                    printf( "%s\n", str.ptr.c );
-                    ur_strFree( &str );
+                ur_toText( ut, ur_exception( ut ), &str );
+                ur_strTermNull( &str );
+                printf( "%s\n", str.ptr.c );
 
-                    blk->used = 0;
-                }
-                else
-                    break;
+                ur_strFree( &str );
             }
         }
     }

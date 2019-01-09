@@ -484,7 +484,7 @@ extern "C" {
 #endif
 
 UEnvParameters* ur_envParam( UEnvParameters* par );
-UThread* ur_makeEnvP( const UEnvParameters* );
+UThread* ur_makeEnv( const UEnvParameters* );
 void     ur_freeEnv( UThread* );
 void     ur_freezeEnv( UThread* );
 UThread* ur_makeThread( const UThread* );
@@ -643,11 +643,6 @@ void     ur_arrErase( UBuffer*, int start, int count );
 void     ur_arrFree( UBuffer* );
 void     ur_arrAppendInt32( UBuffer*, int32_t );
 void     ur_arrAppendFloat( UBuffer*, float );
-
-/* Deprecated functions */
-UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
-                     unsigned int dtCount, unsigned int thrSize,
-                     void (*thrMethod)(UThread*,enum UThreadMethod) );
 
 #ifdef __cplusplus
 }

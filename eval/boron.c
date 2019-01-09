@@ -367,26 +367,13 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 
 
 /**
-  Add C function to the thread context.
-
-  \deprecated   boron_defineCFunc() should be used instead of this function.
+  Add C functions to context.
 
   C Function Rules:
   \li Arguments are in a held block; they are safe from garbage collection.
   \li Result is part of a held block; it is safe from garbage collection.
   \li Result will never be the same as any of the arguments.
-
-  \param func   Function.  This must return UR_OK/UR_THROW.
-  \param sig    ASCII string describing the calling signature.
-*/
-void boron_addCFunc( UThread* ut, BoronCFunc func, const char* sig )
-{
-    boron_defineCFunc( ut, UR_MAIN_CONTEXT, &func, sig, strlen(sig) );
-}
-
-
-/**
-  Add C functions to context.
+  \li Must return UR_OK/UR_THROW.
 
   \param ctxN   Context to add UT_CFUNC values to.
   \param funcs  Table of BoronCFunc pointers.
@@ -794,7 +781,7 @@ UThread* boron_makeEnvP( UEnvParameters* par )
     par->dtTable = table;
     par->dtCount = dtCount;
 
-    ut = ur_makeEnvP( par );
+    ut = ur_makeEnv( par );
     }
     if( ! ut )
         return 0;

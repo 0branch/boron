@@ -319,10 +319,6 @@ UEnvParameters* ur_envParam( UEnvParameters* par )
 
 
 /**
-  Allocate UEnv and initial UThread.  This calls ur_makeEnvP() internally.
-
-  \deprecated       ur_makeEnvP() should be used instead of this function.
-
   \param atomLimit  Maximum number of atoms.
                     Memory usage is ((12 + 12) * atomLimit) bytes.
   \param dtTable    Array of pointers to user defined datatypes.
@@ -332,42 +328,16 @@ UEnvParameters* ur_envParam( UEnvParameters* par )
                     Pass zero if no extra memory is needed.
   \param thrMethod  Callback function to initialize and cleanup threads.
                     This may be zero.
-
-  \return Pointer to initial thread.
 */
-UThread* ur_makeEnv( int atomLimit, const UDatatype** dtTable,
-                     unsigned int dtCount, unsigned int thrSize,
-                     void (*thrMethod)(UThread*, enum UThreadMethod) )
-{
-    UEnvParameters par;
-
-    ur_envParam( &par );
-
-    if( atomLimit > 0 )
-    {
-        par.atomLimit     = atomLimit;
-        par.atomNamesSize = atomLimit * 12;
-    }
-    if( dtCount > 0 )
-    {
-        par.dtCount = dtCount;
-        par.dtTable = dtTable;
-    }
-    if( thrSize > par.threadSize )
-        par.threadSize = thrSize;
-    if( thrMethod )
-        par.threadMethod = thrMethod;
-
-    return ur_makeEnvP( &par );
-}
-
 
 /**
   Allocate UEnv and initial UThread.
 
   \param par    Environment parameters.
+
+  \return Pointer to initial thread.
 */
-UThread* ur_makeEnvP( const UEnvParameters* par )
+UThread* ur_makeEnv( const UEnvParameters* par )
 {
     UEnv* env;
     UThread* ut;
