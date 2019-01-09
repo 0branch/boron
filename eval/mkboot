@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+../boron -s -e 'write %boot.bin serialize unbind load %boot.b'
+../scripts/c_binary.b boot.bin >boot.c
+rm boot.bin

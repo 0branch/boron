@@ -28,3 +28,8 @@
  195725474     121088 ./boron test/func.b
   50116616     559632 ./boron -s scripts/m2/m2 -o /tmp/Makefile
   16043855     246984 ./boron -e loop 10 [load %scripts/m2/m2]
+; serialized boot
+   1139118     108280 ./boron -e quit
+ 195693097     119024 ./boron test/func.b
+  50320636     561864 ./boron -s scripts/m2/m2 -o /tmp/Makefile
+  16010025     244936 ./boron -e loop 10 [load %scripts/m2/m2]

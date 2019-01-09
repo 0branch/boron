@@ -319,10 +319,7 @@ int boron_catchWord( UThread* ut, UAtom atom )
 */
 int boron_doVoid( UThread* ut, const UCell* blkC )
 {
-    int ok;
-    UCell* tmp;
-    tmp = ur_push(ut,UT_UNSET);     // Hold result.
-    ok = boron_doBlock( ut, blkC, tmp ) ? UR_OK : UR_THROW;
+    int ok = boron_doBlock(ut, blkC, ur_push(ut, UT_UNSET)) ? UR_OK : UR_THROW;
     ur_pop(ut);
     return ok;
 }
@@ -505,50 +502,12 @@ void boron_overrideCFunc( UThread* ut, const char* name, BoronCFunc func )
 #define ARCH_BIG  "false"
 #endif
 
+#include "boot.c"
 static const char setupScript[] =
-    "environs: make context! [\n"
-    "  version: 1,99,1\n"
+    "do bind ["
     "  os: '" OS_WORD " arch: '" ARCH_WORD " big-endian: " ARCH_BIG
-    "]\n"
-    "q: :quit  yes: true  no: false\n"
-    "eq?: :equal?\n"
-    "tail?: :empty?\n"
-    "close: :free\n"
-    "context: func [b block!] [make context! b]\n"
-    "charset: func [s char!/string!] [make bitset! s]\n"
-    "error: func [s string! /ghost] [throw make error! s]\n"
-    "join: func [a b] [\n"
-    "  a: either series? a [copy a][to-text a]\n"
-    "  append a reduce b\n"
-    "]\n"
-    "rejoin: func [b block!] [\n"
-    "  if empty? b: reduce b [return b]\n"
-    "  append either series? first b\n"
-    "    [copy first b]\n"
-    "    [to-text first b]\n"
-    "  next b\n"
-    "]\n"
-    "replace: func [series pat rep /all | f size] [\n"
-    "  size: either series? pat [size? pat][1]\n"
-    "  either all [\n"
-    "    f: series\n"
-    "    while [f: find f pat] [f: change/part f rep size]\n"
-    "  ][\n"
-    "    if f: find series pat [change/part f rep size]\n"
-    "  ]\n"
-    "  series\n"
-    "]\n"
-    "split-path: func [path | end] [\n"
-    "  either end: find/last path '/'\n"
-    "    [++ end reduce [slice path end  end]]\n"
-    "    [reduce [none path]]\n"
-    "]\n"
-    "term-dir: func [path] [terminate/dir path '/']\n"
-    "funct: func [spec body] [\n"
-    "  ifn find spec '| [append spec '|]\n"
-    "  func collect/unique/into set-word! body spec body\n"
-    "]\n"
-    "\n";
+    "] environs\n";
+
 
 /*-hf- eq?
         a
@@ -755,6 +714,7 @@ UThread* boron_makeEnvP( UEnvParameters* par )
 {
     UAtom atoms[ 13 ];
     UThread* ut;
+    UCell* res;
     unsigned int dtCount;
 
 //#define TIME_MAKEENV
@@ -853,6 +813,20 @@ UThread* boron_makeEnvP( UEnvParameters* par )
 
 
     COUNTER( timeD );
+#if 1
+    res = ut->stack.ptr.cell + 2;
+    ur_unserialize( ut, boot_data, boot_data + boot_len, res );
+    if( ! ur_is(res, UT_BLOCK) )
+        goto fail;
+    boron_bindDefault( ut, res->series.buf );
+    res = boron_doBlock( ut, res, ur_push(ut, UT_UNSET) );
+    ur_pop(ut);
+    if( ! res )
+        goto fail;
+#else
+    if( ! boron_evalUtf8( ut, boot_data, sizeof(boot_len)-1 ) )
+        goto fail;
+#endif
     if( ! boron_evalUtf8( ut, setupScript, sizeof(setupScript)-1 ) )
     {
 fail:
