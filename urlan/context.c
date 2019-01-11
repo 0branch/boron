@@ -449,7 +449,7 @@ UCell* ur_ctxAddWord( UBuffer* ctx, UAtom atom )
     entries[b] = swapTmp
 
 /**
-  Perform quicksort on UAtomEntry table.
+  Sort UAtomEntry table in ascending atom value order.
   Pass low of 0 and high of (count - 1) to sort the entire table.
 
   \param entries    Array of initialized UAtomEntry structs.
@@ -465,6 +465,18 @@ void ur_atomsSort( UAtomEntry* entries, int low, int high )
     if( low >= high )
         return;
 
+#if 1
+    // Insertion sort
+    for( j = low + 1; j <= high; ++j )
+    {
+        swapTmp = entries[ j ];
+        val = QS_VAL(j);
+        for( i = j - 1; i >= 0 && QS_VAL(i) > val; --i )
+            entries[ i+1 ] = entries[ i ];
+        entries[ i+1 ] = swapTmp;
+    }
+#else
+    // Quicksort
     val = QS_VAL(low);
     i = low;
     j = high+1;
@@ -479,6 +491,7 @@ void ur_atomsSort( UAtomEntry* entries, int low, int high )
     QS_SWAP( low, j );
     ur_atomsSort( entries, low, j-1 );
     ur_atomsSort( entries, j+1, high );
+#endif
 }
 
 

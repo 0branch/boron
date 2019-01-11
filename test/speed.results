@@ -18,3 +18,13 @@
  195445039     121104 ./boron test/func.b
   51180209     554800 ./boron -s scripts/m2/m2 -o /tmp/Makefile
   16213017     247000 ./boron -e loop 10 [load %scripts/m2/m2]
+; boron2 b4ec255
+   1351876     111192 ./boron -e quit
+ 195906508     121088 ./boron test/func.b
+  50562257     559632 ./boron -s scripts/m2/m2 -o /tmp/Makefile
+  16223222     246984 ./boron -e loop 10 [load %scripts/m2/m2]
+; ur_atomsSort() insertion sort
+   1171630     111192 ./boron -e quit
+ 195725474     121088 ./boron test/func.b
+  50116616     559632 ./boron -s scripts/m2/m2 -o /tmp/Makefile
+  16043855     246984 ./boron -e loop 10 [load %scripts/m2/m2]
