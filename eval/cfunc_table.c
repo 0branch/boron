@@ -143,6 +143,7 @@ DEF_CF( cfunc_collect,    "collect type datatype! a block!/paren!"
 DEF_CF( cfunc_construct,  "construct s b\n" )
 DEF_CF( cfunc_sleep,      "sleep n\n" )
 DEF_CF( cfunc_wait,       "wait b\n" )
+DEF_CF( cfunc_format,     "format s block! a\n" )
 
 #ifdef CONFIG_SOCKET
     DEF_CF( cfunc_set_addr,   "set-addr p host\n" )

@@ -1,0 +1,11 @@
+---- int! & string!
+  | cookies    30    Joe Smith    |
+  | cake       102   Sally M. Longshanks |
+  | tea        5     Fred         |
+---- pad
+some/file...........01:22:03
+some/other/file.....00:04:45
+---- coord! & non-block values
+ value(a );
+ value(0xFE);
+ value(more);

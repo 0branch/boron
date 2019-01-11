@@ -352,6 +352,7 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 #include "encode.c"
 #include "sort.c"
 #include "cfunc.c"
+#include "format.c"
 #include "eval.c"
 
 #ifdef CONFIG_THREAD
