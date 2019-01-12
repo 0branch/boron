@@ -533,7 +533,7 @@ void     ur_bindCells( UThread*, UCell* it, UCell* end, const UBindTarget* bt );
 void     ur_bindCopy( UThread*, const UBuffer* ctx, UCell* it, UCell* end );
 void     ur_unbindCells( UThread*, UCell* it, UCell* end, int deep );
 void     ur_infuse( UThread*, UCell* it, UCell* end, const UBuffer* ctx );
-int      ur_isTrue( const UCell* cell );
+int      ur_true( const UCell* cell );
 int      ur_same( UThread*, const UCell* a, const UCell* b );
 int      ur_equal( UThread*, const UCell* a, const UCell* b );
 int      ur_equalCase( UThread*, const UCell* a, const UCell* b );

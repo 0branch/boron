@@ -1043,7 +1043,7 @@ void ur_appendTrace( UThread* ut, UIndex blkN, UIndex it )
 /**
   \return Non-zero if cell is not none! or false.
 */
-int ur_isTrue( const UCell* cell )
+int ur_true( const UCell* cell )
 {
     int t = ur_type(cell);
     if( t == UT_LOGIC )

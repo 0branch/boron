@@ -1088,7 +1088,7 @@ CFUNC(cfunc_not)
 {
     (void) ut;
     ur_setId(res, UT_LOGIC);
-    if( ! ur_isTrue(a1) )
+    if( ! ur_true(a1) )
         ur_logic(res) = 1;
     return UR_OK;
 }
@@ -1106,7 +1106,7 @@ CFUNC(cfunc_not)
 */
 CFUNC(cfunc_if)
 {
-    if( ur_isTrue(a1) )
+    if( ur_true(a1) )
     {
         UCell* bc = a2;
         if( ur_is(bc, UT_BLOCK) )
@@ -1131,7 +1131,7 @@ CFUNC(cfunc_if)
 */
 CFUNC(cfunc_ifn)
 {
-    if( ! ur_isTrue(a1) )
+    if( ! ur_true(a1) )
     {
         UCell* bc = a2;
         if( ur_is(bc, UT_BLOCK) )
@@ -1155,7 +1155,7 @@ CFUNC(cfunc_ifn)
 */
 CFUNC(cfunc_either)
 {
-    UCell* bc = ur_isTrue(a1) ? a2 : a3;
+    UCell* bc = ur_true(a1) ? a2 : a3;
     if( ur_is(bc, UT_BLOCK) )
         return boron_doBlock( ut, bc, res ) ? UR_OK : UR_THROW;
     *res = *bc;
@@ -1180,7 +1180,7 @@ CFUNC(cfunc_while)
     {
         if( ! boron_doBlock( ut, a1, res ) )
             return UR_THROW;
-        if( ! ur_isTrue(res) )
+        if( ! ur_true(res) )
             break;
         if( ! boron_doBlock( ut, body, res ) )
         {
@@ -1397,7 +1397,7 @@ CFUNC(cfunc_case)
         bi.it = boron_eval1( ut, bi.it, bi.end, res );
         if( ! bi.it )
             return UR_THROW;
-        if( ur_isTrue( res ) )
+        if( ur_true( res ) )
         {
             if( bi.it == bi.end )
                 break;
@@ -3071,7 +3071,7 @@ loop:
         si.buf = ur_bufferSer( sarg );
         si.end = _sliceEnd( si.buf, sarg );
 
-        if( remove && ur_isTrue(res) )
+        if( remove && ur_true(res) )
         {
             si.it  -= remove;
             si.end -= remove;
@@ -3205,7 +3205,7 @@ CFUNC(cfunc_all)
         bi.it = boron_eval1( ut, bi.it, bi.end, res );
         if( ! bi.it )
             return UR_THROW;
-        if( ! ur_isTrue( res ) )
+        if( ! ur_true( res ) )
             return UR_OK;
     }
 
@@ -3234,7 +3234,7 @@ CFUNC(cfunc_any)
         bi.it = boron_eval1( ut, bi.it, bi.end, res );
         if( ! bi.it )
             return UR_THROW;
-        if( ur_isTrue( res ) )
+        if( ur_true( res ) )
             return UR_OK;
     }
 
