@@ -1,0 +1,15 @@
+			Boron Change Log
+
+V2.0.0 - 1 Feb 2019
+
+  * Evaluator rewritten to use the stack more efficiently.
+  * Func creates local variables for set-word! values.  Added /extern option
+    to preserve any external bindings.
+  * Changed int! datatype to be 64 bits.
+  * Renamed decimal! datatype to double!.
+  * Added hash-map! datatype.
+  * Added format & setenv functions.
+  * Removed big-num! datatype.  The type slot is kept so a full implementation
+    could be added in the future.
+  * Change serialized format ID to BOR2.  This handles 64-bit int!, hash-map!,
+    and stores logic! with one less byte.

@@ -1,0 +1,48 @@
+# Boron Install Makefile for Linux & Mac
+# This assumes the shared library was configured and built.
+
+OS := $(shell uname)
+DESTDIR ?= /usr/local
+
+VER=2.0.0
+BDIR=.
+BIN_DIR=$(DESTDIR)/bin
+LIB_DIR=$(DESTDIR)/lib
+INC_DIR=$(DESTDIR)/include/boron
+
+ifneq ($(OS), Darwin)
+ifeq ($(shell file -b /usr/lib64), directory)
+LIB_DIR=$(DESTDIR)/lib64
+endif
+endif
+
+.PHONY: install uninstall
+
+install:
+	mkdir -p $(BIN_DIR) $(INC_DIR) $(LIB_DIR)
+	sed -e 's~"urlan.h"~<boron/urlan.h>~' $(BDIR)/include/boron.h >temp.h
+ifeq ($(OS), Darwin)
+	install_name_tool -id $(LIB_DIR)/libboron.dylib $(BDIR)/libboron.dylib
+	install_name_tool -change libboron.dylib $(LIB_DIR)/libboron.dylib $(BDIR)/boron
+endif
+	install -s -m 755 $(BDIR)/boron $(BIN_DIR)
+	install -m 644 temp.h $(INC_DIR)/boron.h
+	install -m 644 $(BDIR)/include/urlan.h        $(INC_DIR)
+	install -m 644 $(BDIR)/include/urlan_atoms.h  $(INC_DIR)
+ifeq ($(OS), Darwin)
+	install -m 644 $(BDIR)/libboron.dylib $(LIB_DIR)
+else
+	install -m 755 -s $(BDIR)/libboron.so.$(VER) $(LIB_DIR)
+	ln -s libboron.so.$(VER) $(LIB_DIR)/libboron.so
+	ln -s libboron.so.$(VER) $(LIB_DIR)/libboron.so.2
+endif
+
+uninstall:
+	rm $(BIN_DIR)/boron
+ifeq ($(OS), Darwin)
+	rm $(LIB_DIR)/libboron.dylib
+else
+	rm $(LIB_DIR)/libboron.so $(LIB_DIR)/libboron.so.2 $(LIB_DIR)/libboron.so.$(VER)
+endif
+	rm $(INC_DIR)/boron.h $(INC_DIR)/urlan.h $(INC_DIR)/urlan_atoms.h
+	rmdir $(INC_DIR)
