@@ -13,11 +13,13 @@ case `uname` in
 	*) DIFF='diff -a';;
 esac
 
+RC=0
 for FILE in $*
 do
 	echo Test: $FILE
 	GOOD=${FILE%.*}.good
 	OUT=${FILE%.*}.out
 	$INTERPRETER -s $FILE >$OUT
-	${DIFF} $OUT $GOOD
+	${DIFF} $OUT $GOOD || RC=1
 done
+exit $RC
