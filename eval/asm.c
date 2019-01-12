@@ -150,7 +150,7 @@ static jit_type_t _jitType( const UCell* cell )
             case UR_ATOM_F32:   return jit_type_float32;
             case UR_ATOM_F64:   return jit_type_float64;
             case UT_INT:        return jit_type_int;
-            case UT_DECIMAL:    return jit_type_float64;
+            case UT_DOUBLE:     return jit_type_float64;
         }
     }
     return 0;
@@ -251,9 +251,9 @@ static jit_value_t _asmNextValue( const Assembler* as, UBlockIter* bi )
         case UT_INT:
             return jit_value_create_nint_constant( as->jf, jit_type_int,
                                                    ur_int(bi->it) );
-        case UT_DECIMAL:
+        case UT_DOUBLE:
             return jit_value_create_float64_constant( as->jf, jit_type_float64,
-                                                      ur_decimal(bi->it) );
+                                                      ur_double(bi->it) );
         case UT_WORD:
         {
             const UCell* arg;
@@ -286,9 +286,9 @@ static jit_value_t _asmNextValue( const Assembler* as, UBlockIter* bi )
                 case UT_INT:
                     return jit_value_create_nint_constant( as->jf,
                                 jit_type_int, ur_int(arg) );
-                case UT_DECIMAL:
+                case UT_DOUBLE:
                     return jit_value_create_float64_constant( as->jf,
-                                jit_type_float64, ur_decimal(arg) );
+                                jit_type_float64, ur_double(arg) );
             }
         }
             break;
@@ -574,8 +574,8 @@ static int _asmCall( UThread* ut, UCellFunc* fcell, UCell* blkC, UCell* res )
             break;
 
         case JIT_TYPE_FLOAT64:
-            ur_setId(res, UT_DECIMAL);
-            jitRet = &ur_decimal(res);
+            ur_setId(res, UT_DOUBLE);
+            jitRet = &ur_double(res);
             break;
 
         default:
@@ -640,8 +640,8 @@ static int _asmCall( UThread* ut, UCellFunc* fcell, UCell* blkC, UCell* res )
                         case UT_INT:
                             jitArgs[ ja ] = &ur_int(it - 1);
                             break;
-                        case UT_DECIMAL:
-                            jitArgs[ ja ] = &ur_decimal(it - 1);
+                        case UT_DOUBLE:
+                            jitArgs[ ja ] = &ur_double(it - 1);
                             break;
                     }
                     ++ja;

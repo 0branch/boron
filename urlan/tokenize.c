@@ -646,9 +646,9 @@ enum TokenOps
     BLK,    // "[("     UT_BLOCK, UT_PAREN
     BLK_E,  // "])"     End block
     LIT,    //  '       UT_LITWORD, UT_LITPATH, UT_CHAR
-    SIGN,   // "+-"     UT_INT, UT_DECIMAL, UT_VEC3, UT_COORD, UT_WORD
+    SIGN,   // "+-"     UT_INT, UT_DOUBLE, UT_VEC3, UT_COORD, UT_WORD
     ZERO,   // 0        Hex number, NUM
-    NUM,    // 1-9      UT_INT, UT_DECIMAL, UT_VEC3, UT_COORD, UT_DATE, UT_TIME
+    NUM,    // 1-9      UT_INT, UT_DOUBLE, UT_VEC3, UT_COORD, UT_DATE, UT_TIME
     HEX,    //  $       UT_INT, UT_COORD
     FIL,    //  %       UT_FILE
     COLON,  //  :       UT_GETWORD
@@ -1076,17 +1076,17 @@ number:
                 {
                 case '-':
                     cell = ur_blkAppendNew( blk, UT_DATE );
-                    ur_decimal(cell) = ur_stringToDate( token, end, &it );
+                    ur_double(cell) = ur_stringToDate( token, end, &it );
                     if( it == token )
                     {
                         syntaxErrorT( "Invalid date" );
                     }
                     break;
-                case '.':   // UT_DECIMAL, UT_VEC3
+                case '.':   // UT_DOUBLE, UT_VEC3
                 case 'e':
                 case 'E':
-                    cell = ur_blkAppendNew( blk, UT_DECIMAL );
-                    ur_decimal(cell) = str_toDouble( token, end, &it );
+                    cell = ur_blkAppendNew( blk, UT_DOUBLE );
+                    ur_double(cell) = str_toDouble( token, end, &it );
                     if( (it != end) && (*it == ',') )
                     {
                         ur_type(cell) = UT_VEC3;
@@ -1103,7 +1103,7 @@ number:
                     }
 #endif
                     cell = ur_blkAppendNew( blk, UT_TIME );
-                    ur_decimal(cell) = str_toTime( token, end, &it );
+                    ur_double(cell) = str_toTime( token, end, &it );
                     break;
                 case ',':
                     cell = ur_blkAppendNew( blk, UT_COORD );

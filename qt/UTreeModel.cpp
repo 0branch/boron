@@ -52,8 +52,8 @@ static QVariant cellToVariant( const UCell* cell )
             return QChar( ur_int(cell) );
         case UT_INT:
             return ur_int(cell);
-        case UT_DECIMAL:
-            return ur_decimal(cell);
+        case UT_DOUBLE:
+            return ur_double(cell);
         default:
             return qstring( cell );
     }

@@ -647,14 +647,14 @@ CFUNC_PUB( cfunc_sleep )
             msec = ur_int(a1) * 1000;
             break;
 
-        case UT_DECIMAL:
+        case UT_DOUBLE:
         case UT_TIME:
-            msec = (DWORD) (ur_decimal(a1) * 1000.0);
+            msec = (DWORD) (ur_double(a1) * 1000.0);
             break;
 
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                             "sleep expected int!/decimal!/time!" );
+                             "sleep expected int!/double!/time!" );
     }
 
     Sleep( msec );

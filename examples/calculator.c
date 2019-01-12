@@ -39,8 +39,8 @@ int calc_eval( UThread* ut, UCell* cell, double* res )
             const UCell* val = ur_wordCell( ut, cell );
             if( ! val )
                 return UR_THROW;
-            if( ur_is(val, UT_DECIMAL) )
-                *res = ur_decimal(val);
+            if( ur_is(val, UT_DOUBLE) )
+                *res = ur_double(val);
             else if( ur_is(val, UT_INT) || ur_is(val, UT_CHAR) )
                 *res = (double) ur_int(val);
             else
@@ -51,8 +51,8 @@ int calc_eval( UThread* ut, UCell* cell, double* res )
         }
             break;
 
-        case UT_DECIMAL:
-            *res = ur_decimal(cell);
+        case UT_DOUBLE:
+            *res = ur_double(cell);
             break;
 
         case UT_INT:
@@ -111,8 +111,8 @@ int calc_eval( UThread* ut, UCell* cell, double* res )
                     cell = ur_wordCellM( ut, bi.it );
                     if( ! cell )
                         return UR_THROW;
-                    ur_setId( cell, UT_DECIMAL );
-                    ur_decimal(cell) = num;
+                    ur_setId( cell, UT_DOUBLE );
+                    ur_double(cell) = num;
                 }
                 else
                 {
@@ -184,8 +184,8 @@ void defineWords( UThread* ut )
     for( i = 0; i < 2; ++i )
     {
         cell = ur_ctxAddWord( ctx, atoms[i] );
-        ur_setId( cell, UT_DECIMAL );
-        ur_decimal(cell) = constants[i];
+        ur_setId( cell, UT_DOUBLE );
+        ur_double(cell) = constants[i];
     }
     ur_ctxSort( ctx );
 }

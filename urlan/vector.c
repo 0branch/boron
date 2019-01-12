@@ -192,14 +192,14 @@ init:
         buf->used = 1;
         return UR_OK;
     }
-    else if( ur_is(from, UT_DECIMAL) )
+    else if( ur_is(from, UT_DOUBLE) )
     {
         buf = ur_makeVectorCell( ut, UR_VEC_F32, 1, res );
-        buf->ptr.f[ 0 ] = ur_decimal(from);
+        buf->ptr.f[ 0 ] = ur_double(from);
         goto init;
     }
     return ur_error( ut, UR_ERR_TYPE,
-                     "convert vector! expected int!/decimal!" );
+                     "convert vector! expected int!/double!" );
 }
 
 
@@ -340,13 +340,13 @@ void vector_pick( const UBuffer* buf, UIndex n, UCell* res )
                 break;
 
             case UR_VEC_F32:
-                ur_setId(res, UT_DECIMAL);
-                ur_decimal(res) = buf->ptr.f[ n ];
+                ur_setId(res, UT_DOUBLE);
+                ur_double(res) = buf->ptr.f[ n ];
                 break;
 
             case UR_VEC_F64:
-                ur_setId(res, UT_DECIMAL);
-                ur_decimal(res) = buf->ptr.d[ n ];
+                ur_setId(res, UT_DOUBLE);
+                ur_double(res) = buf->ptr.d[ n ];
                 break;
         } 
     }
@@ -510,8 +510,8 @@ void vector_poke( UBuffer* buf, UIndex n, const UCell* val )
 {
     if( n > -1 && n < buf->used )
     {
-        if( ur_is(val, UT_DECIMAL) )
-            vector_pokeDouble( buf, n, ur_decimal(val) );
+        if( ur_is(val, UT_DOUBLE) )
+            vector_pokeDouble( buf, n, ur_double(val) );
         else if( ur_is(val, UT_CHAR) || ur_is(val, UT_INT) )
             vector_pokeInt( buf, n, ur_int(val) );
         else if( ur_is(val, UT_VEC3) )
@@ -545,9 +545,9 @@ int vector_append( UThread* ut, UBuffer* buf, const UCell* val )
             vector_pokeInt( buf, buf->used++, ur_int(val) );
             break;
 
-        case UT_DECIMAL:
+        case UT_DOUBLE:
             ur_arrReserve( buf, buf->used + 1 );
-            vector_pokeDouble( buf, buf->used++, ur_decimal(val) );
+            vector_pokeDouble( buf, buf->used++, ur_double(val) );
             break;
 
         case UT_VEC3:
@@ -593,7 +593,7 @@ int vector_append( UThread* ut, UBuffer* buf, const UCell* val )
 
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                 "append vector! expected char!/int!/decimal!/vec3!/binary!/vector!" );
+                 "append vector! expected char!/int!/double!/vec3!/binary!/vector!" );
     }
     return UR_OK;
 }
@@ -613,9 +613,9 @@ int vector_insert( UThread* ut, UBuffer* buf, UIndex index,
             vector_pokeInt( buf, buf->used++, ur_int(val) );
             break;
 
-        case UT_DECIMAL:
+        case UT_DOUBLE:
             ur_arrReserve( buf, buf->used + 1 );
-            vector_pokeDouble( buf, buf->used++, ur_decimal(val) );
+            vector_pokeDouble( buf, buf->used++, ur_double(val) );
             break;
 
         case UT_VEC3:
@@ -646,7 +646,7 @@ int vector_insert( UThread* ut, UBuffer* buf, UIndex index,
 #endif
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                 "insert vector! expected char!/int!/decimal!/vec3!/vector!" );
+                 "insert vector! expected char!/int!/double!/vec3!/vector!" );
     }
     return UR_OK;
 }
@@ -709,7 +709,7 @@ int vector_change( UThread* ut, USeriesIterM* si, const UCell* val,
     }
 #endif
     return ur_error( ut, UR_ERR_TYPE,
-                     "change vector! expected char!/int!/decimal!/vector!" );
+                     "change vector! expected char!/int!/double!/vector!" );
 }
 
 
@@ -746,9 +746,9 @@ static int intValue( const UCell* cell, uint32_t* n )
         *n = ur_int(cell);
         return 1;
     }
-    if( type == UT_DECIMAL )
+    if( type == UT_DOUBLE )
     {
-        *n = (uint32_t) ur_decimal(cell);
+        *n = (uint32_t) ur_double(cell);
         return 1;
     }
     return 0;
@@ -764,9 +764,9 @@ static int floatValue( const UCell* cell, double* n )
         *n = (double) ur_int(cell);
         return 1;
     }
-    if( type == UT_DECIMAL )
+    if( type == UT_DOUBLE )
     {
-        *n = ur_decimal(cell);
+        *n = ur_double(cell);
         return 1;
     }
     return 0;

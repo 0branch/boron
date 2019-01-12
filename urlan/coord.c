@@ -62,9 +62,9 @@ static int coord_make( UThread* ut, const UCell* from, UCell* res )
                 if( ++len == UR_COORD_MAX )
                     goto set_len;
             }
-            else if( ur_is(cell, UT_DECIMAL) )
+            else if( ur_is(cell, UT_DOUBLE) )
             {
-                res->coord.n[ len ] = (int16_t) ur_decimal(cell);
+                res->coord.n[ len ] = (int16_t) ur_double(cell);
                 if( ++len == UR_COORD_MAX )
                     goto set_len;
             }

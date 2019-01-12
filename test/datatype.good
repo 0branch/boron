@@ -1,5 +1,5 @@
 ---- tokenize
-datatype! int!/decimal!/word!
+datatype! int!/double!/word!
 ---- type test
 false
 false

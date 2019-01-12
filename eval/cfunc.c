@@ -711,8 +711,8 @@ CFUNC(name) { \
 
 /*-cf-
     add
-        a   int!/decimal!/vec3!
-        b   int!/decimal!/vec3!/block!
+        a   int!/double!/vec3!
+        b   int!/double!/vec3!/block!
     return: Sum of two numbers.
     group: math
 
@@ -722,30 +722,30 @@ CFUNC(name) { \
 */
 /*-cf-
     sub
-        a   int!/decimal!/vec3!
-        b   int!/decimal!/vec3!/block!
+        a   int!/double!/vec3!
+        b   int!/double!/vec3!/block!
     return: Difference of two numbers.
     group: math
 */
 /*-cf-
     mul
-        a   int!/decimal!/vec3!
-        b   int!/decimal!/vec3!/block!
+        a   int!/double!/vec3!
+        b   int!/double!/vec3!/block!
     return: Product of two numbers.
     group: math
 */
 /*-cf-
     div
-        a   int!/decimal!/vec3!
-        b   int!/decimal!/vec3!
+        a   int!/double!/vec3!
+        b   int!/double!/vec3!
     return: Quotient of a divided by b.
     group: math
     see: mod
 */
 /*-cf-
     mod
-        a   int!/decimal!/coord!
-        b   int!/decimal!/coord!
+        a   int!/double!/coord!
+        b   int!/double!/coord!
     return: Remainder of a divided by b.
     group: math
     see: div
@@ -818,7 +818,7 @@ CFUNC(cfunc_maximum)
 
 /*-cf-
     abs
-        n   int!/decimal!/time!
+        n   int!/double!/time!
     return: Absolute value of n.
     group: math
 */
@@ -832,10 +832,10 @@ CFUNC(cfunc_abs)
             ur_int(res) = abs( ur_int(a1) );
             break;
 
-        case UT_DECIMAL:
+        case UT_DOUBLE:
         case UT_TIME:
             ur_setId(res, type);
-            ur_decimal(res) = fabs( ur_decimal(a1) );
+            ur_double(res) = fabs( ur_double(a1) );
             break;
 
         default:
@@ -848,37 +848,37 @@ CFUNC(cfunc_abs)
 static int _mathFunc( const UCell* a1, UCell* res, double (*func)(double) )
 {
     double n;
-    if( ur_is(a1, UT_DECIMAL) )
-        n = ur_decimal(a1);
+    if( ur_is(a1, UT_DOUBLE) )
+        n = ur_double(a1);
     else //if( ur_is(a1, UT_INT) )
         n = (double) ur_int(a1);
-    ur_setId(res, UT_DECIMAL);
-    ur_decimal(res) = func( n );
+    ur_setId(res, UT_DOUBLE);
+    ur_double(res) = func( n );
     return UR_OK;
 }
 
 
 /*-cf-
     sqrt
-        n   int!/decimal!
+        n   int!/double!
     return: Square root of number.
     group: math
 */
 /*-cf-
     cos
-        n   int!/decimal!
+        n   int!/double!
     return: Cosine of number.
     group: math
 */
 /*-cf-
     sin
-        n   int!/decimal!
+        n   int!/double!
     return: Sine of number.
     group: math
 */
 /*-cf-
     atan
-        n   int!/decimal!
+        n   int!/double!
     return: Arc tangent of number.
     group: math
 */
@@ -1519,8 +1519,8 @@ CFUNC(cfunc_2plus)
     }
     else if( ur_is(cell, UT_INT) )
         ur_int(cell) += 1;
-    else if( ur_is(cell, UT_DECIMAL) )
-        ur_decimal(cell) += 1.0;
+    else if( ur_is(cell, UT_DOUBLE) )
+        ur_double(cell) += 1.0;
     else
         goto bad_arg;
     return UR_OK;
@@ -1556,8 +1556,8 @@ CFUNC(cfunc_2minus)
     }
     else if( ur_is(cell, UT_INT) )
         ur_int(cell) -= 1;
-    else if( ur_is(cell, UT_DECIMAL) )
-        ur_decimal(cell) -= 1.0;
+    else if( ur_is(cell, UT_DOUBLE) )
+        ur_double(cell) -= 1.0;
     else
         goto bad_arg;
     return UR_OK;
@@ -2735,7 +2735,7 @@ CFUNC(cfunc_complement)
 
 /*-cf-
     negate
-        value   int!/decimal!/time!/coord!/vec3!/bitset!
+        value   int!/double!/time!/coord!/vec3!/bitset!
     return: Negated value.
     group: data
     see: complement, not
@@ -2750,10 +2750,10 @@ CFUNC( cfunc_negate )
             ur_int(res) = -ur_int(a1);
             break;
 
-        case UT_DECIMAL:
+        case UT_DOUBLE:
         case UT_TIME:
             ur_setId(res, type);
-            ur_decimal(res) = -ur_decimal(a1);
+            ur_double(res) = -ur_double(a1);
             break;
 
         case UT_COORD:
@@ -3498,7 +3498,7 @@ set_logic:
                 ++cell;
 
                 ur_setId(cell, UT_DATE);
-                ur_decimal(cell) = info.modified;
+                ur_double(cell) = info.modified;
                 ++cell;
 
                 *cell++ = *a1;
@@ -4418,7 +4418,7 @@ CFUNC(cfunc_ltQ)
 
 /*-cf-
     zero?
-        value   int!/char!/decimal!
+        value   int!/char!/double!
     return: logic!
     group: math
 
@@ -4431,8 +4431,8 @@ CFUNC(cfunc_zeroQ)
 
     if( ur_is(a1, UT_INT) || ur_is(a1, UT_CHAR) )
         logic = ur_int(a1) ? 0 : 1; 
-    else if( ur_is(a1, UT_DECIMAL) )
-        logic = ur_decimal(a1) ? 0 : 1; 
+    else if( ur_is(a1, UT_DOUBLE) )
+        logic = ur_double(a1) ? 0 : 1; 
     else
         logic = 0;
 
@@ -4825,7 +4825,7 @@ CFUNC(cfunc_now)
         ur_setId(res, UT_DATE);
     else
         ur_setId(res, UT_TIME);
-    ur_decimal(res) = ur_now();
+    ur_double(res) = ur_now();
     return UR_OK;
 }
 

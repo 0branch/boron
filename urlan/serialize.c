@@ -314,10 +314,10 @@ static int _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
             packS64( ur_int(bi.it) );
             break;
 
-        case UT_DECIMAL:
+        case UT_DOUBLE:
         case UT_TIME:
         case UT_DATE:
-            _pushU64( bin, (uint64_t*) &ur_decimal(bi.it) );
+            _pushU64( bin, (uint64_t*) &ur_double(bi.it) );
             break;
 
         case UT_COORD:
@@ -814,10 +814,10 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
             unpackS64( ur_int(cell) );
             break;
 
-        case UT_DECIMAL:
+        case UT_DOUBLE:
         case UT_TIME:
         case UT_DATE:
-            _pullU64( bi, (uint64_t*) &ur_decimal(cell) );
+            _pullU64( bi, (uint64_t*) &ur_double(cell) );
             break;
 
         case UT_COORD:

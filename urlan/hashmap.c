@@ -344,10 +344,10 @@ uint32_t ur_hashCell( UThread* ut, const UCell* val )
             b = a + sizeof(int64_t);
             goto hash_mem;
 
-        case UT_DECIMAL:
+        case UT_DOUBLE:
         case UT_TIME:
         case UT_DATE:
-            a = (uint8_t*) &ur_decimal(val);
+            a = (uint8_t*) &ur_double(val);
             b = a + sizeof(double);
             goto hash_mem;
 

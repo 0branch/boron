@@ -20,7 +20,7 @@ x > 4
 75025
 ---- argument validation
 3
-Datatype Error: Unexpected decimal! for argument 1
+Datatype Error: Unexpected double! for argument 1
 Trace:
  -> af 2.0
 ---- literal arguments

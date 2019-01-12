@@ -1,10 +1,10 @@
 print "---- tokenize"
-a: int!/decimal!/word!
+a: int!/double!/word!
 print [type? a a]
 
 
 print "---- type test"
-print same? a int!/decimal!
+print same? a int!/double!
 print equal? a 4
 print equal? a type? 4
 print equal? a type? "str"

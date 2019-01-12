@@ -195,12 +195,8 @@ static void cellToQString( const UCell* val, QString& str )
             str.setNum( ur_int(val) );
             break;
 
-        case UT_DECIMAL:
-            str.setNum( ur_decimal(val) );
-            break;
-
-        case UT_BIGNUM:
-            str.setNum( bignum_l(val) );
+        case UT_DOUBLE:
+            str.setNum( ur_double(val) );
             break;
 
         case UT_STRING:

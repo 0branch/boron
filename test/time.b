@@ -9,4 +9,4 @@ print sub 0:37:12 0:35:48
 
 print "---- seconds"
 a: 1:30:4.7
-print [to-decimal a to-int a]
+print [to-double a to-int a]

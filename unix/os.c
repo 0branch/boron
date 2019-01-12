@@ -725,7 +725,7 @@ static void _nsleep( const struct timespec* st )
 
 /*-cf-
     sleep
-        time    int!/decimal!/time!
+        time    int!/double!/time!
     return: unset!
 
     Delay for a number of seconds.
@@ -741,10 +741,10 @@ CFUNC_PUB( cfunc_sleep )
             stime.tv_nsec = 0;
             break;
 
-        case UT_DECIMAL:
+        case UT_DOUBLE:
         case UT_TIME:
         {
-            double t = ur_decimal(a1);
+            double t = ur_double(a1);
             stime.tv_sec  = (time_t) t;
             stime.tv_nsec = (long) ((t - floor(t)) * 1000000000.0);
         }
@@ -752,7 +752,7 @@ CFUNC_PUB( cfunc_sleep )
 
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                             "sleep expected int!/decimal!/time!" );
+                             "sleep expected int!/double!/time!" );
     }
 
     _nsleep( &stime );

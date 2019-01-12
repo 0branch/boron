@@ -125,15 +125,15 @@ static int _fillWaitInfo( UThread* ut, WaitInfo* wi,
         {
             _waitOnPort( ut, wi, it );
         }
-        else if( ur_is(it, UT_DECIMAL) || ur_is(it, UT_TIME) )
+        else if( ur_is(it, UT_DOUBLE) || ur_is(it, UT_TIME) )
         {
 #ifdef _WIN32
-            wi->timeout = (DWORD) (ur_decimal(it) * 1000.0);
+            wi->timeout = (DWORD) (ur_double(it) * 1000.0);
 #else
-            double n = floor( ur_decimal(it) );
+            double n = floor( ur_double(it) );
 
             wi->tv.tv_sec  = n ? ((long) n) : 0;
-            wi->tv.tv_usec = (long) ((ur_decimal(it) - n) * 1000000.0);
+            wi->tv.tv_usec = (long) ((ur_double(it) - n) * 1000000.0);
             wi->timeout = 1;
 #endif
         }
@@ -146,7 +146,7 @@ static int _fillWaitInfo( UThread* ut, WaitInfo* wi,
 
 /*-cf-
     wait
-        target  int!/decimal!/time!/block!/port!
+        target  int!/double!/time!/block!/port!
     return: Port ready for reading or none.
     group: io
 

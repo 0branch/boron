@@ -6,7 +6,7 @@ print "---- Do get-word!"
 probe do :gwval
 gwval: 2
 probe do :gwval
-parse [10.0 :gwval] [decimal! tok: get-word! (probe do first tok)]
+parse [10.0 :gwval] [double! tok: get-word! (probe do first tok)]
 
 print "---- Do functions"
 addf: func [a b] [add a b]

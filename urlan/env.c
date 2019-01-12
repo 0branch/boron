@@ -393,7 +393,7 @@ UThread* ur_makeEnv( const UEnvParameters* par )
     addDT( UT_LOGIC,    &dt_logic );
     addDT( UT_CHAR,     &dt_char );
     addDT( UT_INT,      &dt_int );
-    addDT( UT_DECIMAL,  &dt_decimal );
+    addDT( UT_DOUBLE,   &dt_double );
     addDT( UT_BIGNUM,   0 );
     addDT( UT_TIME,     &dt_time );
     addDT( UT_DATE,     &dt_date );

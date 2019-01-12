@@ -38,7 +38,7 @@ static unsigned long _clockSeed()
 
 /*-cf-
     random
-        data    logic!/int!/decimal!/coord!/vec3! or series.
+        data    logic!/int!/double!/coord!/vec3! or series.
         /seed   Use data as generator seed.
     return: Random number, series position, or seed if /seed option used.
     group: data
@@ -89,9 +89,9 @@ CFUNC_PUB(cfunc_random)
             }
             break;
 
-        case UT_DECIMAL:
-            ur_setId(res, UT_DECIMAL);
-            ur_decimal(res) = ur_decimal(a1) * genrand_real2();
+        case UT_DOUBLE:
+            ur_setId(res, UT_DOUBLE);
+            ur_double(res) = ur_double(a1) * genrand_real2();
             break;
 
         case UT_COORD:

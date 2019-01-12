@@ -615,8 +615,8 @@ int logic_make( UThread* ut, const UCell* from, UCell* res )
         case UT_INT:
             ur_logic(res) = ur_int(from) ? 1 : 0;
             break;
-        case UT_DECIMAL:
-            ur_logic(res) = ur_decimal(from) ? 1 : 0;
+        case UT_DOUBLE:
+            ur_logic(res) = ur_double(from) ? 1 : 0;
             break;
         default:
             ur_logic(res) = 1;
@@ -842,10 +842,10 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
         case UT_INT:
             ur_int(res) = ur_int(from);
             break;
-        case UT_DECIMAL:
+        case UT_DOUBLE:
         case UT_TIME:
         case UT_DATE:
-            ur_int(res) = ur_decimal(from);
+            ur_int(res) = ur_double(from);
             break;
         case UT_BINARY:
         case UT_STRING:
@@ -1007,51 +1007,51 @@ UDatatype dt_int =
 
 
 //----------------------------------------------------------------------------
-// UT_DECIMAL
+// UT_DOUBLE
 
 
 extern double str_toDouble( const char*, const char*, const char** pos );
 
 int decimal_make( UThread* ut, const UCell* from, UCell* res )
 {
-    ur_setId(res, UT_DECIMAL);
+    ur_setId(res, UT_DOUBLE);
     switch( ur_type(from) )
     {
         case UT_NONE:
-            ur_decimal(res) = 0.0;
+            ur_double(res) = 0.0;
             break;
         case UT_LOGIC:
-            ur_decimal(res) = (double) ur_logic(from);
+            ur_double(res) = (double) ur_logic(from);
             break;
         case UT_CHAR:
         case UT_INT:
-            ur_decimal(res) = (double) ur_int(from);
+            ur_double(res) = (double) ur_int(from);
             break;
-        case UT_DECIMAL:
+        case UT_DOUBLE:
         case UT_TIME:
         case UT_DATE:
-            ur_decimal(res) = ur_decimal(from);
+            ur_double(res) = ur_double(from);
             break;
         case UT_STRING:
         {
             USeriesIter si;
             ur_seriesSlice( ut, &si, from );
             if( ur_strIsUcs2(si.buf) )
-                return MAKE_NO_UCS2( "decimal!" );
+                return MAKE_NO_UCS2( "double!" );
             else
-                ur_decimal(res) = str_toDouble( si.buf->ptr.c + si.it,
+                ur_double(res) = str_toDouble( si.buf->ptr.c + si.it,
                                                 si.buf->ptr.c + si.end, 0 );
         }
             break;
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                "make decimal! expected number or none!/logic!/char!/string!" );
+                "make double! expected number or none!/logic!/char!/string!" );
     }
     return UR_OK;
 }
 
 
-#define MASK_DECIMAL    ((1 << UT_DECIMAL) | (1 << UT_TIME) | (1 << UT_DATE))
+#define MASK_DECIMAL    ((1 << UT_DOUBLE) | (1 << UT_TIME) | (1 << UT_DATE))
 #define ur_isDecimalType(T) ((1 << T) & MASK_DECIMAL)
 
 #define FLOAT_EPSILON   (0.00000005960464477539062 * 2.0)
@@ -1070,21 +1070,21 @@ int decimal_compare( UThread* ut, const UCell* a, const UCell* b, int test )
     switch( test )
     {
         case UR_COMPARE_SAME:
-            return ur_decimal(a) == ur_decimal(b);
+            return ur_double(a) == ur_double(b);
 
         case UR_COMPARE_EQUAL:
         case UR_COMPARE_EQUAL_CASE:
             if( ur_isDecimalType( ur_type(a) ) )
             {
                 if( ur_isDecimalType( ur_type(b) ) )
-                    return float_equal( ur_decimal(a), ur_decimal(b) );
+                    return float_equal( ur_double(a), ur_double(b) );
                 else if( ur_isIntType( ur_type(b) ) )
-                    return float_equal( ur_decimal(a), ur_int(b) );
+                    return float_equal( ur_double(a), ur_int(b) );
             }
             else
             {
                 if( ur_isIntType( ur_type(a) ) )
-                    return float_equal( (double) ur_int(a), ur_decimal(b) );
+                    return float_equal( (double) ur_int(a), ur_double(b) );
             }
             break;
 
@@ -1094,16 +1094,16 @@ int decimal_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             {
                 if( ur_isDecimalType( ur_type(b) ) )
                 {
-                    if( ur_decimal(a) > ur_decimal(b) )
+                    if( ur_double(a) > ur_double(b) )
                         return 1;
-                    if( ur_decimal(a) < ur_decimal(b) )
+                    if( ur_double(a) < ur_double(b) )
                         return -1;
                 }
                 else if( ur_isIntType( ur_type(b) ) )
                 {
-                    if( ur_decimal(a) > ur_int(b) )
+                    if( ur_double(a) > ur_int(b) )
                         return 1;
-                    if( ur_decimal(a) < ur_int(b) )
+                    if( ur_double(a) < ur_int(b) )
                         return -1;
                 }
             }
@@ -1111,9 +1111,9 @@ int decimal_compare( UThread* ut, const UCell* a, const UCell* b, int test )
             {
                 if( ur_isIntType( ur_type(a) ) )
                 {
-                    if( ((double) ur_int(a)) > ur_decimal(b) )
+                    if( ((double) ur_int(a)) > ur_double(b) )
                         return 1;
-                    if( ((double) ur_int(a)) < ur_decimal(b) )
+                    if( ((double) ur_int(a)) < ur_double(b) )
                         return -1;
                 }
             }
@@ -1132,7 +1132,7 @@ int decimal_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
 
     t = ur_type(a);
     if( ur_isDecimalType( t ) )
-        da = ur_decimal(a);
+        da = ur_double(a);
     else if( ur_isIntType( t ) )
         da = ur_int(a);
     else
@@ -1140,9 +1140,9 @@ int decimal_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
 
     if( ur_isDecimalType( ur_type(b) ) )
     {
-        if( t < UT_DECIMAL )
+        if( t < UT_DOUBLE )
             t = ur_type(b);
-        db = ur_decimal(b);
+        db = ur_double(b);
     }
     else if( ur_isIntType( ur_type(b) ) )
         db = ur_int(b);
@@ -1153,28 +1153,28 @@ int decimal_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
     switch( op )
     {
         case UR_OP_ADD:
-            ur_decimal(res) = da + db;
+            ur_double(res) = da + db;
             break;
         case UR_OP_SUB:
-            ur_decimal(res) = da - db;
+            ur_double(res) = da - db;
             break;
         case UR_OP_MUL:
-            ur_decimal(res) = da * db;
+            ur_double(res) = da * db;
             break;
         case UR_OP_DIV:
             if( db == 0.0 )
                 goto div_by_zero;
-            ur_decimal(res) = da / db;
+            ur_double(res) = da / db;
             break;
         case UR_OP_MOD:
             if( db == 0.0 )
                 goto div_by_zero;
-            ur_decimal(res) = fmod(da, db);
+            ur_double(res) = fmod(da, db);
             break;
         case UR_OP_AND:
         case UR_OP_OR:
         case UR_OP_XOR:
-            ur_decimal(res) = 0.0;
+            ur_double(res) = 0.0;
             break;
         default:
             return unset_operate( ut, a, b, res, op );
@@ -1184,11 +1184,11 @@ int decimal_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
 bad_type:
 
     return ur_error( ut, UR_ERR_TYPE,
-             "decimal! operator exepected char!/int!/decimal!/time!/date!" );
+             "double! operator exepected char!/int!/double!/time!/date!" );
 
 div_by_zero:
 
-    return ur_error( ut, UR_ERR_SCRIPT, "decimal! divide by zero" );
+    return ur_error( ut, UR_ERR_SCRIPT, "double! divide by zero" );
 }
 
 
@@ -1196,13 +1196,13 @@ void decimal_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) ut;
     (void) depth;
-    ur_strAppendDouble( str, ur_decimal(cell) );
+    ur_strAppendDouble( str, ur_double(cell) );
 }
 
 
-UDatatype dt_decimal =
+UDatatype dt_double =
 {
-    "decimal!",
+    "double!",
     decimal_make,           decimal_make,           unset_copy,
     decimal_compare,        decimal_operate,        unset_select,
     decimal_toString,       decimal_toString,
@@ -1223,13 +1223,13 @@ int time_make( UThread* ut, const UCell* from, UCell* res )
     {
         case UT_INT:
             ur_setId(res, UT_TIME);
-            ur_decimal(res) = (double) ur_int(from);
+            ur_double(res) = (double) ur_int(from);
             break;
-        case UT_DECIMAL:
+        case UT_DOUBLE:
         case UT_TIME:
         case UT_DATE:
             ur_setId(res, UT_TIME);
-            ur_decimal(res) = ur_decimal(from);
+            ur_double(res) = ur_double(from);
             break;
         case UT_STRING:
         {
@@ -1243,13 +1243,13 @@ int time_make( UThread* ut, const UCell* from, UCell* res )
             {
                 const char* cp  = si.buf->ptr.c;
                 ur_setId(res, UT_TIME);
-                ur_decimal(res) = str_toTime( cp + si.it, cp + si.end, 0 );
+                ur_double(res) = str_toTime( cp + si.it, cp + si.end, 0 );
             }
         }
             break;
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                "make time! expected int!/decimal!/time!/date!/string!" );
+                "make time! expected int!/double!/time!/date!/string!" );
     }
     return UR_OK;
 }
@@ -1262,21 +1262,21 @@ int time_compare( UThread* ut, const UCell* a, const UCell* b, int test )
     switch( test )
     {
         case UR_COMPARE_SAME:
-            return ur_decimal(a) == ur_decimal(b);
+            return ur_double(a) == ur_double(b);
 
         case UR_COMPARE_EQUAL:
         case UR_COMPARE_EQUAL_CASE:
             if( ur_type(a) == ur_type(b) )
-                return float_equal( ur_decimal(a), ur_decimal(b) );
+                return float_equal( ur_double(a), ur_double(b) );
             break;
 
         case UR_COMPARE_ORDER:
         case UR_COMPARE_ORDER_CASE:
             if( ur_type(a) == ur_type(b) )
             {
-                if( ur_decimal(a) > ur_decimal(b) )
+                if( ur_double(a) > ur_double(b) )
                     return 1;
-                if( ur_decimal(a) < ur_decimal(b) )
+                if( ur_double(a) < ur_double(b) )
                     return -1;
             }
             break;
@@ -1290,7 +1290,7 @@ extern int fpconv_ftoa( double, char* );
 void time_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     int seg;
-    double n = ur_decimal(cell);
+    double n = ur_double(cell);
     (void) ut;
     (void) depth;
 
@@ -1362,7 +1362,7 @@ int date_make( UThread* ut, const UCell* from, UCell* res )
         case UT_TIME:
         case UT_DATE:
             ur_setId(res, UT_DATE);
-            ur_decimal(res) = ur_decimal(from);
+            ur_double(res) = ur_double(from);
             break;
         case UT_STRING:
         {
@@ -1376,7 +1376,7 @@ int date_make( UThread* ut, const UCell* from, UCell* res )
             {
                 const char* cp  = si.buf->ptr.c;
                 ur_setId(res, UT_DATE);
-                ur_decimal(res) = ur_stringToDate( cp + si.it, cp + si.end, 0 );
+                ur_double(res) = ur_stringToDate( cp + si.it, cp + si.end, 0 );
             }
         }
             break;
@@ -1449,8 +1449,8 @@ int vec3_make( UThread* ut, const UCell* from, UCell* res )
         case UT_INT:
             vec3_setf( res, (float) ur_int(from) );
             break;
-        case UT_DECIMAL:
-            vec3_setf( res, (float) ur_decimal(from) );
+        case UT_DOUBLE:
+            vec3_setf( res, (float) ur_double(from) );
             break;
         case UT_COORD:
             res->vec3.xyz[0] = (float) from->coord.n[0];
@@ -1491,8 +1491,8 @@ int vec3_make( UThread* ut, const UCell* from, UCell* res )
 
                 if( ur_is(cell, UT_INT) )
                     num = (float) ur_int(cell);
-                else if( ur_is(cell, UT_DECIMAL) )
-                    num = (float) ur_decimal(cell);
+                else if( ur_is(cell, UT_DOUBLE) )
+                    num = (float) ur_double(cell);
                 else
                     break;
 
@@ -1515,7 +1515,7 @@ int vec3_make( UThread* ut, const UCell* from, UCell* res )
             break;
         default:
             return ur_error( ut, UR_ERR_TYPE,
-                    "make vec3! expected none!/logic!/int!/decimal!/block!" );
+                    "make vec3! expected none!/logic!/int!/double!/block!" );
     }
     return UR_OK;
 }
@@ -1542,8 +1542,8 @@ void vec3_pick( const UCell* cell, int index, UCell* res )
     }
     else
     {
-        ur_setId(res, UT_DECIMAL);
-        ur_decimal(res) = cell->vec3.xyz[ index ];
+        ur_setId(res, UT_DOUBLE);
+        ur_double(res) = cell->vec3.xyz[ index ];
     }
 }
 
@@ -1556,12 +1556,12 @@ int vec3_poke( UThread* ut, UCell* cell, int index, const UCell* src )
     if( (index < 0) || (index >= 3) )
         return ur_error( ut, UR_ERR_SCRIPT, "poke vec3! index out of range" );
 
-    if( ur_is(src, UT_DECIMAL) )
-        num = (float) ur_decimal(src);
+    if( ur_is(src, UT_DOUBLE) )
+        num = (float) ur_double(src);
     else if( ur_is(src, UT_INT) )
         num = (float) ur_int(src);
     else
-        return ur_error( ut, UR_ERR_TYPE, "poke vec3! expected int!/decimal!" );
+        return ur_error( ut, UR_ERR_TYPE, "poke vec3! expected int!/double!" );
 
     cell->vec3.xyz[ index ] = num;
     return UR_OK;
@@ -1620,8 +1620,8 @@ static const float* _load3f( const UCell* cell, float* tmp )
             tmp[0] = tmp[1] = tmp[2] = (float) ur_int(cell);
             break;
 
-        case UT_DECIMAL:
-            tmp[0] = tmp[1] = tmp[2] = (float) ur_decimal(cell);
+        case UT_DOUBLE:
+            tmp[0] = tmp[1] = tmp[2] = (float) ur_double(cell);
             break;
 
         case UT_COORD:
@@ -1682,7 +1682,7 @@ int vec3_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
 bad_type:
 
     return ur_error( ut, UR_ERR_TYPE,
-                     "vec3! operator exepected int!/decimal!/coord!/vec3!" );
+                     "vec3! operator exepected int!/double!/coord!/vec3!" );
 }
 
 
@@ -3389,13 +3389,13 @@ int block_compare( UThread* ut, const UCell* a, const UCell* b, int test )
         if( ur_isIntType(ur_type(bi.it)) ) \
             n = n OP ur_int(bi.it); \
         else if( ur_isDecimalType(ur_type(bi.it)) ) \
-            n = n OP (int) ur_decimal(bi.it); \
+            n = n OP (int) ur_double(bi.it); \
     }
 
 #define BLOCK_OP_DEC(OP) \
     ur_foreach(bi) { \
         if( ur_isDecimalType(ur_type(bi.it)) ) \
-            n = n OP ur_decimal(bi.it); \
+            n = n OP ur_double(bi.it); \
         else if( ur_isIntType(ur_type(bi.it)) ) \
             n = n OP (double) ur_int(bi.it); \
     }
@@ -3438,7 +3438,7 @@ int block_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
     }
     else if( ur_isDecimalType( ur_type(a) ) )
     {
-        double n = ur_decimal(a);
+        double n = ur_double(a);
         ur_blkSlice( ut, &bi, b );
         switch( op )
         {
@@ -3455,11 +3455,11 @@ int block_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
                 return unset_operate( ut, a, b, res, op );
         }
         ur_setId(res, ur_type(a));
-        ur_decimal(res) = n;
+        ur_double(res) = n;
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE,
-                     "block! operator exepected char!/int!/decimal!" );
+                     "block! operator exepected char!/int!/double!" );
 }
 
 

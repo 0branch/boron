@@ -46,7 +46,7 @@ void date_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     long timeZone;
     int hour;
     char* cp = tmp;
-    double sec = ur_decimal(cell);
+    double sec = ur_double(cell);
     //double frac;
 
     (void) ut;

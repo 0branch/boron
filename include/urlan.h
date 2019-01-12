@@ -42,7 +42,7 @@ enum UrlanDataType
     UT_LOGIC,
     UT_CHAR,
     UT_INT,
-    UT_DECIMAL,
+    UT_DOUBLE,
     UT_BIGNUM,
     UT_TIME,
     UT_DATE,
@@ -674,7 +674,7 @@ void     ur_arrAppendFloat( UBuffer*, float );
 #define ur_logic(c)         (c)->id.ext
 #define ur_char(c)          (c)->number.eb.i64
 #define ur_int(c)           (c)->number.eb.i64
-#define ur_decimal(c)       (c)->number.eb.d
+#define ur_double(c)        (c)->number.eb.d
 
 #define ur_isWordType(t)    ((t) >= UT_WORD && (t) <= UT_OPTION)
 #define ur_binding(c)       (c)->word.binding
