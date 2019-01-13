@@ -72,8 +72,8 @@ static void slider_setValue( GSlider* ep, const UCell* cell )
 
     if( ur_is(cell, UT_INT) )
         n = (float) ur_int(cell);
-    else if( ur_is(cell, UT_DECIMAL) )
-        n = (float) ur_decimal(cell);
+    else if( ur_is(cell, UT_DOUBLE) )
+        n = (float) ur_double(cell);
     else
         n = 0.0;
 
@@ -87,7 +87,7 @@ static void slider_setValue( GSlider* ep, const UCell* cell )
 
 /*-wid-
     slider  [orient]    range           initial-value   [action]
-            word!       coord!/vec3!    int!/decimal!   block!
+            word!       coord!/vec3!    int!/double!    block!
 
     Range is minimum,maximum.
 */
@@ -95,7 +95,7 @@ static const uint8_t slider_args[] =
 {
     GUIA_OPT,     UT_WORD,
     GUIA_ARGM, 2, UT_COORD, UT_VEC3,
-    GUIA_ARGW, 2, UT_INT,   UT_DECIMAL,
+    GUIA_ARGW, 2, UT_INT,   UT_DOUBLE,
     GUIA_OPT,     UT_BLOCK,
     GUIA_END
 };
@@ -137,7 +137,7 @@ static GWidget* slider_make( UThread* ut, UBlockIter* bi,
         ep->data.min = arg[1]->vec3.xyz[0];
         ep->data.max = arg[1]->vec3.xyz[1];
         ep->data.vsize = arg[1]->vec3.xyz[2];
-        ep->dataType = UT_DECIMAL;
+        ep->dataType = UT_DOUBLE;
     }
 
     slider_setValue( ep, arg[2] );
@@ -489,7 +489,7 @@ static int slider_select( GWidget* wp, UAtom atom, UCell* res )
         if( ep->dataType == UT_INT )
             ur_int(res) = (int32_t) ep->data.val;
         else
-            ur_decimal(res) = ep->data.val;
+            ur_double(res) = ep->data.val;
         return UR_OK;
     }
     return gui_areaSelect( wp, atom, res );

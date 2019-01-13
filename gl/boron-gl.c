@@ -370,7 +370,7 @@ CFUNC( uc_handle_events )
 
 /*-cf-
     clear-color 
-        color       decimal!/coord!/vec3!
+        color       double!/coord!/vec3!
     return: unset!
     group: gl
     Calls glClearColor().
@@ -396,9 +396,9 @@ CFUNC( uc_clear_color )
         GLclampf* col = a1->vec3.xyz;
         glClearColor( col[0], col[1], col[2], 0.0f );
     }
-    else if( ur_is(a1, UT_DECIMAL) )
+    else if( ur_is(a1, UT_DOUBLE) )
     {
-        GLclampf col = ur_decimal(a1);
+        GLclampf col = ur_double(a1);
         glClearColor( col, col, col, 0.0f );
     }
     return UR_OK;
@@ -858,7 +858,7 @@ CFUNC( cfunc_stop )
 /*-cf-
     set-volume
         what    int!/word!
-        vol     decimal!
+        vol     double!
     return: unset!
     group: audio
 */
@@ -868,9 +868,9 @@ CFUNC( cfunc_set_volume )
     const UCell* a2 = a1 + 1;
     (void) ut;
 
-    if( ur_is(a2, UT_DECIMAL) )
+    if( ur_is(a2, UT_DOUBLE) )
     {
-        vol = ur_decimal(a2);
+        vol = ur_double(a2);
         if( ur_is(a1, UT_INT) )
             aud_setSoundVolume( vol );
         else if( ur_is(a1, UT_WORD) )
@@ -1042,23 +1042,23 @@ static int _convertUnits( UThread* ut, const UCell* a1, UCell* res,
                           double conv )
 {
     double n;
-    if( ur_is(a1, UT_DECIMAL) )
-        n = ur_decimal(a1);
+    if( ur_is(a1, UT_DOUBLE) )
+        n = ur_double(a1);
     else if( ur_is(a1, UT_INT) )
         n = (double) ur_int(a1);
     else
         return ur_error( ut, UR_ERR_TYPE,
-                         "Unit conversion expected int!/decimal!");
+                         "Unit conversion expected int!/double!");
 
-    ur_setId(res, UT_DECIMAL);
-    ur_decimal(res) = n * conv;
+    ur_setId(res, UT_DOUBLE);
+    ur_double(res) = n * conv;
     return UR_OK;
 }
 
 
 /*-cf-
     to-degrees
-        rad    int!/decimal!
+        rad    int!/double!
     return: degrees
     group: math
 */
@@ -1070,7 +1070,7 @@ CFUNC( cfunc_to_degrees )
 
 /*-cf-
     to-radians
-        deg    int!/decimal!
+        deg    int!/double!
     return: radians
     group: math
 */
@@ -1082,9 +1082,9 @@ CFUNC( cfunc_to_radians )
 
 /*-cf-
     limit
-        number int!/decimal!
-        min    int!/decimal!
-        max    int!/decimal!
+        number int!/double!
+        min    int!/double!
+        max    int!/double!
     return: Number clamped to min and max.
     group: math
 */
@@ -1092,25 +1092,25 @@ CFUNC( cfunc_limit )
 {
     (void) ut;
 
-    if( ur_is(a1, UT_DECIMAL) )
+    if( ur_is(a1, UT_DOUBLE) )
     {
         double m;
-        double n = ur_decimal(a1);
+        double n = ur_double(a1);
 
-        m = ur_decimal(a1+1);
+        m = ur_double(a1+1);
         if( n < m )
         {
             n = m;
         }
         else
         {
-            m = ur_decimal(a1+2);
+            m = ur_double(a1+2);
             if( n > m )
                 n = m;
         }
 
-        ur_setId(res, UT_DECIMAL);
-        ur_decimal(res) = n;
+        ur_setId(res, UT_DOUBLE);
+        ur_double(res) = n;
         return UR_OK;
     }
     else if( ur_is(a1, UT_INT) )
@@ -1135,7 +1135,7 @@ CFUNC( cfunc_limit )
         return UR_OK;
     }
 
-    return ur_error(ut, UR_ERR_TYPE, "limit expected int!/decimal!");
+    return ur_error(ut, UR_ERR_TYPE, "limit expected int!/double!");
 }
 
 
@@ -1291,10 +1291,10 @@ static int _lerpCells( const UCell* v1, const UCell* v2, double frac,
         else if( frac > 1.0 )
             frac = 1.0;
 
-        if( type1 == UT_DECIMAL )
+        if( type1 == UT_DOUBLE )
         {
-            ur_setId(res, UT_DECIMAL);
-            INTERP( ur_decimal(res), ur_decimal(v1), ur_decimal(v2) );
+            ur_setId(res, UT_DOUBLE);
+            INTERP( ur_double(res), ur_double(v1), ur_double(v2) );
             return 1;
         }
         else if( type1 == UT_VEC3 )
@@ -1330,13 +1330,13 @@ static int _lerpCells( const UCell* v1, const UCell* v2, double frac,
 }
 
 
-#define LERP_MSG "lerp expected two similar decimal!/coord!/vec3!/quat! values"
+#define LERP_MSG "lerp expected two similar double!/coord!/vec3!/quat! values"
 
 /*-cf-
     lerp
-        value1      decimal!/coord!/vec3!/quat!
-        value2      decimal!/coord!/vec3!/quat!
-        fraction    decimal!
+        value1      double!/coord!/vec3!/quat!
+        value2      double!/coord!/vec3!/quat!
+        fraction    double!
     return: Interpolated value.
     group: math
 */
@@ -1345,13 +1345,13 @@ CFUNC( cfunc_lerp )
     UCell* a2   = a1 + 1;
     UCell* frac = a1 + 2;
 
-    if( ur_is(frac, UT_DECIMAL) )
+    if( ur_is(frac, UT_DOUBLE) )
     {
-        if( _lerpCells( a1, a2, ur_decimal(frac), res ) )
+        if( _lerpCells( a1, a2, ur_double(frac), res ) )
             return UR_OK;
         return ur_error( ut, UR_ERR_TYPE, LERP_MSG );
     }
-    return ur_error( ut, UR_ERR_TYPE, "lerp expected decimal! fraction" );
+    return ur_error( ut, UR_ERR_TYPE, "lerp expected double! fraction" );
 }
 
 
@@ -1381,7 +1381,7 @@ static int _curveValue( UThread* ut, const UCell* cv, UCell* res, double t,
         if( high )
         {
             *res = bi.it[1];
-            *period = ur_decimal( bi.end - 2 );
+            *period = ur_double( bi.end - 2 );
         }
         else
         {
@@ -1391,7 +1391,7 @@ static int _curveValue( UThread* ut, const UCell* cv, UCell* res, double t,
         //*atEnd = ANIM_END_LOW | ANIM_END_HIGH;
         return UR_OK;
     }
-    *period = ur_decimal( bi.end - 2 );
+    *period = ur_double( bi.end - 2 );
 
     // Binary search for t in the time/value pairs.
 
@@ -1402,7 +1402,7 @@ static int _curveValue( UThread* ut, const UCell* cv, UCell* res, double t,
         mid = (low + high) >> 1;
         v1 = bi.it + (mid << 1);
 
-        d = ur_decimal(v1);
+        d = ur_double(v1);
         if( d < t )
             low = mid + 1;
         else if( d > t )
@@ -1412,12 +1412,12 @@ static int _curveValue( UThread* ut, const UCell* cv, UCell* res, double t,
     }
 
     v1 = bi.it + (low << 1);
-    d = ur_decimal(v1);
+    d = ur_double(v1);
     if( t >= d )
     {
         if( low == last )
             goto set_res;
-        interval = ur_decimal(v1 + 2);
+        interval = ur_double(v1 + 2);
 do_lerp:
         interval -= d;
         t -= d;
@@ -1437,7 +1437,7 @@ do_lerp:
     {
         interval = d;
         v1 -= 2;
-        d = ur_decimal(v1);
+        d = ur_double(v1);
         goto do_lerp;
     }
 
@@ -1459,7 +1459,7 @@ set_res:
 /*-cf-
     curve-at
         curve   block!
-        time    int!/decimal!
+        time    int!/double!
     return: Value on curve at time.
 
     The curve block is a sequence of time and value pairs, ordered by time.
@@ -1472,13 +1472,13 @@ CFUNC( cfunc_curve_at )
     if( ! ur_is(a1, UT_BLOCK) )
         return ur_error( ut, UR_ERR_TYPE, "curve-value expected block! curve" );
 
-    if( ur_is(a2, UT_DECIMAL) )
-        t = ur_decimal(a2);
+    if( ur_is(a2, UT_DOUBLE) )
+        t = ur_double(a2);
     else if( ur_is(a2, UT_INT) )
         t = (double) ur_int(a2);
     else
         return ur_error( ut, UR_ERR_TYPE,
-                         "curve-value expected int!/decimal! time" );
+                         "curve-value expected int!/double! time" );
 
     return _curveValue( ut, a1, res, t, &t );
 }
@@ -1534,7 +1534,7 @@ static int _animate( UThread* ut, const UCell* acell, double dt, int* playing )
         value = ur_bufferSer(value)->ptr.cell + value->series.it;
     }
 
-    period = ur_decimal(vc + CI_ANIM_SCALE);
+    period = ur_double(vc + CI_ANIM_SCALE);
     if( (period != 1.0) && (period > 0.0) )
         dt /= period;
 
@@ -1546,7 +1546,7 @@ static int _animate( UThread* ut, const UCell* acell, double dt, int* playing )
 
         if( repeat > 0 )
         {
-            dt = ur_decimal(timec) + dt;
+            dt = ur_double(timec) + dt;
             if( ! _curveValue( ut, curve, value, dt, &period ) )
                 return UR_THROW;
             if( dt > period )
@@ -1564,7 +1564,7 @@ static int _animate( UThread* ut, const UCell* acell, double dt, int* playing )
         }
         else if( repeat < 0 )
         {
-            dt = ur_decimal(timec) - dt;
+            dt = ur_double(timec) - dt;
             if( ! _curveValue( ut, curve, value, dt, &period ) )
                 return UR_THROW;
             if( dt < 0.0 )
@@ -1587,7 +1587,7 @@ static int _animate( UThread* ut, const UCell* acell, double dt, int* playing )
         }
 
 set_time:
-        ur_decimal(timec) = dt;
+        ur_double(timec) = dt;
         *playing = 1;   // Set as playing even at end so final frame is shown.
     }
     else if( ur_is(behav, UT_WORD) )
@@ -1595,7 +1595,7 @@ set_time:
         switch( ur_atom(behav) )
         {
             case UR_ATOM_LOOP:
-                dt += ur_decimal(timec);
+                dt += ur_double(timec);
                 if( ! _curveValue( ut, curve, value, dt, &period ) )
                     return UR_THROW;
                 if( dt > period )
@@ -1614,7 +1614,7 @@ set_time:
 /*-cf-
     animate
         anims   block!/context!   Animation or block of animations
-        time    decimal!          Delta time
+        time    double!          Delta time
     return: True if any animations are playing.
 */
 CFUNC( cfunc_animate )
@@ -1622,9 +1622,9 @@ CFUNC( cfunc_animate )
     double dt;
     int playing = 0;
 
-    if( ! ur_is(a1 + 1, UT_DECIMAL) )
-        return ur_error( ut, UR_ERR_TYPE, "animate expected decimal! time" );
-    dt = ur_decimal(a1 + 1);
+    if( ! ur_is(a1 + 1, UT_DOUBLE) )
+        return ur_error( ut, UR_ERR_TYPE, "animate expected double! time" );
+    dt = ur_double(a1 + 1);
 
     if( ur_is(a1, UT_CONTEXT) )
     {
@@ -1708,7 +1708,7 @@ static int _insideMask( uint8_t* pix, void* user )
     make-sdf
         src     raster!
         mask    int!
-        scale   decimal!
+        scale   double!
     return: New signed distance field raster.
     group: data
 */
@@ -1717,7 +1717,7 @@ CFUNC( cfunc_make_sdf )
     uint32_t mask = ur_int(a1 + 1);
     const UCell* scale = a1 + 2;
     makeDistanceField( ut, ur_rastHead(a1), _insideMask, &mask,
-                       ur_decimal(scale), res );
+                       ur_double(scale), res );
     return UR_OK;
 }
 
@@ -1786,8 +1786,8 @@ Camera;
 
 float number_f( const UCell* cell )
 {
-    if( ur_is(cell, UT_DECIMAL) )
-        return (float) ur_decimal(cell);
+    if( ur_is(cell, UT_DOUBLE) )
+        return (float) ur_double(cell);
     if( ur_is(cell, UT_INT) )
         return (float) ur_int(cell);
     return 0.0f;
@@ -2003,7 +2003,7 @@ CFUNC( cfunc_project_point )
     const UCell* b = a1 + 2;
     float* rp = res->vec3.xyz;
 
-    // TODO: Support projection onto plane (a: vec3! b: decimal!)
+    // TODO: Support projection onto plane (a: vec3! b: double!)
 
     if( ! ur_is(a1, UT_VEC3) )
     {
@@ -2079,7 +2079,7 @@ CFUNC( cfunc_change_vbo )
     else
         goto bad_dt;
 
-    if( ur_is(vec, UT_VECTOR) && //(ur_vectorDT(vec) == UT_DECIMAL) &&
+    if( ur_is(vec, UT_VECTOR) && //(ur_vectorDT(vec) == UT_DOUBLE) &&
         ur_is(a1, UT_VBO) )
     {
         USeriesIter si;
@@ -2366,7 +2366,7 @@ CFUNC( uc_perlin )
 
     if( ur_is(rasc, UT_RASTER) &&
         ur_is(octc, UT_INT) &&
-        ur_is(tos, UT_DECIMAL) )
+        ur_is(tos, UT_DOUBLE) )
     {
         PReal x, y, w, h, n;
         int in;
@@ -2378,7 +2378,7 @@ CFUNC( uc_perlin )
         else if( octaves > 4 )
             octaves = 4;
 
-        persist = ur_decimal(tos);
+        persist = ur_double(tos);
         if( persist < 0.05f )
             persist = 0.05f;
         else if( persist > 1.0f )
@@ -2423,7 +2423,7 @@ CFUNC( uc_perlin )
         return;
     }
 
-    return ur_error( UR_ERR_TYPE, "perlin expected raster! int! decimal!" );
+    return ur_error( UR_ERR_TYPE, "perlin expected raster! int! double!" );
 }
 #endif
 
@@ -2749,7 +2749,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     addCFunc( cfunc_point_in,    "point-in a pnt" );
     addCFunc( cfunc_pick_point,  "pick-point a c pnt pos" );
     addCFunc( cfunc_change_vbo,  "change-vbo a b n" );
-    addCFunc( cfunc_make_sdf,    "make-sdf rast raster! m int! b decimal!" );
+    addCFunc( cfunc_make_sdf,    "make-sdf rast raster! m int! b double!" );
     addCFunc( uc_gl_extensions,  "gl-extensions" );
     addCFunc( uc_gl_version,     "gl-version" );
     addCFunc( uc_gl_max_textures,"gl-max-textures" );

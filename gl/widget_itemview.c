@@ -115,7 +115,7 @@ static const uint8_t iv_args_font[] =
 static const uint8_t iv_args_text[] =
 {
     GUIA_ARGW, 1, UT_COORD,
-    GUIA_ARGW, 3, UT_STRING, UT_INT, UT_DECIMAL,
+    GUIA_ARGW, 3, UT_STRING, UT_INT, UT_DOUBLE,
     GUIA_END
 };
 

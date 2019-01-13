@@ -381,9 +381,9 @@ int ur_loadVectorBlock( float* vec, int count, UCell* blkV )
             *vec++ = (float) ur_int(it);
             VEND;
         }
-        else if( ur_is(it, UT_DECIMAL) )
+        else if( ur_is(it, UT_DOUBLE) )
         {
-            *vec++ = (float) ur_decimal(it);
+            *vec++ = (float) ur_double(it);
             VEND;
         }
 #if 0
@@ -441,8 +441,8 @@ CFUNC( cfunc_distance )
     if( (va = _cellToVec( a1, tmp )) &&
         (vb = _cellToVec( a1 + 1, tmp + 3 )) )
     {
-        ur_setId(res, UT_DECIMAL);
-        ur_decimal(res) = (double) ur_distance( va, vb );
+        ur_setId(res, UT_DOUBLE);
+        ur_double(res) = (double) ur_distance( va, vb );
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "distance expected coord!/vec3!" );
@@ -465,8 +465,8 @@ CFUNC( cfunc_dot )
     if( (va = _cellToVec( a1, tmp )) &&
         (vb = _cellToVec( a1 + 1, tmp + 3 )) )
     {
-        ur_setId(res, UT_DECIMAL);
-        ur_decimal(res) = (double) ur_dot( va, vb );
+        ur_setId(res, UT_DOUBLE);
+        ur_double(res) = (double) ur_dot( va, vb );
         return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "dot expected coord!/vec3!" );

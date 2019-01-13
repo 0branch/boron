@@ -215,8 +215,8 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
             switch( pi->type )
             {
                 case GL_FLOAT:
-                    ur_setId( cval, UT_DECIMAL );
-                    ur_decimal( cval ) = 0.0;
+                    ur_setId( cval, UT_DOUBLE );
+                    ur_double( cval ) = 0.0;
                     break;
 
                 case GL_FLOAT_VEC2:
@@ -362,7 +362,7 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
         switch( pi->type )
         {
             case GL_FLOAT:
-                glUniform1f( pi->location, ur_decimal(cval) );
+                glUniform1f( pi->location, ur_double(cval) );
                 break;
 
             case GL_FLOAT_VEC2:

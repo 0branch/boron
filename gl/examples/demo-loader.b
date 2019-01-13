@@ -134,7 +134,7 @@ view-cam: make orbit-cam [
 demo-exec: func [dl /update | window] [
     window: make widget! demo-window
     forever pick [[
-        rclock-delta: to-decimal sub tmp: now rclock
+        rclock-delta: to-double sub tmp: now rclock
         rclock: tmp
 
         draw dl

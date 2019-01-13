@@ -826,9 +826,9 @@ static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
                     if( wp && parent )
                     {
                         const UCell* nv = bi->it + 1;
-                        if( (nv != bi->end) && ur_is(nv, UT_DECIMAL) )
+                        if( (nv != bi->end) && ur_is(nv, UT_DOUBLE) )
                         {
-                            double percent = ur_decimal(nv);
+                            double percent = ur_double(nv);
                             // Expecting layout to change area if too small.
                             wp->area.w = (int16_t) (parent->area.w * percent);
                             wp->area.h = (int16_t) (parent->area.h * percent);

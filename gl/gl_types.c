@@ -1343,9 +1343,9 @@ static int quat_operate( UThread* ut, const UCell* a, const UCell* b,
             quat_mul( a, res, res );
             return UR_OK;
         }
-        else if( ur_is( b, UT_DECIMAL ) )
+        else if( ur_is( b, UT_DOUBLE ) )
         {
-            double d = ur_decimal(b);
+            double d = ur_double(b);
             // Multiply by -1.0 to conjugate (invert) the quaternion.
             res->id = a->id;    // Keep w.
             res->vec3.xyz[0] = a->vec3.xyz[0] * d;
@@ -1355,7 +1355,7 @@ static int quat_operate( UThread* ut, const UCell* a, const UCell* b,
         }
     }
     return ur_error( ut, UR_ERR_TYPE,
-            "quat! operator exepected quat! and decimal!/vec3!/quat!" );
+            "quat! operator exepected quat! and double!/vec3!/quat!" );
 }
 
 

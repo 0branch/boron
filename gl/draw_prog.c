@@ -1462,8 +1462,8 @@ static void cellToVec3( const UCell* cell, float* v3 )
     else
     {
         float n;
-        if( ur_is(cell, UT_DECIMAL) )
-            n = (float) ur_decimal(cell);
+        if( ur_is(cell, UT_DOUBLE) )
+            n = (float) ur_double(cell);
         else if( ur_is(cell, UT_INT) )
             n = (float) ur_int(cell);
         else
@@ -1778,8 +1778,8 @@ bad_prim:
 
                 INC_PC
                 PC_VALUE(val)
-                if( ur_is(val, UT_DECIMAL) )
-                    radius = (float) ur_decimal(val);
+                if( ur_is(val, UT_DOUBLE) )
+                    radius = (float) ur_double(val);
                 else if( ur_is(val, UT_INT) )
                     radius = (float) ur_int(val);
                 else
@@ -1893,7 +1893,7 @@ bad_quad:
                 }
                 break;
 
-            case DOP_ROTATE:    // rotate axis word! angle decimal!/int!
+            case DOP_ROTATE:    // rotate axis word! angle double!/int!
                                 // rotate :quat
                 INC_PC
                 if( ur_is(pc, UT_GETWORD) )
@@ -1910,10 +1910,10 @@ bad_quad:
                     opcode = DP_ROTATE_X;
 
                 INC_PC
-                if( ur_is(pc, UT_DECIMAL) )
+                if( ur_is(pc, UT_DOUBLE) )
                 {
                     Number n;
-                    n.f = ur_decimal(pc);
+                    n.f = ur_double(pc);
                     emitOp1( opcode, n.i );
                 }
                 else
@@ -1925,10 +1925,10 @@ bad_quad:
 
             case DOP_SCALE:
                 INC_PC
-                if( ur_is(pc, UT_DECIMAL) )
+                if( ur_is(pc, UT_DOUBLE) )
                 {
                     Number n;
-                    n.f = ur_decimal(pc);
+                    n.f = ur_double(pc);
                     emitOp1( DP_SCALE_1, n.i );
                 }
                 else
@@ -2078,10 +2078,10 @@ bad_quad:
                             emitOp2( DP_UNIFORM_1I, loc, ur_int(val) );
                             break;
 
-                        case UT_DECIMAL:
+                        case UT_DOUBLE:
                         {
                             Number n;
-                            n.f = ur_decimal(val);
+                            n.f = ur_double(val);
                             emitOp2( DP_UNIFORM_1F, loc, n.i );
                         }
                             break;
@@ -2511,8 +2511,8 @@ void ur_initDrawState( DPState* state )
 
 double number_d( const UCell* cell )
 {
-    if( ur_is(cell, UT_DECIMAL) )
-        return ur_decimal(cell);
+    if( ur_is(cell, UT_DOUBLE) )
+        return ur_double(cell);
     if( ur_is(cell, UT_INT) )
         return (double) ur_int(cell);
     return 0.0;
@@ -3302,21 +3302,21 @@ dispatch:
         case DP_ROTATE_X_WORD:
         {
             PC_WORD;
-            glRotatef( (GLfloat) ur_decimal( val ), 1.0, 0.0, 0.0 );
+            glRotatef( (GLfloat) ur_double( val ), 1.0, 0.0, 0.0 );
         }
             break;
 
         case DP_ROTATE_Y_WORD:
         {
             PC_WORD;
-            glRotatef( (GLfloat) ur_decimal( val ), 0.0, 1.0, 0.0 );
+            glRotatef( (GLfloat) ur_double( val ), 0.0, 1.0, 0.0 );
         }
             break;
 
         case DP_ROTATE_Z_WORD:
         {
             PC_WORD;
-            glRotatef( (GLfloat) ur_decimal( val ), 0.0, 0.0, 1.0 );
+            glRotatef( (GLfloat) ur_double( val ), 0.0, 0.0, 1.0 );
         }
             break;
 
@@ -3348,9 +3348,9 @@ dispatch:
                           val->vec3.xyz[1],
                           val->vec3.xyz[2] );
             }
-            else if( ur_is(val, UT_DECIMAL) )
+            else if( ur_is(val, UT_DOUBLE) )
             {
-                GLfloat n = ur_decimal( val );
+                GLfloat n = ur_double( val );
                 glScalef( n, n, n );
             }
         }
