@@ -236,7 +236,10 @@ usage_err:
     }
 
 
-    ut = boron_makeEnv( 0, 0 );
+    {
+    UEnvParameters param;
+    ut = boron_makeEnv( boron_envParam(&param) );
+    }
     if( ! ut )
     {
         puts( "boron_makeEnv failed" );

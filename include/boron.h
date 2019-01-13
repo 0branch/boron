@@ -124,8 +124,7 @@ extern "C" {
 #endif
 
 UEnvParameters* boron_envParam( UEnvParameters* );
-UThread* boron_makeEnvP( UEnvParameters* );
-UThread* boron_makeEnv( const UDatatype** dtTable, unsigned int dtCount );
+UThread* boron_makeEnv( UEnvParameters* );
 void     boron_freeEnv( UThread* );
 int      boron_defineCFunc( UThread*, UIndex ctxN, const BoronCFunc* funcs,
                             const char* spec, int slen );

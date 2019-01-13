@@ -685,34 +685,10 @@ UEnvParameters* boron_envParam( UEnvParameters* par )
 
 /**
   Make Boron environment and initial thread.
-  This calls boron_makeEnvP() internally.
 
-  \param dtTable    Array of pointers to user defined datatypes.
-                    Pass zero if dtCount is zero.
-  \param dtCount    Number of datatypes in dtTable.
+  \param par    Environment parameters initialized with boron_envParam().
 */
-UThread* boron_makeEnv( const UDatatype** dtTable, unsigned int dtCount )
-{
-    UEnvParameters par;
-
-    boron_envParam( &par );
-
-    if( dtCount > 0 )
-    {
-        par.dtCount = dtCount;
-        par.dtTable = dtTable;
-    }
-
-    return boron_makeEnvP( &par );
-}
-
-
-/**
-  Make Boron environment and initial thread.
-
-  \param par        Environment parameters.
-*/
-UThread* boron_makeEnvP( UEnvParameters* par )
+UThread* boron_makeEnv( UEnvParameters* par )
 {
     UAtom atoms[ 13 ];
     UThread* ut;

@@ -20,7 +20,8 @@ static const char myFuncSpecs[] = "hello n";
 
 int main()
 {
-    UThread* ut = boron_makeEnv( 0, 0 );            // Startup.
+    UEnvParameters param;
+    UThread* ut = boron_makeEnv( boron_envParam(&param) );  // Startup.
     if( ! ut )
         return 255;
 
