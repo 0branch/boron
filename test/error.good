@@ -12,3 +12,9 @@ Trace:
 ---- error compare
 true
 false
+---- stack overflow
+Script Error: Stack overflow
+Trace:
+ -> if lt? x 2 [return 1]
+ -> mul x factorial sub x 1
+ ...

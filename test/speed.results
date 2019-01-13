@@ -38,3 +38,8 @@
  195696593     119024 ./boron test/func.b
   50580636     556976 ./boron -s scripts/m2/m2 -o /tmp/Makefile
   16013627     244936 ./boron -e loop 10 [load %scripts/m2/m2]
+; stack overlow
+   1142400     108296 ./boron -e quit
+ 198248171     119040 ./boron test/func.b
+  50687416     556976 ./boron -s scripts/m2/m2 -o /tmp/Makefile
+  16013437     244952 ./boron -e loop 10 [load %scripts/m2/m2]

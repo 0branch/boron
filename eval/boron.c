@@ -174,6 +174,7 @@ static void boron_threadInit( UThread* ut )
     ur_arrInit( &BT->frames, sizeof(UIndex), 0 );
 
     ur_arrReserve( &ut->stack, 512 );
+    BT->stackLimit = ut->stack.ptr.cell + 512 - 8;
     boron_reset( ut );
 }
 

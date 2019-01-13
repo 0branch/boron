@@ -38,6 +38,7 @@ typedef struct BoronThread
     UThread thread;
     UBuffer tbin;           // Temporary binary buffer.
     int (*requestAccess)( UThread*, const char* );
+    UCell*  stackLimit;
     UBuffer frames;         // Function body & locals stack position.
     UCell   optionCell;
 #ifdef CONFIG_RANDOM

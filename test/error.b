@@ -23,3 +23,13 @@ a: try [div 1 0]
 b: try [div 1 0]
 print eq? a a
 print eq? a b
+
+
+print "---- stack overflow"
+factorial: func [x | pad1 pad2 pad3 pad4 pad5 pad6 pad7] [
+    if lt? x 2 [return 1]
+    mul x factorial sub x 1
+]
+msg: to-string try [print factorial 1000]
+parse msg [thru "factorial" thru '^/' :msg]
+print [msg "..."]

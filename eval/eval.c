@@ -694,6 +694,8 @@ int boron_badArg( UThread* ut, UIndex atom, int argN )
 }
 
 
+#define CATCH_STACK_OVERFLOW    1
+
 /*
   Fetch arguments and call cfunc!.
 */
@@ -726,6 +728,10 @@ run_programC:
                 if( it == end )
                     goto func_short;
                 r2 = ut->stack.ptr.cell + ut->stack.used;
+#ifdef CATCH_STACK_OVERFLOW
+                if( r2 > BT->stackLimit )
+                    goto overflow;
+#endif
                 ++ut->stack.used;
                 ur_setId(r2, UT_NONE);
                 it = boron_eval1( ut, it, end, r2 );
@@ -852,6 +858,11 @@ cleanup:
 
 func_short:
     return cp_error( ut, UR_ERR_SCRIPT, "End of block" );
+
+#ifdef CATCH_STACK_OVERFLOW
+overflow:
+    return cp_error( ut, UR_ERR_SCRIPT, "Stack overflow" );
+#endif
 }
 
 
@@ -906,6 +917,10 @@ run_program:
                 if( it == end )
                     goto func_short;
                 r2 = ut->stack.ptr.cell + ut->stack.used;
+#ifdef CATCH_STACK_OVERFLOW
+                if( r2 > BT->stackLimit )
+                    goto overflow;
+#endif
                 ++ut->stack.used;
                 ur_setId(r2, UT_NONE);
                 it = boron_eval1( ut, it, end, r2 );
@@ -1051,6 +1066,11 @@ cleanup:
 
 func_short:
     return cp_error( ut, UR_ERR_SCRIPT, "End of block" );
+
+#ifdef CATCH_STACK_OVERFLOW
+overflow:
+    return cp_error( ut, UR_ERR_SCRIPT, "Stack overflow" );
+#endif
 }
 
 
