@@ -1,6 +1,6 @@
 /*
   Boron Evaluator
-  Copyright 2016-2018 Karl Robillard
+  Copyright 2016-2019 Karl Robillard
 */
 
 
@@ -12,13 +12,28 @@
 
 //#define REPORT_EVAL
 
+
+/** \struct UCellCFuncEval
+  Structure of CFUNC a1 argument when boron_defineCFunc() signature is ":eval".
+*/
+/** \var UCellCFuncEval::avail
+  Number of valid cells following pos.
+*/
+/** \var UCellCFuncEval::pos
+  Block program counter.  This must be updated before the CFUNC exits.
+*/
+/** \def boron_evalPos
+  Macro to access :eval function program counter from inside CFUNC.
+*/
+/** \def boron_evalAvail
+  Macro to get the number of cells available for evaluation following
+  UCellCFuncEval::pos inside CFUNC.
+*/
+
+
 #define UT(ptr)     ((UThread*) ptr)
 #define PTR_I       (void*)(intptr_t)
 #define cp_error    (void*)(intptr_t) ur_error
-
-// FO_eval cell on stack.
-#define evalAvail(c)    (c)->series.buf
-#define evalPos(c)      ((const UCell**) c)[1]
 
 
 #if UR_VERSION < 0x000400
@@ -799,11 +814,11 @@ bad_arg:
                 r2 = ut->stack.ptr.cell + ut->stack.used;
                 ++ut->stack.used;
                 ur_setId(r2, UT_UNSET);
-                evalAvail(r2) = end - it;
-                evalPos(r2)   = it;
+                boron_evalAvail(r2) = end - it;
+                boron_evalPos(r2)   = it;
 
                 if( ((UCellFunc*) funC)->m.func( ut, args, res ) )
-                    it = evalPos(r2);
+                    it = boron_evalPos(r2);
                 else
                     it = NULL;
 
@@ -1395,12 +1410,12 @@ UCell* boron_reduceBlock( UThread* ut, const UCell* blkC, UCell* res )
 CFUNC_PUB( cfunc_do )
 {
     // NOTE: This is an FO_eval function.
-    const UCell* it  = evalPos(a1);
-    const UCell* end = it + evalAvail(a1);
+    const UCell* it  = boron_evalPos(a1);
+    const UCell* end = it + boron_evalAvail(a1);
 
     if( ! (it = boron_eval1( ut, it, end, res )) )
         return UR_THROW;
-    evalPos(a1) = it;
+    boron_evalPos(a1) = it;
 
     switch( ur_type(res) )
     {
@@ -1557,7 +1572,7 @@ CFUNC_PUB( cfunc_do )
 end_func:
     if( ! it )
         return UR_THROW;
-    evalPos(a1) = it;
+    boron_evalPos(a1) = it;
     return UR_OK;
 }
 

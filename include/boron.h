@@ -52,6 +52,18 @@ typedef int (*BoronCFunc)(UThread*,UCell*,UCell*);
 #define CFUNC_OPT_ARG(opt)  (a1 + ((uint8_t*)a1)[-opt])
 
 
+typedef struct
+{
+    UCellId id;
+    UIndex  avail;      // End cell is pos + avail.
+    const UCell* pos;
+}
+UCellCFuncEval;
+
+#define boron_evalPos(a1)   ((UCellCFuncEval*) a1)->pos
+#define boron_evalAvail(a1) ((UCellCFuncEval*) a1)->avail
+
+
 enum UserAccess
 {
     UR_ACCESS_DENY,

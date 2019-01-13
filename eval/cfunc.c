@@ -28,13 +28,13 @@
 
   If the function takes multiple arguments, just index off of \a a1.
   For instance, the third argument is (a1+2).
-  
+
   \param ut     The ubiquitous thread pointer.
   \param a1     Pointer to argument cells.
   \param res    Pointer to result cell.
 */
 /** \def CFUNC_OPTIONS
-  Macro to get uint32_t option flags from inside a C function.
+  Macro to get uint16_t option flags from inside a C function.
   Only use this if options were declared in the boron_defineCFunc() signature.
 */
 
