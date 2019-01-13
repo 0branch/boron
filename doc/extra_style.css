@@ -1,0 +1,9 @@
+/* Conceal header projectname as the logo is the name. */
+#projectname {
+	font-size: 20%;
+	color: #FFFFFF;
+}
+#projectnumber {
+	font-size: 10em;
+	color: #000000;
+}

@@ -4,7 +4,6 @@ PDOPT = -s --toc -N -f markdown
 
 dox:
 	doxygen
-	cp boron_logo2.jpg ./html
 
 html: UserManual.html UserManualGL.html
 
