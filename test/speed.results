@@ -43,3 +43,8 @@
  198248171     119040 ./boron test/func.b
   50687416     556976 ./boron -s scripts/m2/m2 -o /tmp/Makefile
   16013437     244952 ./boron -e loop 10 [load %scripts/m2/m2]
+; boron_doBlock returns UResult
+   1142402     108296 ./boron -e quit
+ 197947926     119040 ./boron test/func.b
+  50684728     556976 ./boron -s scripts/m2/m2 -o /tmp/Makefile
+  16013438     244952 ./boron -e loop 10 [load %scripts/m2/m2]

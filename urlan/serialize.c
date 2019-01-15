@@ -500,11 +500,11 @@ static void _memCpySwap4(uint8_t* dest, const uint8_t* src, uint32_t elemCount)
 
   \return UR_OK/UR_THROW
 */
-int ur_serialize( UThread* ut, UIndex blkN, UCell* res )
+UStatus ur_serialize( UThread* ut, UIndex blkN, UCell* res )
 {
     Serializer ser;
     UBuffer* bin;
-    int ok = UR_OK;
+    UStatus ok = UR_OK;
     int btype;
 
     ur_arrInit( &ser.atomMap, sizeof(UAtom), 0 );
@@ -946,8 +946,8 @@ int ur_serializedHeader( const uint8_t* data, int len )
 
   \return UR_OK/UR_THROW
 */
-int ur_unserialize( UThread* ut, const uint8_t* start, const uint8_t* end,
-                    UCell* res )
+UStatus ur_unserialize( UThread* ut, const uint8_t* start, const uint8_t* end,
+                        UCell* res )
 {
     BinaryIter bi;
     UBuffer atoms;
@@ -957,7 +957,7 @@ int ur_unserialize( UThread* ut, const uint8_t* start, const uint8_t* end,
     int n;
     int type;
     int used;
-    int ok = UR_OK;
+    UStatus ok = UR_OK;
 
 
     if( ! ur_serializedHeader( start, end - start ) )

@@ -702,7 +702,7 @@ void boron_argProgramToStr( UThread* ut, const UBuffer* bin, UBuffer* str )
 
   \return UR_THROW
 */
-int boron_badArg( UThread* ut, UIndex atom, int argN )
+UStatus boron_badArg( UThread* ut, UIndex atom, int argN )
 {
     return ur_error( ut, UR_ERR_TYPE, "Unexpected %s for argument %d",
                      ur_atomCStr(ut, atom), argN + 1 );
@@ -1303,9 +1303,9 @@ extern void ur_dblk( UThread* ut, UIndex n );
   \param blkC   Block to evaluate.  This buffer must be held.
   \param res    Result. This cell must be in a held block.
 
-  \return res or NULL if an exception is thrown.
+  \return UR_OK or UR_THROW if an exception is thrown.
 */
-UCell* boron_doBlock( UThread* ut, const UCell* blkC, UCell* res )
+UStatus boron_doBlock( UThread* ut, const UCell* blkC, UCell* res )
 {
     UBlockItC bi;
     UIndex blkN = blkC->series.buf;
@@ -1349,7 +1349,7 @@ UCell* boron_doBlock( UThread* ut, const UCell* blkC, UCell* res )
             res = NULL;
             break;
 #else
-            return NULL;
+            return UR_THROW;
 #endif
         }
     }
@@ -1362,7 +1362,7 @@ UCell* boron_doBlock( UThread* ut, const UCell* blkC, UCell* res )
         blk->storage &= ~UR_BUF_PROTECT;
     }
 #endif
-    return res;
+    return UR_OK;
 }
 
 
@@ -1478,7 +1478,7 @@ CFUNC_PUB( cfunc_do )
                 hold = ur_hold(blkN);
                 boron_bindDefault( ut, blkN );
                 ur_initSeries( &tmp, UT_BLOCK, blkN );
-                ok = boron_doBlock( ut, &tmp, res ) ? UR_OK : UR_THROW;
+                ok = boron_doBlock( ut, &tmp, res );
                 ur_release(hold);
                 return ok;
             }
@@ -1500,19 +1500,19 @@ CFUNC_PUB( cfunc_do )
         case UT_BLOCK:
         case UT_PAREN:
         {
-            UCell* resOk;
+            int ok;
             UIndex hold;
 //#ifdef SHARED_STORE
             if( ur_isShared( res->series.buf ) )
-                resOk = boron_doBlock( ut, res, res );
+                ok = boron_doBlock( ut, res, res );
             else
 //#endif
             {
                 hold = ur_hold( res->series.buf );
-                resOk = boron_doBlock( ut, res, res );
+                ok = boron_doBlock( ut, res, res );
                 ur_release( hold );
             }
-            return resOk ? UR_OK : UR_THROW;
+            return ok;
         }
         case UT_PATH:
         {
@@ -1688,7 +1688,9 @@ UCell* boron_evalUtf8( UThread* ut, const char* script, int len )
 
     boron_bindDefault( ut, bufN );
 
-    res = boron_doBlock( ut, &bcell, ut->stack.ptr.cell + ut->stack.used - 1 );
+    res = ut->stack.ptr.cell + ut->stack.used - 1;
+    if( ! boron_doBlock( ut, &bcell, res ) )
+        res = NULL;
 
     ur_release(hold);
     return res;

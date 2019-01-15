@@ -967,7 +967,7 @@ UBuffer* ur_envContext( UThread* ut )
 
   \return UR_THROW
 */
-int ur_error( UThread* ut, int errorType, const char* fmt, ... )
+UStatus ur_error( UThread* ut, int errorType, const char* fmt, ... )
 {
 #define MAX_ERR_LEN 256
     static const uint8_t _types[2] = {UT_STRING, UT_BLOCK};
@@ -1239,7 +1239,7 @@ UCell* ur_wordCellM( UThread* ut, const UCell* cell )
 
   \return UR_OK/UR_THROW
 */
-int ur_setWord( UThread* ut, const UCell* word, const UCell* src )
+UStatus ur_setWord( UThread* ut, const UCell* word, const UCell* src )
 {
     UCell* dest = ur_wordCellM( ut, word );
     if( dest )
@@ -1357,7 +1357,7 @@ void ur_seriesSlice( const UThread* ut, USeriesIter* si, const UCell* cell )
 
   \return UR_OK/UR_THROW
 */
-int ur_seriesSliceM( UThread* ut, USeriesIterM* si, const UCell* cell )
+UStatus ur_seriesSliceM( UThread* ut, USeriesIterM* si, const UCell* cell )
 {
     UBuffer* buf = si->buf = ur_bufferSerM( cell );
     if( ! buf )

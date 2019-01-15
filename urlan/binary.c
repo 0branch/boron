@@ -453,7 +453,7 @@ void ur_binSlice( UThread* ut, UBinaryIter* bi, const UCell* cell )
 
   \return UR_OK/UR_THROW
 */
-int ur_binSliceM( UThread* ut, UBinaryIterM* bi, const UCell* cell )
+UStatus ur_binSliceM( UThread* ut, UBinaryIterM* bi, const UCell* cell )
 {
     UBuffer* buf = ur_bufferSerM(cell);
     if( ! buf )

@@ -32,7 +32,7 @@ typedef struct
     uint16_t argProgOffset;
     UIndex   argProgN;      // Same location as UCellSeries buf.
     union {
-        int (*func)( UThread*, UCell*, UCell* );
+        UStatus (*func)( UThread*, UCell*, UCell* );
 #ifdef CONFIG_ASSEMBLE
         jit_function_t jitFunc;
 #endif

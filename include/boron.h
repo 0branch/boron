@@ -45,9 +45,9 @@ enum BoronWordBindings
 };
 
 
-typedef int (*BoronCFunc)(UThread*,UCell*,UCell*);
-#define CFUNC(name)     static int name( UThread* ut, UCell* a1, UCell* res )
-#define CFUNC_PUB(name) int name( UThread* ut, UCell* a1, UCell* res )
+typedef UStatus (*BoronCFunc)(UThread*,UCell*,UCell*);
+#define CFUNC(name)     static UStatus name( UThread* ut, UCell* a1, UCell* res )
+#define CFUNC_PUB(name) UStatus name( UThread* ut, UCell* a1, UCell* res )
 #define CFUNC_OPTIONS       a1[-1].id.ext
 #define CFUNC_OPT_ARG(opt)  (a1 + ((uint8_t*)a1)[-opt])
 
@@ -126,26 +126,26 @@ extern "C" {
 UEnvParameters* boron_envParam( UEnvParameters* );
 UThread* boron_makeEnv( UEnvParameters* );
 void     boron_freeEnv( UThread* );
-int      boron_defineCFunc( UThread*, UIndex ctxN, const BoronCFunc* funcs,
+UStatus  boron_defineCFunc( UThread*, UIndex ctxN, const BoronCFunc* funcs,
                             const char* spec, int slen );
 void     boron_overrideCFunc( UThread*, const char* name, BoronCFunc func );
 void     boron_addPortDevice( UThread*, const UPortDevice*, UAtom name );
 UBuffer* boron_makePort( UThread*, const UPortDevice*, void* ext, UCell* res );
 void     boron_setAccessFunc( UThread*, int (*func)( UThread*, const char* ) );
-int      boron_requestAccess( UThread*, const char* msg, ... );
+UStatus  boron_requestAccess( UThread*, const char* msg, ... );
 void     boron_bindDefault( UThread*, UIndex blkN );
-int      boron_load( UThread*, const char* file, UCell* res );
+UStatus  boron_load( UThread*, const char* file, UCell* res );
 const UCell*
          boron_eval1(UThread*, const UCell* it, const UCell* end, UCell* res);
-UCell*   boron_doBlock( UThread* ut, const UCell* blkC, UCell* res );
+UStatus  boron_doBlock( UThread* ut, const UCell* blkC, UCell* res );
 UCell*   boron_reduceBlock( UThread* ut, const UCell* blkC, UCell* res );
 UCell*   boron_evalUtf8( UThread*, const char* script, int len );
 void     boron_reset( UThread* );
-int      boron_throwWord( UThread*, UAtom atom, UIndex stackPos );
+UStatus  boron_throwWord( UThread*, UAtom atom, UIndex stackPos );
 int      boron_catchWord( UThread*, UAtom atom );
 char*    boron_cstr( UThread*, const UCell* strC, UBuffer* bin );
 char*    boron_cpath( UThread*, const UCell* strC, UBuffer* bin );
-int      boron_badArg( UThread*, UIndex atom, int argN );
+UStatus  boron_badArg( UThread*, UIndex atom, int argN );
 
 /* Deprecated functions */
 void     boron_addCFunc( UThread*, BoronCFunc func, const char* sig );

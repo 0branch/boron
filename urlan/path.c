@@ -66,7 +66,7 @@ extern int vec3_poke ( UThread*, UCell* cell, int index, const UCell* src );
 
   \return UR_OK/UR_THROW
 */
-int ur_setPath( UThread* ut, const UCell* path, const UCell* src )
+UStatus ur_setPath( UThread* ut, const UCell* path, const UCell* src )
 {
     UBlockIterM bi;
     UBuffer* buf;

@@ -1110,7 +1110,7 @@ CFUNC(cfunc_if)
     {
         UCell* bc = a2;
         if( ur_is(bc, UT_BLOCK) )
-            return boron_doBlock( ut, bc, res ) ? UR_OK : UR_THROW;
+            return boron_doBlock( ut, bc, res );
         *res = *bc;
         return UR_OK;
     }
@@ -1135,7 +1135,7 @@ CFUNC(cfunc_ifn)
     {
         UCell* bc = a2;
         if( ur_is(bc, UT_BLOCK) )
-            return boron_doBlock( ut, bc, res ) ? UR_OK : UR_THROW;
+            return boron_doBlock( ut, bc, res );
         *res = *bc;
         return UR_OK;
     }
@@ -1157,7 +1157,7 @@ CFUNC(cfunc_either)
 {
     UCell* bc = ur_true(a1) ? a2 : a3;
     if( ur_is(bc, UT_BLOCK) )
-        return boron_doBlock( ut, bc, res ) ? UR_OK : UR_THROW;
+        return boron_doBlock( ut, bc, res );
     *res = *bc;
     return UR_OK;
 }
@@ -1370,7 +1370,7 @@ CFUNC(cfunc_switch)
     if( found )
     {
         if( ur_is(found, UT_BLOCK) || ur_is(found, UT_PAREN) )
-            return boron_doBlock( ut, found, res ) ? UR_OK : UR_THROW;
+            return boron_doBlock( ut, found, res );
 
         *res = *found;
         return UR_OK;
@@ -1402,7 +1402,7 @@ CFUNC(cfunc_case)
             if( bi.it == bi.end )
                 break;
             if( ur_is(bi.it, UT_BLOCK) || ur_is(bi.it, UT_PAREN) )
-                return boron_doBlock( ut, bi.it, res ) ? UR_OK : UR_THROW;
+                return boron_doBlock( ut, bi.it, res );
 
             *res = *bi.it;
             return UR_OK;
@@ -4258,15 +4258,15 @@ CFUNC(cfunc_save)
 
 extern int ur_parseBinary( UThread* ut, UBuffer*, UIndex start, UIndex end,
                            UIndex* parsePos, const UBuffer* ruleBlk,
-                           int (*eval)( UThread*, const UCell* ) );
+                           UStatus (*eval)( UThread*, const UCell* ) );
 
 extern int ur_parseBlock( UThread* ut, UBuffer*, UIndex start, UIndex end,
                           UIndex* parsePos, const UBuffer* ruleBlk,
-                          int (*eval)( UThread*, const UCell* ) );
+                          UStatus (*eval)( UThread*, const UCell* ) );
 
 extern int ur_parseString( UThread* ut, UBuffer*, UIndex start, UIndex end,
                            UIndex* parsePos, const UBuffer* ruleBlk,
-                           int (*eval)( UThread*, const UCell* ), int );
+                           UStatus (*eval)( UThread*, const UCell* ), int );
 
 /*-cf-
     parse

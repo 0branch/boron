@@ -263,15 +263,17 @@ usage_err:
 
     if( fileN > 0 )
     {
+        UStatus ok;
+
         createArgs( ut, argc - 1 - fileN, argv + 1 + fileN );
 
         res = ut->stack.ptr.cell + ut->stack.used - 1;
         if( ! boron_load( ut, argv[fileN], res ) )
             goto exception;
 
-        res = boron_doBlock( ut, res, ur_push(ut, UT_UNSET) );
+        ok = boron_doBlock( ut, res, ur_push(ut, UT_UNSET) );
         ur_pop(ut);
-        if( ! res )
+        if( ! ok )
             goto exception;
     }
     else if( fileN < 0 )

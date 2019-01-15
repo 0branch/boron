@@ -286,7 +286,7 @@ char* boron_cstrSave( UThread* ut, const UCell* src, UBuffer* dstStr )
 
   \return UR_THROW
 */
-int boron_throwWord( UThread* ut, UAtom atom, UIndex stackPos )
+UStatus boron_throwWord( UThread* ut, UAtom atom, UIndex stackPos )
 {
     UCell* cell = ur_exception(ut);
     ur_setId( cell, UT_WORD );
@@ -318,9 +318,9 @@ int boron_catchWord( UThread* ut, UAtom atom )
 /*
   Call boron_doBlock() but throw away the result.   
 */
-int boron_doVoid( UThread* ut, const UCell* blkC )
+UStatus boron_doVoid( UThread* ut, const UCell* blkC )
 {
-    int ok = boron_doBlock(ut, blkC, ur_push(ut, UT_UNSET)) ? UR_OK : UR_THROW;
+    UStatus ok = boron_doBlock(ut, blkC, ur_push(ut, UT_UNSET));
     ur_pop(ut);
     return ok;
 }
@@ -380,8 +380,8 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
                 per line.
   \param slen   Specification string length.
 */
-int boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
-                       const char* spec, int slen )
+UStatus boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
+                           const char* spec, int slen )
 {
     UBlockIter bi;
     UCell tmp;
@@ -694,6 +694,7 @@ UThread* boron_makeEnv( UEnvParameters* par )
     UThread* ut;
     UCell* res;
     unsigned int dtCount;
+    UStatus ok;
 
 //#define TIME_MAKEENV
 #ifdef TIME_MAKEENV
@@ -797,9 +798,9 @@ UThread* boron_makeEnv( UEnvParameters* par )
     if( ! ur_is(res, UT_BLOCK) )
         goto fail;
     boron_bindDefault( ut, res->series.buf );
-    res = boron_doBlock( ut, res, ur_push(ut, UT_UNSET) );
+    ok = boron_doBlock( ut, res, ur_push(ut, UT_UNSET) );
     ur_pop(ut);
-    if( ! res )
+    if( ! ok )
         goto fail;
 #else
     if( ! boron_evalUtf8( ut, boot_data, sizeof(boot_len)-1 ) )
@@ -853,12 +854,12 @@ const UAtom* boron_compileAtoms( BoronThread* bt )
 
   \return UR_OK/UR_THROW.
 */
-int boron_load( UThread* ut, const char* file, UCell* res )
+UStatus boron_load( UThread* ut, const char* file, UCell* res )
 {
     UBuffer* str;
     UCell* arg;
     UIndex bufN;
-    int ok;
+    UStatus ok;
 
     str = ur_genBuffers( ut, 1, &bufN );        // gc!
     ur_strInit( str, UR_ENC_UTF8, 0 );
@@ -912,7 +913,7 @@ void boron_setAccessFunc( UThread* ut, int (*func)( UThread*, const char* ) )
 
   \sa boron_setAccessFunc()
 */
-int boron_requestAccess( UThread* ut, const char* msg, ... )
+UStatus boron_requestAccess( UThread* ut, const char* msg, ... )
 {
     if( BT->requestAccess )
     {

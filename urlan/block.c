@@ -241,7 +241,7 @@ void ur_blkSlice( UThread* ut, UBlockIter* bi, const UCell* cell )
 
   \return UR_OK/UR_THROW
 */
-int ur_blkSliceM( UThread* ut, UBlockIterM* bi, const UCell* cell )
+UStatus ur_blkSliceM( UThread* ut, UBlockIterM* bi, const UCell* cell )
 {
     UBuffer* buf = ur_bufferSerM(cell);
     if( ! buf )

@@ -116,11 +116,12 @@ enum UrlanStringEncoding
 };
 
 
-enum UrlanReturnCode
+typedef enum
 {
     UR_THROW = 0,
     UR_OK    = 1
-};
+}
+UStatus;
 
 
 enum UrlanErrorType
@@ -505,7 +506,7 @@ void     ur_recycle( UThread* );
 int      ur_markBuffer( UThread*, UIndex bufN );
 UCell*   ur_push( UThread*, int type );
 UCell*   ur_pushCell( UThread*, const UCell* );
-int      ur_error( UThread*, int errorType, const char* fmt, ... );
+UStatus  ur_error( UThread*, int errorType, const char* fmt, ... );
 UBuffer* ur_threadContext( UThread* );
 UBuffer* ur_envContext( UThread* );
 void     ur_traceError( UThread*, const UCell* errC, UIndex blkN,
@@ -514,20 +515,20 @@ void     ur_appendTrace( UThread*, UIndex blkN, UIndex it );
 UIndex   ur_tokenize( UThread*, const char* it, const char* end, UCell* res );
 UIndex   ur_tokenizeType( UThread*, int inputEncoding,
                           const char* it, const char* end, UCell* res );
-int      ur_serialize( UThread*, UIndex blkN, UCell* res );
-int      ur_unserialize( UThread*, const uint8_t* start, const uint8_t* end,
+UStatus  ur_serialize( UThread*, UIndex blkN, UCell* res );
+UStatus  ur_unserialize( UThread*, const uint8_t* start, const uint8_t* end,
                          UCell* res );
 void     ur_toStr( UThread*, const UCell* cell, UBuffer* str, int depth );
 void     ur_toText( UThread*, const UCell* cell, UBuffer* str );
 const UCell* ur_wordCell( UThread*, const UCell* cell );
 UCell*   ur_wordCellM( UThread*, const UCell* cell );
-int      ur_setWord( UThread*, const UCell* wordCell, const UCell* src );
+UStatus  ur_setWord( UThread*, const UCell* wordCell, const UCell* src );
 const UBuffer* ur_bufferEnv( UThread*, UIndex n );
 const UBuffer* ur_bufferSeries( const UThread*, const UCell* cell );
 UBuffer* ur_bufferSeriesM( UThread*, const UCell* cell );
 void     ur_initSeries( UCell*, int type, UIndex buf );
 void     ur_seriesSlice( const UThread*, USeriesIter* si, const UCell* cell );
-int      ur_seriesSliceM( UThread*, USeriesIterM* si, const UCell* cell );
+UStatus  ur_seriesSliceM( UThread*, USeriesIterM* si, const UCell* cell );
 void     ur_bind( UThread*, UBuffer* blk, const UBuffer* ctx, int bindType );
 void     ur_bindCells( UThread*, UCell* it, UCell* end, const UBindTarget* bt );
 void     ur_bindCopy( UThread*, const UBuffer* ctx, UCell* it, UCell* end );
@@ -559,7 +560,7 @@ const char* ur_binAppendBase( UBuffer* buf, const char* it, const char* end,
                               enum UrlanBinaryEncoding enc );
 void     ur_binFree( UBuffer* );
 void     ur_binSlice( UThread*, UBinaryIter*, const UCell* cell );
-int      ur_binSliceM( UThread*, UBinaryIterM*, const UCell* cell );
+UStatus  ur_binSliceM( UThread*, UBinaryIterM*, const UCell* cell );
 void     ur_binToStr( UBuffer*, int encoding );
 
 UIndex   ur_makeString( UThread*, int enc, int size );
@@ -607,12 +608,12 @@ void     ur_blkInsert( UBuffer*, UIndex it, const UCell* cells, int count );
 void     ur_blkPush( UBuffer*, const UCell* cell );
 UCell*   ur_blkPop( UBuffer* );
 void     ur_blkSlice( UThread*, UBlockIter*, const UCell* cell );
-int      ur_blkSliceM( UThread*, UBlockIterM*, const UCell* cell );
+UStatus  ur_blkSliceM( UThread*, UBlockIterM*, const UCell* cell );
 void     ur_blkCollectType( UThread*, const UCell* blkCell,
                             uint32_t typeMask, UBuffer* dest, int unique );
 #define  ur_blkFree ur_arrFree
 
-int      ur_setPath( UThread*, const UCell* path, const UCell* src );
+UStatus  ur_setPath( UThread*, const UCell* path, const UCell* src );
 
 UIndex   ur_makeContext( UThread*, int size );
 UBuffer* ur_makeContextCell( UThread*, int size, UCell* cell );
