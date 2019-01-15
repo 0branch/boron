@@ -155,7 +155,7 @@ struct GLEnv
 
 extern struct GLEnv glEnv;
 
-extern UThread* boron_makeEnvGL( UDatatype**, unsigned int dtCount );
+extern UThread* boron_makeEnvGL( UEnvParameters* );
 extern void boron_freeEnvGL( UThread* );
 
 void ur_markBlkN( UThread* ut, UIndex blkN );

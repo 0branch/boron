@@ -358,6 +358,7 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
 
 
     def.mipmap     = 0;
+    def.comp       = 0;
     def.wrap       = GL_REPEAT;
     def.min_filter = GL_NEAREST_MIPMAP_LINEAR;
     def.mag_filter = GL_LINEAR;

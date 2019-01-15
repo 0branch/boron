@@ -406,7 +406,7 @@ static int areaUpdate( GWidget* wp, GRect* rect )
 
 extern CFUNC_PUB(cfunc_key_code);
 
-#define keyModMask     number.id._pad0
+#define keyModMask     number.id.ext
 #define KEY_MOD_COUNT  3
 
 static uint16_t glvModifierMask[ KEY_MOD_COUNT ] =
@@ -2512,7 +2512,7 @@ void gui_doBlock( UThread* ut, const UCell* blkC )
     UIndex errUsed = buf->used;
     */
 
-    if( ! boron_doBlock( ut, blkC, boron_result(ut) ) )
+    if( ! boron_doBlock( ut, blkC, ur_push(ut, UT_UNSET) ) )
     {
 #if 1
         UR_GUI_THROW;
@@ -2533,15 +2533,22 @@ void gui_doBlock( UThread* ut, const UCell* blkC )
         buf->used = 0;
 #endif
     }
+    ur_pop(ut);
 }
 
 
 void gui_doBlockN( UThread* ut, UIndex blkN )
 {
-    if( ! boron_doBlockN( ut, blkN, boron_result(ut) ) )
+    UCell* cell = ut->stack.ptr.cell + ut->stack.used;
+    ur_setId(cell, UT_BLOCK);
+    ur_setSeries(cell, blkN, 0);
+    ur_setId(cell+1, UT_UNSET);
+    ut->stack.used += 2;
+    if( ! boron_doBlock( ut, cell, cell+1 ) )
     {
         UR_GUI_THROW;
     }
+    ut->stack.used -= 2;
 }
 
 

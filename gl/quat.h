@@ -6,7 +6,7 @@
 
 
 #define UR_FLAGS_QUAT   3
-#define ur_quatW(cell)  (cell)->id._pad0
+#define ur_quatW(cell)  (cell)->id.ext
 
 float quat_w( const UCell* );
 void quat_setW( UCell*, float w );

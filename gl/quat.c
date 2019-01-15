@@ -16,7 +16,7 @@
 #define ur_x(cell)  (cell)->vec3.xyz[0]
 #define ur_y(cell)  (cell)->vec3.xyz[1]
 #define ur_z(cell)  (cell)->vec3.xyz[2]
-#define ur_w(cell)  (cell)->id._pad0
+#define ur_w(cell)  (cell)->id.ext
 
 
 #if 1

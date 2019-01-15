@@ -43,9 +43,6 @@
 #endif
 
 
-extern int boron_doBlock( UThread* ut, const UCell* ec, UCell* res );
-
-
 enum DPOpcode
 {
     DP_EMPTY,
@@ -1498,16 +1495,15 @@ static uint8_t _primOp[] =
     if( ! (val = dp_value(ut,pc)) ) \
         goto error;
 
-// Returns zero if not found.
+// Returns NULL if not found.
 static const UCell* dp_value( UThread* ut, const UCell* cell )
 {
     if( ur_is(cell, UT_WORD) )
         return ur_wordCell(ut, cell);
     if( ur_is(cell, UT_PAREN) )
     {
-        if( boron_doBlock(ut, cell, boron_result(ut)) != UR_OK )
-            return 0;
-        return boron_result(ut);
+        UCell* res = ut->stack.ptr.cell + ut->stack.used - 1;
+        return boron_doBlock(ut, cell, res) ? res : NULL;
     }
     return cell;
 }
@@ -2429,7 +2425,7 @@ int ur_compileDP( UThread* ut, const UCell* blkCell, int handleError )
     if( (ok == UR_THROW) && handleError )
     {
         UBuffer str;
-        UCell* ex = boron_exception( ut );
+        const UCell* ex = ur_exception( ut );
 
         ur_strInit( &str, UR_ENC_UTF8, 0 );
         ur_toStr( ut, ex, &str, 0 );
@@ -2825,10 +2821,11 @@ dispatch:
 
         case DP_EVAL_BLOCK:
         {
+            UCell* res = ut->stack.ptr.cell + ut->stack.used - 1;
             UCell tmp;
             ur_initSeries(&tmp, UT_BLOCK, *pc++);
 
-            if( ! boron_doBlock( ut, &tmp, boron_result(ut) ) )
+            if( ! boron_doBlock( ut, &tmp, res ) )
                 return UR_THROW;
         }
             break;

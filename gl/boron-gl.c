@@ -81,7 +81,7 @@ static void eventHandler( GLView* view, GLViewEvent* event )
         case GLV_EVENT_CLOSE:
             if( ! wp )
             {
-                boron_throwWord( env->guiUT, UR_ATOM_QUIT );
+                boron_throwWord( env->guiUT, UR_ATOM_QUIT, 0 );
                 UR_GUI_THROW;   // Ignores any later events.
                 return;
             }
@@ -130,7 +130,7 @@ static void eventHandler( GLView* view, GLViewEvent* event )
             fprintf( stderr, "GLV_EVENT_APP %d\n", event->code );
             if( event->code == APP_CMD_STOP )
             {
-                boron_throwWord( env->guiUT, UR_ATOM_QUIT );
+                boron_throwWord( env->guiUT, UR_ATOM_QUIT, 0 );
                 UR_GUI_THROW;   // Ignores any later events.
                 return;
             }
@@ -2657,10 +2657,23 @@ static void _createDrawOpTable( UThread* ut )
 #include "gl_types.c"
 #include "math3d.c"
 
+#define DEF_CF(f,spec)  f,
+static BoronCFunc _glfuncs[] =
+{
+#include "glfunc_table.c"
+};
+
+#undef DEF_CF
+#define DEF_CF(f,spec)  spec
+static const char _glfuncSpecs[] =
+{
+#include "glfunc_table.c"
+};
+
 extern void gui_addStdClasses();
 
 
-UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
+UThread* boron_makeEnvGL( UEnvParameters* param )
 {
 #if defined(__linux__) && ! defined(__ANDROID__)
     static char joyStr[] = "joystick";
@@ -2688,15 +2701,15 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     glEnv.guiThrow = 0;
 
     {
-    const UDatatype* table[ UT_MAX - UT_GL_COUNT ];
+    const UDatatype* table[ UT_GL_COUNT - UT_BORON_COUNT ];
     unsigned int i;
 
     for( i = 0; i < (sizeof(gl_types) / sizeof(UDatatype)); ++i )
         table[i] = gl_types + i;
-    for( dtCount += i; i < dtCount; ++i )
-        table[i] = *dtTable++;
+    param->dtCount = i;
+    param->dtTable = table;
 
-    ut = boron_makeEnv( table, dtCount );
+    ut = boron_makeEnv( param );
     }
     if( ! ut )
         return 0;
@@ -2704,72 +2717,14 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
     _createFixedAtoms( ut );
     _createDrawOpTable( ut );
 
-
-#define addCFunc(func,spec)    boron_addCFunc(ut, func, spec)
-
-    addCFunc( cfunc_draw,        "draw prog" );
-    addCFunc( cfunc_play,        "play n" );
-    addCFunc( cfunc_stop,        "stop n" );
-    addCFunc( cfunc_set_volume,  "set-volume n b" );
-    addCFunc( cfunc_show,        "show wid" );
-    addCFunc( cfunc_hide,        "hide wid" );
-    addCFunc( cfunc_visibleQ,    "visible? wid" );
-    addCFunc( cfunc_move,        "move wid pos /center" );
-    addCFunc( cfunc_resize,      "resize wid a" );
-    addCFunc( cfunc_text_size,   "text-size f text" );
-    addCFunc( uc_handle_events,  "handle-events wid /wait" );
-    addCFunc( uc_clear_color,    "clear-color color" );
-    addCFunc( uc_display_swap,   "display-swap" );
-    addCFunc( uc_display_area,   "display-area" );
-    addCFunc( uc_display_snap,   "display-snapshot" );
-    addCFunc( uc_display_cursor, "display-cursor" );
-    addCFunc( uc_key_repeat,     "key-repeat" );
-    addCFunc( cfunc_key_code,    "key-code" );
-    addCFunc( cfunc_load_png,    "load-png f" );
-    addCFunc( cfunc_save_png,    "save-png f rast" );
-    addCFunc( cfunc_buffer_audio,"buffer-audio a" );
-    addCFunc( cfunc_display,     "display size /fullscreen /title text" );
-    addCFunc( cfunc_to_degrees,  "to-degrees n" );
-    addCFunc( cfunc_to_radians,  "to-radians n" );
-    addCFunc( cfunc_limit,       "limit n min max" );
-    addCFunc( cfunc_look_at,     "look-at a b" );
-    addCFunc( cfunc_turntable,   "turntable c a" );
-    addCFunc( cfunc_lerp,        "lerp a b f" );
-    addCFunc( cfunc_curve_at,    "curve-at a b" );
-    addCFunc( cfunc_animate,     "animate a time" );
-    /*
-#ifdef TIMER_GROUP
-    addCFunc( uc_timer_group,    "timer-group" );
-    addCFunc( uc_add_timer,      "add-timer" );
-    addCFunc( uc_check_timers,   "check-timers" );
-#endif
-    */
-    addCFunc( cfunc_blit,        "blit a b pos" );
-    addCFunc( cfunc_move_glyphs, "move-glyphs f pos" );
-    addCFunc( cfunc_point_in,    "point-in a pnt" );
-    addCFunc( cfunc_pick_point,  "pick-point a c pnt pos" );
-    addCFunc( cfunc_change_vbo,  "change-vbo a b n" );
-    addCFunc( cfunc_make_sdf,    "make-sdf rast raster! m int! b double!" );
-    addCFunc( uc_gl_extensions,  "gl-extensions" );
-    addCFunc( uc_gl_version,     "gl-version" );
-    addCFunc( uc_gl_max_textures,"gl-max-textures" );
-    /*
-    addCFunc( cfunc_particle_sim,"particle-sim vec prog n" );
-    //addCFunc( uc_perlin,         "perlin" );
-    */
-    addCFunc( cfunc_shadowmap,   "shadowmap size" );
-    addCFunc( cfunc_distance,    "distance a b" );
-    addCFunc( cfunc_dot,         "dot a b" );
-    addCFunc( cfunc_cross,       "cross a b" );
-    addCFunc( cfunc_normalize,   "normalize vec" );
-    addCFunc( cfunc_project_point, "project-point pnt a b" );
-    addCFunc( cfunc_set_matrix,  "set-matrix m q" );
-    addCFunc( cfunc_mul_matrix,  "mul-matrix m b" );
+    if( ! boron_defineCFunc( ut, UR_MAIN_CONTEXT, _glfuncs,
+                             _glfuncSpecs, sizeof(_glfuncSpecs)-1 ) )
+        return NULL;
 
     boron_overrideCFunc( ut, "free", cfunc_freeGL );
 
-    if( ! boron_doCStr( ut, _bootScript, sizeof(_bootScript) - 1 ) )
-        return UR_THROW;
+    if( ! boron_evalUtf8( ut, _bootScript, sizeof(_bootScript) - 1 ) )
+        return NULL;
 
 #if defined(__linux__) && ! defined(__ANDROID__)
     boron_addPortDevice( ut, &port_joystick, ur_intern(ut, joyStr, 8) );
@@ -2789,7 +2744,7 @@ UThread* boron_makeEnvGL( UDatatype** dtTable, unsigned int dtCount )
         fprintf( stderr, "glv_create() failed\n" );
 cleanup:
         boron_freeEnv( ut );
-        return 0;
+        return NULL;
     }
 
     gstr = glGetString( GL_VERSION );

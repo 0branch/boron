@@ -316,10 +316,7 @@ static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
 
         if( ! itemview_parse( &dc, ut, &layout, (GWidget*) ep ) )
         {
-            // Clear exceptions.
-            UBuffer* buf = ur_errorBlock(ut);
-            buf->used = 0;
-
+            boron_reset(ut);
             printf( "KR itemview_parse failed\n" );
         }
     }
@@ -357,10 +354,7 @@ static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
         layout.it = loStart;
         if( ! itemview_parse( &dc, ut, &layout, (GWidget*) ep ) )
         {
-            // Clear exceptions.
-            UBuffer* buf = ur_errorBlock(ut);
-            buf->used = 0;
-
+            boron_reset(ut);
             printf( "KR itemview_parse failed\n" );
         }
 
