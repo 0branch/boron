@@ -1043,6 +1043,13 @@ overflow:
 
 extern void vector_pick( const UBuffer* buf, UIndex n, UCell* res );
 
+#define INLINE_WORDVAL(it) \
+    if( ur_binding(it) == UR_BIND_ENV ) \
+        cell = (ut->sharedStoreBuf - it->word.ctx)->ptr.cell + it->word.index;\
+    else if( ur_binding(it) == UR_BIND_THREAD ) \
+        cell = (ut->dataStore.ptr.buf+it->word.ctx)->ptr.cell + it->word.index;\
+    else
+
 /**
   Evaluate one value.
 
@@ -1064,9 +1071,12 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
     switch( ur_type(it) )
     {
         case UT_WORD:
+            INLINE_WORDVAL(it)
+            {
             cell = ur_wordCell( ut, it );
             if( ! cell )
                 goto unbound;
+            }
             ++it;
             if( ur_is(cell, UT_CFUNC) )
                 return boron_callC( ut, cell, 0, it, end, res );
@@ -1114,9 +1124,12 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
             return it;
 
         case UT_GETWORD:
+            INLINE_WORDVAL(it)
+            {
             cell = ur_wordCell( ut, it );
             if( ! cell )
                 goto unbound;
+            }
             *res = *cell;
             return ++it;
 

@@ -58,3 +58,8 @@
  197723875     119040 ./boron test/func.b
   50634093     556976 ./boron -s scripts/m2/m2 -o /tmp/Makefile
   16014208     244952 ./boron -e loop 10 [load %scripts/m2/m2]
+; eval1 INLINE_WORDVAL
+   1143243     108296 ./boron -e quit
+ 196372949     119040 ./boron test/func.b
+  50631349     556976 ./boron -s scripts/m2/m2 -o /tmp/Makefile
+  16014082     244952 ./boron -e loop 10 [load %scripts/m2/m2]
