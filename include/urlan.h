@@ -376,6 +376,22 @@ UBlockIterM;
 
 typedef struct
 {
+    UCell* it;
+    UCell* end;
+}
+UBlockIt;
+
+
+typedef struct
+{
+    const UCell* it;
+    const UCell* end;
+}
+UBlockItC;
+
+
+typedef struct
+{
     const UBuffer* ctx;
     UIndex ctxN;
     int bindType;
@@ -529,6 +545,8 @@ UBuffer* ur_bufferSeriesM( UThread*, const UCell* cell );
 void     ur_initSeries( UCell*, int type, UIndex buf );
 void     ur_seriesSlice( const UThread*, USeriesIter* si, const UCell* cell );
 UStatus  ur_seriesSliceM( UThread*, USeriesIterM* si, const UCell* cell );
+UBuffer* ur_blockIt( const UThread* ut, const UCell* blkCell, UBlockIt* bi );
+#define  ur_blockItC(ut,blkCell,bi)  ur_blockIt(ut,blkCell,(UBlockIt*)bi)
 void     ur_bind( UThread*, UBuffer* blk, const UBuffer* ctx, int bindType );
 void     ur_bindCells( UThread*, UCell* it, UCell* end, const UBindTarget* bt );
 void     ur_bindCopy( UThread*, const UBuffer* ctx, UCell* it, UCell* end );
@@ -613,6 +631,8 @@ void     ur_blkCollectType( UThread*, const UCell* blkCell,
                             uint32_t typeMask, UBuffer* dest, int unique );
 #define  ur_blkFree ur_arrFree
 
+int      ur_pathValue( UThread*, UBlockItC* bi, UCell* res );
+int      ur_pathCell( UThread*, const UCell* pc, UCell* res );
 UStatus  ur_setPath( UThread*, const UCell* path, const UCell* src );
 
 UIndex   ur_makeContext( UThread*, int size );

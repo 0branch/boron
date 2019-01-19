@@ -36,28 +36,6 @@
 #define cp_error    (void*)(intptr_t) ur_error
 
 
-#if UR_VERSION < 0x000400
-// FIXME: ur_wordCell throws error, boron_wordValue does not.
-#define boron_wordValue     ur_wordCell
-#define boron_setWordValue  ur_setWord
-
-typedef struct
-{
-    UCell* it;
-    UCell* end;
-}
-UBlockIt;
-#endif
-
-
-typedef struct
-{
-    const UCell* it;
-    const UCell* end;
-}
-UBlockItC;
-
-
 enum FuncArgumentOpcodes
 {
     // Instruction       Data       Description
@@ -165,14 +143,6 @@ typedef struct
 ArgCompiler;
 
 
-#if UR_VERSION < 0x000400
-UBuffer* ur_generateBuf( UThread* ut, UIndex* index, int type )
-{
-    uint8_t t = type;
-    return ur_generate( ut, 1, index, &t );
-}
-
-
 int boron_copyWordValue( UThread* ut, const UCell* wordC, UCell* res )
 {
     const UCell* cell;
@@ -181,24 +151,6 @@ int boron_copyWordValue( UThread* ut, const UCell* wordC, UCell* res )
     *res = *cell;
     return UR_OK;
 }
-
-
-UBuffer* ur_blockIt( const UThread* ut, const UCell* cell, UBlockIt* bi )
-{
-    const UBuffer* blk = ur_bufferSer(cell);
-    UIndex pos  = cell->series.it;
-    UIndex epos = cell->series.end;
-
-    if( epos < 0 )
-        epos = blk->used;
-    if( epos < pos )
-        epos = pos;
-
-    bi->it  = blk->ptr.cell + pos;
-    bi->end = blk->ptr.cell + epos;
-    return (UBuffer*) blk;
-}
-#endif
 
 
 static void _defineArg( UBuffer* ctx, int binding, UIndex stackMapN,
@@ -478,7 +430,7 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
     ac.argEndPc = 0;
     ac.funcArgCount = 0;
     ac.optionCount = 0;
-    ur_blockIt( ut, specC, (UBlockIt*) &ac.bp.it );
+    ur_blockItC( ut, specC, &ac.bp.it );
 
     ur_binReserve( prog, prog->used + 16 + headerSize );
     prog->used += headerSize;   // Reserve space for start of ArgProgHeader.
@@ -1045,7 +997,7 @@ next_option:
     }
 
 eval_body:
-    ur_blockIt( ut, funC, (UBlockIt*) &bi );
+    ur_blockItC( ut, funC, &bi );
     for( ; bi.it != bi.end; bi.it = next )
     {
 #ifdef REPORT_EVAL
@@ -1089,66 +1041,6 @@ overflow:
 }
 
 
-/**
-  Get the value which a path refers to.
-
-  \param pi     Path iterator.
-  \param res    Set to value at end of path.
-
-  \return UT_WORD/UT_GETWORD/UR_THROW
-*/
-int boron_pathValue( UThread* ut, UBlockItC* pi, UCell* res )
-{
-    const UCell* node = 0;
-    const UCell* selector;
-    int type;
-
-    if( pi->it == pi->end )
-    {
-bad_word:
-        return ur_error( ut, UR_ERR_SCRIPT,
-                         "First path node must be a word!/get-word!");
-    }
-
-    type = ur_type(pi->it);
-    if( type != UT_WORD && type != UT_GETWORD )
-        goto bad_word;
-
-    if( ! (node = ur_wordCell( ut, pi->it )) )
-        return UR_THROW;
-    if( ur_is(node, UT_UNSET) )
-    {
-        return ur_error( ut, UR_ERR_SCRIPT, "Path word '%s is unset",
-                         ur_wordCStr( pi->it ) );
-    }
-
-    while( ++pi->it != pi->end )
-    {
-        // If a function is selected return with the remaining pi nodes
-        // assumed to be options.
-        if( ur_is(node, UT_CFUNC) || ur_is(node, UT_FUNC) )
-            break;
-
-        if( ur_is(pi->it, UT_GETWORD) )
-        {
-            if( ! (selector = ur_wordCell( ut, pi->it )) )
-                return UR_THROW;
-        }
-        else
-        {
-            selector = pi->it;
-        }
-
-        node = ut->types[ ur_type(node) ]->select( ut, node, selector, res );
-        if( ! node )
-            return UR_THROW;
-    }
-    if( node != res )
-        *res = *node;
-    return type;
-}
-
-
 extern void vector_pick( const UBuffer* buf, UIndex n, UCell* res );
 
 /**
@@ -1172,7 +1064,7 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
     switch( ur_type(it) )
     {
         case UT_WORD:
-            cell = boron_wordValue( ut, it );
+            cell = ur_wordCell( ut, it );
             if( ! cell )
                 goto unbound;
             ++it;
@@ -1208,7 +1100,7 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
                 {
                     if( ur_is(sw.it, UT_SETWORD) )
                     {
-                        if( ! boron_setWordValue( ut, sw.it, res ) )
+                        if( ! ur_setWord( ut, sw.it, res ) )
                             return NULL;
                     }
                     else
@@ -1222,7 +1114,7 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
             return it;
 
         case UT_GETWORD:
-            cell = boron_wordValue( ut, it );
+            cell = ur_wordCell( ut, it );
             if( ! cell )
                 goto unbound;
             *res = *cell;
@@ -1238,8 +1130,8 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
             UBlockItC path;
             int headType;
 
-            ur_blockIt( ut, it++, (UBlockIt*) &path );
-            headType = boron_pathValue( ut, &path, res );
+            ur_blockItC( ut, it++, &path );
+            headType = ur_pathValue( ut, &path, res );
             if( headType == UT_WORD )
             {
                 if( ur_is(res, UT_CFUNC) )
@@ -1325,14 +1217,14 @@ UStatus boron_doBlock( UThread* ut, const UCell* blkC, UCell* res )
 
 #ifdef DO_PROTECT
     // Prevent block modification.
-    blk = ur_blockIt( ut, blkC, (UBlockIt*) &bi );
+    blk = ur_blockItC( ut, blkC, &bi );
     psave = blk->storage;
     if( psave & UR_BUF_PROTECT )
         psave = 0;
     else
         blk->storage = psave | UR_BUF_PROTECT;
 #else
-    ur_blockIt( ut, blkC, (UBlockIt*) &bi );
+    ur_blockItC( ut, blkC, &bi );
 #endif
 
     // NOTE: blkC must not be used after this point.
@@ -1384,8 +1276,9 @@ UCell* boron_reduceBlock( UThread* ut, const UCell* blkC, UCell* res )
 {
     UBlockIter bi;
     UIndex ind;
+    uint8_t t = UT_BLOCK;
 
-    ur_generateBuf( ut, &ind, UT_BLOCK );   // gc!
+    ur_generate( ut, 1, &ind, &t );         // gc!
     ur_initSeries(res, UT_BLOCK, ind);
 
     ur_blkSlice( ut, &bi, blkC );
@@ -1422,7 +1315,7 @@ CFUNC_PUB( cfunc_do )
         case UT_WORD:
         {
             const UCell* cell;
-            if( ! (cell = boron_wordValue( ut, res )) )
+            if( ! (cell = ur_wordCell( ut, res )) )
             {
                 return UR_THROW;
                 //return ur_error( ut, UR_ERR_SCRIPT, "Unbound word '%s",
@@ -1520,10 +1413,10 @@ CFUNC_PUB( cfunc_do )
             UCell* tmp;
             int ok;
 
-            ur_blockIt( ut, res, (UBlockIt*) &path );
+            ur_blockItC( ut, res, &path );
 
             tmp = ur_push(ut, UT_UNSET);
-            ok = boron_pathValue( ut, &path, tmp );
+            ok = ur_pathValue( ut, &path, tmp );
             if( ok != UR_THROW )
             {
                 if( ok == UT_WORD )

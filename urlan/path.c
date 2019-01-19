@@ -27,6 +27,86 @@
 */ 
 
 
+/**
+  Get the value which a path refers to.
+
+  \param pi     Path iterator.
+  \param res    Set to value at end of path.
+
+  \return UT_WORD/UT_GETWORD/UR_THROW
+
+  \sa ur_pathCell, ur_wordCell
+*/
+int ur_pathValue( UThread* ut, UBlockItC* pi, UCell* res )
+{
+    const UCell* obj = 0;
+    const UCell* selector;
+    const UCell* (*selectf)( UThread*, const UCell*, const UCell*, UCell* );
+    int type;
+
+    if( pi->it == pi->end )
+    {
+bad_word:
+        return ur_error( ut, UR_ERR_SCRIPT,
+                         "Path must start with a word!/get-word!");
+    }
+
+    type = ur_type(pi->it);
+    if( type != UT_WORD && type != UT_GETWORD )
+        goto bad_word;
+
+    if( ! (obj = ur_wordCell( ut, pi->it )) )
+        return UR_THROW;
+    if( ur_is(obj, UT_UNSET) )
+    {
+        return ur_error( ut, UR_ERR_SCRIPT, "Path word '%s is unset",
+                         ur_wordCStr( pi->it ) );
+    }
+
+    while( ++pi->it != pi->end )
+    {
+        // If the select method is NULL, return obj as the result and leave
+        // pi->it pointing to the untraversed path segments.
+        selectf = ut->types[ ur_type(obj) ]->select;
+        if( ! selectf )
+            break;
+
+        selector = pi->it;
+        if( ur_is(selector, UT_GETWORD) )
+        {
+            if( ! (selector = ur_wordCell( ut, selector )) )
+                return UR_THROW;
+        }
+
+        obj = selectf( ut, obj, selector, res );
+        if( ! obj )
+            return UR_THROW;
+    }
+
+    if( obj != res )
+        *res = *obj;
+    return type;
+}
+
+
+/**
+  Get the value which a path refers to.
+
+  \param pc     Valid UT_PATH cell.
+  \param res    Set to value at end of path.
+
+  \return UT_WORD/UT_GETWORD/UR_THROW
+
+  \sa ur_pathValue, ur_wordCell
+*/
+int ur_pathCell( UThread* ut, const UCell* pc, UCell* res )
+{
+    UBlockItC bi;
+    ur_blockItC( ut, pc, &bi );
+    return ur_pathValue( ut, &bi, res );
+}
+
+
 /*
   Returns zero if word not found.
 */

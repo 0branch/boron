@@ -1370,6 +1370,31 @@ UStatus ur_seriesSliceM( UThread* ut, USeriesIterM* si, const UCell* cell )
 }
 
 
+/**
+  Set UBlockIt to modifiable block slice.
+
+  \param blkCell    Pointer to a valid block cell.
+  \param bi         Iterator struct to fill.
+
+  \return Pointer to buffer referenced by blkCell.
+*/
+UBuffer* ur_blockIt( const UThread* ut, const UCell* blkCell, UBlockIt* bi )
+{
+    const UBuffer* blk = ur_bufferSer(blkCell);
+    UIndex pos  = blkCell->series.it;
+    UIndex epos = blkCell->series.end;
+
+    if( epos < 0 )
+        epos = blk->used;
+    if( epos < pos )
+        epos = pos;
+
+    bi->it  = blk->ptr.cell + pos;
+    bi->end = blk->ptr.cell + epos;
+    return (UBuffer*) blk;
+}
+
+
 #ifdef DEBUG
 void dumpBuf( UThread* ut, UIndex bufN )
 {

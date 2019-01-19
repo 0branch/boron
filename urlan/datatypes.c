@@ -305,7 +305,7 @@ const UCell* unset_select( UThread* ut, const UCell* cell, const UCell* sel,
     (void) cell;
     (void) sel;
     (void) tmp;
-    ur_error( ut, UR_ERR_SCRIPT, "path select is unset for type %s",
+    ur_error( ut, UR_ERR_SCRIPT, "Select method is unset for type %s",
               ur_atomCStr(ut, ur_type(cell)) );
     return 0;
 }

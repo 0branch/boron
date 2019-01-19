@@ -487,7 +487,7 @@ const UDatatype boron_types[] =
   {
     "func!",
     unset_make,             unset_make,             func_copy,
-    func_compare,           unset_operate,          unset_select,
+    func_compare,           unset_operate,          NULL,
     func_toString,          func_toString,
     unset_recycle,          func_mark,              func_destroy,
     unset_markBuf,          func_toShared,          func_bind
@@ -495,7 +495,7 @@ const UDatatype boron_types[] =
   {
     "cfunc!",
     unset_make,             unset_make,             unset_copy,
-    cfunc_compare,          unset_operate,          unset_select,
+    cfunc_compare,          unset_operate,          NULL,
     unset_toString,         unset_toText,
     unset_recycle,          cfunc_mark,             unset_destroy,
     unset_markBuf,          cfunc_toShared,         unset_bind
