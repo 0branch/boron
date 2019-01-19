@@ -49,9 +49,9 @@ static QVariant cellToVariant( const UCell* cell )
     switch( ur_type(cell) )
     {
         case UT_CHAR:
-            return QChar( ur_int(cell) );
+            return QChar( int(ur_int(cell)) );
         case UT_INT:
-            return ur_int(cell);
+            return qlonglong(ur_int(cell));
         case UT_DOUBLE:
             return ur_double(cell);
         default:

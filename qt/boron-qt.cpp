@@ -28,18 +28,12 @@
 #include <QMessageBox>
 #include <QTextCursor>
 #include "boron-qt.h"
-#include "bignum.h"
 #include "urlan_atoms.h"
 #include "CBParser.h"
 #include "UTreeModel.h"
 
 
 #define UT  qEnv.ut
-
-
-//extern "C" int boron_doBlock( UThread* ut, const UCell* blkC, UCell* res );
-extern "C" int boron_doVoid( UThread* ut, const UCell* blkC );
-
 
 inline bool qEnvExists() { return qEnv.atom_close > 0; }
 
@@ -188,11 +182,11 @@ static void cellToQString( const UCell* val, QString& str )
             break;
 
         case UT_CHAR:
-            str = QChar( ur_int(val) );
+            str = QChar( int(ur_int(val)) );
             break;
 
         case UT_INT:
-            str.setNum( ur_int(val) );
+            str.setNum( qlonglong(ur_int(val)) );
             break;
 
         case UT_DOUBLE:
@@ -278,22 +272,23 @@ BoronApp::BoronApp( int& argc, char** argv ) : QApplication( argc, argv )
 }
 
 
+#define _result(ut) (ut->stack.ptr.cell + 2)
+
 /*
   Do block, ignore result, and show any error in QMessageBox.
 */
 void boron_doBlockQt( UThread* ut, const UCell* blkC )
 {
-    if( ! boron_doVoid( ut, blkC ) )
+    if( ! boron_doBlock( ut, blkC, _result(ut) ) )
     {
-        UCell* ex = boron_exception( ut );
+        UCell* ex = ur_exception( ut );
         if( ur_is(ex, UT_ERROR) )
         {
             QString msg;
             cellToQString( ex, msg );
             QMessageBox::warning( 0, "Script Error", msg,
                                   QMessageBox::Ok, QMessageBox::NoButton );
-            ur_blkPop( ur_errorBlock(ut) );
-            //boron_reset( ut );
+            boron_reset( ut );
         }
         else if( ur_is(ex, UT_WORD) )
         {
@@ -660,7 +655,7 @@ QLayout* ur_qtLayout( UThread* ut, LayoutInfo& parent, const UCell* blkC )
                         return 0;
 
                     pw->setCheckable( true );
-                    pw->setChecked( ur_isTrue( enabled ) );
+                    pw->setChecked( ur_true( enabled ) );
                     ++val;
                 }
 
@@ -793,34 +788,28 @@ no_layout:
 /*
   Return UR_OK/UR_THROW.
 */
-static int catchExit( UThread* ut, UCell* res, QWidget* wid = 0 )
+static UStatus catchExit( UThread* ut, UCell* res, QWidget* wid = 0 )
 {
-    UBuffer* blk = ur_errorBlock(ut);
-    if( blk->used )
+    const UCell* ex = ur_exception(ut);
+    if( ur_is(ex, UT_WORD) )
     {
-        UCell* cell = blk->ptr.cell + blk->used - 1;
-        if( ur_is(cell, UT_WORD) )
+        if( ur_atom(ex) == UR_ATOM_QUIT )
         {
-            if( ur_atom(cell) == UR_ATOM_QUIT )
-                return UR_THROW;
-
-            if( blk->used > 1 )
-            {
-                if( ur_atom(cell) == qEnv.atom_exec_exit )
-                {
-                    *res = cell[-1];
-                    blk->used -= 2;
-                    return UR_OK;
-                }
-                else if( ur_atom(cell) == qEnv.atom_close )
-                {
-                    *res = cell[-1];
-                    blk->used -= 2;
-                    if( wid )
-                        wid->close();
-                    return UR_OK;
-                }
-            }
+            return UR_THROW;
+        }
+        else if( ur_atom(ex) == qEnv.atom_exec_exit )
+        {
+            *res = ut->stack.ptr.cell[ ex->word.index ];
+            ur_setId(ex, UT_UNSET);
+            return UR_OK;
+        }
+        else if( ur_atom(ex) == qEnv.atom_close )
+        {
+            *res = ut->stack.ptr.cell[ ex->word.index ];
+            ur_setId(ex, UT_UNSET);
+            if( wid )
+                wid->close();
+            return UR_OK;
         }
     }
     ur_setId(res, UT_UNSET);
@@ -885,8 +874,8 @@ CFUNC( cfunc_execExit )
     else
         qEnv.loop->quit();
 
-    ur_blkPush( ur_errorBlock(ut), a1 );
-    return boron_throwWord( ut, qEnv.atom_exec_exit );
+    ur_exception(ut)[1] = *a1;
+    return boron_throwWord( ut, qEnv.atom_exec_exit, 1 );
 }
 
 
@@ -921,8 +910,8 @@ CFUNC( cfunc_close )
         else
             qEnv.loop->quit();
 
-        ur_blkAppendCells( ur_errorBlock(ut), a1, 1 );
-        return boron_throwWord( ut, qEnv.atom_close );
+        ur_exception(ut)[1] = *a1;
+        return boron_throwWord( ut, qEnv.atom_close, 1 );
     }
     ur_setId(res, UT_UNSET);
     return UR_OK;
@@ -1227,7 +1216,7 @@ CFUNC( cfunc_setWidgetValue )
             {
                 Qt::CheckState state;
 
-                if( ur_isTrue( a2 ) )
+                if( ur_true( a2 ) )
                     state = Qt::Checked;
                 else
                     state = Qt::Unchecked;
@@ -1430,6 +1419,44 @@ CFUNC( cfunc_question )
 //----------------------------------------------------------------------------
 
 
+static BoronCFunc _qtfuncs[15] =
+{
+    cfunc_exec,
+    cfunc_execExit,
+    cfunc_close,
+    cfunc_show,
+    cfunc_dialog,
+    cfunc_widget,
+    cfunc_destroy,
+    cfunc_requestFile,
+    cfunc_enable,
+    cfunc_disable,
+    cfunc_widgetValue,
+    cfunc_setWidgetValue,
+    cfunc_appendText,
+    cfunc_message,
+    cfunc_question
+};
+
+static const char _qtfuncSpecs[] =
+{
+    "exec wid\n"
+    "exec-exit code\n"
+    "close code\n"
+    "show wid\n"
+    "dialog layout /modal\n"
+    "widget layout\n"
+    "destroy wid\n"
+    "request-file title /save /dir /init path\n"
+    "enable wid\n"
+    "disable wid\n"
+    "widget-value wid\n"
+    "set-widget-value wid val\n"
+    "append-text wid val\n"
+    "message title msg /warn\n"
+    "question title msg b1 b2 /default def\n"
+};
+
 void boron_initQt( UThread* ut )
 {
     UCell tmp;
@@ -1447,24 +1474,8 @@ void boron_initQt( UThread* ut )
                                         &tmp );
     ur_hold( qEnv.layoutRules );
 
-    boron_addCFunc( ut, cfunc_exec,           "exec wid" );
-    boron_addCFunc( ut, cfunc_execExit,       "exec-exit code" );
-    boron_addCFunc( ut, cfunc_close,          "close code" );
-    boron_addCFunc( ut, cfunc_show,           "show wid" );
-    boron_addCFunc( ut, cfunc_dialog,         "dialog layout /modal" );
-    boron_addCFunc( ut, cfunc_widget,         "widget layout" );
-    boron_addCFunc( ut, cfunc_destroy,        "destroy wid" );
-    boron_addCFunc( ut, cfunc_requestFile,
-                            "request-file title /save /dir /init path" );
-    boron_addCFunc( ut, cfunc_enable,         "enable wid" );
-    boron_addCFunc( ut, cfunc_disable,        "disable wid" );
-    boron_addCFunc( ut, cfunc_widgetValue,    "widget-value wid" );
-    boron_addCFunc( ut, cfunc_setWidgetValue, "set-widget-value wid val" );
-    boron_addCFunc( ut, cfunc_appendText,     "append-text wid val" );
-    boron_addCFunc( ut, cfunc_message,        "message title msg /warn" );
-    boron_addCFunc( ut, cfunc_question,
-                            "question title msg b1 b2 /default def" );
-
+    boron_defineCFunc( ut, UR_MAIN_CONTEXT, _qtfuncs,
+                       _qtfuncSpecs, sizeof(_qtfuncSpecs)-1 );
 
     {
     UAtom atoms[3];
@@ -1476,12 +1487,6 @@ void boron_initQt( UThread* ut )
     qEnv.comboCtxN = n = ur_makeContext( ut, 1 );
     ur_hold( n );
     ur_ctxAddWord( ur_buffer(n), atoms[0] );
-
-    /*
-    orMakeContext( &ctx, 2 );
-    ur_ctxAddWord( &ctx, atoms[1] );
-    ur_ctxAddWord( &ctx, atoms[2] );
-    */
     }
 }
 
@@ -1579,7 +1584,7 @@ void SWidget::setEventBlock( const UCell* val )
 void SWidget::closeEvent( QCloseEvent* e )
 {
     _blk.switchWord( qEnv.atom_close ); 
-    if( ur_isTrue( boron_result( UT ) ) )
+    if( ur_true( _result( UT ) ) )
         e->accept();
     else
         e->ignore();

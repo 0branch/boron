@@ -69,7 +69,10 @@ int main( int argc, char** argv )
     int ret = 0;
 
 
-    ut = boron_makeEnv( 0, 0 );
+    {
+    UEnvParameters param;
+    ut = boron_makeEnv( boron_envParam(&param) );
+    }
     if( ! ut )
     {
         printf( "boron_makeEnv failed\n" );
@@ -152,9 +155,9 @@ int main( int argc, char** argv )
 
         assert( cmd[ sizeof(cmd) - 1 ] == -1 && "cmd buffer overflow" );
 
-        if( ! boron_doCStr( ut, cmd, pos - cmd ) )
+        if( ! boron_evalUtf8( ut, cmd, pos - cmd ) )
         {
-            UCell* ex = boron_exception( ut );
+            UCell* ex = ur_exception( ut );
             if( ur_is(ex, UT_ERROR) )
             {
                 OPEN_CONSOLE
@@ -208,13 +211,11 @@ prompt:
                 if( cmd[0] == 'q' )
                     goto quit;
 #endif
-                if( boron_doCStr( ut, cmd, -1 ) )
+                UCell* val = boron_evalUtf8( ut, cmd, -1 );
+                if( val )
                 {
-                    UCell* val = boron_result( ut );
-
                     if( ur_is(val, UT_UNSET) ||
-                        ur_is(val, UT_CONTEXT) ) //||
-                        //ur_is(val, UT_FUNC) )
+                        ur_is(val, UT_CONTEXT) )
                         goto prompt;
 
                     rstr.used = 0;
@@ -233,7 +234,7 @@ prompt:
                 }
                 else
                 {
-                    UCell* ex = boron_exception( ut );
+                    UCell* ex = ur_exception( ut );
                     if( ur_is(ex, UT_ERROR) )
                     {
                         reportError( ut, ex, &rstr );
