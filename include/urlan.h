@@ -314,6 +314,7 @@ struct UThread
     UCell       tmpWordCell;
     int32_t     freeBufCount;
     UIndex      freeBufList;
+    UBuffer*    sharedStoreBuf;
     UEnv*       env;
     UThread*    nextThread;
     const UDatatype** types;

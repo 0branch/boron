@@ -105,6 +105,7 @@ static void _threadInitStore( UThread* ut )
     ur_arrInit( &ut->stack,     sizeof(UCell),   0 );
     ur_arrInit( &ut->holds,     sizeof(UIndex),  16 );
     ur_binInit( &ut->gcBits, INIT_BUF_COUNT / 8 );
+    ut->sharedStoreBuf = ut->env->sharedStore.ptr.buf;
     ut->freeBufCount = 0;
     ut->freeBufList = FREE_TERM;
     ut->wordCell = 0;
@@ -1160,7 +1161,7 @@ const UCell* ur_wordCell( UThread* ut, const UCell* cell )
                    cell->word.index;
 
         case UR_BIND_ENV:
-            return (ut->env->sharedStore.ptr.buf - cell->word.ctx)->ptr.cell +
+            return (ut->sharedStoreBuf - cell->word.ctx)->ptr.cell +
                    cell->word.index;
 
         case UR_BIND_STACK:
@@ -1262,7 +1263,7 @@ UStatus ur_setWord( UThread* ut, const UCell* word, const UCell* src )
 */
 
 #define BUF_ENV(N) \
-    (ur_isShared(N) ? ut->env->sharedStore.ptr.buf-N : ut->dataStore.ptr.buf+N)
+    (ur_isShared(N) ? ut->sharedStoreBuf-N : ut->dataStore.ptr.buf+N)
 
 /**
   Get buffer from either the thread dataStore or environment sharedStore.
@@ -1318,7 +1319,7 @@ UBuffer* ur_bufferSeriesM( UThread* ut, const UCell* cell )
     if( ur_isShared(n) )
     {
         ur_error( ut, UR_ERR_SCRIPT, "Cannot modify %s in shared storage",
-                  ur_atomCStr( ut, ut->env->sharedStore.ptr.buf[-n].type ) );
+                  ur_atomCStr( ut, ut->sharedStoreBuf[-n].type ) );
         return 0;
     }
     return ut->dataStore.ptr.buf + n;
