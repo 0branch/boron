@@ -1261,6 +1261,9 @@ UStatus ur_setWord( UThread* ut, const UCell* word, const UCell* src )
   Convenience macro for ur_bufferEnv().
 */
 
+#define BUF_ENV(N) \
+    (ur_isShared(N) ? ut->env->sharedStore.ptr.buf-N : ut->dataStore.ptr.buf+N)
+
 /**
   Get buffer from either the thread dataStore or environment sharedStore.
   The macro ur_bufferE() should normally be used to call this function.
@@ -1271,9 +1274,7 @@ UStatus ur_setWord( UThread* ut, const UCell* word, const UCell* src )
 */
 const UBuffer* ur_bufferEnv( UThread* ut, UIndex n )
 {
-    if( ur_isShared(n) )
-        return ut->env->sharedStore.ptr.buf - n;
-    return ut->dataStore.ptr.buf + n;
+    return BUF_ENV(n);
 }
 
 
@@ -1298,9 +1299,7 @@ const UBuffer* ur_bufferEnv( UThread* ut, UIndex n )
 const UBuffer* ur_bufferSeries( const UThread* ut, const UCell* cell )
 {
     UIndex n = cell->series.buf;
-    if( ur_isShared(n) )
-        return ut->env->sharedStore.ptr.buf - n;
-    return ut->dataStore.ptr.buf + n;
+    return BUF_ENV(n);
 }
 
 
@@ -1381,9 +1380,13 @@ UStatus ur_seriesSliceM( UThread* ut, USeriesIterM* si, const UCell* cell )
 const UBuffer* ur_blockIt( const UThread* ut, UBlockIt* bi,
                            const UCell* blkCell )
 {
-    const UBuffer* blk = ur_bufferSer(blkCell);
+    const UBuffer* blk;
+    UIndex n;
     UIndex pos  = blkCell->series.it;
     UIndex epos = blkCell->series.end;
+
+    n = blkCell->series.buf;
+    blk = BUF_ENV(n);
 
     if( epos < 0 )
         epos = blk->used;
@@ -1399,8 +1402,7 @@ const UBuffer* ur_blockIt( const UThread* ut, UBlockIt* bi,
 #ifdef DEBUG
 void dumpBuf( UThread* ut, UIndex bufN )
 {
-    UBuffer* buf = ur_isShared(bufN) ? (ut->env->sharedStore.ptr.buf - bufN)
-                                     : ur_buffer(bufN);
+    const UBuffer* buf = BUF_ENV(bufN);
     if( ur_isSeriesType(buf->type) || (buf->type == UT_CONTEXT) )
     {
         UBuffer str;
