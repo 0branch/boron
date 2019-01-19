@@ -37,7 +37,7 @@
 
   \sa ur_pathCell, ur_wordCell
 */
-int ur_pathValue( UThread* ut, UBlockItC* pi, UCell* res )
+int ur_pathValue( UThread* ut, UBlockIt* pi, UCell* res )
 {
     const UCell* obj = 0;
     const UCell* selector;
@@ -101,8 +101,8 @@ bad_word:
 */
 int ur_pathCell( UThread* ut, const UCell* pc, UCell* res )
 {
-    UBlockItC bi;
-    ur_blockItC( ut, pc, &bi );
+    UBlockIt bi;
+    ur_blockIt( ut, &bi, pc );
     return ur_pathValue( ut, &bi, res );
 }
 

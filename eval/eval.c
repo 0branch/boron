@@ -328,7 +328,7 @@ emit_arg:
 static void _appendSetWords( UThread* ut, UBuffer* buf, const UCell* blkC )
 {
     UBlockIt bi;
-    ur_blockIt( ut, blkC, &bi );
+    ur_blockIt( ut, &bi, blkC );
     ur_foreach( bi )
     {
         int type = ur_type(bi.it);
@@ -430,7 +430,7 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
     ac.argEndPc = 0;
     ac.funcArgCount = 0;
     ac.optionCount = 0;
-    ur_blockItC( ut, specC, &ac.bp.it );
+    ur_blockIt( ut, (UBlockIt*) &ac.bp.it, specC );
 
     ur_binReserve( prog, prog->used + 16 + headerSize );
     prog->used += headerSize;   // Reserve space for start of ArgProgHeader.
@@ -668,7 +668,7 @@ UStatus boron_badArg( UThread* ut, UIndex atom, int argN )
 */
 static
 const UCell* boron_callC( UThread* ut, const UCell* funC,
-                          UBlockItC* options,
+                          UBlockIt* options,
                           const UCell* it, const UCell* end, UCell* res )
 {
     const ArgProgHeader* head;
@@ -838,10 +838,10 @@ overflow:
 */
 static
 const UCell* boron_call( UThread* ut, const UCell* funC,
-                         UBlockItC* options,
+                         UBlockIt* options,
                          const UCell* it, const UCell* end, UCell* res )
 {
-    UBlockItC bi;
+    UBlockIt bi;
     const UCell* next;
     const ArgProgHeader* head;
     const uint8_t* pc;
@@ -997,7 +997,7 @@ next_option:
     }
 
 eval_body:
-    ur_blockItC( ut, funC, &bi );
+    ur_blockIt( ut, &bi, funC );
     for( ; bi.it != bi.end; bi.it = next )
     {
 #ifdef REPORT_EVAL
@@ -1086,7 +1086,7 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
         case UT_SETWORD:
         case UT_SETPATH:
         {
-            UBlockItC sw;
+            UBlockIt sw;
             sw.it  = it;
             sw.end = it + 1;
             while( sw.end != end &&
@@ -1127,10 +1127,10 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
 
         case UT_PATH:
         {
-            UBlockItC path;
+            UBlockIt path;
             int headType;
 
-            ur_blockItC( ut, it++, &path );
+            ur_blockIt( ut, &path, it++ );
             headType = ur_pathValue( ut, &path, res );
             if( headType == UT_WORD )
             {
@@ -1199,7 +1199,7 @@ extern void ur_dblk( UThread* ut, UIndex n );
 */
 UStatus boron_doBlock( UThread* ut, const UCell* blkC, UCell* res )
 {
-    UBlockItC bi;
+    UBlockIt bi;
     UIndex blkN = blkC->series.buf;
     const UCell* next;
 //#define DO_PROTECT
@@ -1217,14 +1217,14 @@ UStatus boron_doBlock( UThread* ut, const UCell* blkC, UCell* res )
 
 #ifdef DO_PROTECT
     // Prevent block modification.
-    blk = ur_blockItC( ut, blkC, &bi );
+    blk = ur_blockIt( ut, &bi, blkC );
     psave = blk->storage;
     if( psave & UR_BUF_PROTECT )
         psave = 0;
     else
         blk->storage = psave | UR_BUF_PROTECT;
 #else
-    ur_blockItC( ut, blkC, &bi );
+    ur_blockIt( ut, &bi, blkC );
 #endif
 
     // NOTE: blkC must not be used after this point.
@@ -1409,11 +1409,11 @@ CFUNC_PUB( cfunc_do )
         }
         case UT_PATH:
         {
-            UBlockItC path;
+            UBlockIt path;
             UCell* tmp;
             int ok;
 
-            ur_blockItC( ut, res, &path );
+            ur_blockIt( ut, &path, res );
 
             tmp = ur_push(ut, UT_UNSET);
             ok = ur_pathValue( ut, &path, tmp );
