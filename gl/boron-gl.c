@@ -1363,13 +1363,13 @@ CFUNC( cfunc_lerp )
 static int _curveValue( UThread* ut, const UCell* cv, UCell* res, double t,
                         double* period )
 {
-    UBlockIter bi;
+    UBlockIt bi;
     const UCell* v1;
     int high, mid, low, last;
     double d;
     double interval;
 
-    ur_blkSlice( ut, &bi, cv );
+    ur_blockIt( ut, &bi, cv );
     high = bi.end - bi.it;
     if( high & 1 )
     {
@@ -1633,8 +1633,8 @@ CFUNC( cfunc_animate )
     }
     else if( ur_is(a1, UT_BLOCK) )
     {
-        UBlockIter bi;
-        ur_blkSlice( ut, &bi, a1 );
+        UBlockIt bi;
+        ur_blockIt( ut, &bi, a1 );
         ur_foreach( bi )
         {
             if( ur_is(bi.it, UT_CONTEXT) )

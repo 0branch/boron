@@ -2612,11 +2612,11 @@ void dop_light( UThread* ut, const UCell* val, int light )
     }
     else if( ur_is(val, UT_BLOCK) )
     {
-        UBlockIter bi;
+        UBlockIt bi;
         GLenum name = GL_POSITION;
         GLfloat w = 0.0f;
 
-        ur_blkSlice( ut, &bi, val );
+        ur_blockIt( ut, &bi, val );
         ur_foreach( bi )
         {
             if( ur_isWordType( ur_type(bi.it) ) )

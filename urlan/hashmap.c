@@ -496,13 +496,13 @@ static int hashmap_make( UThread* ut, const UCell* from, UCell* res )
     }
     if( ur_is(from, UT_BLOCK) )
     {
-        UBlockIter bi;
+        UBlockIt bi;
         UBuffer* map;
         UBuffer* blk;
         uint32_t key;
         uint16_t index = 0;
 
-        ur_blkSlice( ut, &bi, from );
+        ur_blockIt( ut, &bi, from );
 
         n = bi.end - bi.it;
         if( n & 1 )

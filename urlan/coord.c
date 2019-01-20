@@ -29,13 +29,13 @@ static int coord_make( UThread* ut, const UCell* from, UCell* res )
 {
     if( ur_is(from, UT_BLOCK) )
     {
-        UBlockIter bi;
+        UBlockIt bi;
         const UCell* cell;
         int len = 0;
 
         ur_setId(res, UT_COORD);
 
-        ur_blkSlice( ut, &bi, from );
+        ur_blockIt( ut, &bi, from );
         ur_foreach( bi )
         {
             if( ur_is(bi.it, UT_WORD) )

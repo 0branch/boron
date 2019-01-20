@@ -37,8 +37,8 @@
 CFUNC(cfunc_format)
 {
     static const char* padStr = "pad";
-    UBlockIter fi;
-    UBlockIter di;
+    UBlockIt fi;
+    UBlockIt di;
     USeriesIter si;
     UBuffer tmp;
     UBuffer* str;
@@ -58,7 +58,7 @@ CFUNC(cfunc_format)
         ur_pop(ut);
         if( ! rv )
             return UR_THROW;
-        ur_blkSlice( ut, &di, rv );
+        ur_blockIt( ut, &di, rv );
     }
     else
     {
@@ -66,7 +66,7 @@ CFUNC(cfunc_format)
         di.end = di.it + 1;;
     }
 
-    ur_blkSlice( ut, &fi, a1 );
+    ur_blockIt( ut, &fi, a1 );
     ur_strInit( &tmp, UR_ENC_LATIN1, 0 );
     str = ur_buffer( res->series.buf );
 

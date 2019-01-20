@@ -70,7 +70,7 @@ static void ur_binAppendInt( UBuffer* bin, uint32_t n,
 
 static int binary_construct( UThread* ut, const UCell* blkC, const UCell* binC )
 {
-    UBlockIter bi;
+    UBlockIt bi;
     const UCell* cell;
     UBuffer* bin;
     int bigEndian = 0;
@@ -80,7 +80,7 @@ static int binary_construct( UThread* ut, const UCell* blkC, const UCell* binC )
     if( ! bin )
         return UR_THROW;
 
-    ur_blkSlice( ut, &bi, blkC );
+    ur_blockIt( ut, &bi, blkC );
     ur_foreach( bi )
     {
         if( ur_is(bi.it, UT_WORD) )
@@ -134,8 +134,8 @@ con_bin:
             cell = bi.it;
 con_blk:
             {
-            UBlockIter b2;
-            ur_blkSlice( ut, &b2, cell );
+            UBlockIt b2;
+            ur_blockIt( ut, &b2, cell );
             ur_foreach( b2 )
             {
                 if( ur_is(b2.it, UT_INT) )
@@ -181,7 +181,7 @@ static int string_construct( UThread* ut, UBuffer* str,
 #define sc_setBit(mem,n)    (mem[(n)>>3] |= 1<<((n)&7))
 #define SC_BIT_COUNT    256
     USeriesIter in;
-    UBlockIter bi;
+    UBlockIt bi;
     UBuffer cset;
     const UCell* begin;
     UIndex copyPos;
@@ -189,7 +189,7 @@ static int string_construct( UThread* ut, UBuffer* str,
     int fp;
 
 
-    ur_blkSlice( ut, &bi, blkC );
+    ur_blockIt( ut, &bi, blkC );
     begin = bi.it;
     if( (bi.end - bi.it) & 1 )
         --bi.end;

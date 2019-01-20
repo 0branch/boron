@@ -1463,12 +1463,12 @@ int vec3_make( UThread* ut, const UCell* from, UCell* res )
             break;
         case UT_BLOCK:
         {
-            UBlockIter bi;
+            UBlockIt bi;
             const UCell* cell;
             float num;
             int len = 0;
 
-            ur_blkSlice( ut, &bi, from );
+            ur_blockIt( ut, &bi, from );
             ur_foreach( bi )
             {
                 if( ur_is(bi.it, UT_WORD) )
@@ -2169,8 +2169,8 @@ int binary_append( UThread* ut, UBuffer* buf, const UCell* val )
     }
     else if( vt == UT_BLOCK )
     {
-        UBlockIter bi;
-        ur_blkSlice( ut, &bi, val );
+        UBlockIt bi;
+        ur_blockIt( ut, &bi, val );
         ur_foreach( bi )
         {
             if( ! binary_append( ut, buf, bi.it ) )
@@ -2594,9 +2594,9 @@ int bitset_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
     }
     else if( vt == UT_BLOCK )       // Succeeds if all bits are found.
     {
-        UBlockIter bi;
+        UBlockIt bi;
         n = -1;
-        ur_blkSlice( ut, &bi, val );
+        ur_blockIt( ut, &bi, val );
         ur_foreach( bi )
         {
             if( ur_is(bi.it, UT_CHAR) || ur_is(bi.it, UT_INT) )
@@ -2943,9 +2943,9 @@ int string_append( UThread* ut, UBuffer* buf, const UCell* val )
     }
     else if( type == UT_BLOCK )
     {
-        UBlockIter bi;
+        UBlockIt bi;
         const UDatatype** dt = ut->types;
-        ur_blkSlice( ut, &bi, val );
+        ur_blockIt( ut, &bi, val );
         ur_foreach( bi )
         {
             dt[ ur_type(bi.it) ]->toText( ut, bi.it, buf, 0 );
@@ -3250,11 +3250,11 @@ USeriesType dt_file =
 
 void block_copy( UThread* ut, const UCell* from, UCell* res )
 {
-    UBlockIter bi;
+    UBlockIt bi;
     UBuffer* buf;
     int len;
 
-    ur_blkSlice( ut, &bi, from );
+    ur_blockIt( ut, &bi, from );
     len = bi.end - bi.it;
     // Make invalidates bi.buf.
     buf = ur_makeBlockCell( ut, ur_type(from), len, res );
@@ -3351,13 +3351,13 @@ int block_compare( UThread* ut, const UCell* a, const UCell* b, int test )
                 (a->series.end == b->series.end) )
                 return 1;
             {
-            UBlockIter ai;
-            UBlockIter bi;
+            UBlockIt ai;
+            UBlockIt bi;
             const UDatatype** dt;
             int t;
 
-            ur_blkSlice( ut, &ai, a );
-            ur_blkSlice( ut, &bi, b );
+            ur_blockIt( ut, &ai, a );
+            ur_blockIt( ut, &bi, b );
 
             if( (ai.end - ai.it) == (bi.end - bi.it) )
             {
@@ -3403,12 +3403,12 @@ int block_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 int block_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
                    int op )
 {
-    UBlockIter bi;
+    UBlockIt bi;
 
     if( ur_isIntType( ur_type(a) ) )
     {
         int n = ur_int(a);
-        ur_blkSlice( ut, &bi, b );
+        ur_blockIt( ut, &bi, b );
         switch( op )
         {
             case UR_OP_ADD:
@@ -3439,7 +3439,7 @@ int block_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
     else if( ur_isDecimalType( ur_type(a) ) )
     {
         double n = ur_double(a);
-        ur_blkSlice( ut, &bi, b );
+        ur_blockIt( ut, &bi, b );
         switch( op )
         {
             case UR_OP_ADD:
@@ -3468,7 +3468,7 @@ int block_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
 */
 void block_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
-    UBlockIter bi;
+    UBlockIt bi;
     const UCell* start;
     int brace = 0;
 
@@ -3493,7 +3493,7 @@ void block_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
         }
     }
 
-    ur_blkSlice( ut, &bi, cell );
+    ur_blockIt( ut, &bi, cell );
     start = bi.it;
 
     ++depth;
@@ -3526,11 +3526,11 @@ void block_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 
 void block_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
-    UBlockIter bi;
+    UBlockIt bi;
     const UCell* start;
     (void) depth;
 
-    ur_blkSlice( ut, &bi, cell );
+    ur_blockIt( ut, &bi, cell );
     start = bi.it;
 
     ur_foreach( bi )
@@ -3598,14 +3598,13 @@ int block_append( UThread* ut, UBuffer* buf, const UCell* val )
 {
     if( ur_is(val, UT_BLOCK) || ur_is(val, UT_PAREN) )
     {
-        UBlockIter bi;
-        ur_blkSlice( ut, &bi, val );
-        if( bi.buf == buf )
+        UBlockIt bi;
+        if( ur_blockIt( ut, &bi, val ) == buf )
         {
             // If appending to self then this makes sure the source
             // cells pointer does not change in ur_blkAppendCells().
             ur_arrReserve( buf, buf->used + (bi.end - bi.it) );
-            ur_blkSlice( ut, &bi, val );
+            ur_blockIt( ut, &bi, val );
         }
         ur_blkAppendCells( buf, bi.it, bi.end - bi.it );
     }
@@ -3622,16 +3621,17 @@ int block_insert( UThread* ut, UBuffer* buf, UIndex index,
 {
     if( ur_is(val, UT_BLOCK) || ur_is(val, UT_PAREN) )
     {
-        UBlockIter bi;
+        const UBuffer* blk;
+        UBlockIt bi;
         int len;
 
-        ur_blkSlice( ut, &bi, val );
+        blk = ur_blockIt( ut, &bi, val );
         len = bi.end - bi.it;
         if( len > part )
             len = part;
         if( len > 0 )
         {
-            if( bi.buf == buf )
+            if( blk == buf )
             {
                 // Inserting into self.
                 UIndex it = bi.it - buf->ptr.cell;
@@ -3661,12 +3661,12 @@ int block_change( UThread* ut, USeriesIterM* si, const UCell* val,
 {
     if( ur_isBlockType( ur_type(val) ) )
     {
-        UBlockIter ri;
+        UBlockIt ri;
         UBuffer* buf;
         UIndex newUsed;
         int rlen;
 
-        ur_blkSlice( ut, &ri, val );
+        ur_blockIt( ut, &ri, val );
         rlen = ri.end - ri.it;
         if( rlen > 0 )
         {
@@ -3740,7 +3740,7 @@ void block_reverse( const USeriesIterM* si )
 
 int block_find( UThread* ut, const USeriesIter* si, const UCell* val, int opt )
 {
-    UBlockIter bi;
+    UBlockIt bi;
     const UBuffer* buf = si->buf;
     int (*equal)(UThread*, const UCell*, const UCell*) =
         (opt & UR_FIND_CASE) ? ur_equalCase : ur_equal;
@@ -3786,9 +3786,9 @@ none:
     }
     else if( ur_is(sel, UT_WORD) )
     {
-        UBlockIter wi;
+        UBlockIt wi;
         UAtom atom = ur_atom(sel);
-        ur_blkSlice( ut, &wi, cell );
+        ur_blockIt( ut, &wi, cell );
         ur_foreach( wi )
         {
             // Checking atom first would be faster (it will fail more often
@@ -3870,10 +3870,10 @@ static int path_makeT( UThread* ut, const UCell* from, UCell* res, int ptype )
     int typeMask = 1 << ur_type(from);
     if( typeMask & ((1<<UT_BLOCK) | (1<<UT_PAREN)) )
     {
-        UBlockIter bi;
+        UBlockIt bi;
         UBuffer* blk;
 
-        ur_blkSlice( ut, &bi, from );
+        ur_blockIt( ut, &bi, from );
         // Make invalidates bi.buf.
         blk = ur_makeBlockCell( ut, ptype, bi.end - bi.it, res );
 
@@ -3902,10 +3902,10 @@ int path_make( UThread* ut, const UCell* from, UCell* res )
 
 void path_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
-    UBlockIter bi;
+    UBlockIt bi;
     const UCell* start;
 
-    ur_blkSlice( ut, &bi, cell );
+    ur_blockIt( ut, &bi, cell );
     start = bi.it;
 
     if( ur_is(cell, UT_LITPATH) )

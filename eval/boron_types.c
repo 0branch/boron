@@ -411,8 +411,8 @@ int port_makeOpt( UThread* ut, const UCell* from, int opt, UCell* res )
 
         case UT_BLOCK:
         {
-            UBlockIter bi;
-            ur_blkSlice( ut, &bi, from );
+            UBlockIt bi;
+            ur_blockIt( ut, &bi, from );
             if( (bi.it == bi.end) || ! ur_is(bi.it, UT_WORD) )
                 return ur_error( ut, UR_ERR_SCRIPT,
                                  "make port! expected device word in block" );

@@ -384,12 +384,12 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
 #endif
     else if( ur_is(from, UT_BLOCK) )
     {
-        UBlockIter bi;
+        UBlockIt bi;
         const UCell* val;
 
         def.width = 0;
 
-        ur_blkSlice( ut, &bi, from );
+        ur_blockIt( ut, &bi, from );
         ur_foreach( bi )
         {
             switch( ur_type(bi.it) )
@@ -633,7 +633,7 @@ int rfont_make( UThread* ut, const UCell* from, UCell* res )
 
     if( ur_is(from, UT_BLOCK) )
     {
-        UBlockIter bi;
+        UBlockIt bi;
 
         cfg.fontFile  = 0;
         cfg.glyphs    = 0;
@@ -642,7 +642,7 @@ int rfont_make( UThread* ut, const UCell* from, UCell* res )
         cfg.texW      = 256;
         cfg.texH      = 256;
 
-        ur_blkSlice( ut, &bi, from );
+        ur_blockIt( ut, &bi, from );
         ur_foreach( bi )
         {
             switch( ur_type(bi.it) )
@@ -809,14 +809,14 @@ int shader_make( UThread* ut, const UCell* from, UCell* res )
 {
     if( ur_is(from, UT_BLOCK) )
     {
-        UBlockIter bi;
+        UBlockIt bi;
         UAtom cmd = 0;
         UIndex defN = UR_INVALID_BUF;
         const char* vprog = 0;
         const char* fprog = 0;
 
 
-        ur_blkSlice( ut, &bi, from );
+        ur_blockIt( ut, &bi, from );
         ur_foreach( bi )
         {
             switch( ur_type(bi.it) )
@@ -1146,8 +1146,8 @@ int vbo_make( UThread* ut, const UCell* from, UCell* res )
 
     if( ur_is(from, UT_BLOCK) )
     {
-        UBlockIter bi;
-        ur_blkSlice( ut, &bi, from );
+        UBlockIt bi;
+        ur_blockIt( ut, &bi, from );
         ur_foreach( bi )
         {
             if( ur_is(bi.it, UT_WORD) )

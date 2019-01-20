@@ -208,8 +208,8 @@ CFUNC(cfunc_catch)
             }
             else if( ur_is(name, UT_BLOCK) )
             {
-                UBlockIter bi;
-                ur_blkSlice( ut, &bi, name );
+                UBlockIt bi;
+                ur_blockIt( ut, &bi, name );
                 ur_foreach( bi )
                 {
                     if( ur_is(bi.it, UT_WORD) &&
@@ -312,8 +312,8 @@ CFUNC(cfunc_set)
         ur_blkSliceM( ut, &bi, a1 );
         if( ur_is(a2, UT_BLOCK) )
         {
-            UBlockIter b2;
-            ur_blkSlice( ut, &b2, a2 );
+            UBlockIt b2;
+            ur_blockIt( ut, &b2, a2 );
             ur_foreach( bi )
             {
                 if( ur_isWordType( ur_type(bi.it) ) )
@@ -1254,10 +1254,10 @@ CFUNC(cfunc_loop)
         n[2] = 1;
 
         {
-        UBlockIter bi;
+        UBlockIt bi;
         int state = 0;
 
-        ur_blkSlice( ut, &bi, a1 );
+        ur_blockIt( ut, &bi, a1 );
         ur_foreach( bi )
         {
             if( ur_is(bi.it, UT_WORD ) )
@@ -1351,10 +1351,10 @@ CFUNC(cfunc_select)
 */
 CFUNC(cfunc_switch)
 {
-    UBlockIter bi;
+    UBlockIt bi;
     const UCell* found = 0;
 
-    ur_blkSlice( ut, &bi, a2 );
+    ur_blockIt( ut, &bi, a2 );
     if( (bi.end - bi.it) & 1 )
         found = --bi.end;       // Default option
 
@@ -1389,9 +1389,9 @@ CFUNC(cfunc_switch)
 */
 CFUNC(cfunc_case)
 {
-    UBlockIter bi;
+    UBlockIt bi;
 
-    ur_blkSlice( ut, &bi, a1 );
+    ur_blockIt( ut, &bi, a1 );
     while( bi.it != bi.end )
     {
         bi.it = boron_eval1( ut, bi.it, bi.end, res );
@@ -2069,8 +2069,8 @@ CFUNC(cfunc_append)
 #if 0
         else if( type == UT_BLOCK )
         {
-            UBlockIter bi;
-            ur_blkSlice( ut, &bi, a2 );
+            UBlockIt bi;
+            ur_blockIt( ut, &bi, a2 );
             ur_ctxSetWords( buf, bi.it, bi.end );
             *res = *a2;
             return UR_OK;
@@ -2812,10 +2812,10 @@ static int set_relation( UThread* ut, const UCell* a1, UCell* res,
 
     if( ur_isBlockType(type) )
     {
-        UBlockIter bi;
+        UBlockIt bi;
         UBuffer* blk = ur_makeBlockCell( ut, type, 0, res );
 
-        ur_blkSlice( ut, &bi, a1 );
+        ur_blockIt( ut, &bi, a1 );
 
         switch( op )
         {
@@ -2867,7 +2867,7 @@ union_loop:
                 if( type )
                 {
                     type = 0;
-                    ur_blkSlice( ut, &bi, argB );
+                    ur_blockIt( ut, &bi, argB );
                     goto union_loop;
                 }
             }
@@ -3197,9 +3197,9 @@ CFUNC(cfunc_map)
 */
 CFUNC(cfunc_all)
 {
-    UBlockIter bi;
+    UBlockIt bi;
 
-    ur_blkSlice( ut, &bi, a1 );
+    ur_blockIt( ut, &bi, a1 );
     while( bi.it != bi.end )
     {
         bi.it = boron_eval1( ut, bi.it, bi.end, res );
@@ -3226,9 +3226,9 @@ CFUNC(cfunc_all)
 */
 CFUNC(cfunc_any)
 {
-    UBlockIter bi;
+    UBlockIt bi;
 
-    ur_blkSlice( ut, &bi, a1 );
+    ur_blockIt( ut, &bi, a1 );
     while( bi.it != bi.end )
     {
         bi.it = boron_eval1( ut, bi.it, bi.end, res );

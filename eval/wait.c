@@ -165,8 +165,8 @@ CFUNC_PUB( cfunc_wait )
 
     if( ur_is(a1, UT_BLOCK) )
     {
-        UBlockIter bi;
-        ur_blkSlice( ut, &bi, a1 );
+        UBlockIt bi;
+        ur_blockIt( ut, &bi, a1 );
         if( ! _fillWaitInfo( ut, &wi, bi.it, bi.end ) )
             return UR_THROW;
     }
@@ -210,8 +210,8 @@ CFUNC_PUB( cfunc_wait )
 
     if( ur_is(a1, UT_BLOCK) )
     {
-        UBlockIter bi;
-        ur_blkSlice( ut, &bi, a1 );
+        UBlockIt bi;
+        ur_blockIt( ut, &bi, a1 );
         if( ! _fillWaitInfo( ut, &wi, bi.it, bi.end ) )
             return UR_THROW;
     }

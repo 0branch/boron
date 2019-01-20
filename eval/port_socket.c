@@ -419,12 +419,12 @@ static int socket_open( UThread* ut, const UPortDevice* pdev,
         ['udp local-port "host" host-port 'nowait]
         ['tcp "host" host-port]
         */
-        UBlockIter bi;
+        UBlockIt bi;
         UAtom atoms[3];
 
         ur_internAtoms( ut, "tcp udp nowait", atoms );
 
-        ur_blkSlice( ut, &bi, from );
+        ur_blockIt( ut, &bi, from );
         ur_foreach( bi )
         {
             if( ur_is(bi.it, UT_INT) )

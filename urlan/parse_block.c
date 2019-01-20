@@ -227,7 +227,7 @@ match:
                             goto failed;
                     {
                         BlockParser ip;
-                        UBlockIter bi;
+                        UBlockIt bi;
                         UIndex parsePos = 0;
 
                         ip.eval = pe->eval;
@@ -237,7 +237,7 @@ match:
                         ip.sliced    = 0;
                         ip.exception = PARSE_EX_NONE;
 
-                        ur_blkSlice( ut, &bi, rit );
+                        ur_blockIt( ut, &bi, rit );
 
                         tval = _parseBlock( ut, &ip, bi.it, bi.end, &parsePos );
                         iblk = _acquireInput( ut, pe );
@@ -400,9 +400,9 @@ skip:
                 tval = rit;
 match_block:
                 {
-                UBlockIter bi;
+                UBlockIt bi;
                 UIndex rblkN = tval->series.buf;
-                ur_blkSlice( ut, &bi, tval );
+                ur_blockIt( ut, &bi, tval );
                 tval = _parseBlock( ut, pe, bi.it, bi.end, &pos );
                 iblk = pe->blk;
                 if( ! tval )
@@ -503,8 +503,8 @@ unexpected_end:
 
             case UT_BLOCK:
             {
-                UBlockIter bi;
-                ur_blkSlice( ut, &bi, tval );
+                UBlockIt bi;
+                ur_blockIt( ut, &bi, tval );
 
                 count = 0;
 

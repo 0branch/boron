@@ -383,11 +383,12 @@ UIndex boron_seriesEnd( UThread* ut, const UCell* cell )
 UStatus boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable,
                            const char* spec, int slen )
 {
-    UBlockIter bi;
+    UBlockIt bi;
     UCell tmp;
     UIndex hold[2];
     UCellFunc* cell;
     UCell* term;
+    const UBuffer* sblk;
     UBuffer* argProg;
     UIndex binN;
     int sigFlags;
@@ -409,7 +410,7 @@ UStatus boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable
             return UR_THROW;
     }
 
-    argProg = ur_genBuffers( ut, 1, &binN );
+    argProg = ur_genBuffers( ut, 1, &binN );        // gc!
     ur_binInit( argProg, 0 );
 
     hold[0] = ur_hold( tmp.series.buf );
@@ -419,8 +420,8 @@ UStatus boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable
     term = ur_blkAppendNew( ur_buffer(tmp.series.buf), UT_UNSET );
     ur_setFlags(term, UR_FLAG_SOL);
 
-    ur_blkSlice( ut, &bi, &tmp );
-    specCells = bi.buf->ptr.cell;   // bi.buf can change during gc below.
+    sblk = ur_blockIt( ut, &bi, &tmp );
+    specCells = sblk->ptr.cell;     // Save cell pointer in case of gc below.
     start = bi.it;
     ur_foreach( bi )
     {

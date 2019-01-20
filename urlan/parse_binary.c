@@ -294,10 +294,10 @@ match_char:
                 tval = rit;
 match_block:
             {
-                UBlockIter bi;
+                UBlockIt bi;
                 UIndex pos = in - ibin->ptr.b;
                 UIndex rblkN = tval->series.buf;
-                ur_blkSlice( ut, &bi, tval );
+                ur_blockIt( ut, &bi, tval );
                 tval = _parseBin( ut, pe, bi.it, bi.end, &pos );
                 ibin = ur_buffer( pe->inputBufN );
                 if( ! tval )

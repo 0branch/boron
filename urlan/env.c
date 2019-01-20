@@ -64,6 +64,10 @@
 /** \def ur_isSliced
   True if the end member of a series cell is set.
 */
+/** \def ur_foreach
+  Loop over all members of an iterator struct.
+  These include UBlockIt, UBlockIter, USeriesIter.
+*/
 
 
 #include "env.h"
@@ -1333,6 +1337,20 @@ void ur_initSeries( UCell* cell, int type, UIndex buf )
 }
 
 
+/** \struct USeriesIter
+  Iterator for const series of any type.
+  ur_foreach() can be used to loop over the cells.
+
+  \var USeriesIter::buf
+  Buffer pointer.
+
+  \var USeriesIter::it
+  Start position.
+
+  \var USeriesIter::end
+  End position.
+*/
+
 /**
   Set USeriesIter to series slice.
   
@@ -1370,8 +1388,19 @@ UStatus ur_seriesSliceM( UThread* ut, USeriesIterM* si, const UCell* cell )
 }
 
 
+/** \struct UBlockIt
+  Iterator for const UCell array.
+  ur_foreach() can be used to loop over the cells.
+
+  \var UBlockIt::it
+    Start position.
+
+  \var UBlockIt::end
+    End position.
+*/
+
 /**
-  Set UBlockIt to block slice.
+  Set UBlockIt to the start and end of a block slice.
 
   \param bi         Iterator struct to fill.
   \param blkCell    Pointer to a valid block cell.
@@ -1382,20 +1411,22 @@ const UBuffer* ur_blockIt( const UThread* ut, UBlockIt* bi,
                            const UCell* blkCell )
 {
     const UBuffer* blk;
-    UIndex n;
-    UIndex pos  = blkCell->series.it;
-    UIndex epos = blkCell->series.end;
+    UIndex n, end;
 
     n = blkCell->series.buf;
     blk = BUF_ENV(n);
+    end = blk->used;
 
-    if( epos < 0 )
-        epos = blk->used;
-    if( epos < pos )
-        epos = pos;
+    n = blkCell->series.end;
+    if( n > -1 && n < end )
+        end = n;
 
-    bi->it  = blk->ptr.cell + pos;
-    bi->end = blk->ptr.cell + epos;
+    n = blkCell->series.it;
+    if( n > end )
+        n = end;
+
+    bi->it  = blk->ptr.cell + n;
+    bi->end = blk->ptr.cell + end;
     return blk;
 }
 

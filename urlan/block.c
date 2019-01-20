@@ -174,39 +174,17 @@ UCell* ur_blkPop( UBuffer* buf )
 }
 
 
-#if 0
 /**
-  Set UBlockIter to block cells.
-
-  \param bi    Iterator struct to fill.
-  \param blkN  Index of a valid block.
-
-  \return Initializes bi.  If block is empty then bi->it and bi->end are set
-          to zero.
-*/
-void ur_blkIter( UThread* ut, UBlockIter* bi, UIndex blkN )
-{
-    const UBuffer* buf;
-    bi->buf = buf = ur_bufferE( blkN );
-    if( buf->ptr.cell )
-    {
-        bi->it  = buf->ptr.cell;
-        bi->end = bi->it + buf->used;
-        return;
-    }
-    bi->it = bi->end = 0;
-}
-#endif
-
-
-/**
-  Set UBlockIter to block slice.
+  Set UBlockIter to block slice.  If the UBlockIter::buf pointer is not needed
+  it is recommended to use ur_blockIt() instead.
 
   \param bi    Iterator struct to fill.
   \param cell  Pointer to a valid block cell.
 
   \return Initializes bi.  If slice is empty then bi->it and bi->end are set
           to zero.
+
+  \sa ur_blockIt, ur_blkSliceM
 */
 void ur_blkSlice( UThread* ut, UBlockIter* bi, const UCell* cell )
 {
@@ -240,6 +218,8 @@ void ur_blkSlice( UThread* ut, UBlockIter* bi, const UCell* cell )
   \param cell  Pointer to a valid block cell.
 
   \return UR_OK/UR_THROW
+
+  \sa ur_blockIt, ur_blkSlice
 */
 UStatus ur_blkSliceM( UThread* ut, UBlockIterM* bi, const UCell* cell )
 {
@@ -317,10 +297,10 @@ UCell* ur_findCell( UThread* ut, UCell* it, const UCell* end,
 void ur_blkCollectType( UThread* ut, const UCell* blkCell,
                         uint32_t typeMask, UBuffer* dest, int unique )
 {
-    UBlockIter bi;
+    UBlockIt bi;
     int type;
 
-    ur_blkSlice( ut, &bi, blkCell );
+    ur_blockIt( ut, &bi, blkCell );
     ur_foreach( bi )
     {
         type = ur_type(bi.it);

@@ -1297,14 +1297,14 @@ UStatus boron_doBlock( UThread* ut, const UCell* blkC, UCell* res )
 */
 UCell* boron_reduceBlock( UThread* ut, const UCell* blkC, UCell* res )
 {
-    UBlockIter bi;
+    UBlockIt bi;
     UIndex ind;
     uint8_t t = UT_BLOCK;
 
     ur_generate( ut, 1, &ind, &t );         // gc!
     ur_initSeries(res, UT_BLOCK, ind);
 
-    ur_blkSlice( ut, &bi, blkC );
+    ur_blockIt( ut, &bi, blkC );
     while( bi.it != bi.end )
     {
         bi.it = boron_eval1( ut, bi.it, bi.end,

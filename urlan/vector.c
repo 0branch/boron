@@ -581,8 +581,8 @@ int vector_append( UThread* ut, UBuffer* buf, const UCell* val )
 
         case UT_BLOCK:
         {
-            UBlockIter bi;
-            ur_blkSlice( ut, &bi, val );
+            UBlockIt bi;
+            ur_blockIt( ut, &bi, val );
             ur_foreach( bi )
             {
                 if( ! vector_append( ut, buf, bi.it ) )
@@ -634,8 +634,8 @@ int vector_insert( UThread* ut, UBuffer* buf, UIndex index,
 #if 0
         case UT_BLOCK:
         {
-            UBlockIter bi;
-            ur_blkSlice( ut, &bi, val );
+            UBlockIt bi;
+            ur_blockIt( ut, &bi, val );
             ur_foreach( bi )
             {
                 if( ! vector_insert( ut, buf, 0, bi.it, part ) )

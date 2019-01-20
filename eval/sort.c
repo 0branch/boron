@@ -29,7 +29,7 @@
 struct CompareField
 {
     UThread* ut;
-    UBlockIter fb;
+    UBlockIt fb;
     uint32_t opt;
 };
 
@@ -215,7 +215,7 @@ CFUNC(cfunc_sort)
     {
         QuickSortIndex qs;
         struct CompareField fld;
-        UBlockIter bi;
+        UBlockIt bi;
         UBuffer* blk;
         uint32_t* ip;
         uint32_t* iend;
@@ -223,7 +223,7 @@ CFUNC(cfunc_sort)
         int len;
         int indexLen;
 
-        ur_blkSlice( ut, &bi, a1 );
+        ur_blockIt( ut, &bi, a1 );
         len = bi.end - bi.it;
 
         fld.opt = CFUNC_OPTIONS;
@@ -241,8 +241,7 @@ CFUNC(cfunc_sort)
             indexLen = len;
         }
 
-        // Make invalidates bi.buf.
-        blk = ur_makeBlockCell( ut, type, len, res );
+        blk = ur_makeBlockCell( ut, type, len, res );   // gc!
 
         qs.index    = ((uint32_t*) (blk->ptr.cell + len)) - indexLen;
         qs.data     = (uint8_t*) bi.it;
@@ -251,7 +250,7 @@ CFUNC(cfunc_sort)
         if( fld.opt & OPT_SORT_FIELD )
         {
             fld.ut = ut;
-            ur_blkSlice( ut, &fld.fb, CFUNC_OPT_ARG(3) );
+            ur_blockIt( ut, &fld.fb, CFUNC_OPT_ARG(3) );
 
             qs.user     = (void*) &fld;
             qs.compare  = (QuickSortFunc) _compareField;
