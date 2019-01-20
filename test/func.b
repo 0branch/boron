@@ -19,7 +19,7 @@ fl 8
 print a 
 
 f2: func [v] [reduce v]
-f1: func [v | local-f1] [local-f1: 44 f2 [v local-f1]]
+f1: func [v /local local-f1] [local-f1: 44 f2 [v local-f1]]
 probe f1 "str"
 
 

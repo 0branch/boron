@@ -47,7 +47,7 @@ typedef struct
 }
 UCellFunc;
 
-#define FUNC_FLAG_GHOST     1
+#define FUNC_FLAG_NOTRACE   1
 #define FCELL  ((UCellFunc*) cell)
 #define ur_funcBody(c)  (c)->series.buf
 

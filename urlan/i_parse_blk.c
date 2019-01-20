@@ -24,7 +24,7 @@ int ur_parseBlockI( UBlockParser* par, const uint8_t* pc, const UCell* it )
     const uint8_t* next = 0;
     const UCell* start = it;
     const UCell* sit;
-    int n;
+    int n, t;
 
     // TODO: Handle repeating of any operation (e.g. 4 skip, 2 to 3 of rule).
 
@@ -60,7 +60,8 @@ next_op:
 
         case PB_LitWord:
             n = par->atoms[ *pc++ ];
-            if( ur_is(it, UT_WORD) && ur_atom(it) == n )
+            t = ur_type(it);
+            if( ur_isWordType(t) && ur_atom(it) == n )
             {
                 ++it;
                 goto next_op;
@@ -171,7 +172,8 @@ next_op:
             n = par->atoms[ *pc++ ];
             while( it != par->end )
             {
-                if( ur_is(it, UT_WORD) && ur_atom(it) == n )
+                t = ur_type(it);
+                if( ur_isWordType(t) && ur_atom(it) == n )
                     goto next_op;
                 ++it;
             }

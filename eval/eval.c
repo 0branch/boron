@@ -61,20 +61,22 @@ enum ArgRuleId
 };
 
 
-#define LOCAL   1   // compileAtoms[1]  "|"
-#define EXTERN  2   // compileAtoms[2]  "extern"
-#define GHOST   3   // compileAtoms[3]  "ghost"
+#define BAR     1   // compileAtoms[1]  "|"
+#define LOCAL   2   // compileAtoms[2]  "local"
+#define EXTERN  3   // compileAtoms[3]  "extern"
+#define NOTRACE 4   // compileAtoms[4]  "no-trace"
 
 // _argRules offsets
 #define LWORD       52
-#define LOCAL_RULE  LWORD+8
+#define LOCAL_OPT   LWORD+8
+#define FIND_LOCAL  LWORD+16
 
-static const uint8_t _argRules[] =
+static const uint8_t _argRules[ 76 ] =
 {
     PB_SomeR, 3, PB_End,
 
     PB_Next, 6,
-    PB_LitWord, LOCAL, PB_AnyTs, LWORD, PB_ReportEnd, AR_LOCAL,
+    PB_Rule, LOCAL_OPT, PB_AnyTs, LWORD, PB_ReportEnd, AR_LOCAL,
 
     PB_Next, 4,
     PB_Type, UT_WORD, PB_ReportEnd, AR_WORD,
@@ -99,6 +101,14 @@ static const uint8_t _argRules[] =
     // LWORD word!/lit-word!/set-word! (set-word! only needed by funct)
     0x00,0xE0,0x00,0x00,0x00,0x00,0x00,0x00,
 
+    // LOCAL_OPT
+    PB_Next, 3,
+    PB_LitWord, BAR,   PB_End,
+    PB_LitWord, LOCAL, PB_End,
+
+    // FIND_LOCAL
+    PB_Next, 3,
+    PB_ToLitWord, BAR,   PB_End,
     PB_ToLitWord, LOCAL, PB_End
 };
 
@@ -248,9 +258,9 @@ emit_arg:
                     ur_arrAppendInt32( &ap->externWords, it->word.atom );
                 break;
             }
-            else if( it->word.atom == par->atoms[ GHOST ] )
+            else if( it->word.atom == par->atoms[ NOTRACE ] )
             {
-                par->rflag |= FUNC_FLAG_GHOST;
+                par->rflag |= FUNC_FLAG_NOTRACE;
                 break;
             }
 
@@ -454,7 +464,7 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
         const UCell* start = ac.bp.it;
         const UCell* end   = ac.bp.end;
         const UCell* local;
-        if( ur_parseBlockI( &ac.bp, _argRules + LOCAL_RULE, start ) )
+        if( ur_parseBlockI( &ac.bp, _argRules + FIND_LOCAL, start ) )
             local = ac.bp.end = ac.bp.it;
         else
             local = NULL;
@@ -810,7 +820,7 @@ next_option:
 
     if( ! ((UCellFunc*) funC)->m.func( ut, args, res ) )
     {
-        if( ur_flags(funC, FUNC_FLAG_GHOST) )
+        if( ur_flags(funC, FUNC_FLAG_NOTRACE) )
         {
             r2 = ur_exception(ut);
             if( ur_is(r2, UT_ERROR) )
@@ -1013,7 +1023,7 @@ eval_body:
                 next = ur_exception(ut);
                 if( ur_is(next, UT_ERROR) )
                 {
-                    if( ! ur_flags(funC, FUNC_FLAG_GHOST) )
+                    if( ! ur_flags(funC, FUNC_FLAG_NOTRACE) )
                         ur_traceError( ut, next, funC->series.buf, bi.it );
                 }
                 it = NULL;

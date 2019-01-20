@@ -4111,23 +4111,12 @@ const UCell* context_select( UThread* ut, const UCell* cell, const UCell* sel,
             ur_error( ut, UR_ERR_SCRIPT, "context has no word '%s",
                       ur_wordCStr(sel) );
         }
-#if 0
-        else if( ur_is(sel, UT_LITWORD) )   // Deprecated
-        {
-            if( ur_atom(sel) == UR_ATOM_WORDS )
-            {
-                _contextWords( ut, ctx, cell->context.buf, tmp );
-                return tmp;
-            }
-        }
-#endif
         else
         {
-            ur_error( ut, UR_ERR_SCRIPT,
-                      "context select expected word!/lit-word!" );
+            ur_error( ut, UR_ERR_SCRIPT, "context select expected word!" );
         }
     }
-    return 0;
+    return NULL;
 }
 
 

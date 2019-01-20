@@ -441,7 +441,7 @@ UStatus boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable
                 tmp.series.end =  bi.it - specCells;
                 boron_compileArgProgram( BT, &tmp, argProg, 0, &sigFlags );
                 if( sigFlags )
-                    ur_setFlags((UCell*) cell, FUNC_FLAG_GHOST);
+                    ur_setFlags((UCell*) cell, FUNC_FLAG_NOTRACE);
             }
 
             if( ur_is(bi.it, UT_UNSET) )
@@ -690,7 +690,7 @@ UEnvParameters* boron_envParam( UEnvParameters* par )
 */
 UThread* boron_makeEnv( UEnvParameters* par )
 {
-    UAtom atoms[ 13 ];
+    UAtom atoms[ 14 ];
     UThread* ut;
     UCell* res;
     unsigned int dtCount;
@@ -732,14 +732,14 @@ UThread* boron_makeEnv( UEnvParameters* par )
 
 
     ur_internAtoms( ut, "none true false file udp tcp thread"
-        " func | extern ghost"
+        " func | local extern no-trace"
 #ifdef CONFIG_SSL
         " udps tcps"
 #endif
         , atoms );
 
     // Set compileAtoms for boron_compileArgProgram.
-    memcpy( BENV->compileAtoms, atoms + 7, 4 * sizeof(UAtom) );
+    memcpy( BENV->compileAtoms, atoms + 7, 5 * sizeof(UAtom) );
 
     // Register ports.
     ur_ctxInit( &BENV->ports, 4 );

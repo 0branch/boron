@@ -1072,7 +1072,7 @@ CFUNC(cfunc_func)
     ur_setId(res, UT_FUNC);
     ur_setSeries(res, bufN[0], prelude);
     if( sigFlags )
-        ur_setFlags(res, FUNC_FLAG_GHOST);
+        ur_setFlags(res, FUNC_FLAG_NOTRACE);
     return UR_OK;
 }
 

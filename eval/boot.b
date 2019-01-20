@@ -9,7 +9,7 @@ tail?: :empty?
 close: :free
 context: func [b block!] [make context! b]
 charset: func [s char!/string!] [make bitset! s]
-error: func [s string! /ghost] [throw make error! s]
+error: func [s string! /no-trace] [throw make error! s]
 
 join: func [a b] [
   a: either series? a [copy a][to-text a]

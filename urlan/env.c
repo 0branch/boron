@@ -460,7 +460,7 @@ UThread* ur_makeEnv( const UEnvParameters* par )
     ur_internAtoms( ut,
                     "i8 u8 i16 u16 i32 u32 f32 f64\n"
                     "none true false on off yes no\n"
-                    "quit halt return break ghost self words\n"
+                    "quit halt return break extern local self\n"
                     "latin1 utf8 ucs2 url\n"
                     "+ - / * = < > <= >=\n"
                     "x y z r g b a\n"
