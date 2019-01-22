@@ -129,7 +129,7 @@ if command -v gcc >/dev/null; then
   emit "\nCFLAGS=-Iinclude -Iurlan -Ieval -Isupport -std=gnu99 -pedantic -Wall -W -O3"
   emit "LIBS=-lm"
   emit "OBJS=env.o array.o binary.o block.o coord.o date.o path.o \\"
-  emit "	string.o context.o gc.o serialize.o tokenize.o bignum.o \\"
+  emit "	string.o context.o gc.o serialize.o tokenize.o \\"
   emit "	vector.o parse_binary.o parse_block.o parse_string.o \\"
   emit "	support/str.o support/mem_util.o support/quickSortIndex.o \\"
   emit "	support/fpconv.o \\"
