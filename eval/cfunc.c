@@ -829,7 +829,7 @@ CFUNC(cfunc_abs)
     {
         case UT_INT:
             ur_setId(res, type);
-            ur_int(res) = abs( ur_int(a1) );
+            ur_int(res) = llabs( ur_int(a1) );
             break;
 
         case UT_DOUBLE:
