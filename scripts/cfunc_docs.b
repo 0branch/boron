@@ -21,7 +21,7 @@ ws: charset {^/^- }
 non-ws: complement copy ws
 nl: '^/'
 
-parse-doc: func [txt | fob tok] [
+parse-doc: func [txt] [
     fob: make func-info []
     parse txt [
         any ws x: tok: to ws :tok (fob/name: tok) thru nl
@@ -51,7 +51,7 @@ forall args [
 ]
 
 
-to-obj: func [funcs | a] [
+to-obj: func [funcs /local a] [
     map a sort funcs [parse-doc a]
 ]
 
@@ -63,7 +63,7 @@ doc:  make string! 1024
 emit: func [txt] [append doc txt]
 
 
-argument-names: func [args | str a p] [
+argument-names: func [args /local a] [
     if empty? args [return ""]
     str: clear "" ;make string! 80
     foreach a args [
@@ -73,7 +73,7 @@ argument-names: func [args | str a p] [
     str
 ]
 
-argument-table: func [args | str a p opt] [
+argument-table: func [args /local a] [
     either empty? args [nl][
         str: make string! 80
         foreach a args [
@@ -109,7 +109,7 @@ argument-table: func [args | str a p opt] [
 ]
 
 
-emit-toc: func [funcs | f it it2 cskip item] [
+emit-toc: func [funcs] [
     item: does [
         f: f/name
         emit rejoin [
@@ -162,7 +162,7 @@ groups: [
 ]
 
 non-list-term: complement charset " ,^-^/"
-emit-groups: func [| add-grp grp tok] [
+emit-groups: func [] [
     add-grp: [
         if f/group [
             parse f/group [some [
@@ -194,7 +194,7 @@ emit-groups: func [| add-grp grp tok] [
 context [
     state: none
 
-    transit: func [new] [
+    transit: func [new /extern state] [
         if ne? state new [
             switch state [
                 code [emit {</pre>^/}]
@@ -207,7 +207,7 @@ context [
         ]
     ]
 
-    set 'markup-lines func [txt | tok] [
+    set 'markup-lines func [txt /extern state] [
         state: none
         parse txt [some[
             tok:
@@ -219,7 +219,7 @@ context [
     ]
 ]
 
-emit-funcs: func [funcs | f] [
+emit-funcs: func [funcs /local f] [
     foreach f funcs [
         emit rejoin [
             {^/<div class="section" id="}
@@ -260,7 +260,7 @@ emit-funcs: func [funcs | f] [
 ]
 
 
-current-date: func [| cd] [
+current-date: func [] [
     cd: to-string now/date
     rejoin [
         pick [Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec]

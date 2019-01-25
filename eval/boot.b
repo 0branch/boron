@@ -24,7 +24,7 @@ rejoin: func [b block!] [
   next b
 ]
 
-replace: func [series pat rep /all | f size] [
+replace: func [series pat rep /all] [
   size: either series? pat [size? pat][1]
   either all [
     f: series
@@ -35,15 +35,10 @@ replace: func [series pat rep /all | f size] [
   series
 ]
 
-split-path: func [path | end] [
+split-path: func [path] [
   either end: find/last path '/'
     [++ end reduce [slice path end  end]]
     [reduce [none path]]
 ]
 
 term-dir: func [path] [terminate/dir path '/']
-
-funct: func [spec body] [
-  ifn find spec '| [append spec '|]
-  func collect/unique/into set-word! body spec body
-]

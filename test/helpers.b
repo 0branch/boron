@@ -15,7 +15,7 @@ probe replace/all copy s2 '"' {\"}
 
 
 print "---- funct"
-sum: funct [a] [
+sum: func [a] [
     lsum: 0
     forall a [
         lsum: add lsum lval: first a

@@ -334,6 +334,7 @@ emit_arg:
 }
 
 
+#define AUTO_LOCALS
 #ifdef AUTO_LOCALS
 static void _appendSetWords( UThread* ut, UBuffer* buf, const UCell* blkC )
 {
