@@ -109,16 +109,17 @@ argument-table: func [args /local a] [
 ]
 
 
-emit-toc: func [funcs] [
+emit-toc: func [funcs /with-id] [
     item: does [
         f: f/name
-        emit rejoin [
-            {<td><a class="index link" href="#} f
-            {" id="id_} f {">} f {</a></td>}
+        emit join {<td><a class="index link" href="#} f
+        if with-id [
+            emit join {" id="id_} f
         ]
+        emit rejoin [{">} f {</a></td>}]
     ]
 
-    emit {<ul class="auto-toc">^/<table width=90%">^/}
+    emit {<ul class="auto-toc">^/<table width="90%">^/}
     emit trim/indent {
     <colgroup>
     <col width="30%" />
@@ -281,11 +282,11 @@ emit {<div class="contents topic" id="contents">
 <ul class="auto-toc simple">
 <li><a class="index link" href="#cfunc" id="id_ch1">1&nbsp;&nbsp;&nbsp;C Functions</a>
 }
-emit-toc cfuncs
+emit-toc/with-id cfuncs
 emit {</li>
 <li><a class="index link" href="#helpers" id="id_ch2">2&nbsp;&nbsp;&nbsp;Helper Functions</a>
 }
-emit-toc hfuncs
+emit-toc/with-id hfuncs
 emit {</li>^/</ul>^/</div>}
 
 
