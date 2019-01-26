@@ -79,3 +79,12 @@ none
 none
 ---- Invalid
 "Invalid 1"
+---- Auto-unindent
+""
+"int main() {^/    return 0;^/}^/"
+{Item 1
+    * Sub-time A
+    * Sub-time B
+
+}
+"example {{^/    Text^/}}^/"

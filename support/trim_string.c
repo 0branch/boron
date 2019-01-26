@@ -88,7 +88,7 @@ copy:
 /*
   Returns number of characters removed.
 */
-static int TRIM_FUNC_INDENT( TRIM_T* it, TRIM_T* end )
+int TRIM_FUNC_INDENT( TRIM_T* it, TRIM_T* end )
 {
     TRIM_T* cp = it;
     int margin = 0;

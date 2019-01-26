@@ -122,6 +122,7 @@ extern int ur_caretChar( const uint8_t* it, const uint8_t* end,
   Generate and initialize a single string buffer from memory holding a
   Latin-1 string.
 
+  Caret escape sequences are converted to individual characters.
   This calls ur_makeString() internally.
 
   \param it     Start of Latin-1 data.
@@ -332,6 +333,7 @@ static uint8_t* _emitUtf8( uint8_t* out, int c )
 /**
   Initialize a single string buffer from memory holding a UTF-8 string.
 
+  Caret escape sequences are converted to individual characters.
   This calls ur_strInit() internally.
 
   \param buf    Uninitialized buffer.
@@ -400,6 +402,8 @@ void ur_strInitUtf8( UBuffer* buf, const uint8_t* it, const uint8_t* end )
 /**
   Generate and initialize a single string buffer from memory holding a
   UTF-8 string.
+
+  Caret escape sequences are converted to individual characters.
 
   \param it     Start of UTF-8 data.
   \param end    End of UTF-8 data.

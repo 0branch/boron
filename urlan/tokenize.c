@@ -1,5 +1,5 @@
 /*
-  Copyright 2009-2011 Karl Robillard
+  Copyright 2009-2019 Karl Robillard
 
   This file is part of the Urlan datatype system.
 
@@ -713,6 +713,66 @@ static const char* _errToken( UBuffer* bin, const char* it, const char* end )
 }
 
 
+extern int trim_indent_char( char* it, char* end );
+
+/*
+  Get range of mutli-line string to be automatically un-indented.
+  Return non-zero if valid string found and marked with strStart & strEnd.
+*/
+static int _bracketNewline( const char* start, const char* end,
+                            const char** strStart, const char** strEnd,
+                            int* lines )
+{
+    const char* it = start;
+    const char* lastLf;
+    const int LF = 10;
+    const int CR = 13;
+    int len, count;
+    int lineCount = 2;
+
+    // Must start with two or more left curly brackets followed by a newline.
+    while( it != end && *it == '{' )
+        ++it;
+    len = it - start;
+    if( it == end || len < 2 )
+        return 0;
+    if( *it == CR )
+    {
+        if( ++it == end )
+            return 0;
+    }
+    if( *it != LF )
+        return 0;
+    lastLf = it++;
+    start = it;
+
+    // Scan for same number of right curly brackets followed by a newline.
+    while( it != end )
+    {
+        if( *it == '}' )
+        {
+            for( count = 1, ++it; it != end && *it == '}'; ++count, ++it )
+                ;
+            if( count == len && it != end && (*it == LF || *it == CR) )
+            {
+                *strStart = start;
+                *strEnd   = lastLf + 1;
+                *lines += lineCount;
+                return len;
+            }
+        }
+
+        if( *it == LF )
+        {
+            lastLf = it;
+            ++lineCount;
+        }
+        ++it;
+    }
+    return 0;
+}
+
+
 UIndex _makeStringEnc( UThread* ut, const uint8_t* it, const uint8_t* end,
                        int enc )
 {
@@ -947,9 +1007,15 @@ vector_newline:
 
             case STR:
                 token = ++it;
+                mode = 0;       // No trim_indent_.
                 if( ch == '{' )
                 {
                     int nested = 0;
+                    if( _bracketNewline(token - 1, end, &token, &it, &lines) )
+                    {
+                        mode = 1;       // trim_indent_.
+                        goto string_end;
+                    }
                     SCAN_LOOP
                         if( ch == '^' )
                         {
@@ -991,6 +1057,14 @@ string_end:
                 UIndex newStrN = _makeStringEnc( ut, (uint8_t*) token,
                                                      (uint8_t*) it,
                                                  inputEncoding );
+                if( mode )
+                {
+                    UBuffer* str = ur_buffer(newStrN);
+                    str->used -= trim_indent_char( str->ptr.c,
+                                                   str->ptr.c + str->used );
+                    while( *it != '\n' )
+                        ++it;
+                }
                 cell = ur_blkAppendNew( BLOCK, UT_STRING );
                 ur_setSeries( cell, newStrN, 0 );
                 }

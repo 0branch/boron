@@ -142,3 +142,26 @@ probe find/last c sep
 
 print "---- Invalid"
 probe to-string #{496E76616C69642031 A0}
+
+
+print "---- Auto-unindent"
+probe {{
+}}
+probe {{
+    int main() {
+        return 0;
+    }
+}}
+probe
+    {{
+
+        Item 1
+            * Sub-time A
+            * Sub-time B
+
+    }}
+probe {{{
+        example {{
+            Text
+        }}
+    }}}
