@@ -256,7 +256,8 @@ void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     ur_seriesSlice( ut, &si, cell );
 
     if( (si.buf->form != UR_VEC_I32) && (si.buf->form != UR_VEC_F32) )
-        ur_strAppendCStr( str, ur_atomCStr( ut, si.buf->form ) );
+        ur_strAppendCStr( str, (si.buf->form == UR_VEC_I16) ? "16" :
+                                ur_atomCStr( ut, si.buf->form ) );
     ur_strAppendCStr( str, "#[" );
 
     switch( si.buf->form )

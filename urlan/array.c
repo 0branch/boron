@@ -177,7 +177,7 @@ void ur_arrExpand( UBuffer* buf, int index, int count )
 void ur_arrAppendInt32( UBuffer* buf, int32_t n )
 {
     ur_arrReserve( buf, buf->used + 1 );
-    buf->ptr.i[ buf->used++ ] = n;
+    buf->ptr.i32[ buf->used++ ] = n;
 }
 
 

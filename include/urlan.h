@@ -672,7 +672,7 @@ void     ur_arrAppendFloat( UBuffer*, float );
 
 
 #define ur_ptr(T,buf)       ((T*) (buf)->ptr.v)
-#define ur_avail(buf)       (buf)->ptr.i[-1]
+#define ur_avail(buf)       (buf)->ptr.i32[-1]
 #define ur_testAvail(buf)   (buf->ptr.v ? ur_avail(buf) : 0)
 
 #define ur_arrExpand1(T,buf,elem) \

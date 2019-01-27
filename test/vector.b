@@ -10,6 +10,13 @@ probe #[
 probe #[9e+6 -9.45e-06 1e+38 1e+39 1e-42]   ; exponential notation
 
 
+print "---- tokenize 16"
+probe a: 16#[1 -22 3.55]   ; i16
+print size? to-binary a
+probe b: 16#[1.0 -22 3.55] ; i16
+print size? to-binary b
+
+
 print "---- append"
 a: #[1 2 3]
 probe append copy a 4

@@ -816,7 +816,7 @@ UIndex ur_tokenize( UThread* ut, const char* it, const char* end, UCell* res )
 UIndex ur_tokenizeType( UThread* ut, int inputEncoding,
                         const char* it, const char* end, UCell* res )
 {
-#define STACK   stack.ptr.i
+#define STACK   stack.ptr.i32
 #define BLOCK   ur_buffer( STACK[ stack.used - 1 ] )
     UBuffer stack;
     UIndex hold;
@@ -883,7 +883,7 @@ newline:
                 goto word;
 
             case BIN:
-                mode = UR_BENC_16;
+                mode = -1;      // Default to UR_BENC_16 or UR_VEC_I32.
 binary:
                 ++it;
                 if( it == end )
@@ -909,6 +909,8 @@ binary:
                             UBuffer* bin;
                             cell = ur_blkAppendNew( BLOCK, UT_NONE );
                             bin = ur_makeBinaryCell( ut, 0, cell );
+                            if( mode < 0 )
+                                mode = UR_BENC_16;
                             bin->form = mode;
                             if( ur_binAppendBase( bin, token, it, mode ) != it )
                                 goto invalid_bin;
@@ -927,8 +929,10 @@ invalid_bin:
                     UBuffer* buf;
                     token = 0;
 
+                    mode = (mode == UR_BENC_16) ? UR_VEC_I16 : UR_VEC_I32;
+
                     cell = ur_blkAppendNew( BLOCK, UT_UNSET );
-                    buf = ur_makeVectorCell( ut, UR_VEC_I32, 0, cell );
+                    buf = ur_makeVectorCell( ut, mode, 0, cell );
 
                     ++it;
                     SCAN_LOOP
@@ -937,7 +941,7 @@ invalid_bin:
 vector_white:
                             if( token )
                             {
-                                if( ! buf->used )
+                                if( ! buf->used && mode != UR_VEC_I16 )
                                 {
                                     const char* cp = token;
                                     int vc;
@@ -951,15 +955,22 @@ vector_white:
                                         }
                                     }
                                 }
-                                if( buf->form == UR_VEC_I32 )
+
+                                ur_arrReserve( buf, buf->used + 1 );
+                                switch( buf->form )
                                 {
-                                    ur_arrAppendInt32( buf, (int32_t)
-                                        str_toInt64( token, it, 0 ) );
-                                }
-                                else
-                                {
-                                    ur_arrAppendFloat( buf, (float)
-                                        str_toDouble( token, it, 0 ) );
+                                case UR_VEC_I16:
+                                    buf->ptr.i16[ buf->used++ ] = (int16_t)
+                                            str_toInt64( token, it, 0 );
+                                    break;
+                                case UR_VEC_I32:
+                                    buf->ptr.i32[ buf->used++ ] = (int32_t)
+                                            str_toInt64( token, it, 0 );
+                                    break;
+                                default:
+                                    buf->ptr.f[ buf->used++ ] = (float)
+                                            str_toDouble( token, it, 0 );
+                                    break;
                                 }
                                 token = 0;
                             }
@@ -1183,7 +1194,7 @@ number:
                     cell = ur_blkAppendNew( blk, UT_COORD );
                     it = str_toCoord( cell, token, end );
                     break;
-                case '#':   // UT_BINARY
+                case '#':   // UT_BINARY or UT_VECTOR
                     if( token[0] == '6' && token[1] == '4' )
                     {
                         mode = UR_BENC_64;

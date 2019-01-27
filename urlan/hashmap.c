@@ -45,7 +45,7 @@ typedef struct
 MapEntry;
 
 
-#define FREE_VAL(buf)   *(buf->ptr.i)
+#define FREE_VAL(buf)   *(buf->ptr.i32)
 #define ENTRIES(buf)    (((MapEntry*) (buf->ptr.v)) + 1)
 
 #define FREE_LIST_END   -1
