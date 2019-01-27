@@ -63,3 +63,13 @@
  196372949     119040 ./boron test/func.b
   50631349     556976 ./boron -s scripts/m2/m2 -o /tmp/Makefile
   16014082     244952 ./boron -e loop 10 [load %scripts/m2/m2]
+; tokenize: Accept 16#[] 128590596
+   1154305     108040 ./boron -e quit
+ 196620898     117488 ./boron test/func.b
+  50675370     553912 ./boron -s scripts/m2/m2 -o /tmp/Makefile
+  15882917     242576 ./boron -e loop 10 [load %scripts/m2/m2]
+; ur_tokenizeB
+   1167836     108040 ./boron -e quit
+ 196639169     117424 ./boron test/func.b
+  50459629     553752 ./boron -s scripts/m2/m2 -o /tmp/Makefile
+  16158836     242416 ./boron -e loop 10 [load %scripts/m2/m2]

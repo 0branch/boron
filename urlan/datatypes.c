@@ -3274,31 +3274,28 @@ int block_make( UThread* ut, const UCell* from, UCell* res )
     {
         USeriesIter si;
         ur_seriesSlice( ut, &si, from );
+        ur_makeBlockCell( ut, UT_BLOCK, 0, res );
         if( si.it == si.end )
         {
-            ur_makeBlockCell( ut, UT_BLOCK, 0, res );
             return UR_OK;
         }
         else if( (si.buf->elemSize == 1) )
         {
-            if( ur_tokenizeType( ut, si.buf->form,
-                                 si.buf->ptr.c + si.it,
-                                 si.buf->ptr.c + si.end, res ) )
-                return UR_OK;
+            return ur_tokenizeB( ut, res->series.buf, si.buf->form,
+                                 si.buf->ptr.b + si.it,
+                                 si.buf->ptr.b + si.end );
         }
         else
         {
             UBuffer tmp;
-            UIndex n;
+            UStatus ok;
             ur_strInit( &tmp, UR_ENC_UTF8, 0 );
             ur_strAppend( &tmp, si.buf, si.it, si.end );
-            n = ur_tokenizeType( ut, UR_ENC_UTF8, tmp.ptr.c,
-                                 tmp.ptr.c + tmp.used, res );
+            ok = ur_tokenizeB( ut, res->series.buf, UR_ENC_UTF8,
+                               tmp.ptr.b, tmp.ptr.b + tmp.used );
             ur_strFree( &tmp );
-            if( n )
-                return UR_OK;
+            return ok;
         }
-        return UR_THROW;
     }
     else if( ur_isBlockType( ur_type(from) )  )
     {

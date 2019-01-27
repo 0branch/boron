@@ -1601,6 +1601,8 @@ UCell* boron_evalUtf8( UThread* ut, const char* script, int len )
     if( len < 0 )
         len = strlen(script);
     bufN = ur_tokenize( ut, script, script + len, &bcell ); // gc!
+    if( ! bufN )
+        return NULL;
     hold = ur_hold(bufN);
 
     boron_bindDefault( ut, bufN );

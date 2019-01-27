@@ -29,6 +29,7 @@
 #endif
 
 extern double ur_stringToDate( const char*, const char*, const char** );
+extern int vector_append( UThread*, UBuffer*, const UCell* );
 
 #define isDigit(v)     (('0' <= v) && (v <= '9'))
 
@@ -39,11 +40,12 @@ extern double ur_stringToDate( const char*, const char*, const char** );
   If a non-digit is found then the number scanned up to that point is
   returned.
 */
-int64_t str_toInt64( const char* start, const char* end, const char** pos )
+int64_t str_toInt64( const uint8_t* start, const uint8_t* end,
+                     const uint8_t** pos )
 {
     int cn;
     int64_t n = 0;
-    const char* cp = start;
+    const uint8_t* cp = start;
 
     if( cp != end )
     {
@@ -109,7 +111,8 @@ int64_t str_hexToInt64( const char* start, const char* end, const char** pos )
   If a non-digit is found then the number scanned up to that point is
   returned.
 */
-double str_toDouble( const char* start, const char* end, const char** pos )
+double str_toDouble( const uint8_t* start, const uint8_t* end,
+                     const uint8_t** pos )
 {
 #if 1
     char tmp[28];
@@ -218,7 +221,8 @@ static int _isTimecode( const char* it, const char* end )
 #endif
 
 
-double str_toTime( const char* start, const char* end, const char** pos )
+double str_toTime( const uint8_t* start, const uint8_t* end,
+                   const uint8_t** pos )
 {
     double sec;
     int neg;
@@ -248,24 +252,18 @@ double str_toTime( const char* start, const char* end, const char** pos )
 }
 
 
-const char* str_toCoord( UCell* cell, const char* it, const char* end )
+const uint8_t* str_toCoord( UCell* cell, const uint8_t* it, const uint8_t* end )
 {
     int16_t* nit  = cell->coord.n;
     int16_t* nend = nit + UR_COORD_MAX;
 
-    while( it != end )
+    for( ; it != end; ++it )
     {
         if( *it == ' ' || *it == '\t' )
-        {
-            ++it;
-        }
-        else
-        {
-            *nit++ = (int16_t) str_toInt64( it, end, &it );
-            if( nit == nend || it == end || *it != ',' )
-                break;
-            ++it;
-        }
+            continue;
+        *nit++ = (int16_t) str_toInt64( it, end, &it );
+        if( nit == nend || it == end || *it != ',' )
+            break;
     }
 
     cell->coord.len = nit - cell->coord.n;
@@ -279,26 +277,20 @@ const char* str_toCoord( UCell* cell, const char* it, const char* end )
 }
 
 
-const char* str_toVec3( UCell* cell, const char* it, const char* end )
+const uint8_t* str_toVec3( UCell* cell, const uint8_t* it, const uint8_t* end )
 {
     float* nit  = cell->vec3.xyz;
     float* nend = nit + 3;
 
-    while( it != end )
+    for( ; it != end; ++it )
     {
         if( *it == ' ' || *it == '\t' )
-        {
-            ++it;
-        }
-        else
-        {
-            *nit++ = (float) str_toDouble( it, end, &it );
-            if( nit == nend )
-                break;
-            if( (it == end) || *it != ',' )
-                break;
-            ++it;
-        }
+            continue;
+        *nit++ = (float) str_toDouble( it, end, &it );
+        if( nit == nend )
+            break;
+        if( (it == end) || *it != ',' )
+            break;
     }
 
     while( nit != nend )
@@ -339,16 +331,6 @@ static uint8_t charset_word[32] = {
     0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
     0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
 };
-
-/* Word: !&'*+-./: 0-9 a-z A-Z <>?|=^_~ and all ascii >= 127 */
-static uint8_t charset_path[32] = {
-  //0x00,0x00,0x00,0x00,0xC2,0x6C,0xFF,0xF3,
-    0x00,0x00,0x00,0x00,0xC2,0xEC,0xFF,0xF7,    // With '/' & ':'
-    0xFE,0xFF,0xFF,0xD7,0xFF,0xFF,0xFF,0x57,
-    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
-};
-
 /* Base64 encoding: +/= 0-9 a-z A-Z */
 uint8_t charset_base64[32] = {
     0x00,0x00,0x00,0x00,0x00,0x88,0xFF,0x23,
@@ -362,8 +344,6 @@ uint8_t charset_base64[32] = {
 #define IS_WHITE(v)     ur_bitIsSet(charset_white,v)
 #define IS_DELIM(v)     ur_bitIsSet(charset_delimiter,v)
 #define IS_WORD(v)      ur_bitIsSet(charset_word,v)
-#define IS_PATH(v)      ur_bitIsSet(charset_path,v)
-#define isAlpha(v)      ((v >= 'a' && v <= 'z') || (v >= 'A' && v <= 'Z'))
 
 
 /*
@@ -463,272 +443,20 @@ static int ur_charUtf8ToUcs2( const uint8_t* it, const uint8_t* end,
 }
 
 
-/*
-  Converts string to word!, path!, or datatype!.
-
-  Returns cell added to blk.
-*/
-static UCell* _tokenizePath( UThread* ut, UBuffer* blk,
-                             const char* it, const char* ew, const char* end,
-                             int wtype )
-{
-#define find_char(a,b,ch)   (char*) find_uint8_t((uint8_t*)a, (uint8_t*)b, ch)
-    int ch;
-    UBuffer* path;
-    UCell* cell;
-    UCell* pc;
-    UAtom atom;
-
-
-    cell = ur_blkAppendNew( blk, UT_UNSET );       // Unset in case of GC.
-
-    // TODO: Handle UR_INVALID_ATOM.
-    atom = ur_internAtom( ut, it, ew );
-    if( atom < UT_MAX )
-    {
-        ur_makeDatatype( cell, atom );
-        while( 1 )
-        {
-            it = ew + 1;
-            ew = find_char( it, end, '/' );
-            if( ! ew )
-                ew = end;
-            ch = *it;
-            if( isAlpha(ch) )
-            {
-                atom = ur_internAtom( ut, it, ew );
-                if( atom < UT_MAX )
-                    ur_datatypeAddType( cell, atom );
-            }
-            if( ew == end )
-                break;
-        }
-        return cell;
-    }
-
-    if( end[-1] == ':' )
-    {
-        --end;
-        wtype = UT_SETPATH;
-    }
-    else if( wtype == UT_LITWORD )
-    {
-        wtype = UT_LITPATH;
-    }
-    else
-    {
-        if( wtype == UT_GETWORD )
-            --it;   // Back-up to ':'
-        wtype = UT_PATH;
-    }
-    path = ur_makeBlockCell( ut, wtype, 2, cell );
-
-    while( 1 )
-    {
-        ch = *it;
-        if( isDigit(ch) || (ch == '-') )
-        {
-            pc = ur_blkAppendNew( path, UT_INT );
-            ur_int(pc) = str_toInt64( it, ew, 0 );
-        }
-        else if( IS_PATH(ch) )
-        {
-            if( ch == '\'' )
-            {
-                atom = UT_LITWORD;
-                ++it;
-            }
-            else if( ch == ':' )
-            {
-                atom = UT_GETWORD;
-                ++it;
-            }
-            else
-                atom = UT_WORD;
-            pc = ur_blkAppendNew( path, atom );
-            ur_setWordUnbound( pc, ur_internAtom( ut, it, ew ) );
-        }
-        else
-            break;
-
-        if( ew == end )
-            break;
-        it = ew + 1;
-        ew = find_char( it, end, '/' );
-        if( ! ew )
-            ew = end;
-    }
-
-    return cell;
-}
-
-
-#define SCAN_LOOP   for(;it != end;++it) { ch = *it;
-#define SCAN_END    }
-
-
-/*
-   Skips over C-style block comments, which may be nested.
-
-   \param it    Points to char after first '*'.
-   \param end   End of string.
-
-   Returns pointer to char past end of comment or zero if end reached.
-*/
-static const char* blockComment( const char* it, const char* end, int* lines )
-{
-    int ch;
-    int nested = 0;
-    int mode = 0;
-    int lineCount = 0;
-
-
-    SCAN_LOOP
-        if( ch == '\n' )
-        {
-            ++lineCount;
-            mode = 0;
-        }
-        else
-        {
-            switch( mode )
-            {
-                case 0:
-                    if( ch == '*' )
-                        mode = 1;
-                    else if( ch == '/' )
-                        mode = 2;
-                    break;
-
-                case 1:
-                    if( ch == '/' )
-                    {
-                        if( ! nested )
-                        {
-                            *lines += lineCount;
-                            return ++it;
-                        }
-                        --nested;
-                    }
-                    mode = 0;
-                    break;
-
-                case 2:
-                    if( ch == '*' )
-                        ++nested;
-                    mode = 0;
-                    break;
-            }
-        }
-    SCAN_END
-
-    *lines += lineCount;
-    return 0;
-}
-
-
-static UCell* appendInt( UBuffer* blk, int64_t n )
-{
-    UCell* cell = ur_blkAppendNew( blk, UT_INT );
-    ur_int(cell) = n;
-    return cell;
-}
-
-
-enum TokenOps
-{
-    SKIP,   // "\t\r "  Whitespace
-    NL,     //  \n      Newline
-    COM_L,  //  ;       Line comment
-    COM_B,  //  /       Block comment, UT_WORD
-    BIN,    //  #       UT_BINARY, UT_VECTOR, UT_WORD
-    STR,    // "\"{"    UT_STRING
-    BLK,    // "[("     UT_BLOCK, UT_PAREN
-    BLK_E,  // "])"     End block
-    LIT,    //  '       UT_LITWORD, UT_LITPATH, UT_CHAR
-    SIGN,   // "+-"     UT_INT, UT_DOUBLE, UT_VEC3, UT_COORD, UT_WORD
-    ZERO,   // 0        Hex number, NUM
-    NUM,    // 1-9      UT_INT, UT_DOUBLE, UT_VEC3, UT_COORD, UT_DATE, UT_TIME
-    HEX,    //  $       UT_INT, UT_COORD
-    FIL,    //  %       UT_FILE
-    COLON,  //  :       UT_GETWORD
-    ALPHA,  // A-Z a-z  UT_SETWORD, UT_WORD
-    INV     //          Invalid character
-};
-
-
-static uint8_t firstCharOp[ 127 ] =
-{
-//  '\0'    SOH     STX     ETX     EOT     ENQ     ACK     '\a'
-    INV,    INV,    INV,    INV,    INV,    INV,    INV,    SKIP,
-//  '\b'    '\t'    '\n'    '\v'    '\f'    '\r'    SO      SI
-    INV,    SKIP,   NL,     INV,    INV,    SKIP,   INV,    INV, 
-//  DLE     DC1     DC2     DC3     DC4     NAK     SYN     ETB
-    INV,    INV,    INV,    INV,    INV,    INV,    INV,    INV,
-//  CAN     EM      SUB     ESC     FS      GS      RS      US
-    INV,    INV,    INV,    INV,    INV,    INV,    INV,    INV,
-//  ' '     !       "       #       $       %       &       ´       
-    SKIP,   ALPHA,  STR,    BIN,    HEX,    FIL,    ALPHA,  LIT,
-//  (       )       *       +       ,       -       .       /       
-    BLK,    BLK_E,  ALPHA,  SIGN,   ALPHA,  SIGN,   ALPHA,  COM_B,
-//  0       1       2       3       4       5       6       7       
-    ZERO,   NUM,    NUM,    NUM,    NUM,    NUM,    NUM,    NUM,
-//  8       9       :       ;       <       =       >       ?       
-    NUM,    NUM,    COLON,  COM_L,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
-//  @       A       B       C       D       E       F       G 
-    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
-//  H       I       J       K       L       M       N       O
-    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
-//  P       Q       R       S       T       U       V       W 
-    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
-//  X       Y       Z       [       \       ]       ^       _
-    ALPHA,  ALPHA,  ALPHA,  BLK,    ALPHA,  BLK_E,  ALPHA,  ALPHA,
-//  `       a       b       c       d       e       f       g
-    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
-//  h       i       j       k       l       m       n       o
-    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
-//  p       q       r       s       t       u       v       w
-    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
-//  x       y       z       {        |      }       ~       DEL
-    ALPHA,  ALPHA,  ALPHA,  STR,    ALPHA,  ALPHA,  ALPHA
-};
-
-
-static const char* _errToken( UBuffer* bin, const char* it, const char* end )
-{
-    const char* start = it;
-    int ch;
-
-    SCAN_LOOP
-        if( IS_DELIM(ch) )
-            break;
-    SCAN_END
-
-    ch = it - start;
-    ur_binReserve( bin, ch + 1 );
-    memCpy( bin->ptr.c, start, ch );
-    bin->ptr.c[ ch ] = '\0';
-
-    return bin->ptr.c;
-}
-
-
 extern int trim_indent_char( char* it, char* end );
 
 /*
   Get range of mutli-line string to be automatically un-indented.
   Return non-zero if valid string found and marked with strStart & strEnd.
 */
-static int _bracketNewline( const char* start, const char* end,
-                            const char** strStart, const char** strEnd,
-                            int* lines )
+static int _bracketNewline( const uint8_t* start, const uint8_t* end,
+                            const uint8_t** strStart, const uint8_t** strEnd )
 {
-    const char* it = start;
-    const char* lastLf;
+    const uint8_t* it = start;
+    const uint8_t* lastLf;
     const int LF = 10;
     const int CR = 13;
     int len, count;
-    int lineCount = 2;
 
     // Must start with two or more left curly brackets followed by a newline.
     while( it != end && *it == '{' )
@@ -757,31 +485,179 @@ static int _bracketNewline( const char* start, const char* end,
             {
                 *strStart = start;
                 *strEnd   = lastLf + 1;
-                *lines += lineCount;
                 return len;
             }
         }
 
         if( *it == LF )
-        {
             lastLf = it;
-            ++lineCount;
-        }
         ++it;
     }
     return 0;
 }
 
 
-UIndex _makeStringEnc( UThread* ut, const uint8_t* it, const uint8_t* end,
-                       int enc )
+static void _errorToken( UThread* ut, const char* msg, int lines,
+                         const uint8_t* start, const uint8_t* end )
 {
-    if( enc == UR_ENC_LATIN1 )
-        return ur_makeStringLatin1( ut, it, end );
-    else
-        return ur_makeStringUtf8( ut, it, end );
+    char buf[ 32 ];
+    const uint8_t* it = start;
+    int n;
+
+    while( it != end )
+    {
+        n = *it++;
+        if( IS_DELIM(n) )
+            break;
+    }
+    n = it - start;
+    if( n > 31 )
+        n = 31;
+    memCpy( buf, start, n );
+    buf[ n ] = '\0';
+
+    ur_error( ut, UR_ERR_SYNTAX, "%s \"%s\" (line %d)", msg, buf, lines );
 }
 
+
+// Return one-based number of newlines between it & end.
+static int _lineCount( const uint8_t* it, const uint8_t* end )
+{
+    int count = 1;
+    while( it != end )
+    {
+        if( *it++ == '\n' )
+            ++count;
+    }
+    return count;
+}
+
+
+// Return non-zero if path is multi-type datatype! and cell was replaced.
+static int _convertToDatatype( UCell* cell, int len )
+{
+    const UCell* it  = cell;
+    const UCell* end = cell + len;
+    for( ; it != end; ++it )
+    {
+        if( ! ur_is(it, UT_WORD) || ur_atom(it) >= UT_MAX )
+            return 0;
+    }
+    ur_makeDatatype( cell, ur_atom(cell) );
+    for( it = cell + 1; it != end; ++it )
+        ur_datatypeAddType( cell, ur_atom(it) );
+    return 1;
+}
+
+
+static UCell* _makeStringEnc( UThread* ut, UIndex blkN, const uint8_t* it,
+                              const uint8_t* end, int enc )
+{
+    UIndex strN;
+    UCell* cell;
+
+    if( enc == UR_ENC_LATIN1 )
+        strN = ur_makeStringLatin1( ut, it, end );
+    else
+        strN = ur_makeStringUtf8( ut, it, end );
+    cell = ur_blkAppendNew( ur_buffer(blkN), UT_STRING );
+    ur_setSeries( cell, strN, 0 );
+    return cell;
+}
+
+
+enum TokenOps
+{
+    SKIP,   // "\t\r "  Whitespace
+    NL,     //  \n      Newline
+    COM_L,  //  ;       Line comment
+    HASH,   //  #       UT_BINARY, UT_VECTOR, UT_WORD
+    SLASH,  //  /       Block comment, UT_OPTION, UT_PATH
+    STR,    //  "       UT_STRING
+    STRB,   //  {       UT_STRING
+    BLK,    // "[("     UT_BLOCK, UT_PAREN
+    BLK_E,  // "])"     End block
+    LIT,    //  '       UT_LITWORD, UT_LITPATH, UT_CHAR
+    SIGN,   // "+-"     UT_INT, UT_DOUBLE, UT_VEC3, UT_COORD, UT_WORD
+    ZERO,   // 0        Hex number, UT_INT, UT_DOUBLE
+    DIGIT,  // 1-9      UT_INT, UT_DOUBLE, UT_VEC3, UT_COORD, UT_DATE, UT_TIME
+    ALPHA,  // A-Z a-z  UT_SETWORD, UT_WORD
+    FIL,    //  %       UT_FILE
+    COLON,  //  :       UT_GETWORD
+    INV     //          Invalid character
+};
+
+
+static uint8_t firstCharOp[ 127 ] =
+{
+//  '\0'    SOH     STX     ETX     EOT     ENQ     ACK     '\a'
+    INV,    INV,    INV,    INV,    INV,    INV,    INV,    SKIP,
+//  '\b'    '\t'    '\n'    '\v'    '\f'    '\r'    SO      SI
+    INV,    SKIP,   NL,     INV,    INV,    SKIP,   INV,    INV,
+//  DLE     DC1     DC2     DC3     DC4     NAK     SYN     ETB
+    INV,    INV,    INV,    INV,    INV,    INV,    INV,    INV,
+//  CAN     EM      SUB     ESC     FS      GS      RS      US
+    INV,    INV,    INV,    INV,    INV,    INV,    INV,    INV,
+//  ' '     !       "       #       $       %       &       ´
+    SKIP,   ALPHA,  STR,    HASH,   ALPHA,  FIL,    ALPHA,  LIT,
+//  (       )       *       +       ,       -       .       /
+    BLK,    BLK_E,  ALPHA,  SIGN,   INV,    SIGN,   ALPHA,  SLASH,
+//  0       1       2       3       4       5       6       7
+    ZERO,   DIGIT,  DIGIT,  DIGIT,  DIGIT,  DIGIT,  DIGIT,  DIGIT,
+//  8       9       :       ;       <       =       >       ?
+    DIGIT,  DIGIT,  COLON,  COM_L,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
+//  @       A       B       C       D       E       F       G
+    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
+//  H       I       J       K       L       M       N       O
+    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
+//  P       Q       R       S       T       U       V       W
+    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
+//  X       Y       Z       [       \       ]       ^       _
+    ALPHA,  ALPHA,  ALPHA,  BLK,    ALPHA,  BLK_E,  ALPHA,  ALPHA,
+//  `       a       b       c       d       e       f       g
+    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
+//  h       i       j       k       l       m       n       o
+    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
+//  p       q       r       s       t       u       v       w
+    ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,  ALPHA,
+//  x       y       z       {        |      }       ~       DEL
+    ALPHA,  ALPHA,  ALPHA,  STRB,   ALPHA,  ALPHA,  ALPHA
+};
+
+
+/**
+  \ingroup urlan_core
+
+  Parse UTF-8 or Latin1 data into block.
+
+  \param blkN           Index of initialized block buffer.
+  \param inputEncoding  UR_ENC_UTF8 or UR_ENC_LATIN1
+  \param start          Pointer to start of input data.
+  \param end            Pointer to end of input data.
+
+  \return UR_OK if all input successfully parsed, or UR_THROW on syntax error.
+*/
+UStatus ur_tokenizeB( UThread* ut, UIndex blkN, int inputEncoding,
+                      const uint8_t* start, const uint8_t* end )
+{
+#define STACK   stack.ptr.i32
+#define BLOCK   ur_buffer( STACK[stack.used - 1] )
+#define CCP     (const char*)
+    UBuffer stack;
+    UBuffer* blk;
+    UCell* cell;
+    const char* errorMsg;
+    const uint8_t* token;
+    const uint8_t* it = start;
+    UIndex vectorN = UR_INVALID_BUF;
+    UIndex vectorPos = 0;
+    int mode;
+    int tokenState = 0;
+    int sol = 0;
+    int ch;
+
+#define CS_NEXT ((it == end) ? -1 : *it++)
+#define TOK_END ((ch < 0) ? it : it-1)
 
 #define syntaxError(msg) \
     errorMsg = msg; \
@@ -790,6 +666,492 @@ UIndex _makeStringEnc( UThread* ut, const uint8_t* it, const uint8_t* end,
 #define syntaxErrorT(msg) \
     errorMsg = msg; \
     goto error_token
+
+
+    ur_arrInit( &stack, sizeof(UIndex), 32 );
+    ur_arrAppendInt32( &stack, blkN );
+
+next:
+    ch = CS_NEXT;
+proc:
+    while( ch > 0 )
+    {
+        if( ch > 126 )
+            goto invalid_char;
+        switch( firstCharOp[ ch ] )
+        {
+        case SKIP:
+            goto next;
+
+        case NL:
+            sol = 1;
+            tokenState = 0;
+            goto next;
+
+        case BLK:
+        {
+            UIndex newBlkN = ur_makeBlock( ut, 0 );
+            cell = ur_blkAppendNew( BLOCK, (ch == '[') ? UT_BLOCK : UT_PAREN );
+            ur_setSeries( cell, newBlkN, 0 );
+            ur_arrAppendInt32( &stack, newBlkN );
+            tokenState = 0;
+        }
+            goto next_sol;
+
+        case BLK_E:
+            if( vectorN )
+            {
+                vectorN = UR_INVALID_BUF;
+                BLOCK->used = vectorPos;
+                goto next;
+            }
+            if( stack.used == 1 )
+            {
+                ur_error( ut, UR_ERR_SYNTAX,
+                          "End of block '%c' has no opening match (line %d)",
+                          ch, _lineCount(start, it) );
+                goto error;
+            }
+            --stack.used;
+            tokenState = 0;
+            sol = 0;
+            goto next;
+
+        case SIGN:
+            token = it - 1;
+            if( (ch = CS_NEXT) > 0 && isDigit(ch) )
+                goto number;
+            if( IS_WORD(ch) )
+                goto word;
+            goto push_word;
+
+        case ZERO:
+            token = it - 1;
+            if( (ch = CS_NEXT) == 'x' )
+            {
+                token = it;
+                while( (ch = CS_NEXT) > 0 && IS_HEX(ch) )
+                    ;
+                cell = ur_blkAppendNew( BLOCK, UT_INT );
+                ur_int(cell) = str_hexToInt64( CCP token, CCP TOK_END, NULL );
+                ur_setFlags( cell, UR_FLAG_INT_HEX );
+                goto set_sol;
+            }
+            if( isDigit(ch) )
+                goto number;
+            goto num_dot;
+
+        case DIGIT:
+            token = it - 1;
+number:
+            while( (ch = CS_NEXT) > 0 && isDigit(ch) )
+                ;
+num_dot:
+            mode = UT_INT;
+            blk = BLOCK;
+
+            if( ch=='.' )
+            {
+                mode = UT_DOUBLE;
+                while( (ch = CS_NEXT) > 0 && isDigit(ch) )
+                    ;
+            }
+            else if( ch == ':' )
+            {
+#ifdef CONFIG_TIMECODE
+                if( _isTimecode( it, end ) )
+                {
+                    cell = ur_blkAppendNew( blk, UT_TIMECODE );
+                    it = ur_stringToTimeCode( token, end, cell );
+                    goto next_sol;
+                }
+#endif
+                cell = ur_blkAppendNew( blk, UT_TIME );
+                ur_double(cell) = str_toTime( token, end, &it );
+                goto next_sol;
+            }
+            else if( ch == '-' )
+            {
+                const char* pos;
+                cell = ur_blkAppendNew( blk, UT_DATE );
+                ur_double(cell) = ur_stringToDate( CCP token, CCP end, &pos );
+                it = (const uint8_t*) pos;
+                if( it == token )
+                {
+                    syntaxErrorT( "Invalid date" );
+                }
+                goto next_sol;
+            }
+
+            if( ch=='e' || ch=='E' )
+            {
+                mode = UT_DOUBLE;
+                while( (ch = CS_NEXT) > 0 &&
+                       (isDigit(ch) || ch == '+' || ch == '-') )
+                    ;
+            }
+
+            if( mode == UT_DOUBLE )
+            {
+                if( ch == ',' )
+                {
+                    cell = ur_blkAppendNew( blk, UT_VEC3 );
+                    it = str_toVec3( cell, token, end );
+                    goto next_sol;
+                }
+                cell = ur_blkAppendNew( blk, UT_DOUBLE );
+                ur_double(cell) = strtod( CCP token, NULL );
+            }
+            else
+            {
+                if( ch == ',' )
+                {
+                    cell = ur_blkAppendNew( blk, UT_COORD );
+                    it = str_toCoord( cell, token, end );
+                    goto next_sol;
+                }
+                cell = ur_blkAppendNew( blk, UT_INT );
+                ur_int(cell) = str_toInt64( token, TOK_END, NULL );
+            }
+
+            if( vectorN )
+            {
+                UBuffer* vec = ur_buffer(vectorN);
+                if( vec->used == 0 && vec->form == UR_VEC_I32 &&
+                    ur_is(cell, UT_DOUBLE) )
+                    vec->form = UR_VEC_F32;
+                if( ! vector_append( ut, ur_buffer(vectorN), cell ) )
+                    goto error;
+                blk->used = vectorPos;
+            }
+            goto set_sol;
+
+        case ALPHA:
+            token = it - 1;
+word:
+            while( (ch = CS_NEXT) > 0 && IS_WORD(ch) )
+                ;
+push_word:
+            if( tokenState == UT_GETWORD ||
+                tokenState == UT_LITWORD ||
+                tokenState == UT_OPTION )
+            {
+                mode = tokenState;
+                tokenState = 0;
+            }
+            else if( ch == ':' )
+                mode = UT_SETWORD;
+            else
+                mode = UT_WORD;
+            blk = BLOCK;
+            cell = ur_blkAppendNew( blk, mode );
+            ur_setWordUnbound(cell, ur_internAtom(ut, CCP token, CCP TOK_END));
+            if( ch == ':' )
+                ch = CS_NEXT;
+            else if( ch == '/' )
+                goto path;
+            goto set_sol;
+
+path:
+            mode = blk->used - 1;       // Save start position of path.
+path_seg:
+            token = it;
+            ch = CS_NEXT;
+            if( isDigit(ch) || ch == '-' )
+            {
+                cell = ur_blkAppendNew( blk, UT_INT );
+                ur_int(cell) = str_toInt64( token, end, &it );
+                ch = CS_NEXT;
+            }
+            else
+            {
+                int wt = UT_WORD;
+                if( ch == ':' )
+                {
+                    wt = UT_GETWORD;
+                    ++token;
+                }
+                else if( ch == '\'' )
+                {
+                    wt = UT_LITWORD;
+                    ++token;
+                }
+                else if( ! IS_WORD(ch) )
+                {
+                    --token;
+                    syntaxErrorT( "Invalid path segment" );
+                }
+                while( (ch = CS_NEXT) > 0 && IS_WORD(ch) )
+                    ;
+                cell = ur_blkAppendNew( blk, wt );
+                ur_setWordUnbound( cell, ur_internAtom(ut, CCP token,
+                                                           CCP TOK_END) );
+            }
+            if( ch == '/' )
+                goto path_seg;
+
+            {
+                int len;
+                len = blk->used - mode;
+                cell = blk->ptr.cell + mode;
+                blk->used = mode + 1;
+                if( ! _convertToDatatype( cell, len ) )
+                {
+                    // Move cells from code block to path buffer.
+                    int pt = UT_PATH;
+                    UIndex bufN = ur_makeBlock( ut, len );      // gc!
+                    if( ur_is(cell, UT_LITWORD) )
+                    {
+                        cell->id.type = UT_WORD;
+                        pt = UT_LITPATH;
+                    }
+                    else if( ch == ':' )
+                    {
+                        ch = CS_NEXT;
+                        pt = UT_SETPATH;
+                    }
+                    ur_blkAppendCells( ur_buffer(bufN), cell, len );
+                    ur_initSeries( cell, pt, bufN );
+                }
+            }
+            goto set_sol;
+
+        case STR:
+            mode = '"';
+            goto string;
+
+        case STRB:
+            if( _bracketNewline(it - 1, end, &token, &it) )
+            {
+                UBuffer* str;
+                cell = _makeStringEnc( ut, STACK[stack.used - 1],
+                                       token, it, inputEncoding );
+                str = ur_buffer( cell->series.buf );
+                str->used -= trim_indent_char( str->ptr.c,
+                                               str->ptr.c + str->used );
+                while( *it != '\n' )
+                    ++it;
+                goto next_sol;
+            }
+            mode = '}';
+string:
+            token = it;
+            while( (ch = CS_NEXT) > 0 )
+            {
+                if( ch == '^' )
+                {
+                    if( CS_NEXT < 0 )
+                        break;
+                }
+                if( ch == mode )
+                    goto push_string;
+                if( ch == '\n' && mode == '"' )
+                    break;
+            }
+            syntaxError( "String not terminated" );
+push_string:
+            cell = _makeStringEnc( ut, STACK[stack.used - 1],
+                                   token, TOK_END, inputEncoding );
+            goto next_sol;
+
+        case HASH:
+            ch = CS_NEXT;
+            blk = BLOCK;
+
+            // Use previous value abutted to '#' as the form indicator.
+            // The new vector value can be created in it's place.
+            cell = NULL;
+            if( it - start > 2 )
+            {
+                mode = it[-3];
+                if( isDigit(mode) )
+                    cell = blk->ptr.cell + blk->used - 1;
+            }
+
+            if( ch == '{' )
+            {
+                UBuffer* bin;
+                const char* tend;
+
+                token = it;
+                while( (ch = CS_NEXT) > 0 && ch != '}' )
+                    ;
+                if( ch < 0 )
+                    goto invalid_binary;
+
+                if( cell )
+                {
+                    if( ! ur_is(cell, UT_INT) )
+                        goto invalid_binary;
+                    switch( ur_int(cell) )
+                    {
+                        case 2:
+                            mode = UR_BENC_2;
+                            break;
+                        case 16:
+                            mode = UR_BENC_16;
+                            break;
+                        case 64:
+                            mode = UR_BENC_64;
+                            break;
+                        default:
+                            goto invalid_binary;
+                    }
+                }
+                else
+                {
+                    cell = ur_blkAppendNew( blk, UT_NONE );
+                    mode = UR_BENC_16;
+                }
+                bin = ur_makeBinaryCell( ut, 0, cell );
+                bin->form = mode;
+                tend = (const char*) TOK_END;
+                if( ur_binAppendBase( bin, CCP token, tend, mode ) == tend )
+                    goto next_sol;
+invalid_binary:
+                syntaxError( "Invalid binary" );
+            }
+            else if( ch == '[' )
+            {
+                mode = UR_VEC_I32;
+                if( cell )
+                {
+                    if( ur_is(cell, UT_INT) && ur_int(cell) == 16 )
+                        mode = UR_VEC_I16;
+                    else
+                        goto invalid_vector;
+                }
+                else
+                {
+                    cell = ur_blkAppendNew( blk, UT_VECTOR );
+                }
+                ur_makeVectorCell( ut, mode, 0, cell );
+                vectorN = cell->series.buf;
+                vectorPos = blk->used;
+                goto next_sol;
+invalid_vector:
+                syntaxError( "Invalid vector" );
+            }
+            token = it - 1;
+            goto push_word;
+
+        case SLASH:
+            ch = CS_NEXT;
+            if( ch == '*' )
+            {
+                mode = 0;
+                while( (ch = CS_NEXT) > 0 )
+                {
+                    if( ch == '/' && mode == '*' )
+                        goto next;
+                    mode = ch;
+                }
+                goto proc;
+            }
+            else if( ! IS_WORD(ch) )
+            {
+                token = it - 2;
+                goto push_word;
+            }
+            tokenState = UT_OPTION;
+            break;
+
+        case FIL:
+            token = it;
+            ch = CS_NEXT;
+            if( ch == '"' )
+            {
+                ++token;
+                while( (ch = CS_NEXT) > 0 && ch != '"' )
+                {
+                    if( ch == '\n' )
+                    {
+                        syntaxError( "File has no closing quote" );
+                    }
+                }
+            }
+            else
+            {
+                do
+                {
+                    if( IS_DELIM( ch ) )
+                        break;
+                }
+                while( (ch = CS_NEXT) > 0 );
+            }
+            {
+            UIndex bufN;
+            bufN = ur_makeStringUtf8( ut, token, TOK_END );     // gc!
+            cell = ur_blkAppendNew( BLOCK, UT_FILE );
+            ur_setSeries( cell, bufN, 0 );
+            }
+            if( token[-1] == '"' )
+                ch = CS_NEXT;
+            goto set_sol;
+
+        case LIT:
+            // TODO: Handle Latin1
+            mode = ur_charUtf8ToUcs2( it, end, &it );
+            if( mode >= 0 )
+            {
+                cell = ur_blkAppendNew( BLOCK, UT_CHAR );
+                ur_char(cell) = mode;
+                goto next_sol;
+            }
+            tokenState = UT_LITWORD;
+            goto next;
+
+        case COLON:
+            tokenState = UT_GETWORD;
+            goto next;
+
+        case COM_L:
+            while( (ch = CS_NEXT) && ch != '\n' )
+                ;
+            sol = 1;
+            break;
+
+        case INV:
+            goto invalid_char;
+        }
+    }
+
+    if( stack.used > 1 )
+    {
+        syntaxError( "Block or paren not closed" );
+    }
+
+    ur_arrFree( &stack );
+    return UR_OK;
+
+next_sol:
+    ch = CS_NEXT;
+
+set_sol:
+    if( sol )
+    {
+        cell->id.flags |= UR_FLAG_SOL;
+        sol = 0;
+    }
+    goto proc;
+
+invalid_char:
+    ur_error( ut, UR_ERR_SYNTAX, "Unprintable/Non-ASCII Input %d (line %d)",
+              ch, _lineCount(start, it) );
+    goto error;
+
+error_msg:
+    ur_error( ut, UR_ERR_SYNTAX, "%s (line %d)",
+              errorMsg, _lineCount(start, it) );
+    goto error;
+
+error_token:
+    _errorToken( ut, errorMsg, _lineCount(start, it), token, end );
+
+error:
+    ur_arrFree( &stack );
+    return UR_THROW;
+}
 
 
 /**
@@ -809,582 +1171,19 @@ UIndex _makeStringEnc( UThread* ut, const uint8_t* it, const uint8_t* end,
 */
 UIndex ur_tokenize( UThread* ut, const char* it, const char* end, UCell* res )
 {
-    return ur_tokenizeType( ut, UR_ENC_UTF8, it, end, res );
-}
-
-
-UIndex ur_tokenizeType( UThread* ut, int inputEncoding,
-                        const char* it, const char* end, UCell* res )
-{
-#define STACK   stack.ptr.i32
-#define BLOCK   ur_buffer( STACK[ stack.used - 1 ] )
-    UBuffer stack;
     UIndex hold;
-    UIndex blkN;
-    UCell* cell;
-    const char* token;
-    const char* errorMsg;
-    int ch;
-    int mode;
-    int sol = 0;
-    int lines = 0;
+    UIndex bufN;
+    UStatus ok;
 
+    ur_makeBlockCell( ut, UT_BLOCK, 0, res );
+    bufN = res->series.buf;
 
-    blkN = ur_makeBlock( ut, 0 );
-    hold = ur_hold( blkN );
-
-    ur_arrInit( &stack, sizeof(UIndex), 32 );
-    ur_arrAppendInt32( &stack, blkN );
-
-start:
-
-    SCAN_LOOP
-        if( ch > 126 )
-            goto invalid_char;
-
-        switch( firstCharOp[ ch ] )
-        {
-            case SKIP:
-                break;
-
-            case NL:
-newline:
-                ++lines;
-                sol = 1;
-                break;
-
-            case COM_L:
-                SCAN_LOOP
-                    if( ch == '\n' )
-                        goto newline;
-                SCAN_END
-                goto finish;
-
-            case COM_B:
-                token = ++it;
-                if( it == end || IS_DELIM(*it) )
-                {
-                    --token;
-                    mode = UT_WORD;
-                    goto word;
-                }
-                if( *it == '*' )
-                {
-                    it = blockComment( ++it, end, &lines );
-                    if( it )
-                        goto start;
-                    goto finish;
-                }
-                SCAN_LOOP
-                    if( ! IS_WORD( ch ) )
-                        break;
-                SCAN_END
-                mode = UT_OPTION;
-                goto word;
-
-            case BIN:
-                mode = -1;      // Default to UR_BENC_16 or UR_VEC_I32.
-binary:
-                ++it;
-                if( it == end )
-                    goto invalid_bin;
-                if( *it == '{' )
-                {
-                    const uint8_t* baseChars = (mode == UR_BENC_64) ?
-                        charset_base64 : charset_hex;
-                    ++it;
-                    token = it;
-                    SCAN_LOOP
-                        if( ur_bitIsSet( baseChars, ch ) )
-                        {
-                            continue;
-                        }
-                        else if( IS_WHITE(ch) )
-                        {
-                            if( ch == '\n' )
-                                ++lines;
-                        }
-                        else if( ch == '}' )
-                        {
-                            UBuffer* bin;
-                            cell = ur_blkAppendNew( BLOCK, UT_NONE );
-                            bin = ur_makeBinaryCell( ut, 0, cell );
-                            if( mode < 0 )
-                                mode = UR_BENC_16;
-                            bin->form = mode;
-                            if( ur_binAppendBase( bin, token, it, mode ) != it )
-                                goto invalid_bin;
-                            ++it;
-                            goto set_sol;
-                        }
-                        else
-                        {
-invalid_bin:
-                            syntaxError( "Invalid binary" );
-                        }
-                    SCAN_END
-                }
-                else if( *it == '[' )
-                {
-                    UBuffer* buf;
-                    token = 0;
-
-                    mode = (mode == UR_BENC_16) ? UR_VEC_I16 : UR_VEC_I32;
-
-                    cell = ur_blkAppendNew( BLOCK, UT_UNSET );
-                    buf = ur_makeVectorCell( ut, mode, 0, cell );
-
-                    ++it;
-                    SCAN_LOOP
-                        if( IS_DELIM(ch) )
-                        {
-vector_white:
-                            if( token )
-                            {
-                                if( ! buf->used && mode != UR_VEC_I16 )
-                                {
-                                    const char* cp = token;
-                                    int vc;
-                                    while( cp != it )
-                                    {
-                                        vc = *cp++;
-                                        if( vc=='.' || vc=='e' || vc=='E' )
-                                        {
-                                            buf->form = UR_VEC_F32;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                ur_arrReserve( buf, buf->used + 1 );
-                                switch( buf->form )
-                                {
-                                case UR_VEC_I16:
-                                    buf->ptr.i16[ buf->used++ ] = (int16_t)
-                                            str_toInt64( token, it, 0 );
-                                    break;
-                                case UR_VEC_I32:
-                                    buf->ptr.i32[ buf->used++ ] = (int32_t)
-                                            str_toInt64( token, it, 0 );
-                                    break;
-                                default:
-                                    buf->ptr.f[ buf->used++ ] = (float)
-                                            str_toDouble( token, it, 0 );
-                                    break;
-                                }
-                                token = 0;
-                            }
-                            if( ch == '\n' )
-                            {
-vector_newline:
-                                ++lines;
-                            }
-                            else if( ch == ';' )
-                            {
-                                ++it;
-                                SCAN_LOOP
-                                    if( ch == '\n' )
-                                        goto vector_newline;
-                                SCAN_END
-                                break;
-                            }
-                            else if( ch == ']' )
-                            {
-                                ++it;
-                                goto set_sol;
-                            }
-                        }
-                        else if( ch == '/' )
-                        {
-                            ++it;
-                            if( it == end || *it != '*' )
-                                break;
-                            it = blockComment( ++it, end, &lines );
-                            if( it )
-                            {
-                                --it;
-                                goto vector_white;
-                            }
-                            break;
-                        }
-                        else if( ! token )
-                        {
-                            token = it;
-                        }
-                    SCAN_END
-                    syntaxError( "Invalid vector" );
-                }
-                break;
-
-            case STR:
-                token = ++it;
-                mode = 0;       // No trim_indent_.
-                if( ch == '{' )
-                {
-                    int nested = 0;
-                    if( _bracketNewline(token - 1, end, &token, &it, &lines) )
-                    {
-                        mode = 1;       // trim_indent_.
-                        goto string_end;
-                    }
-                    SCAN_LOOP
-                        if( ch == '^' )
-                        {
-                            if( ++it == end )
-                                break;
-                        }
-                        else if( ch == '{' )
-                        {
-                            ++nested;
-                        }
-                        else if( ch == '}' )
-                        {
-                            if( nested )
-                                --nested;
-                            else
-                                goto string_end;
-                        }
-                        else if( ch == '\n' )
-                            ++lines;
-                    SCAN_END
-                }
-                else // if( ch == '"' )
-                {
-                    SCAN_LOOP
-                        if( ch == '^' )
-                        {
-                            if( ++it == end )
-                                break;
-                        }
-                        if( ch == '"' )
-                            goto string_end;
-                        if( ch == '\n' )
-                            break;
-                    SCAN_END
-                }
-                syntaxError( "String not terminated" );
-string_end:
-                {
-                UIndex newStrN = _makeStringEnc( ut, (uint8_t*) token,
-                                                     (uint8_t*) it,
-                                                 inputEncoding );
-                if( mode )
-                {
-                    UBuffer* str = ur_buffer(newStrN);
-                    str->used -= trim_indent_char( str->ptr.c,
-                                                   str->ptr.c + str->used );
-                    while( *it != '\n' )
-                        ++it;
-                }
-                cell = ur_blkAppendNew( BLOCK, UT_STRING );
-                ur_setSeries( cell, newStrN, 0 );
-                }
-                ++it;
-                goto set_sol;
-
-            case BLK:
-            {
-                UIndex newBlkN = ur_makeBlock( ut, 0 );
-                cell = ur_blkAppendNew( BLOCK,
-                                        (ch == '[') ? UT_BLOCK : UT_PAREN );
-                ur_setSeries( cell, newBlkN, 0 );
-                ur_arrAppendInt32( &stack, newBlkN );
-                if( sol )
-                {
-                    cell->id.flags |= UR_FLAG_SOL;
-                    sol = 0;
-                }
-            }
-                break;
-
-            case BLK_E:
-                if( stack.used == 1 )
-                {
-                    ur_error( ut, UR_ERR_SYNTAX,
-                            "End of block '%c' has no opening match (line %d)",
-                            ch, lines + 1 );
-                    goto error;
-                }
-                --stack.used;
-                if( sol )
-                    sol = 0;
-                break;
-
-            case LIT:
-                token = ++it;
-                {
-                // TODO: Handle Latin1
-                int c = ur_charUtf8ToUcs2( (const uint8_t*) token,
-                                           (const uint8_t*) end,
-                                           (const uint8_t**) &it );
-                if( c >= 0 )
-                {
-                    cell = ur_blkAppendNew( BLOCK, UT_CHAR );
-                    ur_int(cell) = c;
-                    goto set_sol;
-                }
-                }
-                if( it != end && isDigit(*it) )
-                {
-                    --token;
-                    syntaxErrorT( "Invalid lit-word" );
-                }
-                mode = UT_LITWORD;
-                goto alpha;
-
-            case SIGN:
-                token = it++;
-                if( it == end || ! isDigit(*it) )
-                {
-                    mode = UT_WORD;
-                    goto alpha;
-                }
-                goto number;
-
-            case ZERO:
-                token = it++;
-                if( it != end && *it == 'x' )
-                    goto hex_number;
-                goto number;
-
-            case NUM:
-                token = it++;
-number:
-                SCAN_LOOP
-                    if( ! isDigit(ch) )
-                        break;
-                SCAN_END
-
-                {
-                UBuffer* blk = BLOCK;
-                switch( ch )
-                {
-                case '-':
-                    cell = ur_blkAppendNew( blk, UT_DATE );
-                    ur_double(cell) = ur_stringToDate( token, end, &it );
-                    if( it == token )
-                    {
-                        syntaxErrorT( "Invalid date" );
-                    }
-                    break;
-                case '.':   // UT_DOUBLE, UT_VEC3
-                case 'e':
-                case 'E':
-                    cell = ur_blkAppendNew( blk, UT_DOUBLE );
-                    ur_double(cell) = str_toDouble( token, end, &it );
-                    if( (it != end) && (*it == ',') )
-                    {
-                        ur_type(cell) = UT_VEC3;
-                        it = str_toVec3( cell, token, end );
-                    }
-                    break;
-                case ':':
-#ifdef CONFIG_TIMECODE
-                    if( _isTimecode( it, end ) )
-                    {
-                        cell = ur_blkAppendNew( blk, UT_TIMECODE );
-                        it = ur_stringToTimeCode( token, end, cell );
-                        break;
-                    }
-#endif
-                    cell = ur_blkAppendNew( blk, UT_TIME );
-                    ur_double(cell) = str_toTime( token, end, &it );
-                    break;
-                case ',':
-                    cell = ur_blkAppendNew( blk, UT_COORD );
-                    it = str_toCoord( cell, token, end );
-                    break;
-                case '#':   // UT_BINARY or UT_VECTOR
-                    if( token[0] == '6' && token[1] == '4' )
-                    {
-                        mode = UR_BENC_64;
-                        goto binary;
-                    }
-                    else if( token[0] == '2' && token[1] == '#' )
-                    {
-                        mode = UR_BENC_2;
-                        goto binary;
-                    }
-                    else if( token[0] == '1' && token[1] == '6' )
-                    {
-                        mode = UR_BENC_16;
-                        goto binary;
-                    }
-                    syntaxErrorT( "Invalid binary base" );
-                default:
-                    if( (it != end) && ! IS_DELIM(ch) )
-                    {
-                        syntaxErrorT( "Invalid int" );
-                    }
-                    cell = appendInt( blk, str_toInt64( token, end, &it ) );
-                    break;
-                }
-                }
-                goto set_sol;
-
-            case HEX:
-hex_number:
-                token = ++it;
-                // Treating hex values as unsigned here ($ffffffff -> int!)
-                cell = appendInt( BLOCK, str_hexToInt64( token, end, &it ) );
-                if( it == token )
-                {
-                    --token;
-                    if( *token == 'x' )
-                        --token;
-                    syntaxErrorT( "Invalid hexidecimal number" );
-                }
-                ur_setFlags( cell, UR_FLAG_INT_HEX );
-                goto set_sol;
-
-            case FIL:
-                ++it;
-                if( it != end && *it == '"' )
-                {
-                    token = ++it;
-                    SCAN_LOOP
-                        if( ch == '"' )
-                            break;
-                        if( ch == '\n' )
-                        {
-                            syntaxError( "File has no closing quote" );
-                        }
-                    SCAN_END
-                }
-                else
-                {
-                    token = it;
-                    SCAN_LOOP
-                        if( IS_DELIM( ch ) )
-                            break;
-                    SCAN_END
-                }
-                {
-                UIndex newStrN = _makeStringEnc( ut, (uint8_t*) token,
-                                                     (uint8_t*) it,
-                                                 inputEncoding );
-                cell = ur_blkAppendNew( BLOCK, UT_FILE );
-                ur_setSeries( cell, newStrN, 0 );
-                if( ch == '"' )
-                    ++it;
-                }
-                goto set_sol;
-
-            case COLON:
-                token = ++it;
-                if( it != end && isDigit(*it) )
-                {
-                    --token;
-                    syntaxErrorT( "Invalid get-word" );
-                }
-                mode = UT_GETWORD;
-                goto alpha;
-
-            case ALPHA:
-                token = it++;
-                mode = UT_WORD;
-alpha:
-                SCAN_LOOP
-                    if( ! IS_WORD( ch ) )
-                        break;
-                SCAN_END
-                if( ch == '/' )
-                {
-                    const char* endw = it;
-                    SCAN_LOOP
-                        if( ! IS_PATH( ch ) )
-                            break;
-                    SCAN_END
-                    cell = _tokenizePath( ut, BLOCK, token, endw, it, mode );
-                }
-                else if( ch == ':' )
-                {
-                    if( mode != UT_WORD )
-                    {
-                        --token;
-                        syntaxErrorT( "Unexpected colon" );
-                    }
-                    cell = ur_blkAppendNew( BLOCK, UT_SETWORD );
-                    mode = ur_internAtom( ut, token, it );
-                    if( mode == UR_INVALID_ATOM )
-                        goto error;
-                    ur_setWordUnbound( cell, mode );
-                    ++it;
-                }
-                else
-                {
-word:
-                    cell = ur_blkAppendNew( BLOCK, mode );
-                    mode = ur_internAtom( ut, token, it );
-                    if( mode == UR_INVALID_ATOM )
-                        goto error;
-                    ur_setWordUnbound( cell, mode );
-                }
-                goto set_sol;
-
-            /*
-            case UNEX:
-                ur_error( ut, UR_ERR_SYNTAX,
-                          "Unexpected character %c (line %d)", ch, lines + 1 );
-                goto error;
-            */
-
-            case INV:
-                goto invalid_char;
-        }
-    SCAN_END
-
-finish:
-
-    if( stack.used > 1 )
-    {
-        syntaxError( "Block or paren not closed" );
-    }
-
-    //ur_bindDefault( ut, blkN );   // Assumes languge?
-
-cleanup:
-
+    hold = ur_hold( bufN );
+    ok = ur_tokenizeB( ut, bufN, UR_ENC_UTF8,
+                       (const uint8_t*) it, (const uint8_t*) end );
     ur_release( hold );
-    ur_arrFree( &stack );
-    if( blkN )
-        ur_initSeries( res, UT_BLOCK, blkN );
-    return blkN;
 
-set_sol:
-
-    if( sol )
-    {
-        cell->id.flags |= UR_FLAG_SOL;
-        sol = 0;
-    }
-    goto start;
-
-invalid_char:
-
-    ur_error( ut, UR_ERR_SYNTAX,
-              "Unprintable/Non-ASCII Input %d (line %d)", ch, lines + 1 );
-    goto error;
-
-error_msg:
-
-    ur_error( ut, UR_ERR_SYNTAX, "%s (line %d)", errorMsg, lines + 1 );
-    goto error;
-
-error_token:
-
-    {
-    UBuffer etok;
-    ur_binInit( &etok, 0 );
-    ur_error( ut, UR_ERR_SYNTAX, "%s %s (line %d)",
-              errorMsg, _errToken( &etok, token, end ), lines + 1 );
-    ur_binFree( &etok );
-    }
-
-error:
-
-    blkN = 0;
-    goto cleanup;
+    return ok ? bufN : 0;
 }
 
 

@@ -1,17 +1,14 @@
 ---- tokenize
 [0 0 0 1 -1]
-Syntax Error: Invalid int 32word (line 1)
+Script Error: Unset word 'word
 Trace:
+ -> 32 word
  -> do "32word"
 ---- hex
 [0x0 0x10 0xFFFFFFFF]
-[0x0 0x10 0xFFFFFFFF]
 int!
-Syntax Error: Invalid hexidecimal number 0x (line 1)
-Trace:
- -> do "0x"
+0x0
 ---- format
-16 -1
 16 -1
 0x10 0xFFFFFFFF
 ---- convert
