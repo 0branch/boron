@@ -1013,24 +1013,23 @@ invalid_binary:
             }
             else if( ch == '[' )
             {
-                mode = UR_VEC_I32;
                 if( cell )
                 {
-                    if( ur_is(cell, UT_INT) && ur_int(cell) == 16 )
-                        mode = UR_VEC_I16;
-                    else
-                        goto invalid_vector;
+                    mode = ur_is(cell, UT_WORD) ? ur_atom(cell) : 0;
+                    if( mode < UR_VEC_I16 || mode > UR_VEC_F64 )
+                    {
+                        syntaxError( "Invalid vector form" );
+                    }
                 }
                 else
                 {
+                    mode = UR_VEC_I32;
                     cell = ur_blkAppendNew( blk, UT_VECTOR );
                 }
                 ur_makeVectorCell( ut, mode, 0, cell );
                 vectorN = cell->series.buf;
                 vectorPos = blk->used;
                 goto next_sol;
-invalid_vector:
-                syntaxError( "Invalid vector" );
             }
             token = it - 1;
             goto push_word;

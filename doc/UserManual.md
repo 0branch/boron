@@ -350,16 +350,27 @@ Vector!
 -------
 
 Vectors hold a series of numbers using less memory than a block!.
-All numbers in a vector are either 32-bit integers, 32-bit floating point
-values or 16-bit integers.
+All numbers in a vector are integers or floating point values of the same size.
 
 A 32-bit vector! is specified with numbers following a hash and opening square
 bracket (#[) and are terminated with a closing square bracket (]).
 If the first number contains a decimal point, all numbers will be floating
-point.
+point, otherwise they will all be integers.
 
-To create a 16-bit integer vector! start the value with 16 (16#[). Any
-decimal points and fractional values will be ignored.
+Other types of numbers can be specified with the form name immediately before
+the hash.
+
+Name       C Type
+---------  ---------
+i16        int16\_t
+u16        uint16\_t
+i32        int32\_t
+u32        uint32\_t
+f32        float
+f64        double
+---------  ---------
+
+Some vector! examples:
 
     )> a: #[1 2 3 4]
     == #[1 2 3 4]
@@ -367,8 +378,8 @@ decimal points and fractional values will be ignored.
     )> b: #[1.0 2 3 4]
     == #[1.0 2.0 3.0 4.0]
 
-    )> c: 16#[1 2 3 4]
-    == 16#[1 2 3 4]
+    )> c: i16#[1 2 3 4]
+    == i16#[1 2 3 4]
 
     )> foreach w [a b c] [v: get w print [w type? last v size? to-binary v]]
     a int! 16
