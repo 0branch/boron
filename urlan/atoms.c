@@ -70,6 +70,22 @@ uint32_t ur_hash( const uint8_t* str, const uint8_t* end )
 }
 
 
+/*
+  Example atom hash table with five used and eight avail slots.
+  The names some, wordH, & wordP all hash to the same slot and must be chained.
+
+      hash       name  | head chain
+      -----------------|-----------
+  0 [ 0x3D24461D word1 |  2         ]
+  1 [ 0x01D81D74 some  |       3    ]
+  2 [ 0x01D88B98 this  |            ]
+  3 [ 0x3D244654 wordH |       4    ]
+  4 [ 0x3D24465C wordP |  1         ]
+    [                  |  0         ]
+    [                  |            ]
+    [                  |            ]
+*/
+
 #define HASH_INSERT( atoms, avail, table, node, hash, index ) \
     node = table + (hash % avail); \
     if( node->head == 0xffff ) \
