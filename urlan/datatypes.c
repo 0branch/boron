@@ -862,11 +862,11 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
                 const char* end = si.buf->ptr.c + si.end;
                 if( (si.end - si.it) > 2 && (cp[0] == '0') && (cp[1] == 'x') )
                 {
-                    ur_int(res) = (int32_t) str_hexToInt64( cp + 2, end, 0 );
+                    ur_int(res) = str_hexToInt64( cp + 2, end, 0 );
                     ur_setFlags(res, UR_FLAG_INT_HEX);
                 }
                 else
-                    ur_int(res) = (int32_t) str_toInt64( cp, end, 0 );
+                    ur_int(res) = str_toInt64( cp, end, 0 );
             }
         }
             break;
@@ -987,11 +987,12 @@ void int_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
     (void) depth;
     if( ur_flags(cell, UR_FLAG_INT_HEX) )
     {
+        int64_t n = ur_int(cell);
         ur_strAppendCStr( str, "0x" );
-        ur_strAppendHex( str, ur_int(cell), 0 );
+        ur_strAppendHex( str, n, ((uint64_t) n) >> 32 );
     }
     else
-        ur_strAppendInt( str, ur_int(cell) );
+        ur_strAppendInt64( str, ur_int(cell) );
 }
 
 

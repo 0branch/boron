@@ -8,8 +8,8 @@ print type? 0xffffffff
 print try [do {0x}]
 
 print "---- format"
-print [to-dec 0x10 to-dec 0xffffffff]
-print [to-hex 16   to-hex -1]
+print [to-dec 0x10 to-dec 0xffffffff  to-dec 0xffffffffffffffff]
+print [to-hex 16   to-hex 4294967295  to-hex -1]
 
 print "---- convert"
 print to-int "-34 j"        ; Conversion stops at non-digit
