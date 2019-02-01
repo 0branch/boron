@@ -1766,7 +1766,7 @@ CFUNC(cfunc_tail)
 /*-cf-
     pick
         series      Series or coord!/vec3!/hash-map!
-        position    int!/logic! (or key value for hash-map!)
+        position    char!/int!/logic! (or key value for hash-map!)
     return: Value at position or none! if position is out of range.
     group: series
     see: index?, poke
@@ -1775,25 +1775,28 @@ CFUNC(cfunc_tail)
 
     If position is a logic! value, then true will return the first series
     value, and false the second.
+
+    A char! position can only be used with a bitset!.
 */
 CFUNC(cfunc_pick)
 {
+    UCell* c2 = a1 + 1;
     UIndex n;
     int type = ur_type(a1);
 
 #ifdef CONFIG_HASHMAP
     if( type == UT_HASHMAP )
     {
-        const UCell* cell = hashmap_select( ut, a1, a2, res );
+        const UCell* cell = hashmap_select( ut, a1, c2, res );
         if( cell != res )
             *res = *cell;
         return UR_OK;
     }
 #endif
 
-    if( ur_is(a2, UT_INT) )
+    if( ur_is(c2, UT_INT) )
     {
-        n = ur_int(a2);
+        n = ur_int(c2);
         if( n > 0 )
             --n;
         else if( ! n )
@@ -1802,10 +1805,12 @@ CFUNC(cfunc_pick)
             return UR_OK;
         }
     }
-    else if( ur_is(a2, UT_LOGIC) )
-        n = ur_logic(a2) ? 0 : 1;
+    else if( ur_is(c2, UT_LOGIC) )
+        n = ur_logic(c2) ? 0 : 1;
+    else if( ur_is(c2, UT_CHAR) && type == UT_BITSET )
+        n = ur_char(c2);
     else
-        return boron_badArg( ut, ur_type(a2), 1 );
+        return boron_badArg( ut, ur_type(c2), 1 );
 
     if( ur_isSeriesType( type ) )
         SERIES_DT( type )->pick( ur_bufferSer(a1), a1->series.it + n, res );
@@ -1825,7 +1830,7 @@ extern int vec3_poke ( UThread*, UCell* cell, int index, const UCell* src );
 /*-cf-
     poke
         series      series/coord!/vec3!/hash-map!
-        position    int!/logic!
+        position    char!/int!/logic!
         value
     return: series.
     group: series
@@ -1835,9 +1840,12 @@ extern int vec3_poke ( UThread*, UCell* cell, int index, const UCell* src );
 
     If position is a logic! value, then true will set the first series
     value, and false the second.
+
+    A char! position can only be used with a bitset!.
 */
 CFUNC(cfunc_poke)
 {
+    UCell* c2 = a1 + 1;
     UBuffer* buf;
     UIndex n;
     int type = ur_type(a1);
@@ -1845,7 +1853,7 @@ CFUNC(cfunc_poke)
 #ifdef CONFIG_HASHMAP
     if( type == UT_HASHMAP )
     {
-        if( hashmap_insert( ut, a1, a2, a3 ) )
+        if( hashmap_insert( ut, a1, c2, a3 ) )
         {
             *res = *a1;
             return UR_OK;
@@ -1854,18 +1862,20 @@ CFUNC(cfunc_poke)
     }
 #endif
 
-    if( ur_is(a2, UT_INT) )
+    if( ur_is(c2, UT_INT) )
     {
-        n = ur_int(a2);
+        n = ur_int(c2);
         if( n > 0 )
             --n;
         else if( ! n )
             return errorScript( "poke position out of range" );
     }
-    else if( ur_is(a2, UT_LOGIC) )
-        n = ur_logic(a2) ? 0 : 1;
+    else if( ur_is(c2, UT_LOGIC) )
+        n = ur_logic(c2) ? 0 : 1;
+    else if( ur_is(c2, UT_CHAR) && type == UT_BITSET )
+        n = ur_char(c2);
     else
-        return boron_badArg( ut, ur_type(a2), 1 );
+        return boron_badArg( ut, ur_type(c2), 1 );
 
     *res = *a1;
     if( ur_isSeriesType( type ) )

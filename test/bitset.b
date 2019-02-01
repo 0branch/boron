@@ -5,6 +5,18 @@ print make bitset! "01234567890"
 probe charset ' '
 
 
+print "---- Bitset pick"
+c: charset "^0abc"
+probe c
+foreach i [0 1 2 97 98 '`' 'a' 'b' 'c' 'd'] [prin rejoin [' ' i ':' pick c i]]
+prin '^/'
+
+
+print "---- Bitset poke"
+foreach [i v] [2 true 'A' 1 'b' false] [poke c i do v]
+probe c
+
+
 print "---- Bitset operators"
 a: charset "abc"
 b: charset "123b"

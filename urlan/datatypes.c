@@ -2463,6 +2463,7 @@ UBuffer* ur_makeBitsetCell( UThread* ut, int bitCount, UCell* res )
 
 
 #define setBit(mem,n)       (mem[(n)>>3] |= 1<<((n)&7))
+#define clrBit(mem,n)       (mem[(n)>>3] &= ~(1<<((n)&7)))
 #define bitIsSet(mem,n)     (mem[(n)>>3] & 1<<((n)&7))
 
 int bitset_make( UThread* ut, const UCell* from, UCell* res )
@@ -2574,6 +2575,30 @@ void bitset_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 }
 
 
+void bitset_pick( const UBuffer* buf, UIndex n, UCell* res )
+{
+    if( n > -1 && n < (buf->used * 8) )
+    {
+        ur_setId(res, UT_INT);
+        ur_int(res) = bitIsSet( buf->ptr.b, n ) ? 1 : 0;
+    }
+    else
+        ur_setId(res, UT_NONE);
+}
+
+
+void bitset_poke( UBuffer* buf, UIndex n, const UCell* val )
+{
+    if( n > -1 && n < (buf->used * 8) )
+    {
+        if( ur_true(val) )
+            setBit( buf->ptr.b, n );
+        else
+            clrBit( buf->ptr.b, n );
+    }
+}
+
+
 void bitset_reverse( const USeriesIterM* si )
 {
     (void) si;
@@ -2623,7 +2648,7 @@ USeriesType dt_bitset =
     unset_recycle,          binary_mark,            ur_binFree,
     unset_markBuf,          binary_toShared,        unset_bind
     },
-    binary_pick,            binary_poke,            binary_append,
+    bitset_pick,            bitset_poke,            binary_append,
     binary_insert,          binary_change,          binary_remove,
     bitset_reverse,         bitset_find
 };
