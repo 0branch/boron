@@ -79,6 +79,11 @@ none
 none
 ---- Invalid
 "Invalid 1"
+---- nested brackets
+" {}"
+Syntax Error: String not terminated (line 1)
+Trace:
+ -> do "{ {}"
 ---- Auto-unindent
 ""
 "int main() {^/    return 0;^/}^/"

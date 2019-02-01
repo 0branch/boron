@@ -917,8 +917,20 @@ path_seg:
             goto set_sol;
 
         case STR:
-            mode = '"';
-            goto string;
+            token = it;
+            while( (ch = CS_NEXT) > 0 )
+            {
+                if( ch == '^' )
+                {
+                    if( CS_NEXT < 0 )
+                        break;
+                }
+                if( ch == '"' )
+                    goto push_string;
+                if( ch == '\n' )
+                    break;
+            }
+            goto str_term;
 
         case STRB:
             if( _bracketNewline(it - 1, end, &token, &it) )
@@ -933,9 +945,8 @@ path_seg:
                     ++it;
                 goto next_sol;
             }
-            mode = '}';
-string:
             token = it;
+            mode = 0;       // Nested depth.
             while( (ch = CS_NEXT) > 0 )
             {
                 if( ch == '^' )
@@ -943,11 +954,19 @@ string:
                     if( CS_NEXT < 0 )
                         break;
                 }
-                if( ch == mode )
-                    goto push_string;
-                if( ch == '\n' && mode == '"' )
-                    break;
+                else if( ch == '{' )
+                {
+                    ++mode;
+                }
+                else if( ch == '}' )
+                {
+                    if( mode )
+                        --mode;
+                    else
+                        goto push_string;
+                }
             }
+str_term:
             syntaxError( "String not terminated" );
 push_string:
             cell = _makeStringEnc( ut, STACK[stack.used - 1],

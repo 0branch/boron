@@ -144,6 +144,11 @@ print "---- Invalid"
 probe to-string #{496E76616C69642031 A0}
 
 
+print "---- nested brackets"
+probe { {}}
+probe try [do "{ {}"]
+
+
 print "---- Auto-unindent"
 probe {{
 }}
