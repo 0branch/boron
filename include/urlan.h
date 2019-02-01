@@ -30,8 +30,8 @@
 #endif
 
 
-#define UR_VERSION_STR  "0.3.2"
-#define UR_VERSION      0x000302
+#define UR_VERSION_STR  "2.0.0"
+#define UR_VERSION      0x020000
 
 
 enum UrlanDataType

@@ -18,7 +18,7 @@ default [
     ;macx [universal]
 ]
 
-shlib [%boron-gl 0,3,2] [
+shlib [%boron-gl 2,0,0] [
     linux [
         cflags {-std=gnu99}
         cflags {-DUSE_XF86VMODE}
