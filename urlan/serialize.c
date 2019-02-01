@@ -380,7 +380,6 @@ static int _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
             break;
 
         case UT_BINARY:
-        case UT_BITSET:
         case UT_STRING:
         case UT_FILE:
         case UT_VECTOR:
@@ -407,6 +406,7 @@ static int _serializeBlock( Serializer* ser, UBuffer* bin, const UBuffer* blk )
             }
             break;
 
+        case UT_BITSET:
         case UT_CONTEXT:
             packU32( _mapBuffer( ser, bi.it->context.buf ) );
             break;
@@ -534,12 +534,17 @@ UStatus ur_serialize( UThread* ut, UIndex blkN, UCell* res )
             switch( buf->type )
             {
             case UT_BINARY:
-            case UT_BITSET:
                 push8( buf->type );
+pack_binary:
                 packU32( buf->used );
                 if( buf->used )
                     ur_binAppendData( bin, buf->ptr.b, buf->used );
                 break;
+
+            case UT_BITSET:
+                push8( UT_BITSET );
+                push8( 0 );             // Storage format.
+                goto pack_binary;
 
             case UT_STRING:
             case UT_FILE:
@@ -876,7 +881,6 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
             break;
 
         case UT_BINARY:
-        case UT_BITSET:
         case UT_STRING:
         case UT_FILE:
         case UT_VECTOR:
@@ -899,6 +903,7 @@ static int _unserializeBlock( UAtom* atoms, UIndex* ids,
             }
             break;
 
+        case UT_BITSET:
         case UT_CONTEXT:
             unpackU32( n );
             ur_setSeries( cell, ids[ n ], 0 );
@@ -991,7 +996,7 @@ UStatus ur_unserialize( UThread* ut, const uint8_t* start, const uint8_t* end,
         switch( type )
         {
         case UT_BINARY:
-        case UT_BITSET:
+unpack_binary:
             used = _unpackU32(&bi);
 
             buf = ur_buffer( ids.ptr.i[ i ] );
@@ -1004,6 +1009,11 @@ UStatus ur_unserialize( UThread* ut, const uint8_t* start, const uint8_t* end,
                 bi.it += used;
             }
             break;
+
+        case UT_BITSET:
+            assert( *bi.it == 0 );
+            bi.it++;                // Storage format.
+            goto unpack_binary;
 
         case UT_STRING:
         case UT_FILE:

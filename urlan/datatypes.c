@@ -2453,6 +2453,7 @@ UBuffer* ur_makeBitsetCell( UThread* ut, int bitCount, UCell* res )
     int bytes = (bitCount + 7) / 8;
 
     buf = ur_makeBinaryCell( ut, bytes, res );
+    buf->type = UT_BITSET;
     ur_type(res) = UT_BITSET;
 
     buf->used = bytes;
@@ -2483,6 +2484,7 @@ int bitset_make( UThread* ut, const UCell* from, UCell* res )
     else if( ur_is(from, UT_BINARY) )
     {
         binary_copy( ut, from, res );
+        ur_buffer( res->series.buf )->type = UT_BITSET;
         ur_type(res) = UT_BITSET;
         return UR_OK;
     }
