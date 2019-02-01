@@ -8,7 +8,8 @@ input: [
     [1 (2 "two") [3 "three" words]]
     "Tasty treats." #{00112233AABBCCDD}
     #[65495810 -3243 0 1 -1] #[67434.403 -1.0 0.0]  ; .403 -> .40625
-    ctx1 ctx2 iter slic
+
+    ctx1 ctx2 iter slic bset    ; Bound to values
 ]
 
 values: context [
@@ -17,6 +18,7 @@ values: context [
     ctx2: make ctxP [name: "Tom" speed: 1 child: ctx1]
     iter: next next "**text**"
     slic: slice iter -2
+    bset: make bitset! "^-^/ ()[]{}"
 ]
 bind input values
 append input reduce skip tail input -4
