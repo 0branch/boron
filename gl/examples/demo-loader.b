@@ -20,7 +20,7 @@ controls: context [
     value:
     vmin: vmax: vinc: 0.0
 
-    set 'demo-controls func [blk] [con: blk link]
+    set 'demo-controls func [blk /extern con] [con: blk link]
 
     prev-con: does [if con [con: skip/wrap con -3 link]]
     next-con: does [if con [con: skip/wrap con  3 link]]
@@ -48,7 +48,7 @@ controls: context [
         print [first con value]
     ]
 
-    block-adj: func [cmd] [
+    block-adj: func [cmd /extern value vinc] [
         if con [
             value: first vinc: do cmd
             assign
@@ -61,7 +61,7 @@ controls: context [
         does [block-adj [prev tail second con]]
     ]
 
-    number-adj: func [inc] [
+    number-adj: func [inc /extern value] [
         value: limit add value inc vmin vmax
         assign
     ]
@@ -131,7 +131,7 @@ view-cam: make orbit-cam [
     turntable self 0,0
 ]
 
-demo-exec: func [dl /update | window] [
+demo-exec: func [dl /update /extern rclock-delta rclock] [
     window: make widget! demo-window
     forever pick [[
         rclock-delta: to-double sub tmp: now rclock
