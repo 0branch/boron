@@ -50,8 +50,7 @@ ln -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron.so.2
 rm -rf $RPM_BUILD_ROOT
 
 %files
-%license LICENSE
-%doc ChangeLog
+%doc ChangeLog LICENSE
 %defattr(-,root,root)
 %dir %{_includedir}/boron
 %{_bindir}/boron
