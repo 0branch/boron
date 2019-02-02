@@ -144,19 +144,17 @@ UIndex handleException( UThread* ut, UBuffer* str, int* rc )
         switch( ur_atom(res) )
         {
             case UR_ATOM_QUIT:
-                /*
-                res = boron_result( ut );
-                if( ur_is(res, UT_INT) )
+                res = ur_wordCell( ut, res );
+                if( res && ur_is(res, UT_INT) )
                     *rc = ur_int(res) & 0xff;
-                */
                 return UR_ATOM_QUIT;
 
             case UR_ATOM_HALT:
-                printf( "**halt\n" );
+                printf( "** Halt\n" );
                 return UR_ATOM_HALT;
 
             default:
-                printf( "**unhandled exception %s\n", ur_wordCStr( res ) );
+                printf( "** Unhandled exception %s\n", ur_wordCStr( res ) );
                 break;
         }
     }
