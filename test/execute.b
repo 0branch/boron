@@ -7,6 +7,6 @@ loop 20 [
 
 out: ""
 err: ""
-execute/out/err join "boron execute_child " cmd-args out err
+execute/out/err join "../boron execute_child " cmd-args out err
 probe out
 probe err
