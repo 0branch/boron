@@ -49,7 +49,7 @@ EXPORTS
    ur_traceError             @47
    ur_appendTrace            @48
    ur_tokenize               @49
-   ur_tokenizeType           @50
+   ur_tokenizeB              @50
    ur_serialize              @51
    ur_unserialize            @52
    ur_toStr                  @53
