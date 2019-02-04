@@ -7,6 +7,7 @@ V2.0.0 - 1 Feb 2019
     to preserve any external bindings.
   * Changed int! datatype to be 64 bits.
   * Renamed decimal! datatype to double!.
+  * Added multiple brace string! syntax to more easily deal with embedded text.
   * Added hash-map! datatype.
   * Added format & setenv functions.
   * Removed big-num! datatype.  The type slot is kept so a full implementation

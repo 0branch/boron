@@ -54,7 +54,8 @@ This is a basic example of how to use the Boron interpreter.
 
 /** \union UCell
   \ingroup urlan_core
-  A cell holds a single value.
+  A cell holds a single value of a simple type or a reference (often to a
+  UBuffer) for a complex type.
   It will always be 16 bytes.
   Normally cells are contained in block UBuffers.
 */

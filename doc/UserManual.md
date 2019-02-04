@@ -24,8 +24,6 @@ This manual is largely incomplete.
 There is a separate [function reference] and [code documentation]
 available online at <http://urlan.sourceforge.net/boron>.
 
-[function reference]: http://urlan.sf.net/boron/doc/func_ref.html
-[code documentation]: http://urlan.sf.net/boron/doc/html/
 
 
 Scripts
@@ -40,7 +38,7 @@ Comments
 Single line comments begin with a semi-colon.
 
 Block comments are the same as C block comments.  They begin with '``/*``' and
-continue through '``*/``'.  Unlike C, block comments can be nested.
+continue through '``*/``'.  Block comments cannot be nested.
 
 Comment examples:
 
@@ -100,16 +98,17 @@ Datatypes
 Datatype                Examples
 ----------------------  --------------------
 [unset!](#unset)
-[datatype!](#datatype)  logic! int!/decimal!
+[datatype!](#datatype)  logic! int!/double!
 [none!](#none)          none
 [logic!](#logic)        true false
 [word!](#word)          hello focal-len .s
 [lit-word!](#lit-word)  'hello 'focal-len '.s
 [set-word!](#set-word)  hello: focal-len: .s:
 [get-word!](#get-word)  :hello :focal-len :.s
+[option!](#option)      /hello /focal-len /.s
 [char!](#char)          'a' '^-' '^(01f3)'
 [int!](#int)            1 455 -22
-[decimal!](#decimal)    3.05  -4.
+[double!](#double)      3.05  -4.  6.503e-8
 [coord!](#coord)        0,255,100  -1, 0, 0
 [vec3!](#vec3)          0.0,255.0,100.0  -1.0, 0, 0
 [string!](#string)      "hello"  {hello}
@@ -117,15 +116,17 @@ Datatype                Examples
 [binary!](#binary)      #{01afed}  #{00 33 ff a0}  2#{00010010}
 [bitset!](#bitset)      make bitset! "abc"
 time!                   10:02 -0:0:32.08
-[vector!](#vector)      #[1 2 3]  #[-85.33 2 44.8]
+[vector!](#vector)      #[1 2 3]  #[-85.33 2 44.8] i16#[10 0 -4 0]
 [block!](#block)        []  [a b c]
 [paren!](#paren)        ()  (a b c)
 [path!](#path)          obj/x my-block/2
 lit-path!               'obj/x 'my-block/2
 set-path!               obj/x: my-block/2:
 [context!](#context)    context [area: 4,5 color: red]
+[hash-map!](#hash-map)  make hash-map! [area 4,5 "color" red]
 error!
 [func!](#func)          inc2: func [n] [add n 2]
+[cfunc!](#cfunc)
 [port!](#port)
 ----------------------  --------------------
 
@@ -139,7 +140,12 @@ Unset is used to indicate that a word has not been assigned a value.
 Datatype!
 ---------
 
-A value which represents a type.
+A value which represents a type or set of types.  To declare a type use it's
+type word, which have names ending with an exclamation (!) character.
+To declare a set use a series of type words separated by slashes (/).
+
+	none!
+	char!/int!/double!
 
 
 None!
@@ -189,15 +195,16 @@ Example integers:
     0x1e
 
 
-Decimal!
+Double!
 --------
 
-A floating point number.
+A 64-bit floating point number.
 
-Example decimal values:
+Example double values:
 
     -3.5685
     24.
+    6.503e-8
 
 
 Coord!
@@ -263,6 +270,14 @@ Get-word!
 Used to get the value of a word without evaluating it.
 
 
+Option!
+-------
+
+An option is a variant of a *word!* that begins with a slash (/) character.
+
+	/outside
+
+
 Binary!
 -------
 
@@ -316,20 +331,40 @@ The *charset* function is a shortcut for ``make bitset!``.
 String!
 -------
 
-Strings are UTF-8 text enclosed with either double quotes or braces.
-The text can span multiple lines in the script when braces are used.
-
-Strings can include the same caret character sequences as [char!](#char)
+Strings are UTF-8 text enclosed with either double quotes (") or braces ({}).
+They can include the same caret character sequences as [char!](#char)
 values.
 
-String examples:
+Double quoted strings cannot contain a new line character or double quote
+unless it is in escaped form.
 
     "Alpha Centari"
 
-    {This string
-    spans multiple lines.}
+    "First line with ^"quotes^".^/Second line.^/"
 
-    "First line^/Second line^/"
+There are two brace formats, both of which can span multiple lines in the
+script.
+
+A single left brace will track pairs of left/right braces before
+terminating with a single right brace.  Other brace combinations must use
+escape sequences.
+
+Two or more left braces followed by a new line will start the string on the
+next line and terminate it on the line prior to a line ending with a matching
+number of right braces.  The enclosed text will be automatically unindented.
+
+    {This string
+        has three lines and
+        will preserve all whitespace.}
+
+    {Braces allow "quoting" without escape sequences.}
+
+    {{
+        This is four lines that will be unindented.
+        Item 1
+          - Subitem A
+          - Subitem B
+    }}
 
 
 File!
@@ -342,14 +377,14 @@ present in the path then it must be enclosed in double quotes.
 File examples:
 
     %/tmp/dump.out
-    %"../input files/test42"
+    %"../Input Files/test42"
     %C:\windows\system32.exe
 
 
 Vector!
 -------
 
-Vectors hold a series of numbers using less memory than a block!.
+Vectors hold a series of numbers using less memory than a [block!](#block).
 All numbers in a vector are integers or floating point values of the same size.
 
 A 32-bit vector! is specified with numbers following a hash and opening square
@@ -390,23 +425,34 @@ Some vector! examples:
 Block!
 ------
 
-A block is a series of values within brackets.
+A block is a series of values within square brackets.
 
     [1 one "one"]
 
+	[
+		item1: [some sub-block]
+		item2: [another sub-block]
+	]
 
 Paren!
 ------
 
-Similar to a block, but automatically evaluated.
+A paren is similar to a block!, but it will be automatically evaluated.
+
+	(1 two "three")
 
 
 Path!
 -----
 
+A path is a word! followed by one or more word!/get-word!/int! values
+separated by slash (/) characters.
+
 Example paths:
 
-    object/entries/1
+    object/order/1
+
+    list/:variable
 
 
 Context!
@@ -433,35 +479,107 @@ The *context* word is normally used to make a new context instead of
     unit: context [type: 'hybrid level: 2]
 
 
+Hash-Map!
+---------
+
+A hash-map holds key/value pairs.
+
+Use *make* to create a hash-map from a block containing the key & value pairs.
+
+	level-map: make hash-map! [
+		0.0  "Minimum"
+		0.5  "Average"
+		1.0  "Maximum"
+	]
+
+Use *pick* & *poke* to get and set values.  If the key does not exist *pick*
+will return *none!*.
+
+	)> pick level-map 0.0
+	== "Minimum"
+
+	)> pick level-map 0.1
+	== none
+
+	)> poke level-map 0.1 "Slight"
+	== make hash-map! [
+		0.0 "Minimum"
+		0.5 "Average"
+		1.0 "Maximum"
+		0.1 "Slight"
+	]
+
+	)> pick level-map 0.1
+	== "Slight"
+
 Func!
 -----
 
 Functions can be defined with or without arguments.
 The return value of a function is the last evaluated expression.
 
-The *does* word is used to create a function with no arguments.
+The *does* word can be used to create a function from a block of code when no
+arguments or local variables are needed.  In the following example 'name is
+bound to an external context.
 
-    hello: does [print "Hello World"]
+    hello: does [print ["Hello" name]]
 
-Local functions values can be declared in the signature block.
-These locals are initialized to *none*.
+The *func* word is used when arguments or local variables are required.
+It is followed by the signature block and code block.
+Required arguments, optional arguments, local values, and external values are
+declared in the signature block.
+Any local values and unused optional arguments are initialized to *none!*.
 
     ; Here is a function with two arguments and one local variable.
-    my-function: func [arg1 arg2 | var1] [
-        ; var1 is none.
+    my-function: func [arg1 arg2 /local var] [
+        ; var is none! here.
 
-        ; TODO: Write this function body.
+        foreach var arg1 [print add var arg2]	; var is set by foreach.
     ]
+
+The required arguments are *word!* values at the start of the signature block.
+Optional arguments are specified after this with *option!* values followed by
+zero or more *word!* values.
+The */local* and */extern* options will be last, each followed by one or more
+*word!* values.
+
+Any variable assigned in the function with a *set-word!* value is automatically
+made a local value.  To prevent this and keep the original binding from when
+the function was created use the */extern* option.
+
+	append-item: func [item /extern list-size] [
+		was-empty: empty? obj-list		; was-empty is local.
+		append obj-list item
+		list-size: size? obj-list       ; list-size is external.
+		was-empty
+	]
 
 Arguments can be limited to certain types by following the argument name with
-a datatype in the signature block.
+a datatype in the signature block.  This example includes an optional argument
+and both the required and optional arguments are type checked.
 
-    func [
-        blk block!
-        count int!/decimal!
-    ][
-        ; ...
-    ]
+	play-music: func [path file! /volume loudness int!/double!] [
+		if volume [
+			set-audio-volume loudness
+		]
+	    play-audio-file path
+	]
+
+Optional arguments are used by calling the function with a *path!*. If there
+are multiple options the order in the path does not matter, but this path order
+does indicate the order in which any option arguments must appear.
+The play-music function above can be called two ways:
+
+	play-music %/data/interlude.ogg				; Invoke without option.
+
+	play-music/volume %/data/interlude.ogg 0.5	; Invoke with /volume option.
+
+
+Cfunc!
+------
+
+This type is for the built-in functions written in C.
+See the [function reference] for the available functions.
 
 
 Port!
@@ -575,3 +693,6 @@ string!    Match a string.
 word!      Match value of word.
 ---------  -------------------------------------------
 
+
+[function reference]: http://urlan.sf.net/boron/doc/func_ref.html
+[code documentation]: http://urlan.sf.net/boron/doc/html/

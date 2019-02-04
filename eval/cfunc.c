@@ -3650,6 +3650,7 @@ CFUNC(cfunc_current_dir)
         name string!
     return: string! or none!
     group: os
+    see: setenv
 
     Get operating system environment variable.
 
@@ -3681,6 +3682,7 @@ CFUNC(cfunc_getenv)
         value
     return: value
     group: os
+    see: getenv
 
     Set operating system environment variable.  Pass a value of none! to
     unset the variable.
