@@ -451,8 +451,8 @@ match_bitset:
                 break;
 
             default:
-                ur_error( PARSE_ERR, "invalid parse value" );
-                             //orDatatypeName( ur_type(rit) ) );
+                ur_error( PARSE_ERR, "Invalid parse rule value (%s)",
+                          ur_atomCStr( ut, ur_type(rit) ) );
                 goto parse_err;
         }
     }

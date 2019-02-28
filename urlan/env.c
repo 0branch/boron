@@ -77,7 +77,6 @@
 
 //#define GC_HOLD_TEST  1
 
-#define BUF_ERROR_BLK   0
 #define FREE_TERM       -1
 
 #include "datatypes.c"
@@ -115,10 +114,10 @@ static void _threadInitStore( UThread* ut )
     ut->wordCell = 0;
 
     // Buffer index zero denotes an invalid buffer (UR_INVALID_BUF),
-    // so remove it from general use.  This will be our stack of errors.
+    // so remove it from general use.
 
     ur_generate( ut, 2, bufN, _initType );
-    ur_hold( bufN[0] );     // BUF_ERROR_BLK
+    ur_hold( bufN[0] );     // UR_INVALID_BUF
     ur_hold( bufN[1] );     // UR_MAIN_CONTEXT
 
     ut->env->threadFunc( ut, UR_THREAD_INIT );
@@ -1019,8 +1018,7 @@ void ur_traceError( UThread* ut, const UCell* errC, UIndex blkN,
 
 
 /**
-  Append block position to the UCellError::traceBlk of the error on top of
-  the error stack.
+  Append block position to the current exception error! trace.
 
   \param blkN   Block id.
   \param it     Position in block blkN.
@@ -1028,19 +1026,11 @@ void ur_traceError( UThread* ut, const UCell* errC, UIndex blkN,
 void ur_appendTrace( UThread* ut, UIndex blkN, UIndex it )
 {
     UCell* cell;
-    UBuffer* buf = ur_buffer( BUF_ERROR_BLK );
-    if( buf->used )
+    const UCell* errC = ur_exception(ut);
+    if( ur_is(errC, UT_ERROR) && ! ur_isShared(errC->error.traceBlk) )
     {
-        cell = buf->ptr.cell + (buf->used - 1);
-        if( ur_is(cell, UT_ERROR) )
-        {
-            if( cell->error.traceBlk == UR_INVALID_BUF )
-                cell->error.traceBlk = ur_makeBlock( ut, 8 );
-
-            buf = ur_buffer( cell->error.traceBlk );
-            cell = ur_blkAppendNew( buf, UT_BLOCK );
-            ur_setSeries(cell, blkN, it);
-        }
+        cell = ur_blkAppendNew(ur_buffer(errC->error.traceBlk), UT_BLOCK);
+        ur_setSeries(cell, blkN, it);
     }
 }
 

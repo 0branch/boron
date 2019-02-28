@@ -429,7 +429,9 @@ match_block:
                 break;
 
             default:
-                BLK_RULE_ERROR( "invalid parse value" );
+                ur_error( ut, UR_ERR_SCRIPT, "Invalid parse rule value (%s)",
+                          ur_atomCStr( ut, ur_type(rit) ) );
+                goto parse_err;
         }
     }
 
