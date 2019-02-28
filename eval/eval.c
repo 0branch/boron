@@ -336,7 +336,8 @@ emit_arg:
 
 #define AUTO_LOCALS
 #ifdef AUTO_LOCALS
-static void _appendSetWords( UThread* ut, UBuffer* buf, const UCell* blkC )
+static void _appendSetWords( UThread* ut, UBuffer* buf, const UCell* blkC,
+                             const UBuffer* argCtx )
 {
     UBlockIt bi;
     ur_blockIt( ut, &bi, blkC );
@@ -344,9 +345,12 @@ static void _appendSetWords( UThread* ut, UBuffer* buf, const UCell* blkC )
     {
         int type = ur_type(bi.it);
         if( type == UT_SETWORD )
-            ur_arrAppendInt32( buf, bi.it->word.atom );
+        {
+            if( ur_ctxLookup( argCtx, ur_atom(bi.it) ) < 0 )
+                ur_arrAppendInt32( buf, bi.it->word.atom );
+        }
         else if( type == UT_BLOCK || type == UT_PAREN )
-            _appendSetWords( ut, buf, bi.it );
+            _appendSetWords( ut, buf, bi.it, argCtx );
     }
 }
 #endif
@@ -484,7 +488,7 @@ void boron_compileArgProgram( BoronThread* bt, const UCell* specC,
 #ifdef AUTO_LOCALS
             UCell tmp;
             ur_initSeries( &tmp, UT_BLOCK, bodyN );
-            _appendSetWords( ut, &ac.localWords, &tmp );
+            _appendSetWords( ut, &ac.localWords, &tmp, &ac.sval );
 #endif
             if( ac.localWords.used > 1 )
                 _zeroDuplicateU32( &ac.localWords );

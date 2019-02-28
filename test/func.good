@@ -55,6 +55,8 @@ true
 ---- bugs fixed
 4
 opt-b
+[a b c]
+blk
 ---- generator
 2
 3

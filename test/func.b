@@ -129,6 +129,14 @@ oat: func [a int! /opt b string!] [
 print oat 4
 print oat/opt 4 "opt-b"
 
+; Check that set-word! doesn't duplicate argument in automatic locals.
+auto-local-arg: func [spec] [
+    probe spec      ; Should be arg 1, not none.
+    spec: 0 out: 1
+]
+auto-local-arg [a b c]
+auto-local-arg 'blk
+
 
 print "---- generator"
 fgen: func[x] [
