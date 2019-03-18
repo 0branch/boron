@@ -11,6 +11,8 @@ enum UrlanFixedAtoms
     UR_ATOM_U32,
     UR_ATOM_F32,
     UR_ATOM_F64,
+    UR_ATOM_I64,
+    UR_ATOM_U64,
 
     UR_ATOM_NONE,
     UR_ATOM_TRUE,

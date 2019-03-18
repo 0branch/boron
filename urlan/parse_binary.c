@@ -83,6 +83,32 @@ static uint8_t* pullBits( BinaryParser* pe, uint32_t bitCount,
 }
 
 
+static uint64_t uintValue( const uint8_t* in, int bits, int bigEndian )
+{
+    uint64_t n = 0;
+    if( bigEndian )
+    {
+        do
+        {
+            bits -= 8;
+            n |= ((uint64_t) (*in++)) << bits;
+        }
+        while( bits );
+    }
+    else
+    {
+        int shift = 0;
+        do
+        {
+            n |= ((uint64_t) (*in++)) << shift;
+            shift += 8;
+        }
+        while( shift < bits );
+    }
+    return n;
+}
+
+
 #define CHECK_WORD(cell) \
     if( ! cell ) \
         goto parse_err;
@@ -96,12 +122,11 @@ static const UCell* _parseBin( UThread* ut, BinaryParser* pe,
 {
     const UCell* set = 0;
     const UCell* tval;
-    uint32_t bitCount;
+    uint32_t count;
     uint64_t field;
     UBuffer* ibin  = ur_buffer( pe->inputBufN );
     uint8_t* in    = ibin->ptr.b + *spos;
     uint8_t* inEnd = ibin->ptr.b + pe->inputEnd;
-
 
 match:
 
@@ -110,17 +135,17 @@ match:
         switch( ur_type(rit) )
         {
             case UT_INT:
-                bitCount = ur_int(rit);
-                if( bitCount < 1 || bitCount > PIPE_BITS )
+                count = ur_int(rit);        // Bit count.
+                if( count < 1 || count > PIPE_BITS )
                 {
                     ur_error( PARSE_ERR, "bit-field size must be 1 to 64" );
                     goto parse_err;
                 }
-                if( bitCount > (PIPE_BITS - 8) )
+                if( count > (PIPE_BITS - 8) )
                 {
                     const uint32_t halfPipe = PIPE_BITS / 2;
                     uint64_t high;
-                    in = pullBits( pe, bitCount - halfPipe, in, inEnd, &high );
+                    in = pullBits( pe, count - halfPipe, in, inEnd, &high );
                     if( ! in )
                         goto failed;
                     in = pullBits( pe, halfPipe, in, inEnd, &field );
@@ -130,7 +155,7 @@ match:
                 }
                 else
                 {
-                    in = pullBits( pe, bitCount, in, inEnd, &field );
+                    in = pullBits( pe, count, in, inEnd, &field );
                     if( ! in )
                         goto failed;
                 }
@@ -146,26 +171,21 @@ match:
                     goto set_field;
 
                 case UR_ATOM_U16:
-                    if( (inEnd - in) < 2 )
+                    count = 2;
+uint_count:         // Count is number of bytes.
+                    if( (inEnd - in) < count )
                         goto failed;
-                    if( pe->bigEndian )
-                        field = (in[0] << 8) | in[1];
-                    else
-                        field = (in[1] << 8) | in[0];
-                    in += 2;
+                    field = uintValue( in, count * 8, pe->bigEndian );
+                    in += count;
                     goto set_field;
 
                 case UR_ATOM_U32:
-                    if( (inEnd - in) < 4 )
-                        goto failed;
-                    if( pe->bigEndian )
-                        field = (in[0] << 24) | (in[1] << 16) |
-                                (in[2] <<  8) |  in[3];
-                    else
-                        field = (in[3] << 24) | (in[2] << 16) |
-                                (in[1] <<  8) |  in[0];
-                    in += 4;
-                    goto set_field;
+                    count = 4;
+                    goto uint_count;
+
+                case UR_ATOM_U64:
+                    count = 8;
+                    goto uint_count;
 
                 case UR_ATOM_SKIP:
                     ++rit;
