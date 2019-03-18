@@ -37,11 +37,11 @@ enum BinaryParseException
 };
 
 
-#define PIPE_BITS   32
+#define PIPE_BITS   64
 
 typedef struct
 {
-    uint32_t pipe;
+    uint64_t pipe;
     uint32_t bitsFree;
     //uint32_t byteCount;
 }
@@ -62,18 +62,18 @@ BinaryParser;
 
 
 /*
-  bitCount must be 1 to 24.
+  bitCount must be 1 to PIPE_BITS-8.
   Returns zero if end of input reached.
 */
 static uint8_t* pullBits( BinaryParser* pe, uint32_t bitCount,
-                          uint8_t* in, uint8_t* inEnd, uint32_t* field )
+                          uint8_t* in, uint8_t* inEnd, uint64_t* field )
 {
     while( (PIPE_BITS - pe->bp.bitsFree) < bitCount )
     {
         if( in == inEnd )
             return 0;
         pe->bp.bitsFree -= 8;
-        pe->bp.pipe |= ((uint32_t) *in++) << pe->bp.bitsFree;
+        pe->bp.pipe |= ((uint64_t) *in++) << pe->bp.bitsFree;
         //++pe->bp.byteCount;
     }
     *field = pe->bp.pipe >> (PIPE_BITS - bitCount);
@@ -97,7 +97,7 @@ static const UCell* _parseBin( UThread* ut, BinaryParser* pe,
     const UCell* set = 0;
     const UCell* tval;
     uint32_t bitCount;
-    uint32_t field;
+    uint64_t field;
     UBuffer* ibin  = ur_buffer( pe->inputBufN );
     uint8_t* in    = ibin->ptr.b + *spos;
     uint8_t* inEnd = ibin->ptr.b + pe->inputEnd;
@@ -111,21 +111,22 @@ match:
         {
             case UT_INT:
                 bitCount = ur_int(rit);
-                if( bitCount < 1 || bitCount > 32 )
+                if( bitCount < 1 || bitCount > PIPE_BITS )
                 {
-                    ur_error( PARSE_ERR, "bit-field size must be 1 to 32" );
+                    ur_error( PARSE_ERR, "bit-field size must be 1 to 64" );
                     goto parse_err;
                 }
-                if( bitCount > 24 )
+                if( bitCount > (PIPE_BITS - 8) )
                 {
-                    uint32_t high;
-                    in = pullBits( pe, bitCount - 16, in, inEnd, &high );
+                    const uint32_t halfPipe = PIPE_BITS / 2;
+                    uint64_t high;
+                    in = pullBits( pe, bitCount - halfPipe, in, inEnd, &high );
                     if( ! in )
                         goto failed;
-                    in = pullBits( pe, 16, in, inEnd, &field );
+                    in = pullBits( pe, halfPipe, in, inEnd, &field );
                     if( ! in )
                         goto failed;
-                    field |= high << 16;
+                    field |= high << halfPipe;
                 }
                 else
                 {
