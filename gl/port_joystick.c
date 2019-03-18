@@ -118,8 +118,19 @@ static int joy_read( UThread* ut, UBuffer* port, UCell* dest, int part )
     {
         cp = dest->coord.n;
 
+#define IGNORE_SYNTHETIC
+#ifdef IGNORE_SYNTHETIC
+read_again:
+#endif
+        errno = 0;
+
         if( read(fd, &je, sizeof(struct js_event)) > 0 )
         {
+#ifdef IGNORE_SYNTHETIC
+            if( je.type & JS_EVENT_INIT && errno != EAGAIN )
+                goto read_again;
+#endif
+
             if( je.type & JS_EVENT_BUTTON )
             {
                 // je.value will be 0 or 1.
@@ -141,7 +152,7 @@ static int joy_read( UThread* ut, UBuffer* port, UCell* dest, int part )
             events = 1;
         }
 
-        if( errno != EAGAIN )
+        if( errno && errno != EAGAIN )
         {
             //ur_error( UR_ERR_ACCESS, "" );
             perror( "read joystick" );
