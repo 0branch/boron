@@ -48,7 +48,7 @@ install -m 644 gl/gl_atoms.h $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 644 gl/TexFont.h  $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 755 -s gl/libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}
 ln -s libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron-gl.so
-ln -s libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron-gl.so.0
+ln -s libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron-gl.so.2
 
 
 %clean
@@ -58,7 +58,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %{_bindir}/boron-gl
 %{_libdir}/libboron-gl.so
-%{_libdir}/libboron-gl.so.0
+%{_libdir}/libboron-gl.so.2
 %{_libdir}/libboron-gl.so.%{version}
 %{_includedir}/boron/boron-gl.h
 %{_includedir}/boron/gl_atoms.h
