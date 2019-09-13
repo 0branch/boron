@@ -193,7 +193,7 @@ static void _argRuleHandler( UBlockParser* par, int rule,
     switch( rule )
     {
         case AR_WORD:
-            if( it->word.atom < UT_BI_COUNT )
+            if( it->word.atom < UT_MAX )
             {
                 EMIT( FO_checkType );
                 EMIT( it->word.atom );
@@ -293,7 +293,7 @@ emit_arg:
                     ent->programOffset = prog->used - ap->origUsed;
                     for( ; it != end; ++it )
                     {
-                        if( it->word.atom < UT_BI_COUNT )
+                        if( it->word.atom < UT_MAX )
                         {
                             EMIT( FO_checkType );
                             EMIT( it->word.atom );
