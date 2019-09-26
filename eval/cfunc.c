@@ -1169,7 +1169,7 @@ CFUNC(cfunc_either)
         body    block! Code to evaluate.
     return: false
     group: control
-    see: forever, if, loop
+    see: forever, if, loop, break
 
     Repeat body as long as exp is true.
 */
@@ -1198,7 +1198,7 @@ CFUNC(cfunc_while)
         body    block!  Code to evaluate.
     return: Result of body.
     group: control
-    see: loop, while
+    see: loop, while, break
 
     Repeat body until break or exception thrown.
 */
@@ -1223,7 +1223,7 @@ CFUNC(cfunc_forever)
         body    block!
     return: Result of body.
     group: control
-    see: forever, while
+    see: forever, while, break
 
     Use 'break to terminate loop.
 */
@@ -2960,7 +2960,7 @@ static inline UIndex _sliceEnd( const UBuffer* buf, const UCell* cell )
         body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
-    see: forall
+    see: forall, break
 
     Iterate over each element of a series.
 */
@@ -2971,7 +2971,7 @@ static inline UIndex _sliceEnd( const UBuffer* buf, const UCell* cell )
         body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
-    see: remove
+    see: remove, break
 
     Remove elements when result of body is true.
 
@@ -3098,7 +3098,7 @@ loop:
         body    block!  Code to evaluate for each element.
     return: Result of body.
     group: control
-    see: foreach
+    see: foreach, break
 
     Iterate over each element of a series, changing the reference position. 
 

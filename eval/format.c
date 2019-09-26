@@ -28,11 +28,11 @@
     Convert values to formatted string.
 
     The format specification rules are:
-      int!            Field width of next data item.
-                      If negative then right align item in field.
-      coord!          Field width and limit of next data item.
-      char!/string!   Literal output to string.
-      'pad char!      Set pad character for following fields.
+        int!            Field width of the next data item.
+                        If negative then right align the item in the field.
+        coord!          Field width and limit of the next data item.
+        char!/string!   Literal output to string.
+        'pad char!      Set pad character for the following fields.
 */
 CFUNC(cfunc_format)
 {
