@@ -114,7 +114,7 @@ ease-in-out: [
 
    A and B must be of the same type.
 */
-recal-curve: func [orig a b | nc] [
+recal-curve: func [orig a b] [
     nc: copy orig
     forall nc [
         poke nc 2 lerp a b second nc
@@ -195,7 +195,7 @@ audio-sample: context [
     return: Audio-sample context.
     group: audio, io
 */
-load-wav: func [file | csize format channels srate bps sdata] [
+load-wav: func [file /local sdata] [
     parse/binary read file [
         little-endian
         "RIFF" u32 "WAVEfmt "
@@ -204,13 +204,16 @@ load-wav: func [file | csize format channels srate bps sdata] [
         channels: u16
         srate:    u32 u32 u16
         bps:      u16
-        "data"
+        thru "data"
         csize:    u32
         copy sdata csize
     ]
-    if ne? format 1 [
-        error "WAV data is compressed"
+    case [
+        none? bps    [error "WAVE header is malformed"]
+        none? sdata  [error "WAVE data not found"]
+        ne? format 1 [error "WAVE data is compressed"]
     ]
+
     format: make coord! [bps channels 0]
     make audio-sample copy [
         sample-format: format

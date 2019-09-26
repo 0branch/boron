@@ -191,6 +191,57 @@ uint_count:         // Count is number of bytes.
                     ++rit;
                     ++in;
                     break;
+
+                case UR_ATOM_TO:
+                case UR_ATOM_THRU:
+                {
+                    UAtom ratom = ur_atom(rit);
+
+                    ++rit;
+                    if( rit == rend )
+                        return 0;
+
+                    if( ur_is(rit, UT_WORD) )
+                    {
+                        tval = ur_wordCell( ut, rit );
+                        CHECK_WORD(tval);
+                    }
+                    else
+                    {
+                        tval = rit;
+                    }
+
+                    switch( ur_type(tval) )
+                    {
+                        case UT_BINARY:
+                        case UT_STRING:
+                        {
+                            UBinaryIter bi;
+                            const uint8_t* pos;
+
+                            ur_binSlice( ut, &bi, tval );
+                            if(ur_type(tval) == UT_STRING && ur_strIsUcs2(bi.buf))
+                                goto bad_enc;
+
+                            pos = find_pattern_8(in, inEnd, bi.it, bi.end);
+                            if( ! pos )
+                                goto failed;
+
+                            in = (uint8_t*) pos;
+                            if( ratom == UR_ATOM_THRU )
+                                in += bi.end - bi.it;
+                            ++rit;
+                        }
+                            break;
+
+                        default:
+                            ur_error( PARSE_ERR, "to/thru does not handle %s",
+                                      ur_atomCStr( ut, ur_type(tval) ) );
+                            goto parse_err;
+                    }
+                }
+                    break;
+
 #if 0
                 case UR_ATOM_MARK:
                     break;
