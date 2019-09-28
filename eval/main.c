@@ -16,7 +16,6 @@
 */
 
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -135,7 +134,7 @@ void createArgs( UThread* ut, int argc, char** argv )
 }
 
 
-UIndex handleException( UThread* ut, UBuffer* str, int* rc )
+UAtom handleException( UThread* ut, UBuffer* str, int* rc )
 {
     const UCell* res = ur_exception( ut );
     *rc = 1;
@@ -170,9 +169,82 @@ UIndex handleException( UThread* ut, UBuffer* str, int* rc )
 }
 
 
+void readEvalPrintLoop( UThread* ut, UBuffer* rstr, int* returnCode )
+{
+    char* cmd = NULL;
+    const UCell* res;
+
+#if ! defined(CONFIG_READLINE) && ! defined(CONFIG_LINENOISE)
+    cmd = malloc( CMD_SIZE );
+#endif
+
+    while( 1 )
+    {
+#if defined(CONFIG_READLINE) || defined(CONFIG_LINENOISE)
+        free( cmd );
+        cmd = readline( PROMPT );
+        if( ! cmd || ! *cmd )
+           continue;
+        add_history( cmd );
+#else
+        printf( PROMPT );
+        fflush( stdout );   /* Required on Windows. */
+        fgets( cmd, CMD_SIZE, stdin );
+#endif
+#if 0
+        {
+            char* cp = cmd;
+            while( *cp != '\n' )
+                printf( " %d", (int) *cp++ );
+            printf( "\n" );
+        }
+#endif
+
+        if( cmd[0] == ESC )
+        {
+            // Up   27 91 65
+            // Down 27 91 66
+            printf( "\n" );
+        }
+        else if( cmd[0] != '\n' )
+        {
+            res = boron_evalUtf8( ut, cmd, -1 );
+            if( res )
+            {
+                if( ur_is(res, UT_UNSET) ||
+                    ur_is(res, UT_CONTEXT) ) //||
+                    //ur_is(res, UT_FUNC) )
+                    continue;
+
+                rstr->used = 0;
+                ur_toStr( ut, res, rstr, 0 );
+                if( rstr->ptr.c )
+                {
+                    ur_strTermNull( rstr );
+                    if( rstr->used > PRINT_MAX )
+                    {
+                        char* cp = str_copy( rstr->ptr.c + PRINT_MAX - 4,
+                                             "..." );
+                        *cp = '\0';
+                    }
+                    printf( "== %s\n", rstr->ptr.c );
+                }
+            }
+            else
+            {
+                if( handleException( ut, rstr, returnCode ) == UR_ATOM_QUIT )
+                    break;
+                boron_reset( ut );
+            }
+        }
+    }
+
+    free( cmd );
+}
+
+
 int main( int argc, char** argv )
 {
-    char* cmd = 0;
     UThread* ut;
     UBuffer rstr;
     UCell* res;
@@ -292,78 +364,14 @@ exception:
 
 prompt:
 
-        if( promptDisabled )
-            goto cleanup;
-
-#ifdef CONFIG_READLINE
-        rl_bind_key( '\t', rl_insert );     // Disable tab completion.
-#elif ! defined(CONFIG_LINENOISE)
-        cmd = malloc( CMD_SIZE );
-#endif
-
-        while( 1 )
+        if( ! promptDisabled )
         {
-#if defined(CONFIG_READLINE) || defined(CONFIG_LINENOISE)
-            free( cmd );
-            cmd = readline( PROMPT );
-            if( ! cmd || ! *cmd )
-               continue;
-            add_history( cmd );
-#else
-            printf( PROMPT );
-            fflush( stdout );   /* Required on Windows. */
-            fgets( cmd, CMD_SIZE, stdin ); 
+#ifdef CONFIG_READLINE
+            rl_bind_key( '\t', rl_insert );     // Disable tab completion.
 #endif
-#if 0
-            {
-                char* cp = cmd;
-                while( *cp != '\n' )
-                    printf( " %d", (int) *cp++ );
-                printf( "\n" );
-            }
-#endif
-
-            if( cmd[0] == ESC )
-            {
-                // Up   27 91 65
-                // Down 27 91 66
-                printf( "\n" );
-            }
-            else if( cmd[0] != '\n' )
-            {
-                res = boron_evalUtf8( ut, cmd, -1 );
-                if( res )
-                {
-                    if( ur_is(res, UT_UNSET) ||
-                        ur_is(res, UT_CONTEXT) ) //||
-                        //ur_is(res, UT_FUNC) )
-                        continue;
-
-                    rstr.used = 0;
-                    ur_toStr( ut, res, &rstr, 0 );
-                    if( rstr.ptr.c )
-                    {
-                        ur_strTermNull( &rstr );
-                        if( rstr.used > PRINT_MAX )
-                        {
-                            char* cp = str_copy( rstr.ptr.c + PRINT_MAX - 4,
-                                                 "..." );
-                            *cp = '\0';
-                        }
-                        printf( "== %s\n", rstr.ptr.c );
-                    }
-                }
-                else
-                {
-                    if( handleException( ut, &rstr, &returnCode ) == UR_ATOM_QUIT )
-                        goto cleanup;
-                    boron_reset( ut );
-                }
-            }
+            readEvalPrintLoop( ut, &rstr, &returnCode );
         }
     }
-
-cleanup:
 
     ur_strFree( &rstr );
     boron_freeEnv( ut );
@@ -372,7 +380,6 @@ cleanup:
     WSACleanup();
 #endif
 
-    free( cmd );
     return returnCode;
 }
 
