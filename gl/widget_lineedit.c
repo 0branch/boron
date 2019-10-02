@@ -20,7 +20,7 @@
 
 
 #include "glh.h"
-#include <GL/glv_keys.h>
+#include <glv_keys.h>
 #include "boron-gl.h"
 #include "draw_prog.h"
 #include "os.h"

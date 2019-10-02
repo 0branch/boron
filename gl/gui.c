@@ -34,7 +34,7 @@
 
 
 #include "glh.h"
-#include <GL/glv_keys.h>
+#include <glv_keys.h>
 #include "boron.h"
 #include "boron-gl.h"
 #include "gl_atoms.h"

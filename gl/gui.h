@@ -21,7 +21,7 @@
 */
 
 
-#include <GL/glv.h>
+#include <glv.h>
 #include "urlan.h"
 
 

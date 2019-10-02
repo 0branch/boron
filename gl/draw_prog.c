@@ -2430,7 +2430,7 @@ int ur_compileDP( UThread* ut, const UCell* blkCell, int handleError )
         ur_strInit( &str, UR_ENC_UTF8, 0 );
         ur_toStr( ut, ex, &str, 0 );
         ur_strTermNull( &str );
-        fprintf( stderr, str.ptr.c );
+        fputs( str.ptr.c, stderr );
         ur_strFree( &str );
 
         //UR_S_DROP;
@@ -2576,6 +2576,7 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
 }
 
 
+#ifndef GL_ES_VERSION_2_0
 static void _lightv3( GLenum light, GLenum pname, const UCell* cell, GLfloat w )
 {
     GLfloat pos[4];
@@ -2599,7 +2600,6 @@ static void _lightEn( GLenum light, const UCell* cell )
 }
 
 
-#ifndef GL_ES_VERSION_2_0
 void dop_light( UThread* ut, const UCell* val, int light )
 {
     if( ur_is(val, UT_LOGIC) )

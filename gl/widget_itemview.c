@@ -19,7 +19,7 @@
 */
 
 
-#include <GL/glv_keys.h>
+#include <glv_keys.h>
 #include "glh.h"
 #include "boron-gl.h"
 #include "draw_ops.h"
@@ -79,6 +79,7 @@ GItemView;
 
 #define ALOC_POS    0
 #define ALOC_UV     1
+#define ALOC_COLOR  2
 
 
 enum UpdateMethod
@@ -946,11 +947,14 @@ static void itemview_render( GWidget* wp )
         glScissor( wp->area.x + trans[0], wp->area.y + trans[1],
                    wp->area.w, wp->area.h );
         glEnable( GL_SCISSOR_TEST );
-#if 0
+
+#ifdef GL_ES_VERSION_2_0
         glEnableVertexAttribArray( ALOC_POS );
         glEnableVertexAttribArray( ALOC_UV );
-        glVertexAttribPointer( ALOC_POS, 3, GL_FLOAT, GL_FALSE, 5, NULL + 0 );
-        glVertexAttribPointer( ALOC_UV,  2, GL_FLOAT, GL_FALSE, 5, NULL + 3 );
+        glEnableVertexAttribArray( ALOC_COLOR );
+        glVertexAttribPointer( ALOC_POS,   3, GL_FLOAT, GL_FALSE, 8, NULL + 0 );
+        glVertexAttribPointer( ALOC_UV,    2, GL_FLOAT, GL_FALSE, 8, NULL + 3 );
+        glVertexAttribPointer( ALOC_COLOR, 3, GL_FLOAT, GL_FALSE, 8, NULL + 5 );
 #else
         glEnableClientState( GL_VERTEX_ARRAY );
         glEnableClientState( GL_TEXTURE_COORD_ARRAY );
@@ -974,7 +978,11 @@ static void itemview_render( GWidget* wp )
         glUniform1i( ep->use_color, 0 );
 
         glPopMatrix();
+#ifdef GL_ES_VERSION_2_0
+        glDisableVertexAttribArray( ALOC_COLOR );
+#else
         glDisableClientState( GL_COLOR_ARRAY );
+#endif
         glDisable( GL_SCISSOR_TEST );
     }
 }

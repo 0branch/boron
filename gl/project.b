@@ -14,6 +14,7 @@ default [
         %../include
         %../urlan
     ]
+    linux [include_from %/usr/local/include/GL]     ; For glv.h
     win32 [include_from %../../glv/win32]
     ;macx [universal]
 ]

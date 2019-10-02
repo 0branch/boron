@@ -21,7 +21,7 @@
 */
 
 
-#include <GL/glv.h>
+#include <glv.h>
 #include "boron.h"
 #include "gui.h"
 #include "TexFont.h"

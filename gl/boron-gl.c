@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <GL/glv_keys.h>
+#include <glv_keys.h>
 #include "os.h"
 #include "glh.h"
 #include "boron-gl.h"
