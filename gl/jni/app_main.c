@@ -3,8 +3,6 @@
 #include <unistd.h>
 #include <android/log.h>
 #include <android/asset_manager.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +10,6 @@
 #if !defined(__LP64__)
 #include <time64.h>
 #endif
-#include <glv.h>
 #include <glv_activity.h>
 #include <boron/boron-gl.h>
 #include <boron/urlan_atoms.h>
@@ -25,10 +22,6 @@
 #define REDIRECT_IO 1
 
 //#define LOCAL_RENDER
-#ifdef LOCAL_RENDER
-UThread* gUT;
-UIndex gUpdate = 0;
-#endif
 
 
 #if !defined(__LP64__)
@@ -232,7 +225,7 @@ int setupGraphics( int w, int h )
 const GLfloat gTriangleVertices[] = { 0.0f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f };
 GLfloat verts[ 6 ];
 
-void renderFrame()
+static void renderFrame( UThread* ut, UIndex updateBlkN )
 {
     UCell* res;
     UCell* cell;
@@ -244,13 +237,13 @@ void renderFrame()
         grey = 0.0f;
 
     memcpy( verts, gTriangleVertices, sizeof(verts) );
-    if( gUpdate )
+    if( updateBlkN )
     {
-        cell = ur_push( gUT, UT_BLOCK );
+        cell = ur_push( ut, UT_BLOCK );
         res = cell - 1;
-        ur_setSeries( cell, gUpdate, 0 );
-        ok = boron_doBlock( gUT, cell, res );
-        ur_pop( gUT );
+        ur_setSeries( cell, updateBlkN, 0 );
+        ok = boron_doBlock( ut, cell, res );
+        ur_pop( ut );
         if( UR_OK == ok )
         {
             verts[0] = res->vec3.xyz[0];
@@ -258,7 +251,7 @@ void renderFrame()
         }
         else
         {
-            logBoronError( gUT );
+            logBoronError( ut );
         }
     }
 
@@ -379,7 +372,10 @@ void android_main( struct android_app* app )
     UCell res;
     UThread* ut;
     GLView* view;
+#ifdef LOCAL_RENDER
     int state = 1;
+    UIndex updateN;
+#endif
 
 
 #ifdef REDIRECT_IO
@@ -396,19 +392,16 @@ void android_main( struct android_app* app )
     view->user = &state;
     glv_setEventHandler( view, eventHandler );
     setupGraphics( view->width, view->height );
+#endif
 
     {
     UEnvParameters param;
-    gUT = ut = boron_makeEnv( boron_envParam(&param) );
-    }
+#ifdef LOCAL_RENDER
+    ut = boron_makeEnv( boron_envParam(&param) );
 #else
-    {
-    UEnvParameters param;
     ut = boron_makeEnvGL( boron_envParam(&param) );
-    }
-    //glEnv.view->user = &state;
-    //glv_setEventHandler( glEnv.view, eventHandler );
 #endif
+    }
     if( ! ut )
     {
         LOGE( "boron_makeEnv failed\n" );
@@ -429,18 +422,18 @@ void android_main( struct android_app* app )
     }
 
 #ifdef LOCAL_RENDER
-    gUpdate = ur_tokenize( ut, _update, _update + sizeof(_update) - 1, &res );
-    ur_hold( gUpdate );
-    boron_bindDefault( ut, gUpdate );
+    updateN = ur_tokenize( ut, _update, _update + sizeof(_update) - 1, &res );
+    ur_hold( updateN );
+    boron_bindDefault( ut, updateN );
 
     while( state && ! app->destroyRequested )
     {
         glv_handleEvents( view );
-        renderFrame();
+        renderFrame( ut, updateN );
         glv_swapBuffers( view );
     }
 
-    boron_freeEnv( gUT );
+    boron_freeEnv( ut );
     glv_destroy( view );
 #else
     {
@@ -449,7 +442,7 @@ void android_main( struct android_app* app )
     UStatus ok;
     ur_internAtoms( ut, "main-update", atoms );
 
-    while( state && ! app->destroyRequested )
+    while( app->activityState < APP_CMD_STOP )
     {
         cell = value( ut, atoms[0], UT_BLOCK );
         if( ! cell )
@@ -467,7 +460,13 @@ void android_main( struct android_app* app )
             {
                 UAtom atom = ur_atom(cell);
                 if( atom == UR_ATOM_QUIT || atom == UR_ATOM_HALT )
-                    state = 0;
+                {
+                    // Call finish to close the application window.  We must
+                    // break to immediately free any Boron-GL datatypes before
+                    // the window (and the GL context) actually goes away.
+                    ANativeActivity_finish( app->activity );
+                    break;
+                }
                 else
                     LOGE( "unhandled exception %s\n", ur_atomCStr(ut, atom) );
             }
@@ -478,8 +477,6 @@ void android_main( struct android_app* app )
 
     boron_freeEnvGL( ut );
 #endif
-
-    LOGI( "KR android_main exiting\n" );
 }
 
 
