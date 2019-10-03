@@ -629,6 +629,15 @@ static int _keyCode( const char* cp, int len )
         else if( strnequ( cp, "num-lock", 8 ) ) code = KEY_Num_Lock;
         else if( strnequ( cp, "print",    5 ) ) code = KEY_Print;
         else if( strnequ( cp, "pause",    5 ) ) code = KEY_Pause;
+#ifdef KEY_Help
+        else if( strnequ( cp, "help",     4 ) ) code = KEY_Help;
+#endif
+#if defined(__ANDROID__)
+        else if( strnequ( cp, "app-back", 8 ) ) code = KEY_Back;
+        else if( strnequ( cp, "vol-up",   6 ) ) code = KEY_Volume_Up;
+        else if( strnequ( cp, "vol-down", 8 ) ) code = KEY_Volume_Down;
+        else if( strnequ( cp, "power",    5 ) ) code = KEY_Power;
+#endif
 #ifdef KEY_KP_Up
         else if( *cp == 'k' )
         {
