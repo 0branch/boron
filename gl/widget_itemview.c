@@ -381,7 +381,13 @@ static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
     }
     else
     {
-        float* abuf = (float*) glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY );
+        float* abuf = (float*)
+#ifdef GL_ES_VERSION_3_0
+            glMapBufferRange( GL_ELEMENT_ARRAY_BUFFER, 0, bsize,
+                              GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
+#else
+            glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY );
+#endif
         if( abuf )
         {
             memCpy( abuf, attr, bsize );
@@ -971,10 +977,19 @@ static void itemview_render( GWidget* wp )
                       (GLfloat) wp->area.y + ep->scrollY, 0.0f );
 
         glUniform1i( ep->use_color, 1 );
+#ifdef GL_ES_VERSION_3_0
+        {
+            GLint* first = (GLint*) fcBuf->ptr.i;
+            GLint* count = (GLint*) (fcBuf->ptr.i + fcBuf->used);
+            for( n = 0; n < fcBuf->used; ++n )
+                glDrawArrays( GL_TRIANGLES, *first++, *count++ );
+        }
+#else
         glMultiDrawArrays( GL_TRIANGLES,
                            (GLint*)    fcBuf->ptr.i,
                            (GLsizei*) (fcBuf->ptr.i + fcBuf->used),
                            fcBuf->used );
+#endif
         glUniform1i( ep->use_color, 0 );
 
         glPopMatrix();

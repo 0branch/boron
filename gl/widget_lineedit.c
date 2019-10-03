@@ -75,14 +75,22 @@ static UIndex ledit_vbo( UThread* ut, int maxChars )
     GLuint* gbuf;
     uint16_t* dst;
     UIndex resN;
+    int indexCount = 2 + 6 * maxChars;
 
     resN = ur_makeVbo( ut, GL_DYNAMIC_DRAW,
                        LEDIT_APV * 2 + LEDIT_APV * 4 * maxChars, NULL,
-                       2 + 6 * maxChars, NULL );
+                       indexCount, NULL );
     buf = ur_buffer( resN );
     gbuf = vbo_bufIds(buf);
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, gbuf[1] );
-    dst = (uint16_t*) glMapBuffer( GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY );
+    dst = (uint16_t*)
+#ifdef GL_ES_VERSION_3_0
+        glMapBufferRange( GL_ELEMENT_ARRAY_BUFFER, 0,
+                          sizeof(uint16_t) * indexCount,
+                          GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
+#else
+        glMapBuffer( GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY );
+#endif
     if( dst )
     {
         // Cursor verticies.
