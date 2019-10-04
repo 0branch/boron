@@ -30,9 +30,10 @@
 #include <AL/alc.h>
 #endif
 
-#ifndef __ANDROID__
 #include <vorbis/codec.h>
 #include <vorbis/vorbisfile.h>
+#ifdef __ANDROID__
+#include <glv_asset.h>
 #endif
 #include "os.h"
 #include "boron.h"
@@ -67,13 +68,18 @@ static ALCcontext* _acontext = 0;
 static ALuint _asource[ SOURCE_COUNT ];
 
 
-#ifndef __ANDROID__
 #define MUSIC_BUFFERS       3
+#ifdef MUSIC_BUFFERS
 static ALuint  _musicSource = 0;
 static ALfloat _musicGain = 1.0f;
 static ALuint  _musicBuffers[ MUSIC_BUFFERS ];
 
-static FILE* _bgStream = 0;
+#ifdef __ANDROID__
+static struct AssetFile _bgAsset = { NULL, NULL, 0 };
+#define _bgStream   _bgAsset.fp
+#else
+static FILE* _bgStream = NULL;
+#endif
 static OggVorbis_File _vf;
 static vorbis_info* _vinfo;
 
@@ -125,6 +131,16 @@ static int _readOgg( ALuint buffer, OggVorbis_File* vf, vorbis_info* vinfo )
 }
 
 
+static void _closeBgStream()
+{
+    ov_clear( &_vf );   // Closes _bgStream for us.
+    _bgStream = NULL;
+#ifdef _ANDROID_
+    glv_assetClose( &_bgAsset );
+#endif
+}
+
+
 static void _startMusic()
 {
     int i;
@@ -132,8 +148,7 @@ static void _startMusic()
     {
         if( ! _readOgg( _musicBuffers[i], &_vf, _vinfo ) )
         {
-            ov_clear( &_vf );   // Closes _bgStream for us.
-            _bgStream = 0;
+            _closeBgStream();
             break;
         }
     }
@@ -184,8 +199,7 @@ static void aud_update()
                 else
                 {
                     printf( "KR audioUpdate - end of stream\n" );
-                    ov_clear( &_vf );   // Closes _bgStream for us.
-                    _bgStream = 0;
+                    _closeBgStream();
                     break;
                 }
 
@@ -565,8 +579,7 @@ static void _stopMusic()
 
     if( _bgStream )
     {
-        ov_clear( &_vf );   // Closes _bgStream for us.
-        _bgStream = 0;
+        _closeBgStream();
     }
 }
 
@@ -580,14 +593,22 @@ void aud_playMusic( const char* file )
         mutexLock( _musicMutex );
         _stopMusic();
 
+#ifdef __ANDROID__
+        glv_assetOpen( &_bgAsset, file, "rb" );
+#else
         _bgStream = fopen( file, "rb" );
+#endif
         if( ! _bgStream )
             return;
 
         if( ov_open( _bgStream, &_vf, NULL, 0 ) < 0 )
         {
+#ifdef __ANDROID__
+            glv_assetClose( &_bgAsset );
+#else
             fclose( _bgStream );
-            _bgStream = 0;
+            _bgStream = NULL;
+#endif
 
             fprintf( stderr, "aud_playMusic - %s is not a valid Ogg file\n",
                      file );
