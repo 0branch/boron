@@ -343,7 +343,7 @@ void* loadAsset( struct android_app* app, const char* file, int* rlen )
         buf = malloc( len );
         if( buf )
         {
-            memcpy( buf, AAsset_getBuffer( as ), len );
+            AAsset_read( as, buf, len );
             *rlen = len;
         }
     }
@@ -364,6 +364,51 @@ static UCell* value( UThread* ut, UAtom name, int type )
             return cell;
     }
     return NULL;
+}
+
+
+//extern CFUNC_PUB(cfunc_read);
+extern struct android_app* gGlvApp;
+
+CFUNC( cf_assetRead )
+{
+    const char* filename;
+    AAsset* as;
+    UBuffer* buf;
+    int ok;
+    int n;
+
+    if( CFUNC_OPTIONS )
+        return ur_error( ut, UR_ERR_SCRIPT,
+                         "FIXME: Asset read does not handle options." );
+
+    n = ur_type(a1);
+    if( ur_isStringType( n ) )
+    {
+        filename = boron_cpath( ut, a1, 0 );
+        as = AAssetManager_open( gGlvApp->activity->assetManager, filename,
+                                 AASSET_MODE_BUFFER );
+        if( ! as )
+            return ur_error( ut, UR_ERR_ACCESS,
+                             "Could not open asset %s", filename );
+
+        ok = UR_OK;
+        buf = ur_makeBinaryCell( ut, AAsset_getLength( as ), res );
+        n = ur_testAvail(buf);
+        if( n > 0 )
+        {
+            if( AAsset_read( as, buf->ptr.b, n ) == n )
+                buf->used = n;
+            else
+                ok = ur_error( ut, UR_ERR_ACCESS, "Failed reading asset %s",
+                               filename );
+        }
+        AAsset_close( as );
+        return ok;
+    }
+
+    //return cfunc_read( ut, a1, res );
+    return boron_badArg( ut, ur_type(a1), 1 );
 }
 
 
@@ -400,6 +445,7 @@ void android_main( struct android_app* app )
     ut = boron_makeEnv( boron_envParam(&param) );
 #else
     ut = boron_makeEnvGL( boron_envParam(&param) );
+    boron_overrideCFunc( ut, "read", cf_assetRead );
 #endif
     }
     if( ! ut )

@@ -32,10 +32,10 @@ include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := libboron-gl
-LOCAL_CFLAGS := -DNO_AUDIO
+#LOCAL_CFLAGS := -DNO_AUDIO
 LOCAL_C_INCLUDES := ../include ../urlan jni/glv
 LOCAL_SRC_FILES := es_compat.c \
-    audio_stub.c \
+    audio.c \
     boron-gl.c \
     draw_prog.c \
     geo.c \
