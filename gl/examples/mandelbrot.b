@@ -10,25 +10,39 @@ set 'sim-update :update-timer-bar
 do load %data/script/gradiant_tex.b
 
 mandel-sh: make shader! [
-    vertex {
-void main() {
-    gl_TexCoord[0] = gl_MultiTexCoord0;
-    gl_Position = ftransform();
-}
-    }
+    vertex {{
+        #version 300 es
+        uniform mat4 matrix;
+
+        layout(location = 0) in vec3 position;
+        layout(location = 3) in vec2 uv;
+        out vec2 texCoord;
+
+        void main() {
+            texCoord = uv;
+            gl_Position = matrix * vec4(position, 1.0);
+        }
+    }}
 
     fragment {
-uniform sampler1D cmap;
+#version 300 es
+precision mediump float;
+
+uniform sampler2D cmap;
 uniform vec2 center;
 uniform float scale;
 uniform float iter;
+
+in vec2 texCoord;
+
+out vec4 fragColor;
 
 void main() {
     vec2 z, c;
     float i;
 
-    c.x = 1.3333 * (gl_TexCoord[0].x - 0.5) * scale - center.x;
-    c.y =          (gl_TexCoord[0].y - 0.5) * scale - center.y;
+    c.x = 1.3333 * (texCoord.x - 0.5) * scale - center.x;
+    c.y =          (texCoord.y - 0.5) * scale - center.y;
 
     z = c;
     for( i = 0.0; i < iter; ++i ) {
@@ -38,7 +52,7 @@ void main() {
             break;
     }
 
-    gl_FragColor = texture1D( cmap, (i == iter) ? 0.0 : i / iter );
+    fragColor = texture( cmap, vec2((i == iter) ? 0.0 : i / iter, 0.0) );
 }
     }
 

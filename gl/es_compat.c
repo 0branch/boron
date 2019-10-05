@@ -24,8 +24,14 @@ char  es_matrixMod = 0;
 
 void es_updateUniformMatrix()
 {
+    GLfloat mat[16];
+
     es_matrixMod = 0;
-    glUniformMatrix4fv( es_matrixLoc, 1, GL_FALSE, matrixTop );
+
+    // mat = projection * view * model
+    ur_matrixMult( projection, matrixTop, mat );
+
+    glUniformMatrix4fv( es_matrixLoc, 1, GL_FALSE, mat );
 }
 
 

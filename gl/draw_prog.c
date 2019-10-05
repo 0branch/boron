@@ -37,6 +37,16 @@
         es_updateUniformMatrix();
 
 
+// Hardcoded vertex shader input locations for common attibutes.
+enum DPAttribLocation
+{
+    ALOC_VERTEX,            // layout(location = 0) in vec3 position;
+    ALOC_NORMAL,            // layout(location = 1) in vec3 normal;
+    ALOC_COLOR,             // layout(location = 2) in vec3 color;
+    ALOC_TEXTURE            // layout(location = 3) in vec2 uv;
+};
+
+
 enum DPOpcode
 {
     DP_EMPTY,
@@ -58,13 +68,13 @@ enum DPOpcode
     DP_BIND_TEXTURE,        // texUnit gltex 
     DP_BIND_ARRAY,          // glbuffer
     DP_BIND_ELEMENTS,       // glbuffer
-    DP_VERTEX_OFFSET,       // stof
-    DP_VERTEX_OFFSET_4,     // stof
-    DP_NORMAL_OFFSET,       // stof
-    DP_COLOR_OFFSET,        // stof
-    DP_COLOR_OFFSET_4,      // stof
-    DP_UV_OFFSET,           // stof
-    DP_ATTR_OFFSET,         // loc/size stof
+    DP_VERTEX_OFFSET,       // stride-offset
+    DP_VERTEX_OFFSET_4,     // stride-offset
+    DP_NORMAL_OFFSET,       // stride-offset
+    DP_COLOR_OFFSET,        // stride-offset
+    DP_COLOR_OFFSET_4,      // stride-offset
+    DP_UV_OFFSET,           // stride-offset
+    DP_ATTR_OFFSET,         // location-size stride-offset
     DP_DRAW_ARR_POINTS,     // count
     DP_DRAW_POINTS,         // count
     DP_DRAW_LINES,          // count
@@ -2437,17 +2447,19 @@ void ur_setDPSwitch( UThread* ut, UIndex resN, DPSwitch sid, int n )
 
 
 
-static void disableClientState( struct ClientState* cs )
+static void disableVertexAttrib( struct ClientState* cs )
 {
     int f = cs->flags;
-#if 0   //ifndef GL_ES_VERSION_2_0
+
+    // Always leaving ALOC_VERTEX enabled.
+
     if( f & CSA_NORMAL )
-        glDisableClientState( GL_NORMAL_ARRAY );
+        glDisableVertexAttribArray( ALOC_NORMAL );
     if( f & CSA_COLOR )
-        glDisableClientState( GL_COLOR_ARRAY );
+        glDisableVertexAttribArray( ALOC_COLOR );
     if( f & CSA_UV )
-        glDisableClientState( GL_TEXTURE_COORD_ARRAY );
-#endif
+        glDisableVertexAttribArray( ALOC_TEXTURE );
+
     for( f = 0; f < cs->attrCount; ++f )
         glDisableVertexAttribArray( cs->attr[ f ] );
 }
@@ -2880,7 +2892,7 @@ dispatch:
 #if 1
             if( ds->client.flags )
             {
-                disableClientState( &ds->client );
+                disableVertexAttrib( &ds->client );
                 ds->client.flags = 0;
                 ds->client.attrCount = 0;
             }
@@ -2897,10 +2909,8 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " VERTEX_OFFSET %08x\n", stof );
-#ifdef GL_ES_VERSION_2_0
-#else
-            glVertexPointer( 3, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
-#endif
+            glVertexAttribPointer( ALOC_VERTEX, 3, GL_FLOAT, GL_FALSE,
+                                   stof & 0xff, NULL + (stof >> 8) );
         }
             break;
 
@@ -2908,10 +2918,8 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " VERTEX_OFFSET_4 %08x\n", stof );
-#ifdef GL_ES_VERSION_2_0
-#else
-            glVertexPointer( 4, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
-#endif
+            glVertexAttribPointer( ALOC_VERTEX, 3, GL_FLOAT, GL_FALSE,
+                                   stof & 0xff, NULL + (stof >> 8) );
         }
             break;
 
@@ -2919,20 +2927,10 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " NORMAL_OFFSET %08x\n", stof );
-#ifdef GL_ES_VERSION_2_0
-            /*
-            size = loc & 0xff;
-            loc >>= 8;
-            glEnableVertexAttribArray( loc );
-            ds->client.attr[ ds->client.attrCount++ ] = loc;
-            glVertexAttribPointer( loc, size, GL_FLOAT, GL_FALSE,
-                                   stof & 0xff, NULL + (stof >> 8) );
-            */
-#else
-            glEnableClientState( GL_NORMAL_ARRAY );
+            glEnableVertexAttribArray( ALOC_NORMAL );
             ds->client.flags |= CSA_NORMAL;
-            glNormalPointer( GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
-#endif
+            glVertexAttribPointer( ALOC_NORMAL, 3, GL_FLOAT, GL_FALSE,
+                                   stof & 0xff, NULL + (stof >> 8) );
         }
             break;
 
@@ -2940,12 +2938,10 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " COLOR_OFFSET %08x\n", stof );
-#ifdef GL_ES_VERSION_2_0
-#else
-            glEnableClientState( GL_COLOR_ARRAY );
+            glEnableVertexAttribArray( ALOC_COLOR );
             ds->client.flags |= CSA_COLOR;
-            glColorPointer( 3, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
-#endif
+            glVertexAttribPointer( ALOC_COLOR, 3, GL_FLOAT, GL_FALSE,
+                                   stof & 0xff, NULL + (stof >> 8) );
         }
             break;
 
@@ -2953,12 +2949,10 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " COLOR_OFFSET_4 %08x\n", stof );
-#ifdef GL_ES_VERSION_2_0
-#else
-            glEnableClientState( GL_COLOR_ARRAY );
+            glEnableVertexAttribArray( ALOC_COLOR );
             ds->client.flags |= CSA_COLOR;
-            glColorPointer( 4, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
-#endif
+            glVertexAttribPointer( ALOC_COLOR, 4, GL_FLOAT, GL_FALSE,
+                                   stof & 0xff, NULL + (stof >> 8) );
         }
             break;
 
@@ -2966,12 +2960,10 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " UV_OFFSET %08x\n", stof );
-#ifdef GL_ES_VERSION_2_0
-#else
-            glEnableClientState( GL_TEXTURE_COORD_ARRAY );
+            glEnableVertexAttribArray( ALOC_TEXTURE );
             ds->client.flags |= CSA_UV;
-            glTexCoordPointer( 2, GL_FLOAT, stof & 0xff, NULL + (stof >> 8) );
-#endif
+            glVertexAttribPointer( ALOC_TEXTURE, 2, GL_FLOAT, GL_FALSE,
+                                   stof & 0xff, NULL + (stof >> 8) );
         }
             break;
 
@@ -3516,21 +3508,14 @@ int ur_runDrawProg( UThread* ut, UIndex n )
 
     ur_initDrawState( &state );
 
-#ifndef GL_ES_VERSION_2_0
     // NOTE: glDrawElements has been seen to segfault if non-existant
-    //       client arrays are enabled.
+    //       client arrays are enabled (when glEnableClientState was used).
 
-    glEnableClientState( GL_VERTEX_ARRAY );
-    /*
-    glEnableClientState( GL_NORMAL_ARRAY );
-    glEnableClientState( GL_COLOR_ARRAY );
-    glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-    */
-#endif
+    glEnableVertexAttribArray( ALOC_VERTEX );
 
     ok = ur_runDrawProg2( ut, &state, n );
     if( state.client.flags )
-        disableClientState( &state.client );
+        disableVertexAttrib( &state.client );
     return ok;
 }
 

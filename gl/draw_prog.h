@@ -86,7 +86,7 @@ struct ClientState
 {
     uint16_t flags;
     uint16_t attrCount;
-    int attr[4];
+    GLuint attr[4];
 };
 
 // Client State Array Flags
