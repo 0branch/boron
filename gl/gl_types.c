@@ -308,7 +308,6 @@ static int _textureKeyword( UAtom name, TextureDef* def )
             def->comp = def->format = GL_RGBA;
             break;
 
-#ifndef GL_ES_VERSION_2_0 
         case UR_ATOM_F32:
             switch( def->comp )
             {
@@ -320,16 +319,13 @@ static int _textureKeyword( UAtom name, TextureDef* def )
 #endif
                     break;
                 case GL_RGB:
-                    def->comp = GL_RGB32F_ARB;
-                    //def.comp = GL_RGB16F_ARB;
+                    def->comp = GL_RGB32F;
                     break;
                 case GL_RGBA:
-                    def->comp = GL_RGBA32F_ARB;
-                    //def.comp = GL_RGBA16F_ARB;
+                    def->comp = GL_RGBA32F;
                     break;
             }
             break;
-#endif
 
         default:
             return 0;
@@ -374,14 +370,6 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
         _texCoord( &def, from );
         goto build;
     }
-#ifndef GL_ES_VERSION_2_0 
-    else if( ur_is(from, UT_INT) )
-    {
-        target = GL_TEXTURE_1D;
-        _texCoord( &def, from );
-        goto build;
-    }
-#endif
     else if( ur_is(from, UT_BLOCK) )
     {
         UBlockIt bi;
@@ -409,17 +397,10 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
                     {
                         def.pixels = ur_bufferSer(val)->ptr.b;
                     }
-                    else if( ur_is(val, UT_COORD) )
+                    else if( ur_is(val, UT_COORD) || ur_is(val, UT_INT) )
                     {
                         _texCoord( &def, val );
                     }
-#ifndef GL_ES_VERSION_2_0 
-                    else if( ur_is(val, UT_INT) )
-                    {
-                        target = GL_TEXTURE_1D;
-                        _texCoord( &def, val );
-                    }
-#endif
                     else if( ur_is(val, UT_VECTOR) )
                     {
                         const UBuffer* buf = ur_bufferSer(val);
@@ -443,12 +424,8 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
                                          "Invalid texture! keyword" );
                     }
                     break;
-#ifndef GL_ES_VERSION_2_0 
+
                 case UT_INT:
-                    target = GL_TEXTURE_1D;
-                    _texCoord( &def, bi.it );
-                    break;
-#endif
                 case UT_COORD:
                     _texCoord( &def, bi.it );
                     break;
@@ -469,20 +446,11 @@ build:
     name = glid_genTexture();
     glBindTexture( target, name );
 
-#ifndef GL_ES_VERSION_2_0 
-    if( target == GL_TEXTURE_2D )
-#endif
+    //if( target == GL_TEXTURE_2D )
     {
         glTexImage2D( GL_TEXTURE_2D, 0, def.comp, def.width, def.height,
                       0, def.format, type, def.pixels );
     }
-#ifndef GL_ES_VERSION_2_0 
-    else
-    {
-        glTexImage1D( GL_TEXTURE_1D, 0, def.comp, def.width,
-                      0, def.format, type, def.pixels );
-    }
-#endif
 
     {
         GLenum err = glGetError();
@@ -532,6 +500,7 @@ static void textureToRaster( UThread* ut, GLenum target, GLuint name,
     (void) ut;
     (void) target;
     (void) name;
+    // Must use framebuffer and glReadPixels.
     ur_setId(res, UT_NONE);
 #else
     UBuffer* bin;
@@ -903,30 +872,26 @@ void shader_mark( UThread* ut, UCell* cell )
 // UT_FBO
 
 
-#ifdef GL_ES_VERSION_2_0 
-#define GL_FRAMEBUFFER_COMPLETE_EXT GL_FRAMEBUFFER_COMPLETE
-#define GL_FRAMEBUFFER_UNSUPPORTED_EXT GL_FRAMEBUFFER_UNSUPPORTED
-#define GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT
-#define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS
+#ifndef GL_ES_VERSION_2_0
+#define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT
 #endif
-
 
 const char* _framebufferStatus()
 {
     GLenum status;
-    status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT );
+    status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
     switch( status )
     {
-        case GL_FRAMEBUFFER_COMPLETE_EXT:
+        case GL_FRAMEBUFFER_COMPLETE:
             return 0;
 
-        case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
+        case GL_FRAMEBUFFER_UNSUPPORTED:
             return "Unsupported framebuffer format";
 
-        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
             return "Framebuffer incomplete, missing attachment";
 
-        case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+        case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
             return
             "Framebuffer incomplete, attached images must have same dimensions";
 #ifndef GL_ES_VERSION_2_0 
@@ -969,16 +934,14 @@ int fbo_make( UThread* ut, const UCell* from, UCell* res )
 
         if( sel == UR_ATOM_DEPTH )
         {
-#ifdef GL_ES_VERSION_2_0
-            return ur_error( ut, UR_ERR_SCRIPT,
-                "make depth framebuffer! cannot get texture! size with GLES2" );
-#else
+            // glGetTexLevelParameteriv requires GLES 3.1
+            //return ur_error( ut, UR_ERR_SCRIPT,
+            //  "make depth framebuffer! cannot get texture! size with GLES2" );
             glBindTexture( GL_TEXTURE_2D, texName );
             glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,
                                       dim );
             glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT,
                                       dim + 1 );
-#endif
         }
     }
     else if( ur_is(from, UT_COORD) )
@@ -1013,26 +976,26 @@ int fbo_make( UThread* ut, const UCell* from, UCell* res )
                          "make framebuffer! expected texture!/coord!" );
     }
 
-    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, fbName );
+    glBindFramebuffer( GL_FRAMEBUFFER, fbName );
 
-    glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT,
-                               GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D,
-                               texName, 0 );
+    glFramebufferTexture2D( GL_FRAMEBUFFER,
+                            GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                            texName, 0 );
 
     if( sel == UR_ATOM_DEPTH )
     {
         depthName = glid_genRenderbuffer();
-        glBindRenderbufferEXT( GL_RENDERBUFFER_EXT, depthName );
-        glRenderbufferStorageEXT( GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT,
-                                  dim[0], dim[1] );
-        glFramebufferRenderbufferEXT( GL_FRAMEBUFFER_EXT,
-                    GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depthName );
+        glBindRenderbuffer( GL_RENDERBUFFER, depthName );
+        glRenderbufferStorage( GL_RENDERBUFFER, GL_DEPTH_COMPONENT,
+                               dim[0], dim[1] );
+        glFramebufferRenderbuffer( GL_FRAMEBUFFER,
+                    GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthName );
     }
 
     if( (err = _framebufferStatus()) )
         return ur_error( ut, UR_ERR_INTERNAL, err );
 
-    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, 0 );
+    glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
     ur_setId( res, UT_FBO );
     ur_fboId(res)    = fbName;

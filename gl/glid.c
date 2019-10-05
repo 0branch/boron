@@ -22,22 +22,7 @@
 #include <stdint.h>
 #include "urlan.h"
 #include "os.h"
-
-
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#elif defined(__ANDROID__)
-#include <GLES2/gl2.h>
-#define glGenRenderbuffersEXT       glGenRenderbuffers
-#define glGenFramebuffersEXT        glGenFramebuffers
-#define glDeleteRenderbuffersEXT    glDeleteRenderbuffers
-#define glDeleteFramebuffersEXT     glDeleteFramebuffers
-#elif defined(_WIN32)
-#include <GL/glew.h>
-#else
-#define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#endif
+#include "glh.h"
 
 
 struct GLIdRecord
@@ -126,7 +111,7 @@ GLuint glid_genTexture()
 GLuint glid_genRenderbuffer()
 {
     GLuint name;
-    glGenRenderbuffersEXT( 1, &name );
+    glGenRenderbuffers( 1, &name );
     glid_store( &_glid.ren, name, REN_UNSORTED );
     return name;
 }
@@ -135,7 +120,7 @@ GLuint glid_genRenderbuffer()
 GLuint glid_genFramebuffer()
 {
     GLuint name;
-    glGenFramebuffersEXT( 1, &name );
+    glGenFramebuffers( 1, &name );
     glid_store( &_glid.fbo, name, FBO_UNSORTED );
     return name;
 }
@@ -267,8 +252,8 @@ static void glid_sweep( UBuffer* idArr, UBuffer* markArr,
 void glid_gcSweep()
 {
     glid_sweep( &_glid.tex, &_glid.texMark, glDeleteTextures );
-    glid_sweep( &_glid.ren, &_glid.renMark, glDeleteRenderbuffersEXT );
-    glid_sweep( &_glid.fbo, &_glid.fboMark, glDeleteFramebuffersEXT );
+    glid_sweep( &_glid.ren, &_glid.renMark, glDeleteRenderbuffers );
+    glid_sweep( &_glid.fbo, &_glid.fboMark, glDeleteFramebuffers );
 }
 
 

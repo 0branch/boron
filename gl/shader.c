@@ -19,24 +19,11 @@
 */
 
 
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#include <OpenGL/glext.h>
-#elif defined(__ANDROID__)
-#include <GLES2/gl2.h>
-#elif defined(_WIN32)
-#include <GL/glew.h>
-#else
-#define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include <GL/glext.h>
-#endif
-
+#include "glh.h"
 #include "os.h"
 #include "boron-gl.h"
 #include "gl_atoms.h"
 #include "shader.h"
-#include "es_compat.h"
 
 
 static int printInfoLog( UThread* ut, GLuint obj, int prog )

@@ -2650,7 +2650,7 @@ void dop_shadow_begin( GLuint fbo )
     //gr_disableTexture();
 
 
-    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, fbo );
+    glBindFramebuffer( GL_FRAMEBUFFER, fbo );
     glClear( GL_DEPTH_BUFFER_BIT );
 
 #ifdef SHADOW_BACK_FACES
@@ -2682,7 +2682,7 @@ void dop_shadow_end()
 #else
     glDisable( GL_POLYGON_OFFSET_FILL );
 #endif
-    glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, 0 );
+    glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
 
     glActiveTexture( GL_TEXTURE1 );
@@ -3322,7 +3322,7 @@ dispatch:
             break;
 
         case DP_FRAMEBUFFER:
-            glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, *pc++ );
+            glBindFramebuffer( GL_FRAMEBUFFER, *pc++ );
             break;
 
         case DP_FRAMEBUFFER_TEX_WORD:
@@ -3332,8 +3332,8 @@ dispatch:
             attach = *pc++;
             if( ur_is(val, UT_TEXTURE) )
             {
-                glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT, attach,
-                                           GL_TEXTURE_2D, ur_texId(val), 0 );
+                glFramebufferTexture2D( GL_FRAMEBUFFER, attach,
+                                        GL_TEXTURE_2D, ur_texId(val), 0 );
             }
         }
             break;
@@ -3430,11 +3430,11 @@ dispatch:
                 if( vbo_count(res) )
                 {
                     rect = (uint16_t*) pc;
-                    glBindBuffer( GL_PIXEL_PACK_BUFFER_ARB, buf[0] );
+                    glBindBuffer( GL_PIXEL_PACK_BUFFER, buf[0] );
                     //glReadBuffer( GL_BACK );
                     glReadPixels( rect[0], rect[1], rect[2], rect[3],
                                   GL_RGBA, GL_FLOAT, NULL );
-                    glBindBuffer( GL_PIXEL_PACK_BUFFER_ARB, 0 );
+                    glBindBuffer( GL_PIXEL_PACK_BUFFER, 0 );
                 }
             }
             pc += 2;

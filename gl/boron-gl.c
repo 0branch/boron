@@ -2484,9 +2484,9 @@ CFUNC( cfunc_shadowmap )
 
 
         fboName = glid_genFramebuffer();
-        glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, fboName );
-        glFramebufferTexture2DEXT( GL_FRAMEBUFFER_EXT,
-                 GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, texName, 0 );
+        glBindFramebuffer( GL_FRAMEBUFFER, fboName );
+        glFramebufferTexture2D( GL_FRAMEBUFFER,
+                 GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texName, 0 );
 #ifndef GL_ES_VERSION_2_0
         glDrawBuffer( GL_NONE );
         glReadBuffer( GL_NONE );
@@ -2495,7 +2495,7 @@ CFUNC( cfunc_shadowmap )
         if( (err = _framebufferStatus()) )
             return ur_error( ut, UR_ERR_INTERNAL, err );
 
-        glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, 0 );
+        glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
         ur_setId(res, UT_FBO);
         ur_fboId(res)    = fboName;
