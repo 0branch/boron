@@ -36,10 +36,7 @@
 #include "boron-gl.h"
 #include "gl_atoms.h"
 #include "shader.h"
-
-#ifdef GL_ES_VERSION_2_0
 #include "es_compat.h"
-#endif
 
 
 static int printInfoLog( UThread* ut, GLuint obj, int prog )
@@ -246,21 +243,15 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
 
                 case GL_SAMPLER_2D:
                 case GL_SAMPLER_CUBE:
-#ifndef GL_ES_VERSION_2_0
-                case GL_SAMPLER_1D:
                 case GL_SAMPLER_3D:
-                case GL_SAMPLER_1D_SHADOW:
                 case GL_SAMPLER_2D_SHADOW:
-#endif
                     ur_setId( cval, UT_NONE );
                     ur_texId(cval) = 0;     // Expecting texture!.
                     break;
 
-#ifdef GL_ES_VERSION_2_0
                 case GL_FLOAT_MAT4:
                     ur_setId( cval, UT_NONE );
                     break;
-#endif
 
                 default:
                     ur_setId( cval, UT_NONE );
@@ -349,9 +340,7 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
     const UCell* cval = blk->ptr.cell;
     int texUnit = 0;
 
-#ifdef GL_ES_VERSION_2_0
     es_matrixUsed = 0;
-#endif
 
     while( pi != pend )
     {
@@ -395,20 +384,8 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
 
             //case GL_INT_VEC4:
 
-#ifndef GL_ES_VERSION_2_0
-            case GL_SAMPLER_1D:
-                glActiveTexture( GL_TEXTURE0 + texUnit );
-                glEnable( GL_TEXTURE_1D );
-                glBindTexture( GL_TEXTURE_1D, ur_texId(cval) );
-                glUniform1i( pi->location, texUnit );
-                ++texUnit;
-                break;
-#endif
-
             case GL_SAMPLER_2D:
-#ifndef GL_ES_VERSION_2_0
             case GL_SAMPLER_2D_SHADOW:
-#endif
                 glActiveTexture( GL_TEXTURE0 + texUnit );
                 glEnable( GL_TEXTURE_2D );
                 glBindTexture( GL_TEXTURE_2D, ur_texId(cval) );
@@ -418,7 +395,6 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
 
             //case GL_SAMPLER_3D:
 
-#ifdef GL_ES_VERSION_2_0
             case GL_FLOAT_MAT4:
                 /*
                 fprintf( stderr, "sha %f,%f,%f\n    %f,%f,%f\n    %f,%f,%f\n",
@@ -430,7 +406,6 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
                 es_matrixUsed = 1;
                 //glUniformMatrix4fv( pi->location, 1, GL_FALSE, matrixTop );
                 break;
-#endif
         }
         ++pi;
     }
@@ -452,12 +427,8 @@ int shaderTextureUnit( const Shader* sh, UAtom name )
         {
             case GL_SAMPLER_2D:
             case GL_SAMPLER_CUBE:
-#ifndef GL_ES_VERSION_2_0
-            case GL_SAMPLER_1D:
             case GL_SAMPLER_3D:
-            case GL_SAMPLER_1D_SHADOW:
             case GL_SAMPLER_2D_SHADOW:
-#endif
                 if( pi->name == name )
                     return texUnit;
                 ++texUnit;

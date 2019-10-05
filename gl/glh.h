@@ -16,7 +16,6 @@
 #define GL_FRAMEBUFFER_EXT          GL_FRAMEBUFFER
 #define GL_RENDERBUFFER_EXT         GL_RENDERBUFFER
 #define GL_COLOR_ATTACHMENT0_EXT    GL_COLOR_ATTACHMENT0
-#include "es_compat.h"
 
 #elif defined(_WIN32)
 
@@ -29,3 +28,5 @@
 #include <GL/gl.h>
 
 #endif
+
+#include "es_compat.h"

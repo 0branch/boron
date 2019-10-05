@@ -32,15 +32,9 @@
 #include "geo.h"
 #include "quat.h"
 
-#ifdef GL_ES_VERSION_2_0
-#include "es_compat.h"
-
 #define ES_UPDATE_MATRIX \
     if( es_matrixUsed && es_matrixMod ) \
         es_updateUniformMatrix();
-#else
-#define ES_UPDATE_MATRIX
-#endif
 
 
 enum DPOpcode
@@ -728,7 +722,6 @@ static void genIndices( UThread* ut, DPCompiler* emit )
     {
         uint16_t* dst;
 
-#ifdef GL_ES_VERSION_2_0
         int len = sizeof(uint16_t) * emit->indexCount;
         dst = malloc( len );
         if( dst )
@@ -739,19 +732,6 @@ static void genIndices( UThread* ut, DPCompiler* emit )
             glBufferData( GL_ELEMENT_ARRAY_BUFFER, len, dst, GL_STATIC_DRAW );
             free( dst );
         }
-#else
-        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, emit->indexBuf );
-        glBufferData( GL_ELEMENT_ARRAY_BUFFER,
-                      sizeof(uint16_t) * emit->indexCount,
-                      NULL, GL_STATIC_DRAW );
-
-        dst = (uint16_t*) glMapBuffer( GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY );
-        if( dst )
-        {
-            _genIndices2( ut, emit, dst );
-            glUnmapBuffer( GL_ELEMENT_ARRAY_BUFFER );
-        }
-#endif
     }
 }
 
@@ -835,11 +815,6 @@ static void emitGeoPrim( const Primitives* it, DPCompiler* emit )
         case GL_TRIANGLE_FAN:
             opcode = DP_DRAW_TRI_FAN;
             break;
-#ifndef GL_ES_VERSION_2_0 
-        case GL_QUADS:
-            opcode = DP_DRAW_QUADS;
-            break;
-#endif
         default:
             return;
     }
@@ -1638,16 +1613,14 @@ image_next:
                     }
                     else
                     {
-#ifdef GL_ES_VERSION_2_0
-                        scriptError
-                            ( "image cannot get texture! size with GLES2" );
-#else
+                        // glGetTexLevelParameterfv requires GLES 3.1
+                        //scriptError
+                        //    ( "image cannot get texture! size with GLES2" );
                         glBindTexture( GL_TEXTURE_2D, ur_texId(val) );
                         glGetTexLevelParameterfv( GL_TEXTURE_2D, 0,
                                                   GL_TEXTURE_WIDTH, &w );
                         glGetTexLevelParameterfv( GL_TEXTURE_2D, 0,
                                                   GL_TEXTURE_HEIGHT, &h );
-#endif
                     }
 
                     dp_tgeoInit( emit );
@@ -2467,7 +2440,7 @@ void ur_setDPSwitch( UThread* ut, UIndex resN, DPSwitch sid, int n )
 static void disableClientState( struct ClientState* cs )
 {
     int f = cs->flags;
-#ifndef GL_ES_VERSION_2_0
+#if 0   //ifndef GL_ES_VERSION_2_0
     if( f & CSA_NORMAL )
         glDisableClientState( GL_NORMAL_ARRAY );
     if( f & CSA_COLOR )
@@ -3058,12 +3031,6 @@ dispatch:
             ES_UPDATE_MATRIX
             glDrawElements( GL_TRIANGLE_FAN, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
-#ifndef GL_ES_VERSION_2_0 
-        case DP_DRAW_QUADS:
-            REPORT_1( "DRAW_QUADS %d\n", pc[0] );
-            glDrawElements( GL_QUADS, *pc++, GL_UNSIGNED_SHORT, 0 );
-            break;
-#endif
         case DP_DRAW_POINTS_I:
             REPORT_2( "DRAW_POINTS_I %d %d\n", pc[0], pc[1] );
             ES_UPDATE_MATRIX
@@ -3111,14 +3078,6 @@ dispatch:
                             NULL + pc[1] );
             pc += 2;
             break;
-#ifndef GL_ES_VERSION_2_0
-        case DP_DRAW_QUADS_I:
-            REPORT_2( "DRAW_QUADS_I %d %d\n", pc[0], pc[1] );
-            glDrawElements( GL_QUADS, pc[0], GL_UNSIGNED_SHORT,
-                            NULL + pc[1] );
-            pc += 2;
-            break;
-#endif
         case DP_DEPTH_ON:
             glEnable( GL_DEPTH_TEST );
             break;

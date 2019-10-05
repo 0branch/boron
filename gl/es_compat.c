@@ -3,11 +3,9 @@
 */
 
 
-//#include <stdio.h>
 #include <string.h>
-#include <GLES2/gl2.h>
+#include "glh.h"
 #include "math3d.h"
-#include "es_compat.h"
 
 
 #define DEG2RAD         (UR_PI / 180.0f)
@@ -31,7 +29,7 @@ void es_updateUniformMatrix()
 }
 
 
-void glMatrixMode( GLenum mode )
+void esMatrixMode( GLenum mode )
 {
     if( mode == GL_MODELVIEW )
     {
@@ -48,35 +46,35 @@ void glMatrixMode( GLenum mode )
 }
 
 
-void glLoadIdentity()
+void esLoadIdentity()
 {
     ur_loadIdentity( matrixTop );
     es_matrixMod = 1;
 }
 
 
-void glLoadMatrixf( const GLfloat* mat )
+void esLoadMatrixf( const GLfloat* mat )
 {
     memcpy( matrixTop, mat, 16 * sizeof(GLfloat) );
     es_matrixMod = 1;
 }
 
 
-void glMultMatrixf( const GLfloat* mat )
+void esMultMatrixf( const GLfloat* mat )
 {
     ur_matrixMult( matrixTop, mat, matrixTop );
     es_matrixMod = 1;
 }
 
 
-void glPopMatrix()
+void esPopMatrix()
 {
     if( _mode == GL_MODELVIEW && matrixTop != viewStack )
         matrixTop -= 16;
 }
 
 
-void glPushMatrix()
+void esPushMatrix()
 {
     if( _mode == GL_MODELVIEW && matrixTop != viewStackEnd )
     {
@@ -87,7 +85,7 @@ void glPushMatrix()
 }
 
 
-void glRotatef( GLfloat angle, GLfloat x, GLfloat y, GLfloat z )
+void esRotatef( GLfloat angle, GLfloat x, GLfloat y, GLfloat z )
 {
     float mat[16];
     float axis[3]; 
@@ -111,7 +109,7 @@ void glRotatef( GLfloat angle, GLfloat x, GLfloat y, GLfloat z )
 }
 
 
-void glScalef( GLfloat x, GLfloat y, GLfloat z )
+void esScalef( GLfloat x, GLfloat y, GLfloat z )
 {
     GLfloat* m = matrixTop;
 
@@ -134,7 +132,7 @@ void glScalef( GLfloat x, GLfloat y, GLfloat z )
 }
 
 
-void glTranslatef( GLfloat x, GLfloat y, GLfloat z )
+void esTranslatef( GLfloat x, GLfloat y, GLfloat z )
 {
     GLfloat* m = matrixTop;
 
@@ -147,7 +145,7 @@ void glTranslatef( GLfloat x, GLfloat y, GLfloat z )
 }
 
 
-void glOrtho( GLfloat left, GLfloat right, GLfloat bottom, GLfloat top,
+void esOrtho( GLfloat left, GLfloat right, GLfloat bottom, GLfloat top,
               GLfloat near_val, GLfloat far_val )
 {
     GLfloat mat[16];

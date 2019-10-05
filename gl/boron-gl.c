@@ -2688,7 +2688,7 @@ UThread* boron_makeEnvGL( UEnvParameters* param )
     static char joyStr[] = "joystick";
 #endif
     UThread* ut;
-    const GLubyte* gstr;
+    GLint version[2];
 
 
 #if 0
@@ -2747,7 +2747,8 @@ UThread* boron_makeEnvGL( UEnvParameters* param )
     }
 #endif
 
-    gView = glv_create( GLV_ATTRIB_DOUBLEBUFFER | GLV_ATTRIB_MULTISAMPLE );
+    gView = glv_create( GLV_ATTRIB_DOUBLEBUFFER | GLV_ATTRIB_MULTISAMPLE |
+                        GLV_ATTRIB_ES );
     if( ! gView )
     {
         fprintf( stderr, "glv_create() failed\n" );
@@ -2756,12 +2757,14 @@ cleanup:
         return NULL;
     }
 
-    gstr = glGetString( GL_VERSION );
-    if( gstr[0] < '2' )
+    //printf( "GL_VERSION: %s\n", (const char*) glGetString( GL_VERSION ) );
+    glGetIntegerv(GL_MAJOR_VERSION, version);
+    glGetIntegerv(GL_MINOR_VERSION, version+1);
+    if( version[0] < 3 || (version[0] == 3 && version[1] < 1) )
     {
         glv_destroy( gView );
         gView = 0;
-        fprintf( stderr, "OpenGL 2.0 required\n" );
+        fprintf( stderr, "OpenGL ES 3.1 required\n" );
         goto cleanup;
     }
 

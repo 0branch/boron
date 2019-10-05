@@ -78,6 +78,7 @@ shlib [%boron-gl 2,0,0] [
     sources [
         %boron-gl.c
         %draw_prog.c
+        %es_compat.c
         %geo.c
         %glid.c
         %gui.c
