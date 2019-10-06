@@ -86,6 +86,7 @@ static void reportError( UThread* ut, const UCell* errC )
 }
 
 
+#ifdef LOCAL_RENDER
 static void logBoronError( UThread* ut )
 {
     const UCell* ex = ur_exception( ut );
@@ -97,7 +98,6 @@ static void logBoronError( UThread* ut )
 }
 
 
-#ifdef LOCAL_RENDER
 static void printGLString(const char *name, GLenum s)
 {
     const char* v = (const char*) glGetString(s);
@@ -307,6 +307,20 @@ static void eventHandler( GLView* view, GLViewEvent* ev )
 
 
 #if 0
+static UCell* value( UThread* ut, UAtom name, int type )
+{
+    UBuffer* ctx = ur_threadContext( ut );
+    int i = ur_ctxLookup( ctx, name );
+    if( i > -1 )
+    {
+        UCell* cell = ur_ctxCell( ctx, i );
+        if( ur_is(cell, type) )
+            return cell;
+    }
+    return NULL;
+}
+
+
 void listAssets( struct android_app* app )
 {
     const char* fn;
@@ -323,6 +337,8 @@ void listAssets( struct android_app* app )
 #endif
 
 
+#ifndef LOCAL_RENDER
+// Return pointer to a buffer which the caller must free() or NULL if failed.
 void* loadAsset( struct android_app* app, const char* file, int* rlen )
 {
     off_t len;
@@ -353,23 +369,29 @@ void* loadAsset( struct android_app* app, const char* file, int* rlen )
 }
 
 
-static UCell* value( UThread* ut, UAtom name, int type )
+UIndex loadScript( struct android_app* app, UThread* ut, const char* filename,
+                   UCell* res )
 {
-    UBuffer* ctx = ur_threadContext( ut );
-    int i = ur_ctxLookup( ctx, name );
-    if( i > -1 )
+    UIndex bufN = 0;
+    int len;
+    char* script = (char*) loadAsset( app, filename, &len );
+    if( script )
     {
-        UCell* cell = ur_ctxCell( ctx, i );
-        if( ur_is(cell, type) )
-            return cell;
+        bufN = ur_tokenize( ut, script, script + len, res );
+        free( script );
+        if( bufN )
+            boron_bindDefault( ut, bufN );
     }
-    return NULL;
+    return bufN;
 }
+#endif
 
 
 //extern CFUNC_PUB(cfunc_read);
 extern struct android_app* gGlvApp;
 
+// Partial implementation of 'read which uses the AAssetManager rather than
+// direct filesystem access.
 CFUNC( cf_assetRead )
 {
     const char* filename;
@@ -414,12 +436,16 @@ CFUNC( cf_assetRead )
 
 void android_main( struct android_app* app )
 {
-    UCell res;
     UThread* ut;
-    GLView* view;
 #ifdef LOCAL_RENDER
+    UCell res;
+    GLView* view;
     int state = 1;
     UIndex updateN;
+#else
+    UCell bcell;
+    UCell* cell;
+    UIndex bufN;
 #endif
 
 
@@ -445,6 +471,7 @@ void android_main( struct android_app* app )
     ut = boron_makeEnv( boron_envParam(&param) );
 #else
     ut = boron_makeEnvGL( boron_envParam(&param) );
+    // NOTE: This does not change the version of read used by 'load.
     boron_overrideCFunc( ut, "read", cf_assetRead );
 #endif
     }
@@ -454,18 +481,6 @@ void android_main( struct android_app* app )
         return;
     }
     ur_freezeEnv( ut );
-
-    {
-        int len;
-        char* buf = (char*) loadAsset( app, "main.b", &len );
-        if( buf )
-        {
-            //LOGI( "main.b {%s}\n", buf );
-            if( ! boron_evalUtf8( ut, buf, len ) )
-                logBoronError( ut );
-            free( buf );
-        }
-    }
 
 #ifdef LOCAL_RENDER
     updateN = ur_tokenize( ut, _update, _update + sizeof(_update) - 1, &res );
@@ -482,20 +497,15 @@ void android_main( struct android_app* app )
     boron_freeEnv( ut );
     glv_destroy( view );
 #else
-    {
-    UAtom atoms[1];
-    UCell* cell;
-    UStatus ok;
-    ur_internAtoms( ut, "main-update", atoms );
+    // Cannot simply eval "do %main.b" or call boron_load() as cfunc_load()
+    // calls the internal cfunc_read(), so we must load it ourselves.
 
-    while( app->activityState < APP_CMD_STOP )
+    bufN = loadScript( app, ut, "main.b", &bcell );
+    if( bufN )
     {
-        cell = value( ut, atoms[0], UT_BLOCK );
-        if( ! cell )
-            break;
-        ok = boron_doBlock( ut, cell, ur_push(ut, UT_UNSET) );
-        ur_pop(ut);
-        if( ok == UR_THROW )
+        ur_hold( bufN );    // Hold forever.
+        cell = ut->stack.ptr.cell + ut->stack.used - 1;
+        if( ! boron_doBlock( ut, &bcell, cell ) )
         {
             cell = ur_exception( ut );
             if( ur_is(cell, UT_ERROR) )
@@ -508,17 +518,15 @@ void android_main( struct android_app* app )
                 if( atom == UR_ATOM_QUIT || atom == UR_ATOM_HALT )
                 {
                     // Call finish to close the application window.  We must
-                    // break to immediately free any Boron-GL datatypes before
-                    // the window (and the GL context) actually goes away.
+                    // immediately call boron_freeEnvGL to free any Boron-GL
+                    // datatypes before the window (and the GL context)
+                    // actually goes away.
                     ANativeActivity_finish( app->activity );
-                    break;
                 }
                 else
                     LOGE( "unhandled exception %s\n", ur_atomCStr(ut, atom) );
             }
-            boron_reset( ut );
         }
-    }
     }
 
     boron_freeEnvGL( ut );

@@ -278,6 +278,7 @@ static void pickMode( const GLViewMode* md, void* data )
 */
 CFUNC( cfunc_display )
 {
+#ifndef __ANDROID__
 #define OPT_DISPLAY_FULLSCREEN  0x01
 #define OPT_DISPLAY_TITLE       0x02
     GLViewMode mode;
@@ -304,6 +305,7 @@ CFUNC( cfunc_display )
             glv_changeMode( gView, &mode );
         }
     }
+#endif
     ur_setId(res, UT_UNSET);
     return UR_OK;
 }

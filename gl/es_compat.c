@@ -22,6 +22,21 @@ char  es_matrixUsed = 0;
 char  es_matrixMod = 0;
 
 
+#if 0
+#include <stdio.h>
+void dumpMatrix( const char* label, const float* mat )
+{
+    fprintf( stderr, "%s\n    %f,%f,%f\n    %f,%f,%f\n"
+                         "    %f,%f,%f\n    %f,%f,%f\n",
+             label,
+             mat[0], mat[1], mat[2],
+             mat[4], mat[5], mat[6],
+             mat[8], mat[9], mat[10],
+             mat[12], mat[13], mat[14] );
+}
+#endif
+
+
 void es_updateUniformMatrix()
 {
     GLfloat mat[16];
@@ -106,12 +121,7 @@ void esRotatef( GLfloat angle, GLfloat x, GLfloat y, GLfloat z )
     ur_loadRotation( mat, axis, angle * DEG2RAD );
     ur_matrixMult( matrixTop, mat, matrixTop );
     es_matrixMod = 1;
-    /*
-    fprintf( stderr, "rot %f,%f,%f\n    %f,%f,%f\n    %f,%f%,f\n",
-            matrixTop[0], matrixTop[1], matrixTop[2],
-            matrixTop[4], matrixTop[5], matrixTop[6],
-            matrixTop[8], matrixTop[9], matrixTop[10] );
-    */
+    // dumpMatrix( "rot:", matrixTop );
 }
 
 
