@@ -3023,6 +3023,7 @@ dispatch:
             ES_UPDATE_MATRIX
             glDrawElements( GL_TRIANGLE_FAN, *pc++, GL_UNSIGNED_SHORT, 0 );
             break;
+
         case DP_DRAW_POINTS_I:
             REPORT_2( "DRAW_POINTS_I %d %d\n", pc[0], pc[1] );
             ES_UPDATE_MATRIX
@@ -3070,6 +3071,7 @@ dispatch:
                             NULL + pc[1] );
             pc += 2;
             break;
+
         case DP_DEPTH_ON:
             glEnable( GL_DEPTH_TEST );
             break;
@@ -3185,10 +3187,12 @@ dispatch:
             break;
 
         case DP_PUSH:
+            REPORT("PUSH");
             glPushMatrix();
             break;
 
         case DP_POP:
+            REPORT("POP");
             glPopMatrix();
             break;
 
@@ -3219,6 +3223,7 @@ dispatch:
             Number x, y;
             x.i = *pc++;
             y.i = *pc++;
+            REPORT_2( "TRANSLATE_XY %f %f\n", x.f, y.f );
             glTranslatef( x.f, y.f, 0.0f );
         }
             break;

@@ -975,6 +975,7 @@ static void itemview_render( GWidget* wp )
         glPushMatrix();
         glTranslatef( (GLfloat) wp->area.x,
                       (GLfloat) wp->area.y + ep->scrollY, 0.0f );
+        es_updateUniformMatrix();
 
         glUniform1i( ep->use_color, 1 );
 #ifdef GL_ES_VERSION_3_0

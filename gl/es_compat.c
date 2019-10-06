@@ -91,7 +91,10 @@ void esMultMatrixf( const GLfloat* mat )
 void esPopMatrix()
 {
     if( _mode == GL_MODELVIEW && matrixTop != viewStack )
+    {
         matrixTop -= 16;
+        es_matrixMod = 1;
+    }
 }
 
 
@@ -101,7 +104,7 @@ void esPushMatrix()
     {
         GLfloat* prev = matrixTop;
         matrixTop += 16;
-        memcpy( prev, matrixTop, 16 * sizeof(GLfloat) );
+        memcpy( matrixTop, prev, 16 * sizeof(GLfloat) );
     }
 }
 
