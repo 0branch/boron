@@ -120,8 +120,7 @@ demo-window: [
 
 view-cam: make orbit-cam [
     fov:   60.0
-    near:   1.0
-    far: 9000.0
+    clip:  1.0, 9000.0
     viewport: display-area
     orient: make-matrix 0.0, 0.0, 15.0
 

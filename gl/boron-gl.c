@@ -1810,7 +1810,8 @@ float number_f( const UCell* cell )
 */
 static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
 {
-    const UCell* cell;
+    const UCell* viewC;
+    const UCell* val;
     const UBuffer* mat;
     float fov;
     float w, h;
@@ -1819,19 +1820,31 @@ static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
     if( ctx->used < CAM_CTX_COUNT )
         return 0;
 
-    cell = ur_ctxCell( ctx, CAM_CTX_VIEWPORT );
-    if( ur_is(cell, UT_COORD) && (cell->coord.len > 3) )
+    viewC = ur_ctxCell( ctx, CAM_CTX_VIEWPORT );
+    if( ur_is(viewC, UT_COORD) && (viewC->coord.len > 3) )
     {
         for( i = 0; i < 4; ++i )
-            cam->view[ i ] = (float) cell->coord.n[ i ];
+            cam->view[ i ] = (float) viewC->coord.n[ i ];
 
-        cam->zNear = number_f( ur_ctxCell( ctx, CAM_CTX_NEAR ) );
-        cam->zFar  = number_f( ur_ctxCell( ctx, CAM_CTX_FAR ) );
-        fov        = number_f( ur_ctxCell( ctx, CAM_CTX_FOV ) );
+        // This clipping plane fetch matches dop_camera().
+        val = ur_ctxCell( ctx, CAM_CTX_CLIP );
+        if( ur_is(val, UT_VEC3) )
+        {
+            cam->zNear = val->vec3.xyz[0];
+            cam->zFar  = val->vec3.xyz[1];
+        }
+        else
+        {
+            cam->zNear =  0.1;
+            cam->zFar  = 10.0;
+        }
+
+        fov = number_f( ur_ctxCell( ctx, CAM_CTX_FOV ) );
         if( fov > 0.0 )
         {
-            w = (float) cell->coord.n[2];
-            h = (float) cell->coord.n[3];
+
+            w = (float) viewC->coord.n[2];
+            h = (float) viewC->coord.n[3];
             ur_perspective( cam->proj, fov, w / h, cam->zNear, cam->zFar );
 
             if( (mat = _cameraOrientMatrix( ut, ctx )) )

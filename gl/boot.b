@@ -5,14 +5,12 @@ camera: context [
     orient:   none          ; matrix
     viewport: 0,0,640,480   ; x,y,width,height
     fov:  65.0
-    near:  0.1
-    far:  10.0
+    clip: 0.1,10.0
 ]
 
 ortho-cam: make camera [
-    fov: 'ortho
-    near: -100.0
-    far:   100.0
+    fov: 'pixels            ; 'pixels to match viewport or left,right vec3!
+    clip: -10.0,10.0
 ]
 
 orbit-cam: make camera [

@@ -2490,6 +2490,7 @@ void ur_initDrawState( DPState* state )
 /*--------------------------------------------------------------------------*/
 
 
+/*
 double number_d( const UCell* cell )
 {
     if( ur_is(cell, UT_DOUBLE) )
@@ -2498,6 +2499,7 @@ double number_d( const UCell* cell )
         return (double) ur_int(cell);
     return 0.0;
 }
+*/
 
 
 //static GLfloat* _cameraMatrix = 0;
@@ -2506,7 +2508,6 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
 {
     GLfloat mat[16];
     double w, h;
-    double fov;
     double zNear, zFar;
     const UCell* val;
     const UBuffer* blk = ur_bufferE( ctxValBlk );
@@ -2517,28 +2518,47 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
     {
         // Coord elements: x, y, width, height.
 
-        glViewport( val->coord.n[0],
-                    val->coord.n[1],
-                    val->coord.n[2],
-                    val->coord.n[3] );
+        glViewport( val->coord.n[0], val->coord.n[1],
+                    val->coord.n[2], val->coord.n[3] );
 
         w = (double) val->coord.n[2];
         h = (double) val->coord.n[3];
 
-        glMatrixMode( GL_PROJECTION );
-
-        zNear = number_d( ctxCells + CAM_CTX_NEAR );
-        zFar  = number_d( ctxCells + CAM_CTX_FAR );
-        fov   = number_d( ctxCells + CAM_CTX_FOV );
-        if( fov > 0.0 )
+        val = ctxCells + CAM_CTX_CLIP;
+        if( ur_is(val, UT_VEC3) )
         {
-            ur_perspective( mat, fov, w / h, zNear, zFar );
-            glLoadMatrixf( mat );
+            zNear = val->vec3.xyz[0];
+            zFar  = val->vec3.xyz[1];
         }
         else
         {
+            zNear =  0.1;
+            zFar  = 10.0;
+        }
+
+        glMatrixMode( GL_PROJECTION );
+
+        val = ctxCells + CAM_CTX_FOV;
+        if( ur_is(val, UT_DOUBLE) )
+        {
+            ur_perspective( mat, ur_double(val), w / h, zNear, zFar );
+            glLoadMatrixf( mat );
+        }
+        else if( ur_is(val, UT_WORD) )
+        {
+            // 'pixels sets projection to show viewport pixels at a 1:1 ratio.
             glLoadIdentity();
             glOrtho( 0, w, 0, h, zNear, zFar );
+        }
+        else if( ur_is(val, UT_VEC3) )
+        {
+            // The FOV vec3 x,y are the orthographic left & right.
+            // Bottom & top are calculated from this and the viewport aspect.
+            double left  = val->vec3.xyz[0];
+            double right = val->vec3.xyz[1];
+            h = ((right - left) * h / w) * 0.5;
+            glLoadIdentity();
+            glOrtho( left, right, -h, h, zNear, zFar );
         }
 
         glMatrixMode( GL_MODELVIEW );
