@@ -57,6 +57,7 @@ LineEdit;
 
 #define LEDIT_APV           4
 #define LEDIT_ATTR_SIZE     (LEDIT_APV * sizeof(GLfloat))
+#define LEDIT_VERT_IN_BUF(max)  (LEDIT_APV * 2 + LEDIT_APV * 4 * max)
 
 #define MARGIN_L    8
 #define MARGIN_B    4
@@ -78,19 +79,15 @@ static UIndex ledit_vbo( UThread* ut, int maxChars )
     int indexCount = 2 + 6 * maxChars;
 
     resN = ur_makeVbo( ut, GL_DYNAMIC_DRAW,
-                       LEDIT_APV * 2 + LEDIT_APV * 4 * maxChars, NULL,
+                       LEDIT_VERT_IN_BUF(maxChars), NULL,
                        indexCount, NULL );
     buf = ur_buffer( resN );
     gbuf = vbo_bufIds(buf);
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, gbuf[1] );
     dst = (uint16_t*)
-#ifdef GL_ES_VERSION_3_0
-        glMapBufferRange( GL_ELEMENT_ARRAY_BUFFER, 0,
-                          sizeof(uint16_t) * indexCount,
-                          GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
-#else
-        glMapBuffer( GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY );
-#endif
+    glMapBufferRange( GL_ELEMENT_ARRAY_BUFFER, 0,
+                      sizeof(uint16_t) * indexCount,
+                      GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
     if( dst )
     {
         // Cursor verticies.
@@ -508,15 +505,14 @@ static void ledit_render( GWidget* wp )
             }
         }
 
-#ifndef GL_ES_VERSION_2_0
-        glEnableClientState( GL_TEXTURE_COORD_ARRAY );
-
         glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
 
         if( flagged( CHANGED ) )
         {
             clrFlag( CHANGED );
-            fdata = (float*) glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY );
+            fdata = (float*) glMapBufferRange( GL_ARRAY_BUFFER, 0,
+                            sizeof(float) * LEDIT_VERT_IN_BUF(ep->maxChars),
+                            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
             if( fdata )
             {
                 // Cursor verticies.
@@ -548,17 +544,21 @@ static void ledit_render( GWidget* wp )
             //printf( "KR ledit draw\n" );
         }
 
-        glTexCoordPointer( 2, GL_FLOAT, LEDIT_ATTR_SIZE, NULL + 0 );
-        glVertexPointer  ( 2, GL_FLOAT, LEDIT_ATTR_SIZE, NULL + 8 );
+        glEnableVertexAttribArray( ALOC_TEXTURE );
+
+        glVertexAttribPointer( ALOC_TEXTURE, 2, GL_FLOAT, GL_FALSE,
+                               LEDIT_ATTR_SIZE, NULL + 0 );
+        glVertexAttribPointer( ALOC_VERTEX, 3, GL_FLOAT, GL_FALSE,
+                               LEDIT_ATTR_SIZE, NULL + 8 );
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buf[1] );
 
-        glColor4f( 0.0, 0.0, 0.0, 1.0 );
+        glUniform4f( ULOC_COLOR, 0.0, 0.0, 0.0, 1.0 );  // glColor4f
+
         glDrawElements( GL_TRIANGLES, ep->drawn, GL_UNSIGNED_SHORT, NULL + 4 );
         if( gui_hasFocus( wp ) & GW_FOCUS_KEY )
             glDrawElements( GL_LINES, 2, GL_UNSIGNED_SHORT, 0 );
 
-        glDisableClientState( GL_TEXTURE_COORD_ARRAY );
-#endif
+        glDisableVertexAttribArray( ALOC_TEXTURE );
     }
 }
 

@@ -105,6 +105,24 @@ typedef struct
 DPState;
 
 
+// Hardcoded shader uniform locations (requires GLES 3.1).
+enum DPUniformLocation
+{
+    ULOC_TRANSFORM,         // layout(location = 0) uniform mat4 transform;
+    ULOC_COLOR              // layout(location = 1) uniform vec4 baseColor;
+};
+
+
+// Hardcoded vertex shader input locations for common attributes.
+enum DPAttribLocation
+{
+    ALOC_VERTEX,            // layout(location = 0) in vec3 position;
+    ALOC_TEXTURE,           // layout(location = 1) in vec2 uv;
+    ALOC_COLOR,             // layout(location = 2) in vec3 color;
+    ALOC_NORMAL             // layout(location = 3) in vec3 normal;
+};
+
+
 extern DPCompiler* gDPC;
 
 UIndex ur_makeDrawProg( UThread* );
