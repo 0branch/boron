@@ -17,7 +17,6 @@ static GLfloat  viewStack[ 16 * STACK_DEPTH ];
 static GLfloat* viewTop = viewStack;
 static GLenum _mode = GL_MODELVIEW;
 GLfloat* matrixTop = viewStack;
-GLint es_matrixLoc = 0;
 char  es_matrixUsed = 0;
 char  es_matrixMod = 0;
 
@@ -46,7 +45,7 @@ void es_updateUniformMatrix()
     // mat = projection * view * model
     ur_matrixMult( projection, matrixTop, mat );
 
-    glUniformMatrix4fv( es_matrixLoc, 1, GL_FALSE, mat );
+    glUniformMatrix4fv( 0 /*ULOC_TRANSFORM*/, 1, GL_FALSE, mat );
 }
 
 

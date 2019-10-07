@@ -389,8 +389,8 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
                          matrixTop[4], matrixTop[5], matrixTop[6],
                          matrixTop[8], matrixTop[9], matrixTop[10] );
                 */
-                es_matrixLoc = pi->location;
-                es_matrixUsed = 1;
+                if( pi->location == 0 )     // 0 = ULOC_TRANSFORM
+                    es_matrixUsed = 1;
                 //glUniformMatrix4fv( pi->location, 1, GL_FALSE, matrixTop );
                 break;
         }

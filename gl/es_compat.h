@@ -38,7 +38,6 @@ void es_updateUniformMatrix();
 
 
 extern GLfloat* matrixTop;
-extern GLint es_matrixLoc;
 extern char  es_matrixUsed;
 extern char  es_matrixMod;
 

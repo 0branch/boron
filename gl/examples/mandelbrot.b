@@ -11,8 +11,8 @@ do load %data/script/gradiant_tex.b
 
 mandel-sh: make shader! [
     vertex {{
-        #version 300 es
-        uniform mat4 matrix;
+        #version 310 es
+        layout(location = 0) uniform mat4 transform;
 
         layout(location = 0) in vec3 position;
         layout(location = 1) in vec2 uv;
@@ -20,12 +20,12 @@ mandel-sh: make shader! [
 
         void main() {
             texCoord = uv;
-            gl_Position = matrix * vec4(position, 1.0);
+            gl_Position = transform * vec4(position, 1.0);
         }
     }}
 
     fragment {
-#version 300 es
+#version 310 es
 precision mediump float;
 
 uniform sampler2D cmap;

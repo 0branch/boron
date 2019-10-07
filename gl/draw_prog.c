@@ -37,6 +37,14 @@
         es_updateUniformMatrix();
 
 
+// Hardcoded shader uniform locations (requires GLES 3.1).
+enum DPUniformLocation
+{
+    ULOC_TRANSFORM,         // layout(location = 0) uniform mat4 transform;
+    ULOC_COLOR              // layout(location = 1) uniform vec4 baseColor;
+};
+
+
 // Hardcoded vertex shader input locations for common attibutes.
 enum DPAttribLocation
 {
@@ -1652,12 +1660,15 @@ image_next:
                 }
                 else
                 {
+                    // NOTE: An active shader is not available when compiling
+                    // widget style fragments, so explicit uniform location
+                    // is used (ULOC_COLOR).
+
                     uint32_t color = 0;
-                    uint8_t* cp = (uint8_t*) &color;
                     int cop;
 
                     PC_VALUE(val)
-                    cop = cellToColorUB( val, cp );
+                    cop = cellToColorUB( val, (uint8_t*) &color );
                     if( cop == 3 )
                         cop = DP_COLOR3;
                     else if( cop == 4 )
@@ -3169,26 +3180,28 @@ dispatch:
             break;
 #endif
         case DP_COLOR3:
-#ifdef GL_ES_VERSION_2_0
-            pc++;
-#else
-            glColor3ubv( (GLubyte*) pc++ );
-#endif
+        {
+            uint8_t* cp = (uint8_t*) pc++;
+            glUniform4f( ULOC_COLOR, ((GLfloat) cp[0]) / 255.0f,
+                                     ((GLfloat) cp[1]) / 255.0f,
+                                     ((GLfloat) cp[2]) / 255.0f, 1.0f );
+            REPORT_1("COLOR3 %08X\n", pc[-1]);
+            //glColor3ubv( (GLubyte*) pc++ );
+        }
             break;
 
         case DP_COLOR4:
-#ifdef GL_ES_VERSION_2_0
-            pc++;
-#else
-            glColor4ubv( (GLubyte*) pc++ );
-#endif
+        {
+            uint8_t* cp = (uint8_t*) pc++;
+            glUniform4f( ULOC_COLOR, ((GLfloat) cp[0]) / 255.0f,
+                                     ((GLfloat) cp[1]) / 255.0f,
+                                     ((GLfloat) cp[2]) / 255.0f,
+                                     ((GLfloat) cp[3]) / 255.0f );
+            REPORT_1("COLOR4 %08X\n", pc[-1]);
+            //glColor4ubv( (GLubyte*) pc++ );
+        }
             break;
-#if 0
-        case DP_COLOR3F:
-            glColor3fv( (GLfloat*) pc );
-            pc += 3;
-            break;
-#endif
+
         case DP_COLOR_WORD:
         {
 #ifdef GL_ES_VERSION_2_0
