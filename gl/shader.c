@@ -349,7 +349,11 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
                 glUniform3fv( pi->location, 1, cval->vec3.xyz );
                 break;
 
-            //case GL_FLOAT_VEC4:
+            case GL_FLOAT_VEC4:
+                glUniform4f( pi->location, cval->vec3.xyz[0],
+                                           cval->vec3.xyz[1],
+                                           cval->vec3.xyz[2], 1.0f );
+                break;
 
             case GL_INT:
             case GL_BOOL:

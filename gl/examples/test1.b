@@ -13,46 +13,42 @@ fontA: make font!
 ;tex: load-texture %/home/karl/src/primal/gui/icons/logo.png
 
 
-image-sh: make shader! [
-    vertex {
-void main() {
-    gl_TexCoord[0] = gl_MultiTexCoord0;
-    gl_Position = ftransform();
-}
-}
-    fragment {
-uniform sampler2D cmap;
-void main() {
-    gl_FragColor = texture2D(cmap, gl_TexCoord[0].st);
-}
-}
+test-sh: make shader! [
+    vertex {{
+        #version 310 es
+        layout(location = 0) uniform mat4 transform;
+        layout(location = 0) in vec3 position;
+        layout(location = 1) in vec2 uv;
+        out vec2 texCoord;
+        void main() {
+            texCoord = uv;
+            gl_Position = transform * vec4(position, 1.0);
+        }
+    }}
+    fragment {{
+        #version 310 es
+        precision mediump float;
+        layout(location = 1) uniform vec4 color;
+        uniform bool test_alpha;
+        uniform sampler2D cmap;
+        in vec2 texCoord;
+        out vec4 fragColor;
+        void main() {
+            vec4 texel = texture(cmap, texCoord);
+            if( test_alpha && texel.a == 0.0 )
+                discard;
+            fragColor = color * texel;
+        }
+    }}
+    default [
+        color: 1.0,1.0,1.0
+        test_alpha: false
+        cmap: tex
+    ]
 ]
 
-text-sh: make shader! [
-    vertex {
-void main() {
-    gl_FrontColor = gl_Color;
-    gl_TexCoord[0] = gl_MultiTexCoord0;
-    gl_Position = ftransform();
-}
-}
-    fragment {
-uniform sampler2D cmap;
-void main() {
-    vec4 texel = texture2D(cmap, gl_TexCoord[0].st);
-    if( texel.a == 0.0 )
-        discard;
-    gl_FragColor = gl_Color * texel;
-}
-}
-]
 
-
-image-sh/cmap: tex
-text-sh/cmap: tex
-
-
-box-sh: copy image-sh
+box-sh: copy test-sh
 box-sh/cmap: load-texture %data/image/color_numbers.png
 box-dl: draw-list append [
     scale :zoom
@@ -65,14 +61,15 @@ box-dl: draw-list append [
 font-dl: draw-list [
     blend off
 
-    shader image-sh
+    shader test-sh
+    uniform test_alpha false
     image tex
 
     font fontA
     color 255,155,10
    ;color 255,255,255
     blend trans
-    shader text-sh
+    uniform test_alpha true
     text 10,300 "Hello World!"
 
     text 10,280 "Zoom: "
