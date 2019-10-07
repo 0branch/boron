@@ -41,9 +41,9 @@
 enum DPAttribLocation
 {
     ALOC_VERTEX,            // layout(location = 0) in vec3 position;
-    ALOC_NORMAL,            // layout(location = 1) in vec3 normal;
+    ALOC_TEXTURE,           // layout(location = 1) in vec2 uv;
     ALOC_COLOR,             // layout(location = 2) in vec3 color;
-    ALOC_TEXTURE            // layout(location = 3) in vec2 uv;
+    ALOC_NORMAL             // layout(location = 3) in vec3 normal;
 };
 
 
