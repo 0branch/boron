@@ -99,7 +99,7 @@ enum DPOpcode
     DP_POINT_SPRITE_OFF,
     DP_COLOR3,              // color
     DP_COLOR4,              // color
-    DP_COLOR_INDEX,         // color-id
+    DP_COLOR_GREY,          // greyf
     DP_COLOR_WORD,          // blkN index
     DP_PUSH,
     DP_POP,
@@ -1659,20 +1659,15 @@ image_next:
                     {
                         typeError( "color expected int!/coord!/vec3!" );
                     }
-                    // Use DP_COLOR_INDEX if possible.
+                    // Use DP_COLOR_GREY if possible.
                     if( color.b[3] == 255 )
                     {
-                        if( color.b[0] == 0 && color.b[1] == 0 &&
-                            color.b[2] == 0 )
+                        int v = color.b[0];
+                        if( v == color.b[1] && v == color.b[2] )
                         {
-                            color.i = 0;    // QC_Black
-                            cop = DP_COLOR_INDEX;
-                        }
-                        else if( color.b[0] == 255 && color.b[1] == 255 &&
-                                 color.b[2] == 255 )
-                        {
-                            color.i = 4;    // QC_White
-                            cop = DP_COLOR_INDEX;
+                            // Color is some shade of grey.
+                            color.f = ((float) v) / 255.0f;
+                            cop = DP_COLOR_GREY;
                         }
                     }
                     emitOp1( cop, color );
@@ -2747,13 +2742,6 @@ void dop_shadow_end()
 /*--------------------------------------------------------------------------*/
 
 
-static const GLfloat _quickColorTable[2*4] =
-{
-    0.0f, 0.0f, 0.0f, 1.0f,     // QC_Black
-    1.0f, 1.0f, 1.0f, 1.0f      // QC_White
-};
-
-
 /*
   \param ds     Parent draw program state.  May be zero.
   \param n      Draw program buffer index.
@@ -3207,9 +3195,13 @@ dispatch:
         }
             break;
 
-        case DP_COLOR_INDEX:
-            glUniform4fv( ULOC_COLOR, 1, _quickColorTable + *pc++ );
-            REPORT_1("COLOR_INDEX %d\n", pc[-1]);
+        case DP_COLOR_GREY:
+        {
+            Number n;
+            n.i = *pc++;
+            glUniform4f( ULOC_COLOR, n.f, n.f, n.f, 1.0f );
+            REPORT_1("COLOR_GREY %f\n", n.f);
+        }
             break;
 
         case DP_COLOR_WORD:
