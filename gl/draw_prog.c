@@ -99,6 +99,7 @@ enum DPOpcode
     DP_POINT_SPRITE_OFF,
     DP_COLOR3,              // color
     DP_COLOR4,              // color
+    DP_COLOR_INDEX,         // color-id
     DP_COLOR_WORD,          // blkN index
     DP_PUSH,
     DP_POP,
@@ -173,6 +174,7 @@ typedef union
 {
     float f;
     uint32_t i;
+    uint8_t b[4];
 }
 Number;
 
@@ -1395,29 +1397,30 @@ static int cellToColorUB( const UCell* pc, uint8_t* col )
 {
     if( ur_is(pc, UT_INT) )
     {
-        col[0] = (ur_int(pc) >> 16) & 0xff;
-        col[1] = (ur_int(pc) >>  8) & 0xff;
-        col[2] =  ur_int(pc) & 0xff;
-        return 3;
+        uint32_t n = ur_int(pc);
+        col[0] = (n >> 16) & 0xff;
+        col[1] = (n >>  8) & 0xff;
+        col[2] =  n & 0xff;
+        goto color3;
     }
     else if( ur_is(pc, UT_COORD) )
     {
         col[0] = pc->coord.n[0];
         col[1] = pc->coord.n[1];
         col[2] = pc->coord.n[2];
-        if( pc->coord.len > 3 )
-        {
-            col[3] = pc->coord.n[3];
-            return 4;
-        }
-        return 3;
+        if( pc->coord.len < 4 )
+            goto color3;
+        col[3] = pc->coord.n[3];
+        return DP_COLOR4;
     }
     else if( ur_is(pc, UT_VEC3) )
     {
         col[0] = (uint8_t) (pc->vec3.xyz[0] * 255.0);
         col[1] = (uint8_t) (pc->vec3.xyz[1] * 255.0);
         col[2] = (uint8_t) (pc->vec3.xyz[2] * 255.0);
-        return 3;
+color3:
+        col[3] = 0xff;
+        return DP_COLOR3;
     }
     return 0;
 }
@@ -1646,18 +1649,31 @@ image_next:
                     // widget style fragments, so explicit uniform location
                     // is used (ULOC_COLOR).
 
-                    uint32_t color = 0;
+                    Number color;
                     int cop;
 
                     PC_VALUE(val)
-                    cop = cellToColorUB( val, (uint8_t*) &color );
-                    if( cop == 3 )
-                        cop = DP_COLOR3;
-                    else if( cop == 4 )
-                        cop = DP_COLOR4;
-                    else
+                    color.i = 0;
+                    cop = cellToColorUB( val, color.b );
+                    if( ! cop )
                     {
                         typeError( "color expected int!/coord!/vec3!" );
+                    }
+                    // Use DP_COLOR_INDEX if possible.
+                    if( color.b[3] == 255 )
+                    {
+                        if( color.b[0] == 0 && color.b[1] == 0 &&
+                            color.b[2] == 0 )
+                        {
+                            color.i = 0;    // QC_Black
+                            cop = DP_COLOR_INDEX;
+                        }
+                        else if( color.b[0] == 255 && color.b[1] == 255 &&
+                                 color.b[2] == 255 )
+                        {
+                            color.i = 4;    // QC_White
+                            cop = DP_COLOR_INDEX;
+                        }
                     }
                     emitOp1( cop, color );
                 }
@@ -2731,6 +2747,13 @@ void dop_shadow_end()
 /*--------------------------------------------------------------------------*/
 
 
+static const GLfloat _quickColorTable[2*4] =
+{
+    0.0f, 0.0f, 0.0f, 1.0f,     // QC_Black
+    1.0f, 1.0f, 1.0f, 1.0f      // QC_White
+};
+
+
 /*
   \param ds     Parent draw program state.  May be zero.
   \param n      Draw program buffer index.
@@ -3184,16 +3207,23 @@ dispatch:
         }
             break;
 
+        case DP_COLOR_INDEX:
+            glUniform4fv( ULOC_COLOR, 1, _quickColorTable + *pc++ );
+            REPORT_1("COLOR_INDEX %d\n", pc[-1]);
+            break;
+
         case DP_COLOR_WORD:
         {
-#ifdef GL_ES_VERSION_2_0
-            pc += 2;
-#else
-            uint8_t color[ 4 ];
+            //uint8_t color[ 4 ];
             PC_WORD;
             if( ur_is(val, UT_VEC3) )
-                glColor3fv( val->vec3.xyz );
-            else if( cellToColorUB( val, color ) == 4 )
+            {
+                const float* c = val->vec3.xyz;
+                glUniform4f( ULOC_COLOR, c[0], c[1], c[2], 1.0f );
+            }
+#if 0
+            // TODO
+            else if( cellToColorUB( val, color ) == DP_COLOR4 )
                 glColor4ubv( color );
             else
                 glColor3ubv( color );
