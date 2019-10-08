@@ -467,17 +467,19 @@ CFUNC( uc_display_snap )
     GLint vp[ 4 ];  // x, y, w, h
     (void) a1;
 
+    // NOTE: GLES only supports reading in RGBA format from the GL_BACK buffer.
+    // Would like to grab the front buffer or we are likely to grab a blank
+    // screen (since key input is done after glClear).
+
     glGetIntegerv( GL_VIEWPORT, vp );
-    bin = ur_makeRaster( ut, UR_RAST_RGB, vp[2], vp[3], res );
+    bin = ur_makeRaster( ut, UR_RAST_RGBA, vp[2], vp[3], res );
     if( bin->ptr.b )
     {
-        // Grab front buffer or we are likely to grab a blank screen
-        // (since key input is done after glClear).
-#ifndef GL_ES_VERSION_2_0
-        glReadBuffer( GL_FRONT );
-#endif
-        glReadPixels( vp[0], vp[1], vp[2], vp[3], GL_RGB, GL_UNSIGNED_BYTE,
+        //glFinish();
+        glReadBuffer( GL_BACK );
+        glReadPixels( vp[0], vp[1], vp[2], vp[3], GL_RGBA, GL_UNSIGNED_BYTE,
                       ur_rastElem(bin) );
+        //printf( "KR readPixels error %X\n", glGetError() );
     }
     return UR_OK;
 }
