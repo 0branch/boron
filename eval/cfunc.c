@@ -4177,7 +4177,7 @@ bind_sb:
         ur_setId(args, UT_UNSET);       // Clear read CFUNC_OPTIONS.
         args[1] = *a1;
 
-        if( cfunc_read( ut, args + 1, res ) )
+        if( BENV->funcRead( ut, args + 1, res ) )
         {
             const uint8_t* cp;
             UBuffer* bin;

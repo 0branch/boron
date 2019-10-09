@@ -460,12 +460,21 @@ UStatus boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable
 void boron_overrideCFunc( UThread* ut, const char* name, BoronCFunc func )
 {
     UBuffer* ctx = ur_threadContext( ut );
-    int n = ur_ctxLookup( ctx, ur_intern( ut, name, strLen(name) ) );
+    int nameLen = strLen(name);
+    int n = ur_ctxLookup( ctx, ur_intern( ut, name, nameLen ) );
     if( n > -1 )
     {
         UCell* cell = ur_ctxCell( ctx, n );
         if( ur_is(cell, UT_CFUNC) )
+        {
             ((UCellFunc*) cell)->m.func = func;
+
+            // Special handling for 'read which is used internally by
+            // 'load (and thus by 'do & boron_load()).
+            if( nameLen == 4 &&
+                name[0]=='r' && name[1]=='e' && name[2]=='a' && name[3]=='d' )
+                BENV->funcRead = func;
+        }
     }
 }
 
@@ -731,6 +740,7 @@ UThread* boron_makeEnv( UEnvParameters* par )
     // Need to override some Urlan methods.
     dt_context.make = context_make_override;
 
+    BENV->funcRead = cfunc_read;
 
     ur_internAtoms( ut, "none true false file udp tcp thread"
         " func | local extern no-trace"

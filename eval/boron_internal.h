@@ -26,6 +26,7 @@ typedef struct
 {
     UEnv    env;
     UBuffer ports;
+    UStatus (*funcRead)( UThread*, UCell*, UCell* );
     UAtom   compileAtoms[5];
 }
 BoronEnv;

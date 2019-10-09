@@ -471,7 +471,6 @@ void android_main( struct android_app* app )
     ut = boron_makeEnv( boron_envParam(&param) );
 #else
     ut = boron_makeEnvGL( boron_envParam(&param) );
-    // NOTE: This does not change the version of read used by 'load.
     boron_overrideCFunc( ut, "read", cf_assetRead );
 #endif
     }
