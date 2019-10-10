@@ -173,6 +173,7 @@ static void ledit_pasteCB( const char* data, int len, void* user )
 
     if( str->elemSize == 1 )
     {
+        // TODO: Limit data to ep->maxChars.
         ur_arrExpand( str, ep->editPos, len );
         memcpy( str->ptr.b + ep->editPos, data, len );
         ep->editPos += len;
@@ -348,9 +349,15 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             break;
 
         case GLV_EVENT_FOCUS_IN:
+#ifdef __ANDROID__
+            glv_showSoftInput( glEnv.view, 1 );
+#endif
             break;
 
         case GLV_EVENT_FOCUS_OUT:
+#ifdef __ANDROID__
+            glv_showSoftInput( glEnv.view, 0 );
+#endif
             ledit_setState( ut, ep, LEDIT_STATE_DISPLAY );
             break;
     }

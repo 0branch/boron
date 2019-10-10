@@ -42,6 +42,12 @@
 #include "os.h"
 #include "draw_prog.h"
 
+// Send debug printfs to Android log.
+#ifdef __ANDROID__
+#include <android/log.h>
+#define printf(...) __android_log_print(ANDROID_LOG_INFO,"gui",__VA_ARGS__)
+#endif
+
 
 extern void block_markBuf( UThread* ut, UBuffer* buf );
 extern int boron_doVoid( UThread* ut, const UCell* blkC );
@@ -960,7 +966,10 @@ static void _removeFocus( GUIRoot* ui, GWidget* wp )
             ui->mouseGrabbed = 0;
     }
     if( ui->keyFocus == wp )
+    {
         ui->keyFocus = 0;
+        //glv_showSoftInput( glEnv.view, 0 );
+    }
 
     EACH_CHILD( wp, it )
         _removeFocus( ui, it );
@@ -1008,6 +1017,7 @@ void gui_setKeyFocus( GWidget* wp )
     if( isRoot(ui) )
     {
         ui->keyFocus = wp;
+        //glv_showSoftInput( glEnv.view, 1 );
     }
 }
 
@@ -1130,8 +1140,8 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
     GUIRoot* ep = (GUIRoot*) wp;
 
 #if 0
-    printf( "KR dispatch %d  mouseFocus %p  keyFocus %p\n",
-            ev->type, ep->mouseFocus, ep->keyFocus );
+    printf( "root_dispatch type:%d code:%d xy:%d,%d focus (mouse:%p key:%p)\n",
+            ev->type, ev->code, ev->x, ev->y, ep->mouseFocus, ep->keyFocus );
 #endif
 
     switch( ev->type )
@@ -1149,12 +1159,9 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 
         case GLV_EVENT_BUTTON_DOWN:
             ++ep->motionTracking;
-            if( ep->lastMotion.type == GLV_EVENT_MOTION )
-            {
-                cw = activeChildAt( wp, &ep->lastMotion, 1 );
-                gui_setMouseFocus( ep, cw );
-                ep->lastMotion.type = 0;
-            }
+
+            cw = activeChildAt( wp, ev, 1 );
+            gui_setMouseFocus( ep, cw );
             if( (cw = ep->mouseFocus) )
                 goto dispatch_used;
             break;
