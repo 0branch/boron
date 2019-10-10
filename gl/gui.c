@@ -1159,6 +1159,8 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 
         case GLV_EVENT_BUTTON_DOWN:
             ++ep->motionTracking;
+            if( ep->mouseGrabbed && (cw = ep->mouseFocus) )
+                goto dispatch;
 
             cw = activeChildAt( wp, ev, 1 );
             gui_setMouseFocus( ep, cw );
@@ -1168,6 +1170,8 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 
         case GLV_EVENT_BUTTON_UP:
             --ep->motionTracking;
+            if( ep->mouseGrabbed && (cw = ep->mouseFocus) )
+                goto dispatch;
             // Fall through...
 
         case GLV_EVENT_WHEEL:
@@ -2017,15 +2021,24 @@ static void window_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             break;
 
         case GLV_EVENT_BUTTON_UP:
-            if( ev->code == GLV_BUTTON_LEFT )
+            if( wp->flags & WINDOW_DRAG )
             {
                 EX_PTR;
-                wp->flags &= ~WINDOW_DRAG;
-                gui_ungrabMouse( wp );
-                gui_move( wp, wp->area.x + ep->transX,
-                              wp->area.y + ep->transY );
-                ep->transX = ep->transY = 0;
-                return;
+                if( ev->code == GLV_BUTTON_LEFT )
+                {
+                    gui_move( wp, wp->area.x + ep->transX,
+                                  wp->area.y + ep->transY );
+end_drag:
+                    ep->transX = ep->transY = 0;
+                    wp->flags &= ~WINDOW_DRAG;
+                    gui_ungrabMouse( wp );
+                    return;
+                }
+                else if( ev->code == GLV_BUTTON_RIGHT )
+                {
+                    // Cancel drag.
+                    goto end_drag;
+                }
             }
             break;
 
