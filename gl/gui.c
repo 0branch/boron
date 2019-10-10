@@ -1924,6 +1924,7 @@ GWindow;
 
 #define WINDOW_HBOX     GW_FLAG_USER1
 #define WINDOW_DRAG     GW_FLAG_USER2
+#define WINDOW_PRESENT  GW_FLAG_USER3
 
 
 /*-wid-
@@ -2078,6 +2079,19 @@ static void window_layout( GWidget* wp )
         wp->area.w = hint.minW;
     if( wp->area.h < hint.minH )
         wp->area.h = hint.minH;
+
+    if( wp->flags & WINDOW_PRESENT )
+    {
+        // Initial window placement.
+        // For now this means centering it on screen.  In the future there
+        // could be some presentation policy.
+        wp->flags &= ~WINDOW_PRESENT;
+        if( wp->parent )
+        {
+            wp->area.x = (wp->parent->area.w - wp->area.w) / 2;
+            wp->area.y = (wp->parent->area.h - wp->area.h) / 2;
+        }
+    }
 
     // Set draw list variables.
     rc = style + CI_STYLE_LABEL;
@@ -2387,7 +2401,7 @@ GWidgetClass wclass_window =
     window_make,            widget_free,        window_mark,
     window_dispatch,        window_sizeHint,    window_layout,
     window_render,          eventContextSelect,
-    0, GW_UPDATE_LAYOUT | GW_SELF_LAYOUT
+    0, GW_UPDATE_LAYOUT | GW_SELF_LAYOUT | WINDOW_PRESENT
 };
 
 
