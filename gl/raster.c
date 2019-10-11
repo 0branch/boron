@@ -162,17 +162,17 @@ void ur_rasterBlit( const RasterHead* src, uint16_t* srcRect,
             dp += dskip;
         }
     }
-#if 0
     else if( src->format == UR_RAST_GRAY )
     {
-        // Need some way to specify what happens on each channel.
-        // For example, [255 255 255 gray] and [gray gray gray 255] are
-        // very different.
-        char* end;
+        const uint8_t* end;
         int gray;
 
         sskip -= sr.w;
         dskip -= dr.w * des;
+
+        // Copy gray value to the alpha channel (if present).  This is good
+        // for converting font! rasters to color images, but in the future a
+        // way to specify what happens on each channel may be desired.
 
         if( dest->format == UR_RAST_RGBA )
         {
@@ -182,10 +182,10 @@ void ur_rasterBlit( const RasterHead* src, uint16_t* srcRect,
                 while( sp != end )
                 {
                     gray = *sp++;
-                    *dp++ = gray;
-                    *dp++ = gray;
-                    *dp++ = gray;
                     *dp++ = 255;
+                    *dp++ = 255;
+                    *dp++ = 255;
+                    *dp++ = gray;
                 }
                 sp += sskip;
                 dp += dskip;
@@ -208,7 +208,6 @@ void ur_rasterBlit( const RasterHead* src, uint16_t* srcRect,
             }
         }
     }
-#endif
 }
 
 
