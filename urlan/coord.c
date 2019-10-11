@@ -161,75 +161,91 @@ int coord_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 int coord_operate( UThread* ut, const UCell* a, const UCell* b, UCell* res,
                    int op )
 {
-    if( ur_is( a, UT_COORD ) && ur_is( b, UT_COORD ) )
-    {
-        const UCell* big;
-        int i;
-        int len = a->coord.len;
-        if( len > b->coord.len )
-        {
-            len = b->coord.len;
-            big = a;
-        }
-        else
-            big = b;
+    UCell tmp;
+    const UCell* big;
+    int len;
+    int i;
 
-        ur_setId(res, UT_COORD);
-        res->coord.len = big->coord.len;
+    if( ur_is(a, UT_COORD) )
+    {
+        big = a;
+        len = a->coord.len;
+        if( ur_is(b, UT_INT) )
+        {
+            int16_t val = ur_int(b);
+            for( i = 0; i < len; ++i )
+                tmp.coord.n[ i ] = val;
+            b = &tmp;
+            goto compute;
+        }
+        else if( ur_is(b, UT_COORD) )
+        {
+            if( len > b->coord.len )
+                len = b->coord.len;
+            else
+                big = b;
+            goto compute;
+        }
+    }
+    return ur_error( ut, UR_ERR_TYPE, "coord! operator exepected coord!" );
+
+compute:
+
+    ur_setId(res, UT_COORD);
+    res->coord.len = big->coord.len;
 
 #define coord_op(OP) res->coord.n[i] = a->coord.n[i] OP b->coord.n[i]
 
-        switch( op )
-        {
-            case UR_OP_ADD:
-                for( i = 0; i < len; ++i )
-                    coord_op( + );
-                break;
-            case UR_OP_SUB:
-                for( i = 0; i < len; ++i )
-                    coord_op( - );
-                break;
-            case UR_OP_MUL:
-                for( i = 0; i < len; ++i )
-                    coord_op( * );
-                break;
-            case UR_OP_DIV:
-                for( i = 0; i < len; ++i )
-                {
-                    if( b->coord.n[i] == 0 )
-                        goto div_by_zero;
-                    coord_op( / );
-                }
-                break;
-            case UR_OP_MOD:
-                for( i = 0; i < len; ++i )
-                {
-                    if( b->coord.n[i] == 0 )
-                        goto div_by_zero;
-                    coord_op( % );
-                }
-                break;
-            case UR_OP_AND:
-                for( i = 0; i < len; ++i )
-                    coord_op( & );
-                break;
-            case UR_OP_OR:
-                for( i = 0; i < len; ++i )
-                    coord_op( | );
-                break;
-            case UR_OP_XOR:
-                for( i = 0; i < len; ++i )
-                    coord_op( ^ );
-                break;
-            default:
-                return unset_operate( ut, a, b, res, op );
-        }
-
-        for( ; i < big->coord.len; ++i )
-            res->coord.n[i] = big->coord.n[i];
-        return UR_OK;
+    switch( op )
+    {
+        case UR_OP_ADD:
+            for( i = 0; i < len; ++i )
+                coord_op( + );
+            break;
+        case UR_OP_SUB:
+            for( i = 0; i < len; ++i )
+                coord_op( - );
+            break;
+        case UR_OP_MUL:
+            for( i = 0; i < len; ++i )
+                coord_op( * );
+            break;
+        case UR_OP_DIV:
+            for( i = 0; i < len; ++i )
+            {
+                if( b->coord.n[i] == 0 )
+                    goto div_by_zero;
+                coord_op( / );
+            }
+            break;
+        case UR_OP_MOD:
+            for( i = 0; i < len; ++i )
+            {
+                if( b->coord.n[i] == 0 )
+                    goto div_by_zero;
+                coord_op( % );
+            }
+            break;
+        case UR_OP_AND:
+            for( i = 0; i < len; ++i )
+                coord_op( & );
+            break;
+        case UR_OP_OR:
+            for( i = 0; i < len; ++i )
+                coord_op( | );
+            break;
+        case UR_OP_XOR:
+            for( i = 0; i < len; ++i )
+                coord_op( ^ );
+            break;
+        default:
+            return unset_operate( ut, a, b, res, op );
     }
-    return ur_error( ut, UR_ERR_TYPE, "coord! operator exepected coord!" );
+
+    for( ; i < big->coord.len; ++i )
+        res->coord.n[i] = big->coord.n[i];
+
+    return UR_OK;
 
 div_by_zero:
 

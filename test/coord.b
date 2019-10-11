@@ -15,6 +15,13 @@ probe mul 1,2 3,4,5
 probe div 5,2 2,1
 probe and 5,2 2,2
 
+print "---- math int!"
+probe add 1,2 3
+probe sub 1,2,3,4 3
+probe mul 1,2,3,4,5,6 3
+probe div 5,2 2
+probe and 5,2 2
+
 print "---- slice"
 x: 0,1,2,3,4
 probe slice x 2
