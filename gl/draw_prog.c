@@ -32,10 +32,6 @@
 #include "geo.h"
 #include "quat.h"
 
-#define ES_UPDATE_MATRIX \
-    if( es_matrixUsed && es_matrixMod ) \
-        es_updateUniformMatrix();
-
 
 enum DPOpcode
 {
@@ -2470,14 +2466,21 @@ static void disableVertexAttrib( struct ClientState* cs )
 
 
 #if 0
-#define REPORT(str)             printf(str)
+#define REPORT(...)             printf(__VA_ARGS__)
 #define REPORT_1(str,v1)        printf(str,v1)
 #define REPORT_2(str,v1,v2)     printf(str,v1,v2)
 #else
-#define REPORT(str)
+#define REPORT(...)
 #define REPORT_1(str,v1)
 #define REPORT_2(str,v1,v2)
 #endif
+
+
+#define ES_UPDATE_MATRIX \
+    if( es_matrixUsed && es_matrixMod ) { \
+        REPORT("  (UMatrix)\n"); \
+        es_updateUniformMatrix(); \
+    }
 
 
 void ur_initDrawState( DPState* state )
@@ -2857,6 +2860,8 @@ dispatch:
         case DP_SHADER:
         {
             GLuint prog = *pc++;
+            REPORT( "SHADER %d %s\n", prog,
+                    (ds->currentProgram != prog) ? "Use" : "(current)" );
             if( ds->currentProgram != prog )
             {
                 ds->currentProgram = prog;
@@ -2871,6 +2876,9 @@ dispatch:
             const UBuffer* blk;
             const Shader* sh;
             GLuint prog = *pc++;
+
+            REPORT( "SHADER_CTX %d %s\n", prog,
+                    (ds->currentProgram != prog) ? "Use" : "(current)" );
 
             if( ds->currentProgram != prog )
             {
@@ -3097,27 +3105,33 @@ dispatch:
             break;
 
         case DP_DEPTH_ON:
+            REPORT("DEPTH_ON\n");
             glEnable( GL_DEPTH_TEST );
             break;
 
         case DP_DEPTH_OFF:
+            REPORT("DEPTH_OFF\n");
             glDisable( GL_DEPTH_TEST );
             break;
 
         case DP_BLEND_ON:
+            REPORT("BLEND_ON\n");
             glEnable( GL_BLEND );
             break;
 
         case DP_BLEND_OFF:
+            REPORT("BLEND_OFF\n");
             glDisable( GL_BLEND );
             break;
 
         case DP_BLEND_ADD:      // Additive.
+            REPORT("BLEND_ADD\n");
             glEnable( GL_BLEND );
             glBlendFunc( GL_SRC_ALPHA, GL_ONE );
             break;
 
         case DP_BLEND_BURN:     // Controlled additivity.
+            REPORT("BLEND_BURN\n");
             glEnable( GL_BLEND );
             glBlendFunc( GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
             break;
@@ -3128,31 +3142,38 @@ dispatch:
             break;
 #endif
         case DP_BLEND_TRANS:    // Standard Transparency.
+            REPORT("BLEND_TRANS\n");
             glEnable( GL_BLEND );
             glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
             break;
 
         case DP_CULL_ON:
+            REPORT("CULL_ON\n");
             glEnable( GL_CULL_FACE );
             break;
 
         case DP_CULL_OFF:
+            REPORT("CULL_OFF\n");
             glDisable( GL_CULL_FACE );
             break;
 
         case DP_COLOR_MASK_ON:
+            REPORT("COLOR_MASK_ON\n");
             glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
             break;
 
         case DP_COLOR_MASK_OFF:
+            REPORT("COLOR_MASK_ON\n");
             glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
             break;
 
         case DP_DEPTH_MASK_ON:
+            REPORT("DEPTH_MASK_ON\n");
             glDepthMask( GL_TRUE );
             break;
 
         case DP_DEPTH_MASK_OFF:
+            REPORT("DEPTH_MASK_OFF\n");
             glDepthMask( GL_FALSE );
             break;
 #ifndef GL_ES_VERSION_2_0
@@ -3178,7 +3199,7 @@ dispatch:
             glUniform4f( ULOC_COLOR, ((GLfloat) cp[0]) / 255.0f,
                                      ((GLfloat) cp[1]) / 255.0f,
                                      ((GLfloat) cp[2]) / 255.0f, 1.0f );
-            REPORT_1("COLOR3 %08X\n", pc[-1]);
+            REPORT_1("COLOR3 0x%08X\n", pc[-1]);
             //glColor3ubv( (GLubyte*) pc++ );
         }
             break;
@@ -3190,7 +3211,7 @@ dispatch:
                                      ((GLfloat) cp[1]) / 255.0f,
                                      ((GLfloat) cp[2]) / 255.0f,
                                      ((GLfloat) cp[3]) / 255.0f );
-            REPORT_1("COLOR4 %08X\n", pc[-1]);
+            REPORT_1("COLOR4 0x%08X\n", pc[-1]);
             //glColor4ubv( (GLubyte*) pc++ );
         }
             break;
@@ -3206,30 +3227,44 @@ dispatch:
 
         case DP_COLOR_WORD:
         {
-            //uint8_t color[ 4 ];
+            GLfloat col[4];
+
             PC_WORD;
             if( ur_is(val, UT_VEC3) )
             {
-                const float* c = val->vec3.xyz;
-                glUniform4f( ULOC_COLOR, c[0], c[1], c[2], 1.0f );
+                memcpy( col, val->vec3.xyz, sizeof(float) * 3 );
+                col[3] = 1.0f;
             }
-#if 0
-            // TODO
-            else if( cellToColorUB( val, color ) == DP_COLOR4 )
-                glColor4ubv( color );
-            else
-                glColor3ubv( color );
-#endif
+            else if( ur_is(val, UT_COORD) )
+            {
+                int16_t* cp = val->coord.n;
+                col[0] = ((GLfloat) cp[0]) / 255.0f;
+                col[1] = ((GLfloat) cp[1]) / 255.0f;
+                col[2] = ((GLfloat) cp[2]) / 255.0f;
+                col[3] = (val->coord.len > 3) ? ((GLfloat) cp[3])/255.0f : 1.0f;
+            }
+            else if( ur_is(val, UT_INT) )
+            {
+                uint32_t n = ur_int(val);
+                col[0] = ((GLfloat) ((n >> 16) & 0xff)) / 255.0f,
+                col[1] = ((GLfloat) ((n >>  8) & 0xff)) / 255.0f,
+                col[2] = ((GLfloat) (n & 0xff)) / 255.0f,
+                col[3] = 1.0f;
+            }
+            REPORT( "COLOR_WORD %d %d %s (%f %f %f %f)\n", pc[-2], pc[-1],
+                    ur_atomCStr(ut, ur_type(val)),
+                    col[0], col[1], col[2], col[3] );
+            glUniform4fv( ULOC_COLOR, 1, col );
         }
             break;
 
         case DP_PUSH:
-            REPORT("PUSH");
+            REPORT("PUSH\n");
             glPushMatrix();
             break;
 
         case DP_POP:
-            REPORT("POP");
+            REPORT("POP\n");
             glPopMatrix();
             break;
 
@@ -3240,6 +3275,7 @@ dispatch:
             y.i = *pc++;
             z.i = *pc++;
             glTranslatef( x.f, y.f, z.f );
+            REPORT("TRANSLATE %f %f %f\n", x.f, y.f, z.f );
         }
             break;
 
@@ -3270,6 +3306,7 @@ dispatch:
             Number n;
             n.i = *pc++;
             glRotatef( n.f, 1.0, 0.0, 0.0 );
+            REPORT("ROTATE_X %f\n", n.f);
         }
             break;
 
@@ -3278,6 +3315,7 @@ dispatch:
             Number n;
             n.i = *pc++;
             glRotatef( n.f, 0.0, 1.0, 0.0 );
+            REPORT("ROTATE_Y %f\n", n.f);
         }
             break;
 
@@ -3286,6 +3324,7 @@ dispatch:
             Number n;
             n.i = *pc++;
             glRotatef( n.f, 0.0, 0.0, 1.0 );
+            REPORT("ROTATE_Z %f\n", n.f);
         }
             break;
 
@@ -3331,17 +3370,19 @@ dispatch:
         case DP_SCALE_WORD:
         {
             PC_WORD;
-            REPORT_2( "SCALE_WORD %d %d\n", pc[-2], pc[-1] );
             if( ur_is(val, UT_VEC3) )
             {
                 glScalef( val->vec3.xyz[0],
                           val->vec3.xyz[1],
                           val->vec3.xyz[2] );
+                REPORT( "SCALE_WORD %d %d [%f %f %f]\n", pc[-2], pc[-1],
+                        val->vec3.xyz[0], val->vec3.xyz[1], val->vec3.xyz[2] );
             }
             else if( ur_is(val, UT_DOUBLE) )
             {
                 GLfloat n = ur_double( val );
                 glScalef( n, n, n );
+                REPORT( "SCALE_WORD %d %d %f\n", pc[-2], pc[-1], n );
             }
         }
             break;
@@ -3356,6 +3397,7 @@ dispatch:
             break;
 
         case DP_FRAMEBUFFER:
+            REPORT("FRAMEBUFFER %d\n", *pc);
             glBindFramebuffer( GL_FRAMEBUFFER, *pc++ );
             break;
 
