@@ -378,7 +378,6 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
             case GL_SAMPLER_2D:
             case GL_SAMPLER_2D_SHADOW:
                 glActiveTexture( GL_TEXTURE0 + texUnit );
-                glEnable( GL_TEXTURE_2D );
                 glBindTexture( GL_TEXTURE_2D, ur_texId(cval) );
                 glUniform1i( pi->location, texUnit );
                 ++texUnit;
