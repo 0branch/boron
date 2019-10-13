@@ -23,6 +23,7 @@ char  es_matrixMod = 0;
 
 #if 0
 #include <stdio.h>
+#define DUMP(lab,mat)   dumpMatrix(lab, mat)
 void dumpMatrix( const char* label, const float* mat )
 {
     fprintf( stderr, "%s\n    %f,%f,%f\n    %f,%f,%f\n"
@@ -33,6 +34,8 @@ void dumpMatrix( const char* label, const float* mat )
              mat[8], mat[9], mat[10],
              mat[12], mat[13], mat[14] );
 }
+#else
+#define DUMP(lab,mat)
 #endif
 
 
@@ -46,6 +49,13 @@ void es_updateUniformMatrix()
     ur_matrixMult( projection, matrixTop, mat );
 
     glUniformMatrix4fv( 0 /*ULOC_TRANSFORM*/, 1, GL_FALSE, mat );
+    DUMP( "transform", mat );
+
+    if( es_matrixUsed > 1 )
+    {
+        DUMP( "modelView", matrixTop );
+        glUniformMatrix4fv( 2 /*ULOC_MODELVIEW*/, 1, GL_FALSE, matrixTop );
+    }
 }
 
 

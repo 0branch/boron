@@ -109,7 +109,8 @@ DPState;
 enum DPUniformLocation
 {
     ULOC_TRANSFORM,         // layout(location = 0) uniform mat4 transform;
-    ULOC_COLOR              // layout(location = 1) uniform vec4 baseColor;
+    ULOC_COLOR,             // layout(location = 1) uniform vec4 baseColor;
+    ULOC_MODELVIEW          // layout(location = 2) uniform mat4 modelView;
 };
 
 

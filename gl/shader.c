@@ -392,13 +392,18 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
                          matrixTop[4], matrixTop[5], matrixTop[6],
                          matrixTop[8], matrixTop[9], matrixTop[10] );
                 */
-                if( pi->location == 0 )     // 0 = ULOC_TRANSFORM
-                    es_matrixUsed = 1;
+                if( pi->location == 0 )         // 0 = ULOC_TRANSFORM
+                    es_matrixUsed |= 1;
+                else if( pi->location == 2 )    // 2 = ULOC_MODELVIEW
+                    es_matrixUsed |= 2;
                 //glUniformMatrix4fv( pi->location, 1, GL_FALSE, matrixTop );
                 break;
         }
         ++pi;
     }
+
+    if( es_matrixUsed )
+        es_matrixMod = 1;   // Trigger matrix uniform update for this shader.
 }
 
 
