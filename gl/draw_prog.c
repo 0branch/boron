@@ -559,13 +559,14 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk )
 
 typedef struct
 {
-    int dataType;       // UT_INT or UT_VECTOR
-    UIndex n;
+    uint16_t dataType;      // UT_INT or UT_VECTOR
+    uint16_t quads;         // Non-zero to emit two triangles per quad.
+    UIndex n;               // Number of vertices.
 }
 DPPrimRecord;
 
 
-static void dp_recordPrim( DPCompiler* emit, int dt, UIndex n )
+static void dp_recordPrim( DPCompiler* emit, int dt, int opcode, UIndex n )
 {
     DPPrimRecord* pr;
     UBuffer* arr = &emit->primRec;
@@ -573,6 +574,7 @@ static void dp_recordPrim( DPCompiler* emit, int dt, UIndex n )
     ur_arrExpand1( DPPrimRecord, arr, pr );
 
     pr->dataType = dt;
+    pr->quads = (opcode == DP_DRAW_QUADS);
     pr->n = n;
 }
 
@@ -647,9 +649,16 @@ static int genPrimitives( UThread* ut, DPCompiler* emit, int primOpcode,
         // an extra copy of the data (to store until genIndices).
 
         if( idxVec )
-            dp_recordPrim( emit, UT_VECTOR, idxVec->series.buf );
+            dp_recordPrim( emit, UT_VECTOR, primOpcode, idxVec->series.buf );
         else
-            dp_recordPrim( emit, UT_INT, elemCount );
+            dp_recordPrim( emit, UT_INT, primOpcode, elemCount );
+
+        if( primOpcode == DP_DRAW_QUADS )
+        {
+            // Quad converted to two triangles in _genIndices2.
+            primOpcode = DP_DRAW_TRIS;
+            elemCount += elemCount / 2;
+        }
 
         if( emit->indexCount )
         {
@@ -702,12 +711,28 @@ static void _genIndices2( UThread* ut, DPCompiler* emit, uint16_t* dst )
 
             offset += iarr->used;
         }
-        else
+        else    // UT_INT
         {
             int idx = offset;
-            offset += pr->n;
-            while( idx != offset )
-                *dst++ = idx++;
+            if( pr->quads )
+            {
+                offset += pr->n & ~3;
+                while( idx != offset )
+                {
+                    *dst++ = idx++;
+                    *dst++ = idx++;
+                    *dst++ = idx++;
+                    *dst++ = idx - 3;
+                    *dst++ = idx - 1;
+                    *dst++ = idx++;
+                }
+            }
+            else
+            {
+                offset += pr->n;
+                while( idx != offset )
+                    *dst++ = idx++;
+            }
         }
         ++pr;
     }
