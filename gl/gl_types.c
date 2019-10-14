@@ -561,8 +561,8 @@ static void texture_recycle( UThread* ut, int phase )
 #ifdef DEBUG
             GLenum err = glGetError();
             if( err )
-                printf( "texture_recycle: glGetError %s\n",
-                        gl_errorString( err ) );
+                printf( "texture_recycle: glGetError 0x%x (%s)\n",
+                        err, gl_errorString( err ) );
 #else
             glGetError();
 #endif

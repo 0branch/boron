@@ -2680,6 +2680,22 @@ static void _createDrawOpTable( UThread* ut )
 }
 
 
+#ifdef DEBUG
+void _debugGL( GLenum source, GLenum type, GLuint id, GLenum severity,
+               GLsizei length, const GLchar* message, const void* userParam )
+{
+    (void) severity;
+    (void) length;
+    (void) userParam;
+
+    fprintf( stderr, "GL DEBUG %d:%s 0x%x %s\n",
+             source,
+             (type == GL_DEBUG_TYPE_ERROR) ? " ERROR" : "",
+             id, message );
+}
+#endif
+
+
 #include "gl_types.c"
 #include "math3d.c"
 
@@ -2765,6 +2781,9 @@ UThread* boron_makeEnvGL( UEnvParameters* param )
 #endif
 
     gView = glv_create( GLV_ATTRIB_DOUBLEBUFFER | GLV_ATTRIB_MULTISAMPLE |
+#ifdef DEBUG
+                        GLV_ATTRIB_DEBUG |
+#endif
                         GLV_ATTRIB_ES );
     if( ! gView )
     {
@@ -2784,6 +2803,15 @@ cleanup:
         fprintf( stderr, "OpenGL ES 3.1 required\n" );
         goto cleanup;
     }
+
+#ifdef DEBUG
+    // Requires GL_KHR_debug extension
+    glEnable( GL_DEBUG_OUTPUT );
+    glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
+    glDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DONT_CARE,
+                           GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE );
+    glDebugMessageCallback( _debugGL, NULL );
+#endif
 
     // A non-zero guiUT is our indicator that the GL context has been created.
     glEnv.guiUT = ut;
