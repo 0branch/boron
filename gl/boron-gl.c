@@ -2680,7 +2680,10 @@ static void _createDrawOpTable( UThread* ut )
 }
 
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(GL_DEBUG_OUTPUT)
+#define DEBUG_GL
+#endif
+#ifdef DEBUG_GL
 void _debugGL( GLenum source, GLenum type, GLuint id, GLenum severity,
                GLsizei length, const GLchar* message, const void* userParam )
 {
@@ -2781,7 +2784,7 @@ UThread* boron_makeEnvGL( UEnvParameters* param )
 #endif
 
     gView = glv_create( GLV_ATTRIB_DOUBLEBUFFER | GLV_ATTRIB_MULTISAMPLE |
-#ifdef DEBUG
+#ifdef DEBUG_GL
                         GLV_ATTRIB_DEBUG |
 #endif
                         GLV_ATTRIB_ES );
@@ -2804,7 +2807,7 @@ cleanup:
         goto cleanup;
     }
 
-#ifdef DEBUG
+#ifdef DEBUG_GL
     // Requires GL_KHR_debug extension
     glEnable( GL_DEBUG_OUTPUT );
     glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
