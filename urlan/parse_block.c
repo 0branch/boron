@@ -274,6 +274,8 @@ skip:
                         {
                             BLK_RULE_ERROR( "parse set expected word" );
                         }
+                        if( pos >= pe->inputEnd )
+                            goto failed;
                         {
                         UCell* cell = ur_wordCellM( ut, rit );
                         CHECK_WORD( cell )
