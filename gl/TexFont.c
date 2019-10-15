@@ -20,6 +20,9 @@
 #include "TexFont.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#ifdef __ANDROID__
+#include "glv_asset.h"
+#endif
 
 
 //#define DUMP      1
@@ -291,6 +294,29 @@ static int _loadKerning( TexFont* tf, int space,
 }
 
 
+#ifdef __ANDROID__
+unsigned long txf_readFunc( FT_Stream stream, unsigned long offset,
+                            unsigned char* buffer, unsigned long count )
+{
+    if( count )
+    {
+        AAsset* asset = (AAsset*) stream->descriptor.pointer;
+
+        if( AAsset_seek( asset, offset, SEEK_SET ) == -1 )
+            return 0;
+        count = AAsset_read( asset, buffer, count );
+    }
+    return count;
+}
+
+
+void txf_closeFunc( FT_Stream stream )
+{
+    AAsset_close( (AAsset*) stream->descriptor.pointer );
+}
+#endif
+
+
 /**
   \param file       Filename of TrueType font to load.
   \param index      File face index.
@@ -325,13 +351,37 @@ TexFont* txf_build( const char* file, int index, const uint8_t* codes,
     TexFont* txf = 0;
     int count;
     int loadFailed = 0;
+#ifdef __ANDROID__
+    AAsset* asset;
+    FT_Open_Args openArgs;
+    FT_StreamRec streamRec;
+#endif
 
 
     error = FT_Init_FreeType( &library );
     if( error )
-        return 0;
+        return NULL;
 
+#ifdef __ANDROID__
+    memset( &openArgs, 0, sizeof(openArgs) );
+    memset( &streamRec, 0, sizeof(streamRec) );
+
+    asset = AAssetManager_open( glv_assetManager(), file, AASSET_MODE_RANDOM );
+    if( ! asset )
+        goto cleanup_lib;
+
+    streamRec.size  = AAsset_getLength( asset );
+    streamRec.descriptor.pointer = asset;
+    streamRec.read  = txf_readFunc;
+    streamRec.close = txf_closeFunc;
+
+    openArgs.flags  = FT_OPEN_STREAM;
+    openArgs.stream = &streamRec;
+
+    error = FT_Open_Face( library, &openArgs, index, &face );
+#else
     error = FT_New_Face( library, file, index, &face );
+#endif
     if( error )
         goto cleanup_lib;
 
