@@ -377,6 +377,10 @@ UIndex loadScript( struct android_app* app, UThread* ut, const char* filename,
     char* script = (char*) loadAsset( app, filename, &len );
     if( script )
     {
+        // Comment out any Unix shell interpreter line.
+        if( script[0] == '#' && script[1] == '!' )
+            script[0] = ';';
+
         bufN = ur_tokenize( ut, script, script + len, res );
         free( script );
         if( bufN )
