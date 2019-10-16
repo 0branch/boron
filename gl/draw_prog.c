@@ -2975,7 +2975,7 @@ dispatch:
         {
             uint32_t stof = *pc++;
             REPORT_1( " VERTEX_OFFSET_4 %08x\n", stof );
-            glVertexAttribPointer( ALOC_VERTEX, 3, GL_FLOAT, GL_FALSE,
+            glVertexAttribPointer( ALOC_VERTEX, 4, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
         }
             break;
