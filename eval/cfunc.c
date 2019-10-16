@@ -3845,6 +3845,27 @@ static int _readBuffer( UThread* ut, uint32_t opt, const UCell* a1,
 }
 
 
+CFUNC_PUB(cfunc_readPort)
+{
+    PORT_SITE(dev, pbuf, a1);
+    int len;
+
+    if( ! dev )
+        return errorScript( "cannot read from closed port" );
+
+    len = dev->defaultReadLen;
+    if( len > 0 )
+    {
+        len = _readBuffer( ut, CFUNC_OPTIONS, a1, res, len );   // gc!
+        if( len <= 0 )
+            return (len < 0) ? UR_THROW : UR_OK;
+        pbuf = ur_buffer( a1->port.buf );   // Re-aquire
+    }
+
+    return dev->read( ut, pbuf, res, len );
+}
+
+
 extern int ur_readDir( UThread*, const char* filename, UCell* res );
 
 /*-cf-
@@ -3877,27 +3898,12 @@ CFUNC(cfunc_read)
 {
     const char* filename;
     OSFileInfo info;
-    uint32_t opt = CFUNC_OPTIONS;
+    uint32_t opt;
     int len;
 
 
     if( ur_is(a1, UT_PORT) )
-    {
-        PORT_SITE(dev, pbuf, a1);
-        if( ! dev )
-            return errorScript( "cannot read from closed port" );
-
-        len = dev->defaultReadLen;
-        if( len > 0 )
-        {
-            len = _readBuffer( ut, opt, a1, res, len ); // gc!
-            if( len <= 0 )
-                return (len < 0) ? UR_THROW : UR_OK;
-            pbuf = ur_buffer( a1->port.buf );   // Re-aquire
-        }
-
-        return dev->read( ut, pbuf, res, len );
-    }
+        return cfunc_readPort( ut, a1, res );
 
     if( ! ur_isStringType( ur_type(a1) ) )
         return errorType( "read expected file!/string!/port! source" );
@@ -3911,6 +3917,7 @@ CFUNC(cfunc_read)
     if( info.type == FI_Dir )
         return ur_readDir( ut, filename, res );
 
+    opt = CFUNC_OPTIONS;
     len = _readBuffer( ut, opt, a1, res, (int) info.size ); // gc!
     if( len > 0 )
     {

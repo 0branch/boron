@@ -391,7 +391,7 @@ UIndex loadScript( struct android_app* app, UThread* ut, const char* filename,
 #endif
 
 
-//extern CFUNC_PUB(cfunc_read);
+extern CFUNC_PUB(cfunc_readPort);
 extern struct android_app* gGlvApp;
 
 // Partial implementation of 'read which uses the AAssetManager rather than
@@ -403,6 +403,9 @@ CFUNC( cf_assetRead )
     UBuffer* buf;
     int ok;
     int n;
+
+    if( ur_is(a1, UT_PORT) )
+        return cfunc_readPort( ut, a1, res );
 
     if( CFUNC_OPTIONS )
         return ur_error( ut, UR_ERR_SCRIPT,
