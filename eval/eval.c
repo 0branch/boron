@@ -1196,7 +1196,7 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
     return ++it;
 
 unbound:
-    return UR_THROW;
+    return NULL;
     //return cp_error( ut, UR_ERR_SCRIPT, "Unbound word '%s",
     //                 ur_atomCStr(ut, it->word.atom) );
 }
