@@ -690,11 +690,8 @@ static void bufferReset( DPCompiler* emit )
 static void _genIndices2( UThread* ut, DPCompiler* emit, uint16_t* dst )
 {
     UBuffer* iarr;
-    uint32_t* it;
-    uint32_t* end;
     DPPrimRecord* pr;
     DPPrimRecord* pend;
-    int offset = 0;
 
     pr   = (DPPrimRecord*) emit->primRec.ptr.v;
     pend = pr + emit->primRec.used;
@@ -702,21 +699,28 @@ static void _genIndices2( UThread* ut, DPCompiler* emit, uint16_t* dst )
     {
         if( pr->dataType == UT_VECTOR )
         {
-            // Convert vector! int32_t to GL_UNSIGNED_SHORT.
             iarr = ur_buffer( pr->n );
-            it  = iarr->ptr.u32;
-            end = it + iarr->used;
-            while( it != end )
-                *dst++ = *it++;
-
-            offset += iarr->used;
+            if( iarr->form == UR_VEC_I32 )
+            {
+                // Convert vector! int32_t to GL_UNSIGNED_SHORT.
+                uint32_t* it  = iarr->ptr.u32;
+                uint32_t* end = it + iarr->used;
+                while( it != end )
+                    *dst++ = *it++;
+            }
+            else    // vec->form == UR_VEC_U16
+            {
+                memcpy( dst, iarr->ptr.u16, sizeof(uint16_t) * iarr->used );
+            }
         }
-        else    // UT_INT
+        else    // pr->dataType == UT_INT
         {
-            int idx = offset;
+            // Generate index sequence (as if glDrawArrays had been used).
+            int idx = 0;
+            int offset = pr->n;
             if( pr->quads )
             {
-                offset += pr->n & ~3;
+                offset &= ~3;
                 while( idx != offset )
                 {
                     *dst++ = idx++;
@@ -729,7 +733,6 @@ static void _genIndices2( UThread* ut, DPCompiler* emit, uint16_t* dst )
             }
             else
             {
-                offset += pr->n;
                 while( idx != offset )
                     *dst++ = idx++;
             }
@@ -753,6 +756,15 @@ static void genIndices( UThread* ut, DPCompiler* emit )
 
             glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, emit->indexBuf );
             glBufferData( GL_ELEMENT_ARRAY_BUFFER, len, dst, GL_STATIC_DRAW );
+#if 0
+            {
+            uint32_t i;
+            printf( "GL_ELEMENT_ARRAY_BUFFER %d count %d\n",
+                    emit->indexBuf, emit->indexCount );
+            for( i = 0; i < emit->indexCount; ++i )
+                printf( "  element %d %d\n", i, dst[i] );
+            }
+#endif
             free( dst );
         }
     }
@@ -1755,7 +1767,7 @@ image_next:
                 if( ur_is(val, UT_VECTOR) )
                 {
                     const UBuffer* vec = ur_bufferSer(val);
-                    if( vec->form != UR_VEC_I32 )
+                    if( vec->form != UR_VEC_I32 && vec->form != UR_VEC_U16 )
                         goto bad_prim;
                     if( ! genPrimitives( ut, emit, dpOp, 0, val ) )
                         goto error;
