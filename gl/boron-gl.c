@@ -418,6 +418,12 @@ CFUNC( uc_display_swap )
     (void) a1;
     (void) res;
 
+    // Disable any active shader to quiet glDebugMessage id 0x20092 from the
+    // NVidia 430.40 driver.  The message reads:
+    //   Program/shader state performance warning: Vertex shader in program 1
+    //   is being recompiled based on GL state.
+    glUseProgram( 0 );
+
     glv_swapBuffers( gView );
 
     /*
