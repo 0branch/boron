@@ -275,6 +275,8 @@ static const char _update[] =
     "sub random 1.0,1.0,1.0 0.5,0.5\n";
 
 
+#include "glv_keys.h"
+
 static void eventHandler( GLView* view, GLViewEvent* ev )
 {
     switch( ev->type )
@@ -287,6 +289,8 @@ static void eventHandler( GLView* view, GLViewEvent* ev )
 
         case GLV_EVENT_KEY_UP:
             LOGI( "KR key-up %d\n", ev->code );
+            if( ev->code == KEY_Back )
+                ANativeActivity_finish( ((struct android_app*)view)->activity );
             break;
 
         case GLV_EVENT_KEY_DOWN:
@@ -298,9 +302,32 @@ static void eventHandler( GLView* view, GLViewEvent* ev )
             break;
 
         case GLV_EVENT_APP:
-            if( ev->code == APP_CMD_STOP )
-                *((int*) view->user) = 0;
+            LOGI( "KR app %d\n", ev->code );
+            if( ev->code == APP_CMD_INIT_WINDOW )
+                setupGraphics( view->width, view->height );
             break;
+        /*
+          Event sequence initiated by ANativeActivity_finish().
+            glv_activity: Pause                 -> APP_CMD_PAUSE
+            glv_activity: NativeWindowDestroyed -> APP_CMD_TERM_WINDOW
+            glv_activity: Stop                  -> APP_CMD_STOP
+            glv_activity: InputQueueDestroyed   -> APP_CMD_INPUT_CHANGED
+            glv_activity: Destroy               -> APP_CMD_DESTROY
+
+          Event sequence when Home key pressed:
+            glv_activity: WindowFocusChanged
+            glv_activity: Pause
+            glv_activity: SaveInstanceState     -> APP_CMD_SAVE_STATE
+            glv_activity: Stop
+            glv_activity: NativeWindowDestroyed
+
+          Event sequence when Overview key pressed:
+            glv_activity: Pause
+            glv_activity: WindowFocusChanged *  (Sometimes seen before Pause)
+            glv_activity: SaveInstanceState     -> APP_CMD_SAVE_STATE
+            glv_activity: Stop
+            glv_activity: NativeWindowDestroyed
+        */
     }
 }
 #endif
@@ -447,7 +474,6 @@ void android_main( struct android_app* app )
 #ifdef LOCAL_RENDER
     UCell res;
     GLView* view;
-    int state = 1;
     UIndex updateN;
 #else
     UCell bcell;
@@ -467,7 +493,7 @@ void android_main( struct android_app* app )
         LOGE( "glv_create failed\n" );
         return;
     }
-    view->user = &state;
+
     glv_setEventHandler( view, eventHandler );
     setupGraphics( view->width, view->height );
 #endif
@@ -493,11 +519,19 @@ void android_main( struct android_app* app )
     ur_hold( updateN );
     boron_bindDefault( ut, updateN );
 
-    while( state && ! app->destroyRequested )
+    while( ! app->destroyRequested )
     {
         glv_handleEvents( view );
-        renderFrame( ut, updateN );
-        glv_swapBuffers( view );
+        if( view->ctx )
+        {
+            renderFrame( ut, updateN );
+            glv_swapBuffers( view );
+        }
+        else
+        {
+            // The activity has been stopped and has no display.
+            glv_waitEvent( view );
+        }
     }
 
     boron_freeEnv( ut );
