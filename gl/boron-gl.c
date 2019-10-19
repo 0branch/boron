@@ -64,6 +64,22 @@ TexFont* ur_texFontV( UThread* ut, const UCell* cell )
 }
 
 
+#ifdef __ANDROID__
+static void doAppEventHandler( UThread* ut, UAtom handlerName )
+{
+    UCell* cell;
+    const UBuffer* ctx = ur_threadContext( ut );
+    int n = ur_ctxLookup( ctx, handlerName );
+    if( n > -1 )
+    {
+        cell = ur_ctxCell( ctx, n );
+        if( ur_is(cell, UT_BLOCK) )
+            gui_doBlock( ut, cell );    // Does UR_GUI_THROW if needed.
+    }
+}
+#endif
+
+
 static void eventHandler( GLView* view, GLViewEvent* event )
 {
     struct GLEnv* env = (struct GLEnv*) view->user;
@@ -82,8 +98,7 @@ static void eventHandler( GLView* view, GLViewEvent* event )
             if( ! wp )
             {
                 boron_throwWord( env->guiUT, UR_ATOM_QUIT, 0 );
-                UR_GUI_THROW;   // Ignores any later events.
-                return;
+                goto gui_throw;
             }
             break;
 
@@ -128,11 +143,22 @@ static void eventHandler( GLView* view, GLViewEvent* event )
 #ifdef __ANDROID__
         case GLV_EVENT_APP:
             fprintf( stderr, "GLV_EVENT_APP %d\n", event->code );
-            if( event->code == APP_CMD_STOP )
+            switch( event->code )
             {
-                boron_throwWord( env->guiUT, UR_ATOM_QUIT, 0 );
-                UR_GUI_THROW;   // Ignores any later events.
+            case APP_CMD_INIT_WINDOW:
+                doAppEventHandler( env->guiUT, UR_ATOM_ON_WINDOW_CREATED );
                 return;
+            case APP_CMD_TERM_WINDOW:
+                doAppEventHandler( env->guiUT, UR_ATOM_ON_WINDOW_DESTROYED );
+                return;
+            case APP_CMD_SAVE_STATE:
+                doAppEventHandler( env->guiUT, UR_ATOM_ON_SAVE_INSTANCE );
+                return;
+            /*
+            case APP_CMD_DESTROY:
+                boron_throwWord( env->guiUT, UR_ATOM_QUIT, 0 );
+                goto gui_throw;
+            */
             }
             break;
 #endif
@@ -140,6 +166,10 @@ static void eventHandler( GLView* view, GLViewEvent* event )
 
     if( wp )
         wp->wclass->dispatch( env->guiUT, wp, event );
+    return;
+
+gui_throw:
+    UR_GUI_THROW;   // Ignores any later events.
 }
 
 
@@ -438,14 +468,20 @@ CFUNC( uc_display_swap )
 
 /*-cf-
     display-area
-    return: coord! or none
+    return: coord! or none!
     Get display rectangle (0, 0, width, height).
 */
 CFUNC( uc_display_area )
 {
     (void) a1;
     (void) ut;
+#if defined(__ANDROID__)
+    // On Android display-area can be used to tell if the application is in
+    // the stopped state (when there is no display or GL context).
+    if( gView && gView->ctx )
+#else
     if( gView )
+#endif
     {
         ur_setId(res, UT_COORD);
         res->coord.len = 4;
@@ -2584,7 +2620,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    67
+#define FA_COUNT    70
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -2592,6 +2628,7 @@ static void _createFixedAtoms( UThread* ut )
         "width height area rect raster texture\n"
         "gui-style value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
+        "on-window-created on-window-destroyed on-save-instance\n"
         "root parent child\n"
         "ambient diffuse specular pos shader vertex normal fragment\n"
         "default dynamic static stream left right center\n"

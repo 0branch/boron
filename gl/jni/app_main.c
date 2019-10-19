@@ -555,21 +555,22 @@ void android_main( struct android_app* app )
             else if( ur_is(cell, UT_WORD) )
             {
                 UAtom atom = ur_atom(cell);
-                if( atom == UR_ATOM_QUIT || atom == UR_ATOM_HALT )
-                {
-                    // Call finish to close the application window.  We must
-                    // immediately call boron_freeEnvGL to free any Boron-GL
-                    // datatypes before the window (and the GL context)
-                    // actually goes away.
-                    ANativeActivity_finish( app->activity );
-                }
-                else
+                if( atom != UR_ATOM_QUIT && atom != UR_ATOM_HALT )
                     LOGE( "unhandled exception %s\n", ur_atomCStr(ut, atom) );
             }
         }
     }
 
+    // Call finish to get the application window to close.
+    ANativeActivity_finish( app->activity );
+
+    // Now we must immediately call boron_freeEnvGL to free any Boron-GL
+    // datatypes before the window (and the GL context) actually goes away.
     boron_freeEnvGL( ut );
+
+    // Finally we must handle the activity lifecycle events or Android thinks
+    // our program has hung and it will not restart properly.
+    android_app_wait_destroy( app );
 #endif
 }
 
