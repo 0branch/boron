@@ -187,6 +187,7 @@ ways:
 Int!
 ----
 
+A 64-bit integer number.
 Integers can be specified in decimal, or if prefixed with '0x', as hexadecimal.
 
 Example integers:
@@ -250,13 +251,22 @@ Example words:
 Lit-word!
 ---------
 
-A literal word evaluates to a word! value.
+A literal word is a variant of a *word!* that begins with a single quote (')
+character.
+
+It evaluates to a word! value rather than the value from any bound context.
+
+    )> 'sleep
+    == sleep
 
 
 Set-word!
 ---------
 
-Used to assign a value to a word.
+A set-word value is a variant of a *word!* that ends with a colon (:)
+character.
+
+It is used to assign a value to a word.
 
     )> a: 42
     == 42
@@ -267,7 +277,14 @@ Used to assign a value to a word.
 Get-word!
 ---------
 
-Used to get the value of a word without evaluating it.
+A get-word value is a variant of a *word!* that begins with a colon (:)
+character.
+
+    :my-function
+
+It is used to obtain the value of a word without evaluating it further.
+For many datatypes this will be the same as using the word itself, but for
+[func!](#func) values it will suppress invocation of the function.
 
 
 Option!
@@ -276,6 +293,8 @@ Option!
 An option is a variant of a *word!* that begins with a slash (/) character.
 
 	/outside
+
+An option is inert will evaluate to itself.
 
 
 Binary!
@@ -472,6 +491,9 @@ Contexts can be created from existing ones.  So given the previous entry
 context a new farmer could be created using *make* again.
 
     joe: make entry [name: "Joe" age: 32]
+
+The set-word! values in the outermost specification block become members of
+the context, but not those in any inner blocks.
 
 The *context* word is normally used to make a new context instead of
 *make context!*.
