@@ -388,6 +388,7 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
                     val = ur_wordCell( ut, bi.it );
                     if( ! val )
                         return UR_THROW;
+valid_val:
                     if( ur_is(val, UT_RASTER) )
                     {
                         rastN = val->series.buf;
@@ -427,11 +428,10 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
 
                 case UT_INT:
                 case UT_COORD:
-                    _texCoord( &def, bi.it );
-                    break;
-
                 case UT_BINARY:
-                    def.pixels = ur_bufferSer(bi.it)->ptr.b;
+                case UT_RASTER:
+                    val = bi.it;
+                    goto valid_val;
             }
         }
 
