@@ -64,7 +64,39 @@ TexFont* ur_texFontV( UThread* ut, const UCell* cell )
 }
 
 
-#ifdef __ANDROID__
+#if defined(DEBUG) && defined(GL_DEBUG_OUTPUT)
+#define DEBUG_GL
+#endif
+#ifdef DEBUG_GL
+void _debugGL( GLenum source, GLenum type, GLuint id, GLenum severity,
+               GLsizei length, const GLchar* message, const void* userParam )
+{
+    (void) severity;
+    (void) length;
+    (void) userParam;
+
+    fprintf( stderr, "GL DEBUG %d:%s 0x%x %s\n",
+             source,
+             (type == GL_DEBUG_TYPE_ERROR) ? " ERROR" : "",
+             id, message );
+}
+
+
+static void enableGLDebug()
+{
+    // Requires GL_KHR_debug extension
+    glEnable( GL_DEBUG_OUTPUT );
+    glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
+    glDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DONT_CARE,
+                           GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE );
+    glDebugMessageCallback( _debugGL, NULL );
+}
+#endif
+
+
+//#define SIMULATE_APP_RESTART
+
+#if defined(__ANDROID__) || defined(SIMULATE_APP_RESTART)
 static void doAppEventHandler( UThread* ut, UAtom handlerName )
 {
     UCell* cell;
@@ -139,6 +171,17 @@ static void eventHandler( GLView* view, GLViewEvent* event )
         case GLV_EVENT_KEY_DOWN:
         case GLV_EVENT_KEY_UP:
         */
+
+#ifdef SIMULATE_APP_RESTART
+        case GLV_EVENT_KEY_DOWN:
+            if( event->code == KEY_Pause )
+            {
+                glv_setEventHandler(gView, 0);
+                glEnv.guiThrow = 22;
+                return;
+            }
+            break;
+#endif
 
 #ifdef __ANDROID__
         case GLV_EVENT_APP:
@@ -389,6 +432,34 @@ CFUNC( uc_handle_events )
     glv_handleEvents( gView );
     if( glEnv.guiThrow )
     {
+#ifdef SIMULATE_APP_RESTART
+        if( glEnv.guiThrow == 22 )
+        {
+            int w, h;
+            w = gView->width;
+            h = gView->height;
+            glv_destroy( gView );
+
+            gView = glv_create( GLV_ATTRIB_DOUBLEBUFFER |
+                                GLV_ATTRIB_MULTISAMPLE |
+                                GLV_ATTRIB_DEBUG |
+                                GLV_ATTRIB_ES );
+#ifdef DEBUG_GL
+            enableGLDebug();
+#endif
+            gView->user = &glEnv;
+            glv_resize( gView, w, h );
+            glv_show( gView );
+            glv_makeCurrent( gView );
+            doAppEventHandler( ut, UR_ATOM_ON_WINDOW_CREATED );
+
+            glEnv.guiThrow = 0;
+            glv_setEventHandler( gView, eventHandler );
+
+            ur_setId(res, UT_UNSET);
+            return UR_OK;
+        }
+#endif
         glEnv.guiThrow = 0;
         // Restore handler removed by UR_GUI_THROW.
         glv_setEventHandler( gView, eventHandler );
@@ -2723,25 +2794,6 @@ static void _createDrawOpTable( UThread* ut )
 }
 
 
-#if defined(DEBUG) && defined(GL_DEBUG_OUTPUT)
-#define DEBUG_GL
-#endif
-#ifdef DEBUG_GL
-void _debugGL( GLenum source, GLenum type, GLuint id, GLenum severity,
-               GLsizei length, const GLchar* message, const void* userParam )
-{
-    (void) severity;
-    (void) length;
-    (void) userParam;
-
-    fprintf( stderr, "GL DEBUG %d:%s 0x%x %s\n",
-             source,
-             (type == GL_DEBUG_TYPE_ERROR) ? " ERROR" : "",
-             id, message );
-}
-#endif
-
-
 #include "gl_types.c"
 #include "math3d.c"
 
@@ -2851,12 +2903,7 @@ cleanup:
     }
 
 #ifdef DEBUG_GL
-    // Requires GL_KHR_debug extension
-    glEnable( GL_DEBUG_OUTPUT );
-    glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
-    glDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DONT_CARE,
-                           GL_DEBUG_SEVERITY_NOTIFICATION, 0, NULL, GL_FALSE );
-    glDebugMessageCallback( _debugGL, NULL );
+    enableGLDebug();
 #endif
 
     // A non-zero guiUT is our indicator that the GL context has been created.
