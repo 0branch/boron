@@ -324,7 +324,27 @@ fail_end:
 //----------------------------------------------------------------------------
 
 
+static void _propagateWindowCreated( UThread* ut, GWidget* wp,
+                                     const GLViewEvent* ev )
+{
+    GWidget* cw;
+    wp->flags |= GW_UPDATE_LAYOUT;
+    EACH_CHILD( wp, cw )
+        cw->wclass->dispatch( ut, cw, ev );
+    EACH_END
+}
+
+
 void widget_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
+{
+    if( ev->type == GUI_EVENT_WINDOW_CREATED )
+        _propagateWindowCreated( ut, wp, ev );
+    else
+        gui_ignoreEvent( ev );
+}
+
+
+void widget_dispatchNul( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
     (void) ut;
     (void) wp;
@@ -1215,6 +1235,10 @@ static void root_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             if( cw )
                 goto dispatch;
             return;
+
+        case GUI_EVENT_WINDOW_CREATED:
+            _propagateWindowCreated( ut, wp, ev );
+            return;
     }
 
 dispatch_ctx:
@@ -2056,6 +2080,10 @@ end_drag:
                 return;
             }
             break;
+
+        case GUI_EVENT_WINDOW_CREATED:
+            _propagateWindowCreated( ut, wp, ev );
+            return;
     }
     eventContextDispatch( ut, wp, ev );
 }
@@ -2442,7 +2470,7 @@ GWidgetClass wclass_expand =
 {
     "expand",
     expand_make,        widget_free,        widget_markNul,
-    widget_dispatch,    expand_sizeHint,    widget_layoutNul,
+    widget_dispatchNul, expand_sizeHint,    widget_layoutNul,
     widget_renderNul,   gui_areaSelect,
     0, GW_UPDATE_LAYOUT
 };
@@ -2650,6 +2678,26 @@ void gui_freeWidgetDefer( GWidget* wp )
             ur_arrAppendPtr( &glEnv.rootWidgets, wp );
         }
         wp->flags |= GW_HIDDEN | GW_DISABLED | GW_DESTRUCT;
+    }
+}
+
+
+/*
+  Send GUI_EVENT_WINDOW_CREATED to all widgets so that they can re-create
+  any OpenGL resources and be flagged for layout update.
+*/
+void gui_signalWindowCreated( int w, int h )
+{
+    GLViewEvent me;
+    GWidget** it  = (GWidget**) glEnv.rootWidgets.ptr.v;
+    GWidget** end = it + glEnv.rootWidgets.used;
+    GWidget* wp;
+
+    INIT_EVENT( me, GUI_EVENT_WINDOW_CREATED, 0, 0, w, h );
+    while( it != end )
+    {
+        wp = *it++;
+        wp->wclass->dispatch( glEnv.guiUT, wp, &me );
     }
 }
 

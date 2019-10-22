@@ -853,7 +853,7 @@ static void shader_destroy( UBuffer* buf )
     {
         destroyShader( sh );
         memFree( sh );
-        buf->ptr.v = 0;
+        buf->ptr.v = NULL;
     }
 }
 
@@ -1179,7 +1179,11 @@ static void vbo_mark( UThread* ut, UCell* cell )
 static void vbo_destroy( UBuffer* buf )
 {
     if( vbo_count(buf) )
+    {
         glDeleteBuffers( vbo_count(buf), vbo_bufIds(buf) );
+        vbo_count(buf) = 0;
+        buf->ptr.v = NULL;      // vbo_bufIds extends into ptr.
+    }
 }
 
 

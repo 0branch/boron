@@ -31,7 +31,9 @@
 enum GUIEvent
 {
     GUI_EVENT_TIMER = GLV_EVENT_USER,
-    GUI_EVENT_JOYSTICK
+    GUI_EVENT_JOYSTICK,
+    GUI_EVENT_WINDOW_CREATED,
+    GUI_EVENT_WINDOW_DESTROYED
 };
 
 
@@ -211,6 +213,7 @@ void     gui_setMouseFocus( GWidget* );
 */
 void     gui_grabMouse( GWidget*, int keyFocus );
 void     gui_ungrabMouse( GWidget* );
+void     gui_signalWindowCreated( int w, int h );
 int      gui_hasFocus( GWidget* );
 UIndex   gui_parentDrawProg( GWidget* );
 const int16_t* gui_parentTranslation( GWidget* );
@@ -220,6 +223,7 @@ int      gui_limitY( int y, const GRect* );
 void widget_free( GWidget* );
 void widget_markChildren( UThread*, GWidget* );
 void widget_dispatch( UThread*, GWidget*, const GLViewEvent* );
+void widget_dispatchNul( UThread*, GWidget*, const GLViewEvent* );
 void widget_renderNul( GWidget* );
 void widget_renderChildren( GWidget* );
 #define widget_markNul      0

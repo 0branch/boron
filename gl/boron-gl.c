@@ -189,10 +189,12 @@ static void eventHandler( GLView* view, GLViewEvent* event )
             switch( event->code )
             {
             case APP_CMD_INIT_WINDOW:
+                gui_signalWindowCreated( view->width, view->height );
                 doAppEventHandler( env->guiUT, UR_ATOM_ON_WINDOW_CREATED );
                 return;
             case APP_CMD_TERM_WINDOW:
                 doAppEventHandler( env->guiUT, UR_ATOM_ON_WINDOW_DESTROYED );
+                boron_releaseGL( env->guiUT );
                 return;
             case APP_CMD_SAVE_STATE:
                 doAppEventHandler( env->guiUT, UR_ATOM_ON_SAVE_INSTANCE );
@@ -435,9 +437,11 @@ CFUNC( uc_handle_events )
 #ifdef SIMULATE_APP_RESTART
         if( glEnv.guiThrow == 22 )
         {
-            int w, h;
-            w = gView->width;
-            h = gView->height;
+            int w = gView->width;
+            int h = gView->height;
+
+            printf( "SIMULATE_APP_RESTART\n" );
+            boron_releaseGL( ut );
             glv_destroy( gView );
 
             gView = glv_create( GLV_ATTRIB_DOUBLEBUFFER |
@@ -451,6 +455,9 @@ CFUNC( uc_handle_events )
             glv_resize( gView, w, h );
             glv_show( gView );
             glv_makeCurrent( gView );
+            gView->width = w;
+            gView->height = h;
+            gui_signalWindowCreated( w, h );
             doAppEventHandler( ut, UR_ATOM_ON_WINDOW_CREATED );
 
             glEnv.guiThrow = 0;
@@ -2952,6 +2959,33 @@ void boron_freeEnvGL( UThread* ut )
         // Free Boron before view since datatypes can make glDelete* calls.
         boron_freeEnv( ut );
         glv_destroy( gView );
+    }
+}
+
+
+/*
+  Destroy all datatypes in the UThread dataStore that reference OpenGL
+  resources.  Note that this does not garbage collect the buffers.
+*/
+void boron_releaseGL( UThread* ut )
+{
+    const UDatatype** dt = ut->types;
+    UBuffer* it  = ut->dataStore.ptr.buf;
+    UBuffer* end = it + ut->dataStore.used;
+
+    while( it != end )
+    {
+        switch( it->type )
+        {
+            case UT_DRAWPROG:
+            case UT_TEXTURE:
+            case UT_SHADER:
+            case UT_FBO:
+            case UT_VBO:
+                dt[ it->type ]->destroy( it );
+                break;
+        }
+        ++it;
     }
 }
 

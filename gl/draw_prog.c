@@ -2368,6 +2368,7 @@ error:
 
 
 /*
+  Return compiled draw program in a single buffer.
 */
 DPHeader* dp_finish( UThread* ut, DPCompiler* emit )
 {
@@ -2460,6 +2461,14 @@ int ur_compileDP( UThread* ut, const UCell* blkCell, int handleError )
 }
 
 
+/*
+   Capture a compiled draw progam in a buffer, free the current compiler, and
+   set the previous compiler as gDPC.
+
+   \param res   Buffer to hold the compiled draw program.
+                If it already contains one, that is destroyed first.
+   \param prev  This is the pointer returned from ur_beginDP().
+*/
 void ur_endDP( UThread* ut, UBuffer* res, DPCompiler* prev )
 {
     assert( gDPC );

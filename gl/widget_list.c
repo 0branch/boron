@@ -215,6 +215,10 @@ static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
         case GLV_EVENT_KEY_UP:
             gui_ignoreEvent( ev );
             break;
+
+        case GUI_EVENT_WINDOW_CREATED:
+            wp->flags |= GW_UPDATE_LAYOUT;
+            break;
     }
 }
 

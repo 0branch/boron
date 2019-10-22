@@ -152,7 +152,8 @@ static void ledit_mark( UThread* ut, GWidget* wp )
 
     ur_markBuffer( ut, ep->strN );
     ur_markBuffer( ut, ep->filterN );
-    ur_markBuffer( ut, ep->vboN );
+    if( ep->vboN )
+        ur_markBuffer( ut, ep->vboN );
     ur_markBlkN( ut, ep->codeN );
 }
 
@@ -360,6 +361,15 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 #endif
             ledit_setState( ut, ep, LEDIT_STATE_DISPLAY );
             break;
+
+        case GUI_EVENT_WINDOW_CREATED:
+            setFlag( CHANGED | NEW_CURSORX );
+            ep->vboN = ledit_vbo( ut, ep->maxChars );
+            break;
+
+        case GUI_EVENT_WINDOW_DESTROYED:
+            ep->vboN = 0;
+            break;
     }
     return;
 
@@ -561,6 +571,11 @@ static void ledit_render( GWidget* wp )
 
         glUniform4f( ULOC_COLOR, 0.0, 0.0, 0.0, 1.0 );  // glColor4f
 
+        /* GL_DEBUG message at this glDrawElements:
+             "0x20072 Buffer performance warning: Buffer object 2 (bound to
+              GL_ELEMENT_ARRAY_BUFFER_ARB, usage hint is GL_STATIC_DRAW) is
+              being copied/moved from VIDEO memory to HOST memory."
+        */
         glDrawElements( GL_TRIANGLES, ep->drawn, GL_UNSIGNED_SHORT, NULL + 4 );
         if( gui_hasFocus( wp ) & GW_FOCUS_KEY )
             glDrawElements( GL_LINES, 2, GL_UNSIGNED_SHORT, 0 );
