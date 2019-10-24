@@ -93,7 +93,7 @@ static UCell* _funcStackFrame( BoronThread* bt, UIndex funcN )
 
 static const UCell* boron_wordCell( UThread* ut, const UCell* wordC )
 {
-	UCell* a1;
+    UCell* a1;
 
     switch( ur_binding(wordC) )
     {
@@ -480,7 +480,9 @@ void boron_overrideCFunc( UThread* ut, const char* name, BoronCFunc func )
 
 
 // OS_WORD should be the same as the uname operating system name.
-#if defined(__APPLE__)
+#if defined(__ANDROID__)
+#define OS_WORD "Android"       // Breaks uname convention.
+#elif defined(__APPLE__)
 #define OS_WORD "Darwin"
 #elif defined(__FreeBSD__)
 #define OS_WORD "FreeBSD"
