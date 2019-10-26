@@ -25,6 +25,8 @@
 #include "gl_atoms.h"
 #include "shader.h"
 
+#define CACHE_SHADERS
+
 
 static int printInfoLog( UThread* ut, GLuint obj, int prog )
 {
@@ -93,11 +95,24 @@ static int createShader( UThread* ut, Shader* sh,
     glAttachShader( sh->program, vertexObj );
     glAttachShader( sh->program, fragmentObj );
 
-#ifndef __ANDROID__
+#ifdef CACHE_SHADERS
+    // Necessary to retrieve compiled program binary.
+    glProgramParameteri( sh->program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT,
+                         GL_TRUE );
+#endif
+
+    /*
+    glBindAttribLocation( sh->program, 0, "bg_vertex" );
+    glBindAttribLocation( sh->program, 1, "bg_color" );
+    glBindAttribLocation( sh->program, 2, "bg_normal" );
+    */
+
+    glLinkProgram( sh->program );
+    glGetProgramiv( sh->program, GL_LINK_STATUS, &ok );
+
     // These will actually go away when the program is deleted.
     glDeleteShader( vertexObj );
     glDeleteShader( fragmentObj );
-#endif
 
 #if 0
     glGetShaderiv( vertexObj, GL_DELETE_STATUS, &ok );
@@ -106,19 +121,127 @@ static int createShader( UThread* ut, Shader* sh,
     fprintf( stderr, "KR fragment delete %d\n", ok );
 #endif
 
-    /*
-    glBindAttribLocation( sh->program, 0, "bg_vertex" );
-    glBindAttribLocation( sh->program, 1, "bg_color" );
-    glBindAttribLocation( sh->program, 2, "bg_normal" );
-    */
-    
-    glLinkProgram( sh->program );
-    glGetProgramiv( sh->program, GL_LINK_STATUS, &ok );
     if( ! ok )
         return printInfoLog( ut, sh->program, 1 );
 
     return UR_OK;
 }
+
+
+#ifdef CACHE_SHADERS
+static int createShaderBinary( UThread* ut, Shader* sh,
+                               GLenum format, GLsizei size, void* binary )
+{
+    GLint ok;
+
+    sh->program = glCreateProgram();
+    glProgramBinary( sh->program, format, binary, size );
+    //fprintf( stderr, "KR err: %x\n", glGetError() );
+    glGetProgramiv( sh->program, GL_LINK_STATUS, &ok );
+    if( ! ok )
+        return ur_error( ut, UR_ERR_INTERNAL, "glProgramBinary link failed" );
+
+    return UR_OK;
+}
+
+
+// From boron/eval/checksum.c
+extern uint32_t checksum_crc32( const uint8_t* data, int byteCount );
+
+static void shaderCacheFileName( UBuffer* str, const char* vert,
+                                 const char* frag )
+{
+    char basename[32];
+    sprintf( basename, "/vf-%08X-%08X",
+             checksum_crc32( (uint8_t*) vert, (int) strlen(vert) ),
+             checksum_crc32( (uint8_t*) frag, (int) strlen(frag) ) );
+
+    ur_strAppendCStr( str, basename );
+    ur_strTermNull( str );
+}
+
+
+#include "os_file.h"
+
+static int loadCachedShader( UThread* ut, Shader* sh, const char* vert,
+                             const char* frag )
+{
+    OSFileInfo fi;
+    UBuffer path;
+    const UCell* val;
+    FILE* fp;
+    uint8_t* data = NULL;
+    GLsizei size;
+    GLenum format;
+    int ok;
+
+
+    ur_strInit( &path, UR_ENC_UTF8, 0 );
+    val = ur_ctxValueOfType( ur_threadContext(ut), UR_ATOM_SHADER_CACHE,
+                             UT_FILE );
+    if( val )
+    {
+        USeriesIter si;
+        ur_seriesSlice( ut, &si, val );
+        ur_strAppend( &path, si.buf, si.it, si.end );
+
+        shaderCacheFileName( &path, vert, frag );
+    }
+
+    if( path.used && ur_fileInfo( path.ptr.c, &fi, FI_Size /*| FI_Type*/ ) )
+    {
+        //fprintf( stderr, "KR load program %5ld %s\n", fi.size, path.ptr.c );
+        data = (uint8_t*) malloc( fi.size );
+        fp = fopen( path.ptr.c, "rb" );
+        if( fp )
+        {
+            if( fread( data, 1, fi.size, fp ) != (size_t) fi.size )
+            {
+                ok = ur_error( ut, UR_ERR_ACCESS,
+                               "Read from shader cache failed" );
+            }
+            else
+            {
+                format = *((GLenum*) data);
+                ok = createShaderBinary( ut, sh, format,
+                                         fi.size - sizeof(GLenum),
+                                         data + sizeof(GLenum) );
+            }
+            fclose( fp );
+        }
+    }
+    else
+    {
+        // Compile from source and save to cache file.
+        ok = createShader( ut, sh, vert, frag );
+        if( path.used && ok == UR_OK )
+        {
+            GLsizei bytesWritten;
+
+            glGetProgramiv( sh->program, GL_PROGRAM_BINARY_LENGTH, &size );
+            data = (uint8_t*) malloc( size + sizeof(GLenum) );
+            glGetProgramBinary( sh->program, size, &bytesWritten, &format,
+                                data + sizeof(GLenum) );
+            //fprintf( stderr, "KR cache program %5d %s\n",
+            //         bytesWritten, path.ptr.c );
+            fp = fopen( path.ptr.c, "wb" );
+            if( fp )
+            {
+                *((GLenum*) data) = format;
+                size = bytesWritten + sizeof(GLenum);
+                if( fwrite( data, 1, size, fp ) != (size_t) size )
+                    ok = ur_error( ut, UR_ERR_ACCESS,
+                                   "Write to shader cache failed" );
+                fclose( fp );
+            }
+        }
+    }
+
+    ur_strFree( &path );
+    free( data );
+    return ok;
+}
+#endif
 
 
 void destroyShader( Shader* sh )
@@ -151,8 +274,13 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
     GLenum type;
     GLint count = 0;
 
+#ifdef CACHE_SHADERS
+    if( ! loadCachedShader( ut, &shad, vert, frag ) )
+        return UR_THROW;
+#else
     if( ! createShader( ut, &shad, vert, frag ) )
         return UR_THROW;
+#endif
 
     glGetProgramiv( shad.program, GL_ACTIVE_UNIFORMS, &count );
 

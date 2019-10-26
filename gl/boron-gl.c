@@ -56,6 +56,19 @@ extern UPortDevice port_joystick;
 struct GLEnv glEnv;
 
 
+UCell* ur_ctxValueOfType( const UBuffer* ctx, UAtom name, int type )
+{
+    int n = ur_ctxLookup( ctx, name );
+    if( n > -1 )
+    {
+        UCell* value = ur_ctxCell( ctx, n );
+        if( ur_is(value, type) )
+            return value;
+    }
+    return NULL;
+}
+
+
 TexFont* ur_texFontV( UThread* ut, const UCell* cell )
 {
     if( ur_is(cell, UT_FONT) )
@@ -100,14 +113,9 @@ static void enableGLDebug()
 static void doAppEventHandler( UThread* ut, UAtom handlerName )
 {
     UCell* cell;
-    const UBuffer* ctx = ur_threadContext( ut );
-    int n = ur_ctxLookup( ctx, handlerName );
-    if( n > -1 )
-    {
-        cell = ur_ctxCell( ctx, n );
-        if( ur_is(cell, UT_BLOCK) )
-            gui_doBlock( ut, cell );    // Does UR_GUI_THROW if needed.
-    }
+    cell = ur_ctxValueOfType( ur_threadContext(ut), handlerName, UT_BLOCK );
+    if( cell )
+        gui_doBlock( ut, cell );    // Does UR_GUI_THROW if needed.
 }
 #endif
 
@@ -382,6 +390,48 @@ CFUNC( cfunc_display )
     }
 #endif
     ur_setId(res, UT_UNSET);
+    return UR_OK;
+}
+
+
+/*-cf-
+    cache-dir
+    return: File! containing path of OS specific cache directory.
+*/
+CFUNC( cfunc_cache_dir )
+{
+    UBuffer* str;
+    char* path;
+    (void) a1;
+
+    str = ur_makeStringCell( ut, UR_ENC_LATIN1, 32, res );
+    ur_type(res) = UT_FILE;
+
+#ifdef __ANDROID__
+    // NOTE: NativeActivity has a getCacheDir method, but this requires JNI.
+    {
+    struct android_app* app = (struct android_app*) gView;
+    ur_strAppendCStr( str, app->activity->internalDataPath );
+    }
+#elif defined(__APPLE__)
+    if( (path = getenv( "HOME" )) )
+    {
+        ur_strAppendCStr( str, path );
+        ur_strAppendCStr( str, "/Library/Caches" );
+    }
+#elif defined(__linux__)
+    if( (path = getenv( "HOME" )) )
+    {
+        ur_strAppendCStr( str, path );
+        ur_strAppendCStr( str, "/.cache" );
+    }
+#elif defined(_WIN32)
+    if( (path = getenv( "LOCALAPPDATA" )) )
+        ur_strAppendCStr( str, path );
+#else
+#error "cfunc_cache_dir must be implemented"
+#endif
+
     return UR_OK;
 }
 
@@ -2698,13 +2748,13 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    70
+#define FA_COUNT    71
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
         "add size loop repeat text binary wait close\n"
         "width height area rect raster texture\n"
-        "gui-style value elem focus resize key-down key-up\n"
+        "gui-style shader-cache value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
         "on-window-created on-window-destroyed on-save-instance\n"
         "root parent child\n"

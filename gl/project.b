@@ -13,6 +13,7 @@ default [
         %.
         %../include
         %../urlan
+        %../eval
     ]
     linux [include_from %/usr/local/include/GL]     ; For glv.h
     win32 [include_from %../../glv/win32]
