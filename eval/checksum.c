@@ -31,7 +31,7 @@
 #define CRC16_POLYNOMIAL    0xa001
 #define CRC16_INITIAL       0
 
-uint16_t checksum_crc16( uint8_t* data, int byteCount )
+uint16_t checksum_crc16( const uint8_t* data, int byteCount )
 {
     uint16_t crc, bit;
     int i;
@@ -78,7 +78,7 @@ static inline uint32_t crc32_next( uint32_t crc, uint8_t data )
 }
 
 
-uint32_t checksum_crc32( uint8_t* data, int byteCount )
+uint32_t checksum_crc32( const uint8_t* data, int byteCount )
 {
     uint32_t crc = 0xffffffff;
     if( byteCount ) do {
