@@ -2748,11 +2748,11 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    71
+#define FA_COUNT    72
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
-        "add size loop repeat text binary wait close\n"
+        "add size loop repeat text binary wait close context\n"
         "width height area rect raster texture\n"
         "gui-style shader-cache value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
@@ -2770,7 +2770,7 @@ static void _createFixedAtoms( UThread* ut )
 #ifdef DEBUG
     if( atoms[0] != UR_ATOM_ADD ||
         atoms[4] != UR_ATOM_TEXT ||
-        atoms[8] != UR_ATOM_WIDTH ||
+        atoms[9] != UR_ATOM_WIDTH ||
         atoms[FA_COUNT - 1] != UR_ATOM_FACE )
     {
         char str[ 64 ]; // MAX_WORD_LEN
@@ -2806,7 +2806,8 @@ static void _createFixedAtoms( UThread* ut )
     assert( atoms[5] == UR_ATOM_BINARY );
     assert( atoms[6] == UR_ATOM_WAIT );
     assert( atoms[7] == UR_ATOM_CLOSE );
-    assert( atoms[8] == UR_ATOM_WIDTH );
+    assert( atoms[8] == UR_ATOM_CONTEXT );
+    assert( atoms[9] == UR_ATOM_WIDTH );
     assert( atoms[FA_COUNT - 1] == UR_ATOM_FACE );
 }
 
@@ -2961,6 +2962,16 @@ cleanup:
 
 #ifdef DEBUG_GL
     enableGLDebug();
+#endif
+
+#if 0
+    {
+    GLint nf;
+    GLint fmt[4];
+    glGetIntegerv( GL_NUM_PROGRAM_BINARY_FORMATS, &nf );
+    glGetIntegerv( GL_PROGRAM_BINARY_FORMATS, fmt );
+    fprintf( stderr, "binary-formats: %d (%X)\n", nf, fmt[0] );
+    }
 #endif
 
     // A non-zero guiUT is our indicator that the GL context has been created.

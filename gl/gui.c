@@ -615,10 +615,25 @@ static int _installEventContext( UThread* ut, GWidget* wp, const UCell* blkC,
 
 static int eventContextSelect( GWidget* wp, UAtom atom, UCell* result )
 {
-    if( wp->eventCtxN )
+    UIndex ctxN = wp->eventCtxN;
+
+    if( atom == UR_ATOM_CONTEXT )
+    {
+        if( ctxN )
+        {
+            ur_setId( result, UT_CONTEXT );
+            ur_setSeries( result, ctxN, 0 );
+        }
+        else
+        {
+            ur_setId( result, UT_NONE );
+        }
+        return UR_OK;
+    }
+    else if( ctxN )
     {
         UThread* ut = glEnv.guiUT;
-        const UBuffer* ctx = ur_buffer( wp->eventCtxN );
+        const UBuffer* ctx = ur_buffer( ctxN );
         int i = ur_ctxLookup( ctx, atom );
         if( i > -1 )
         {
