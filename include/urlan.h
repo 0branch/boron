@@ -632,7 +632,7 @@ void     ur_blkCollectType( UThread*, const UCell* blkCell,
                             uint32_t typeMask, UBuffer* dest, int unique );
 #define  ur_blkFree ur_arrFree
 
-int      ur_pathValue( UThread*, UBlockIt* bi, UCell* res );
+int      ur_pathResolve( UThread*, UBlockIt* pi, UCell* tmp, UCell** lastCell );
 int      ur_pathCell( UThread*, const UCell* pc, UCell* res );
 UStatus  ur_setPath( UThread*, const UCell* path, const UCell* src );
 

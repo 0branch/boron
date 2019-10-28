@@ -28,16 +28,23 @@
 
 
 /**
-  Get the value which a path refers to.
+  Get a pointer to the last value that a path! refers to.
 
-  \param pi     Path iterator.
-  \param res    Set to value at end of path.
+  If the last path node is not a datatype that contains UCells then lastCell
+  will be set to tmp.
 
-  \return UT_WORD/UT_GETWORD/UR_THROW
+  \param pi         Path iterator.
+  \param tmp        Cell to temporarily hold values for datatypes that don't
+                    contain UCells.
+  \param lastCell   Set to the address of the cell holding the last value in
+                    the path or tmp.
+
+  \return Type of the first node (UT_WORD or UT_GETWORD), or UR_THROW if
+          path evaluation fails.
 
   \sa ur_pathCell, ur_wordCell
 */
-int ur_pathValue( UThread* ut, UBlockIt* pi, UCell* res )
+int ur_pathResolve( UThread* ut, UBlockIt* pi, UCell* tmp, UCell** lastCell )
 {
     const UCell* obj = 0;
     const UCell* selector;
@@ -78,13 +85,12 @@ bad_word:
                 return UR_THROW;
         }
 
-        obj = selectf( ut, obj, selector, res );
+        obj = selectf( ut, obj, selector, tmp );
         if( ! obj )
             return UR_THROW;
     }
 
-    if( obj != res )
-        *res = *obj;
+    *lastCell = (UCell*) obj;
     return type;
 }
 
@@ -92,18 +98,25 @@ bad_word:
 /**
   Get the value which a path refers to.
 
-  \param pc     Valid UT_PATH cell.
+  \param path   Valid UT_PATH cell.
   \param res    Set to value at end of path.
 
   \return UT_WORD/UT_GETWORD/UR_THROW
 
-  \sa ur_pathValue, ur_wordCell
+  \sa ur_pathResolve, ur_wordCell
 */
-int ur_pathCell( UThread* ut, const UCell* pc, UCell* res )
+int ur_pathCell( UThread* ut, const UCell* path, UCell* res )
 {
     UBlockIt bi;
-    ur_blockIt( ut, &bi, pc );
-    return ur_pathValue( ut, &bi, res );
+    UCell* last;
+    int wordType;
+
+    ur_blockIt( ut, &bi, path );
+    if( ! (wordType = ur_pathResolve( ut, &bi, res, &last )) )
+        return UR_THROW;
+    if( last != res )
+        *res = *last;
+    return wordType;
 }
 
 
@@ -148,105 +161,79 @@ extern int vec3_poke ( UThread*, UCell* cell, int index, const UCell* src );
 */
 UStatus ur_setPath( UThread* ut, const UCell* path, const UCell* src )
 {
-    UBlockIterM bi;
+    UBlockIt pi;
+    const UBuffer* pbuf;
     UBuffer* buf;
-    UCell* node = 0;
+    UCell* res;
+    UCell* last;
+    int type;
+    int index;
 
-    ur_blkSliceM( ut, &bi, path );
 
-    ur_foreach( bi )
+    // The last path node is not included in the resolve function as it is
+    // handled differently for assignment.
+#if 1
+    pbuf = ur_bufferSer( path );
+    pi.it  = pbuf->ptr.cell;
+    pi.end = pi.it + pbuf->used - 1;
+#else
+    ur_blockIt( ut, &pi, path );
+    --pi.end;
+#endif
+
+    res = ur_push( ut, UT_UNSET );
+    type = ur_pathResolve( ut, &pi, res, &last );
+    ur_pop( ut );
+    if( type == UR_THROW )
+        return UR_THROW;
+
+    type = ur_type(last);
+
+    switch( ur_type(pi.it) )
     {
-        switch( ur_type(bi.it) )
-        {
-            case UT_INT:
-                if( node )
-                {
-                    int t = ur_type(node);
-                    int index = ur_int(bi.it) - 1;
-                    if( ur_isBlockType(t) )
-                    {
-                        if( ! (buf = ur_bufferSerM(node)) )
-                            return UR_THROW;
-                        t = node->series.it + index;
-                        if( t > -1 && t < buf->used )
-                        {
-                            node = buf->ptr.cell + t;
-                            break;
-                        }
-                    }
-                    else if( ur_isSeriesType(t) )
-                    {
-                        if( ! (buf = ur_bufferSerM(node)) )
-                            return UR_THROW;
-                        if( bi.it + 1 == bi.end )
-                        {
-                            ((USeriesType*) ut->types[ t ])->poke( buf,
-                                    node->series.it + index, src );
-                            return UR_OK;
-                        }
-                    }
-                    else if( t == UT_VEC3 )
-                    {
-                        return vec3_poke( ut, node, index, src );
-                    }
-                    else if( t == UT_COORD )
-                    {
-                        return coord_poke( ut, node, index, src );
-                    }
-                }
-                goto err;
+        case UT_INT:
+            index = (int) ur_int(pi.it) - 1;
+            if( ur_isSeriesType(type) )
+            {
+                if( ! (buf = ur_bufferSerM(last)) )
+                    return UR_THROW;
+                index += last->series.it;
+                ((USeriesType*) ut->types[ type ])->poke( buf, index, src );
+                return UR_OK;
+            }
+            else if( type == UT_VEC3 )
+                return vec3_poke( ut, last, index, src );
+            else if( type == UT_COORD )
+                return coord_poke( ut, last, index, src );
+            break;
 
-            case UT_WORD:
-                if( node )
+        case UT_WORD:
+            if( type == UT_CONTEXT )
+            {
+                if( ! (buf = ur_bufferSerM(last)) )
+                    return UR_THROW;
+                index = ur_ctxLookup( buf, ur_atom(pi.it) );
+                if( index < 0 )
+                    goto err;
+                buf->ptr.cell[ index ] = *src;
+                return UR_OK;
+            }
+            else if( type == UT_BLOCK )
+            {
+                if( ! (buf = ur_bufferSerM(last)) )
+                    return UR_THROW;
+                res = ur_blkSelectWord( buf, ur_atom(pi.it) );
+                if( res )
                 {
-                    if( ur_is(node, UT_CONTEXT) )
-                    {
-                        int i;
-                        if( ! (buf = ur_bufferSerM(node)) )
-                            return UR_THROW;
-                        i = ur_ctxLookup( buf, ur_atom(bi.it) );
-                        if( i < 0 )
-                            goto err;
-                        node = buf->ptr.cell + i;
-                    }
-                    else if( ur_is(node, UT_BLOCK) )
-                    {
-                        if( ! (buf = ur_bufferSerM(node)) )
-                            return UR_THROW;
-                        node = ur_blkSelectWord( buf, ur_atom(bi.it) );
-                        if( ! node )
-                            goto err;
-                    }
-                    else
-                        goto err;
+                    *res = *src;
+                    return UR_OK;
                 }
-                else
-                {
-                    if( ! (node = ur_wordCellM( ut, bi.it )) )
-                        return UR_THROW;
-                    if( ur_is(node, UT_UNSET) )
-                    {
-                        return ur_error( ut, UR_ERR_SCRIPT,
-                                "Path word '%s is unset",
-                                ur_wordCStr( bi.it ) );
-                    }
-                }
-                break;
-
-            case UT_GETWORD:
-                //break;
-
-            default:
-                goto err;
-        }
+            }
+            break;
     }
 
-    if( node )
-        *node = *src;
-    return UR_OK;
-
 err:
-    return ur_error( ut, UR_ERR_SCRIPT, "Invalid path! node" );
+    return ur_error( ut, UR_ERR_SCRIPT, "Cannot set path! (invalid node)" );
 }
 
 

@@ -1156,10 +1156,15 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
         case UT_PATH:
         {
             UBlockIt path;
+            UCell* last;
             int headType;
 
             ur_blockIt( ut, &path, it++ );
-            headType = ur_pathValue( ut, &path, res );
+            headType = ur_pathResolve( ut, &path, res, &last );
+            if( headType == UR_THROW )
+                return NULL; //goto traceError;
+            if( res != last )
+                *res = *last;
             if( headType == UT_WORD )
             {
                 if( ur_is(res, UT_CFUNC) )
@@ -1175,8 +1180,6 @@ const UCell* boron_eval1( UThread* ut, const UCell* it, const UCell* end,
                     ur_pop(ut);
                 }
             }
-            else if( ! headType )
-                return NULL; //goto traceError;
         }
             return it;
 
@@ -1439,30 +1442,35 @@ CFUNC_PUB( cfunc_do )
         {
             UBlockIt path;
             UCell* tmp;
+            UCell* last;
             int ok;
 
             ur_blockIt( ut, &path, res );
 
             tmp = ur_push(ut, UT_UNSET);
-            ok = ur_pathValue( ut, &path, tmp );
+            ok = ur_pathResolve( ut, &path, tmp, &last );
             if( ok != UR_THROW )
             {
                 if( ok == UT_WORD )
                 {
-                    if( ur_is(tmp, UT_CFUNC) )
+                    if( ur_is(last, UT_CFUNC) )
                     {
+                        if( tmp != last )
+                            *tmp = *last;
                         it = boron_callC( ut, tmp, &path, it, end, res );
                         ur_pop(ut);
                         goto end_func;
                     }
-                    else if( ur_is(tmp, UT_FUNC) )
+                    else if( ur_is(last, UT_FUNC) )
                     {
+                        if( tmp != last )
+                            *tmp = *last;
                         it = boron_call( ut, tmp, &path, it, end, res );
                         ur_pop(ut);
                         goto end_func;
                     }
                 }
-                *res = *tmp;
+                *res = *last;
                 ok = UR_OK;
             }
             ur_pop(ut);
