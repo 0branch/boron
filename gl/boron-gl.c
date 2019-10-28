@@ -3048,6 +3048,8 @@ void boron_releaseGL( UThread* ut )
         }
         ++it;
     }
+
+    glid_release();
 }
 
 

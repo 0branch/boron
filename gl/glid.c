@@ -66,6 +66,15 @@ void glid_shutdown()
 }
 
 
+void glid_release()
+{
+    // We don't bother with glDelete* calls as the GL context is going away.
+    _glid.tex.used = 0;
+    _glid.ren.used = 0;
+    _glid.fbo.used = 0;
+}
+
+
 static void glid_store( UBuffer* arr, GLuint id, int unsortedMask )
 {
     uint32_t* end;

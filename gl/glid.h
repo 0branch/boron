@@ -4,6 +4,7 @@
 
 extern void   glid_startup();
 extern void   glid_shutdown();
+extern void   glid_release();
 extern GLuint glid_genTexture();
 extern GLuint glid_genRenderbuffer();
 extern GLuint glid_genFramebuffer();
