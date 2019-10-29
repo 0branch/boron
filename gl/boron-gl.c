@@ -199,11 +199,15 @@ static void eventHandler( GLView* view, GLViewEvent* event )
             case APP_CMD_INIT_WINDOW:
                 gui_signalWindowCreated( view->width, view->height );
                 doAppEventHandler( env->guiUT, UR_ATOM_ON_WINDOW_CREATED );
+                aud_pauseProcessing( 0 );
                 return;
+
             case APP_CMD_TERM_WINDOW:
                 doAppEventHandler( env->guiUT, UR_ATOM_ON_WINDOW_DESTROYED );
                 boron_releaseGL( env->guiUT );
+                aud_pauseProcessing( 1 );
                 return;
+
             case APP_CMD_SAVE_STATE:
                 doAppEventHandler( env->guiUT, UR_ATOM_ON_SAVE_INSTANCE );
                 return;

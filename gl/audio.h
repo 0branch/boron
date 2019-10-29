@@ -27,6 +27,7 @@ extern "C" {
 
 extern int  aud_startup();
 extern void aud_shutdown();
+extern void aud_pauseProcessing( int paused );
 extern int  aud_playSound( const UCell* );
 extern void aud_playMusic( const char* file );
 extern void aud_stopMusic();

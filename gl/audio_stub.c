@@ -2,6 +2,7 @@
 
 int  aud_startup() { return 1; }
 void aud_shutdown() {}
+void aud_pauseProcessing( int paused ) { (void) paused; }
 int  aud_playSound( const UCell* sound ) { (void) sound; return 0; }
 void aud_playMusic( const char* file ) { (void) file; }
 void aud_stopMusic() {}

@@ -28,6 +28,8 @@
 #else
 #include <AL/al.h>
 #include <AL/alc.h>
+#define AL_ALEXT_PROTOTYPES
+#include <AL/alext.h>
 #endif
 
 #include <vorbis/codec.h>
@@ -377,6 +379,23 @@ void aud_shutdown()
 
         _audioUp = AUDIO_DOWN;
     }
+}
+
+
+/**
+  Call to stop (or later resume) processing audio.
+*/
+void aud_pauseProcessing( int paused )
+{
+#ifdef ALC_SOFT_pause_device
+    if( _audioUp )
+    {
+        if( paused )
+            alcDevicePauseSOFT( _adevice );
+        else
+            alcDeviceResumeSOFT( _adevice );
+    }
+#endif
 }
 
 
