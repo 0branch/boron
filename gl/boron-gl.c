@@ -398,17 +398,12 @@ CFUNC( cfunc_display )
 }
 
 
-/*-cf-
-    cache-dir
-    return: File! containing path of OS specific cache directory.
-*/
-CFUNC( cfunc_cache_dir )
+static UBuffer* _userDataDirectory( UThread* ut, UCell* res )
 {
-    UBuffer* str;
+#ifndef __ANDROID__
     char* path;
-    (void) a1;
-
-    str = ur_makeStringCell( ut, UR_ENC_LATIN1, 32, res );
+#endif
+    UBuffer* str = ur_makeStringCell( ut, UR_ENC_LATIN1, 32, res );
     ur_type(res) = UT_FILE;
 
 #ifdef __ANDROID__
@@ -419,21 +414,41 @@ CFUNC( cfunc_cache_dir )
     }
 #elif defined(__APPLE__)
     if( (path = getenv( "HOME" )) )
-    {
         ur_strAppendCStr( str, path );
-        ur_strAppendCStr( str, "/Library/Caches" );
-    }
 #elif defined(__linux__)
     if( (path = getenv( "HOME" )) )
-    {
         ur_strAppendCStr( str, path );
-        ur_strAppendCStr( str, "/.cache" );
-    }
 #elif defined(_WIN32)
     if( (path = getenv( "LOCALAPPDATA" )) )
         ur_strAppendCStr( str, path );
 #else
-#error "cfunc_cache_dir must be implemented"
+#error "_userDataDirectory must be implemented"
+#endif
+    return str;
+}
+
+
+/*-cf-
+    cache-dir
+    return: File! containing path of OS specific cache directory.
+*/
+/*-cf-
+    config-dir
+    return: File! containing path of OS specific configuration directory.
+*/
+CFUNC( cfunc_cache_dir )
+{
+    UBuffer* str = _userDataDirectory( ut, res );
+
+#if defined(__APPLE__)
+    if( str->used )
+        ur_strAppendCStr( str, ur_int(a1) ? "/Library/Preferences"
+                                          : "/Library/Caches" );
+#elif defined(__linux__) && ! defined(__ANDROID__)
+    if( str->used )
+        ur_strAppendCStr( str, ur_int(a1) ? "/.config" : "/.cache" );
+#else
+    (void) a1;
 #endif
 
     return UR_OK;
