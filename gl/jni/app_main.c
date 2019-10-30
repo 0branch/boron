@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <math.h>
 #if !defined(__LP64__)
 #include <time64.h>
@@ -441,25 +442,61 @@ CFUNC( cf_assetRead )
     n = ur_type(a1);
     if( ur_isStringType( n ) )
     {
-        filename = boron_cpath( ut, a1, 0 );
-        as = AAssetManager_open( gGlvApp->activity->assetManager, filename,
-                                 AASSET_MODE_BUFFER );
-        if( ! as )
-            return ur_error( ut, UR_ERR_ACCESS,
-                             "Could not open asset %s", filename );
-
         ok = UR_OK;
-        buf = ur_makeBinaryCell( ut, AAsset_getLength( as ), res );
-        n = ur_testAvail(buf);
-        if( n > 0 )
+        filename = boron_cpath( ut, a1, 0 );
+        if( filename[0] == '/' )
         {
-            if( AAsset_read( as, buf->ptr.b, n ) == n )
+            // Using normal file read if full path is used.
+            struct stat st;
+            FILE* fp;
+
+            if( stat( filename, &st ) == -1 )
+                goto open_error;
+
+            fp = fopen( filename, "rb" );
+            if( ! fp )
+            {
+open_error:
+                return ur_error( ut, UR_ERR_ACCESS,
+                                 "Could not open file %s", filename );
+            }
+            buf = ur_makeBinaryCell( ut, st.st_size, res );
+            n = (int) fread( buf->ptr.b, 1, st.st_size, fp );
+            if( n > 0 )
+            {
                 buf->used = n;
+            }
+            else if( ferror( fp ) )
+            {
+                fclose( fp );
+                return ur_error(ut, UR_ERR_ACCESS, "fread error %s", filename);
+            }
             else
-                ok = ur_error( ut, UR_ERR_ACCESS, "Failed reading asset %s",
-                               filename );
+            {
+                ur_setId(res, UT_NONE);
+            }
+            fclose( fp );
         }
-        AAsset_close( as );
+        else
+        {
+            as = AAssetManager_open( gGlvApp->activity->assetManager, filename,
+                                     AASSET_MODE_BUFFER );
+            if( ! as )
+                return ur_error( ut, UR_ERR_ACCESS,
+                                 "Could not open asset %s", filename );
+
+            buf = ur_makeBinaryCell( ut, AAsset_getLength( as ), res );
+            n = ur_testAvail(buf);
+            if( n > 0 )
+            {
+                if( AAsset_read( as, buf->ptr.b, n ) == n )
+                    buf->used = n;
+                else
+                    ok = ur_error( ut, UR_ERR_ACCESS, "Failed reading asset %s",
+                                   filename );
+            }
+            AAsset_close( as );
+        }
         return ok;
     }
 
