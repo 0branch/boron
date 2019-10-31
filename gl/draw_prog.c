@@ -1494,14 +1494,6 @@ static uint8_t _primOp[] =
 };
 
 
-#if 0
-#define PC_VALUE(val) \
-    if( ur_is(pc, UT_WORD) ) { \
-        if( ! (val = ur_wordCell(ut, pc)) ) \
-            goto error; \
-    } \
-    else val = pc;
-#else
 #define PC_VALUE(val) \
     if( ! (val = dp_value(ut,pc)) ) \
         goto error;
@@ -1509,16 +1501,24 @@ static uint8_t _primOp[] =
 // Returns NULL if not found.
 static const UCell* dp_value( UThread* ut, const UCell* cell )
 {
-    if( ur_is(cell, UT_WORD) )
+    int type = ur_type(cell);
+    if( type == UT_WORD )
         return ur_wordCell(ut, cell);
-    if( ur_is(cell, UT_PAREN) )
+    if( type == UT_PATH )
+    {
+        UBlockIt path;
+        UCell* last;
+        UCell* res = ut->stack.ptr.cell + ut->stack.used - 1;
+        ur_blockIt( ut, &path, cell );
+        return ur_pathResolve( ut, &path, res, &last ) ? last : NULL;
+    }
+    if( type == UT_PAREN )
     {
         UCell* res = ut->stack.ptr.cell + ut->stack.used - 1;
         return boron_doBlock(ut, cell, res) ? res : NULL;
     }
     return cell;
 }
-#endif
 
 
 #define INC_PC \
@@ -1613,6 +1613,7 @@ comp_op:
                 break;
 
             case DOP_IMAGE:                 // image [x,y] texture
+                                            // image x,y,w,h
             {
                 GLfloat x, y;
                 GLfloat w, h;
@@ -1623,6 +1624,12 @@ comp_op:
                 {
                     x = (GLfloat) val->coord.n[0];
                     y = (GLfloat) val->coord.n[1];
+                    if( val->coord.len > 3 )
+                    {
+                        w = (GLfloat) val->coord.n[2];
+                        h = (GLfloat) val->coord.n[3];
+                        goto image_geo;
+                    }
                     goto image_next;
                 }
                 else if( ur_is(val, UT_VEC3) )
@@ -1658,7 +1665,7 @@ image_next:
                         glGetTexLevelParameterfv( GL_TEXTURE_2D, 0,
                                                   GL_TEXTURE_HEIGHT, &h );
                     }
-
+image_geo:
                     dp_tgeoInit( emit );
                     geo_image( &emit->tgeo, x, y, x + w, y + h );
                     dp_tgeoFlushPrims( emit );
@@ -1686,21 +1693,29 @@ image_next:
                     int cop;
 
                     PC_VALUE(val)
-                    color.i = 0;
-                    cop = cellToColorUB( val, color.b );
-                    if( ! cop )
+                    if( ur_is(val, UT_DOUBLE) )
                     {
-                        typeError( "color expected int!/coord!/vec3!" );
+                        color.f = (float) ur_double(val);
+                        cop = DP_COLOR_GREY;
                     }
-                    // Use DP_COLOR_GREY if possible.
-                    if( color.b[3] == 255 )
+                    else
                     {
-                        int v = color.b[0];
-                        if( v == color.b[1] && v == color.b[2] )
+                        color.i = 0;
+                        cop = cellToColorUB( val, color.b );
+                        if( ! cop )
                         {
-                            // Color is some shade of grey.
-                            color.f = ((float) v) / 255.0f;
-                            cop = DP_COLOR_GREY;
+                            typeError("color expected int!/double!/coord!/vec3!");
+                        }
+                        // Use DP_COLOR_GREY if possible.
+                        if( color.b[3] == 255 )
+                        {
+                            int v = color.b[0];
+                            if( v == color.b[1] && v == color.b[2] )
+                            {
+                                // Color is some shade of grey.
+                                color.f = ((float) v) / 255.0f;
+                                cop = DP_COLOR_GREY;
+                            }
                         }
                     }
                     emitOp1( cop, color );
