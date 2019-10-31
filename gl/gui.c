@@ -2784,24 +2784,19 @@ void gui_resize( GWidget* wp, int w, int h )
 
 UBuffer* gui_styleContext( UThread* ut )
 {
-    UBuffer* ctx = ur_threadContext( ut );
-    int n = ur_ctxLookup( ur_ctxSort(ctx), UR_ATOM_GUI_STYLE );
-    if( n > -1 )
-    {
-        UCell* cc = ur_ctxCell( ctx, n );
-        if( ur_is(cc, UT_CONTEXT) )
-            return ur_bufferSerM(cc);
-    }
-    return 0;
+    UCell* cc = ur_ctxValueOfType( ur_threadContext(ut), UR_ATOM_GUI_STYLE,
+                                   UT_CONTEXT );
+    return cc ? ur_bufferSerM(cc) : NULL;
 }
 
 
+/*
+  Return pointer to the cells of the gui-style context.
+*/
 UCell* gui_style( UThread* ut )
 {
     const UBuffer* ctx = gui_styleContext( ut );
-    if( ctx )
-        return ur_ctxCell( ctx, 0 );
-    return 0;
+    return ctx ? ctx->ptr.cell : NULL;
 }
 
 
