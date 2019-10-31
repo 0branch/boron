@@ -1612,10 +1612,12 @@ comp_op:
                 }
                 break;
 
-            case DOP_IMAGE:                 // image [x,y] texture
-                                            // image x,y,w,h
+            case DOP_IMAGE:         // image [x,y] texture
+                                    // image x,y,w,h
+                                    // image/horiz xmin,xmax,ycenter texture
+                                    // image/vert  ymin,ymax,xcenter texture
             {
-                GLfloat x, y;
+                GLfloat x, y, ac;
                 GLfloat w, h;
 
                 INC_PC
@@ -1624,6 +1626,7 @@ comp_op:
                 {
                     x = (GLfloat) val->coord.n[0];
                     y = (GLfloat) val->coord.n[1];
+                    ac = 0.0f;
                     if( val->coord.len > 3 )
                     {
                         w = (GLfloat) val->coord.n[2];
@@ -1636,34 +1639,47 @@ comp_op:
                 {
                     x = val->vec3.xyz[0];
                     y = val->vec3.xyz[1];
+                    ac = val->vec3.xyz[2];
 image_next:
                     INC_PC
                     PC_VALUE(val)
                 }
                 else
                 {
-                    x = y = 0.0f;
+                    x = y = ac = 0.0f;
                 }
 
                 if( ur_is(val, UT_TEXTURE) )
                 {
-                    if( ur_texRast(val) )
+                    if( ur_texW(val) )
                     {
-                        RasterHead* rh = (RasterHead*)
-                                        ur_buffer( ur_texRast(val) )->ptr.v;
-                        w = rh->width;
-                        h = rh->height;
+                        w = (float) ur_texW(val);
+                        h = (float) ur_texH(val);
                     }
                     else
                     {
                         // glGetTexLevelParameterfv requires GLES 3.1
-                        //scriptError
-                        //    ( "image cannot get texture! size with GLES2" );
                         glBindTexture( GL_TEXTURE_2D, ur_texId(val) );
                         glGetTexLevelParameterfv( GL_TEXTURE_2D, 0,
                                                   GL_TEXTURE_WIDTH, &w );
                         glGetTexLevelParameterfv( GL_TEXTURE_2D, 0,
                                                   GL_TEXTURE_HEIGHT, &h );
+                    }
+
+                    if( option == UR_ATOM_HORIZ )
+                    {
+                        float aspect = h / w;
+                        w = y - x;              // x,y is xmin,xmax here.
+                        h = w * aspect;
+                        y = ac - h * 0.5f;
+                    }
+                    else if( option == UR_ATOM_VERT )
+                    {
+                        float aspect = w / h;
+                        h = y - x;              // x,y is ymin,ymax here.
+                        w = h * aspect;
+                        y = x;
+                        x = ac - w * 0.5f;
                     }
 image_geo:
                     dp_tgeoInit( emit );

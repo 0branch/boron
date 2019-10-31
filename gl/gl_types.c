@@ -349,7 +349,6 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
     TextureDef def;
     GLuint name;
     GLenum type = GL_UNSIGNED_BYTE;
-    UIndex rastN = 0;
     GLenum target = GL_TEXTURE_2D;
 
 
@@ -361,7 +360,6 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
 
     if( ur_is(from, UT_RASTER) )
     {
-        rastN = from->series.buf;
         _texRast( &def, ur_rastHead(from) );
         goto build;
     }
@@ -391,7 +389,6 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
 valid_val:
                     if( ur_is(val, UT_RASTER) )
                     {
-                        rastN = val->series.buf;
                         _texRast( &def, ur_rastHead(val) );
                     }
                     else if( ur_is(val, UT_BINARY) )
@@ -485,8 +482,13 @@ build:
     // GL_NEAREST, GL_LINEAR
     glTexParameteri( target, GL_TEXTURE_MAG_FILTER, def.mag_filter );
 
+    // NOTE: texture! make no longer sets ur_texRast as we don't want to
+    // force the rasters to be kept in memory.
+
     ur_setId( res, UT_TEXTURE );
-    ur_texRast(res) = rastN;
+    ur_texRast(res) = 0;
+    ur_texW(res)    = def.width;
+    ur_texH(res)    = def.height;
     ur_texId(res)   = name;
 
     return UR_OK;
@@ -496,7 +498,7 @@ build:
 static void textureToRaster( UThread* ut, GLenum target, GLuint name,
                              UCell* res )
 {
-#ifdef GL_ES_VERSION_2_0 
+#if defined(GL_ES_VERSION_2_0) && ! defined(GL_ES_VERSION_3_1)
     (void) ut;
     (void) target;
     (void) name;
@@ -526,21 +528,43 @@ texture_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* tmp )
 {
     if( ur_is(sel, UT_WORD) )
     {
-        if( ur_atom(sel) == UR_ATOM_RASTER )
+        switch( ur_atom(sel) )
         {
-            UIndex ri = ur_texRast(cell);
-            if( ri )
+            case UR_ATOM_WIDTH:
+                ur_setId(tmp, UT_INT);
+                ur_int(tmp) = ur_texW(cell);
+                return tmp;
+
+            case UR_ATOM_HEIGHT:
+                ur_setId(tmp, UT_INT);
+                ur_int(tmp) = ur_texH(cell);
+                return tmp;
+
+            case UR_ATOM_SIZE:
+                ur_setId(tmp, UT_COORD);
+                tmp->coord.len = 2;
+                tmp->coord.n[0] = ur_texW(cell);
+                tmp->coord.n[1] = ur_texH(cell);
+                return tmp;
+
+            case UR_ATOM_RASTER:
             {
-                ur_initSeries(tmp, UT_RASTER, ri);
+                UIndex ri = ur_texRast(cell);
+                if( ri )
+                {
+                    ur_initSeries(tmp, UT_RASTER, ri);
+                }
+                else
+                {
+                    textureToRaster( ut, GL_TEXTURE_2D, ur_texId(cell), tmp );
+                }
             }
-            else
-            {
-                textureToRaster( ut, GL_TEXTURE_2D, ur_texId(cell), tmp );
-            }
-            return tmp;
+                return tmp;
         }
     }
-    return raster_select( ut, cell, sel, tmp );
+    ur_error( ut, UR_ERR_SCRIPT,
+              "texture select expected width/height/size/raster" );
+    return NULL;
 }
 
 
@@ -579,8 +603,10 @@ static void texture_recycle( UThread* ut, int phase )
 
 static void texture_mark( UThread* ut, UCell* cell )
 {
-    ur_markBuffer( ut, ur_texRast(cell) );
-    glid_gcMarkTexture( ur_texId(cell) );
+    UCellTexture* tc = (UCellTexture*) cell;
+    if( tc->rasterN )
+        ur_markBuffer( ut, tc->rasterN );
+    glid_gcMarkTexture( tc->glTexId );
 }
 
 
@@ -727,6 +753,8 @@ rfont_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
             case UR_ATOM_TEXTURE:
                 ur_setId(res, UT_TEXTURE);
                 ur_texId(res)   = ur_fontTexId(cell);
+                ur_texW(res)    =
+                ur_texH(res)    = 0;
                 ur_texRast(res) = ur_fontRast(cell);
                 return res;
         }
@@ -934,14 +962,20 @@ int fbo_make( UThread* ut, const UCell* from, UCell* res )
 
         if( sel == UR_ATOM_DEPTH )
         {
-            // glGetTexLevelParameteriv requires GLES 3.1
-            //return ur_error( ut, UR_ERR_SCRIPT,
-            //  "make depth framebuffer! cannot get texture! size with GLES2" );
-            glBindTexture( GL_TEXTURE_2D, texName );
-            glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,
-                                      dim );
-            glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT,
-                                      dim + 1 );
+            if( ur_texW(from) )
+            {
+                dim[0] = ur_texW(from);
+                dim[1] = ur_texH(from);
+            }
+            else
+            {
+                // glGetTexLevelParameteriv requires GLES 3.1
+                glBindTexture( GL_TEXTURE_2D, texName );
+                glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,
+                                          dim );
+                glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT,
+                                          dim + 1 );
+            }
         }
     }
     else if( ur_is(from, UT_COORD) )
@@ -1020,6 +1054,8 @@ fbo_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
         case UR_ATOM_TEXTURE:
             ur_setId(res, UT_TEXTURE);
             ur_texId(res)   = ur_fboTexId(cell);
+            ur_texW(res)    =
+            ur_texH(res)    = 0;
             ur_texRast(res) = 0;
             return res;
         }

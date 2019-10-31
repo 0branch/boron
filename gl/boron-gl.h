@@ -100,7 +100,17 @@ typedef struct
 UCellRasterFont;
 
 
-typedef UCellRasterFont     UCellTexture;
+typedef struct
+{
+    uint8_t  type;
+    uint8_t  flags;
+    uint16_t _pad;
+    UIndex   rasterN;   // Raster binary
+    uint16_t width;
+    uint16_t height;
+    GLuint   glTexId;
+}
+UCellTexture;
 
 
 typedef struct
@@ -191,6 +201,8 @@ extern const char* gl_errorString( GLenum error );
 
 #define ur_texRast(c)       ((UCellTexture*) (c))->rasterN
 #define ur_texId(c)         ((UCellTexture*) (c))->glTexId
+#define ur_texW(c)          ((UCellTexture*) (c))->width
+#define ur_texH(c)          ((UCellTexture*) (c))->height
 
 #define ur_fboId(c)         ((UCellFramebuffer*) (c))->glFboId
 #define ur_fboRenId(c)      ((UCellFramebuffer*) (c))->glRenId
