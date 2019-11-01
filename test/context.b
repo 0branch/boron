@@ -63,3 +63,13 @@ co: context [
 ]
 co/f
 probe co/self
+
+
+print "---- bind/secure"
+sc: context [
+    high: low: none
+]
+probe try [
+    do bind/secure [low: 2 high: read %/tmp/config] sc
+]
+probe sc

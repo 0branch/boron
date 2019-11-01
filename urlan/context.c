@@ -629,6 +629,11 @@ void ur_bindCells( UThread* ut, UCell* it, UCell* end, const UBindTarget* bt )
                     it->word.ctx = bt->ctxN;
                     it->word.index = wrdN;
                 }
+                else if( self == UR_BIND_SECURE )
+                {
+                    ur_setBinding( it, UR_BIND_UNBOUND );
+                    it->word.ctx = UR_INVALID_BUF;
+                }
                 else if( ur_atom(it) == self )
                 {
                     ur_setBinding( it, UR_BIND_SELF );
@@ -680,6 +685,11 @@ void ur_bind( UThread* ut, UBuffer* blk, const UBuffer* ctx, int bindType )
     {
         bt.bindType = bindType = UR_BIND_THREAD;
         bt.self = UR_ATOM_SELF;
+    }
+    else if( bindType == UR_BIND_SECURE )
+    {
+        bt.bindType = bindType = UR_BIND_THREAD;
+        bt.self = UR_BIND_SECURE;
     }
     else
     {
@@ -747,7 +757,7 @@ void ur_bindCopy( UThread* ut, const UBuffer* ctx, UCell* it, UCell* end )
 
 
 /**
-  Unbind all words an array of cells.
+  Unbind all words in an array of cells.
 
   \param it     First cell.
   \param end    End of cell array.

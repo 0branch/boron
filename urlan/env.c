@@ -37,6 +37,9 @@
   Indentifers for the built-in datatypes.
   These values match the datatype name atom.
 */
+/** \enum UrlanWordBindings
+  Values for UCellWord::binding and ur_bind().
+*/
 /** \enum UrlanErrorType
   These descriptive codes are passed to ur_error().
 */
@@ -1036,7 +1039,9 @@ void ur_appendTrace( UThread* ut, UIndex blkN, UIndex it )
 
 
 /**
-  \return Non-zero if cell is not none! or false.
+  Check if a value is "true".  Note that a word bound to 'none is true.
+
+  \return Non-zero if cell is not none! or a false logic! value.
 */
 int ur_true( const UCell* cell )
 {
@@ -1138,8 +1143,8 @@ void ur_toText( UThread* ut, const UCell* cell, UBuffer* str )
 
   \param cell   Pointer to word cell.
 
-  \return  Pointer to value cell.  If the word does not reference a valid
-           cell then an error is generated and zero is returned.
+  \return  Pointer to value cell.  If the word does not have a valid binding
+           then an error is generated and zero is returned.
 */
 const UCell* ur_wordCell( UThread* ut, const UCell* cell )
 {
@@ -1184,8 +1189,8 @@ const UCell* ur_wordCell( UThread* ut, const UCell* cell )
 
   \param cell   Pointer to word cell.
 
-  \return  Pointer to value cell.  If the word does not reference a valid
-           cell then an error is generated and zero is returned.
+  \return  Pointer to value cell.  If the word does not have a valid binding
+           then an error is generated and zero is returned.
 */
 UCell* ur_wordCellM( UThread* ut, const UCell* cell )
 {

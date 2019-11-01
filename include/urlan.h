@@ -89,12 +89,13 @@ enum UrlanDataType
 
 enum UrlanWordBindings
 {
-    UR_BIND_UNBOUND = 0,    /* ur_setId zeros flags so this is default. */
-    UR_BIND_THREAD,         /* Bound to buffer in thread dataStore. */
-    UR_BIND_ENV,
-    UR_BIND_STACK,          /* Bound to thread stack. */
-    UR_BIND_SELF,
-    UR_BIND_USER
+    UR_BIND_UNBOUND = 0, ///< ur_setId() zeros binding so this is default.
+    UR_BIND_THREAD,      ///< Bound to buffer in thread dataStore.
+    UR_BIND_ENV,         ///< Bound to buffer in shared env dataStore.
+    UR_BIND_STACK,       ///< Bound to thread stack.
+    UR_BIND_SELF,        ///< Evaluate to bound context rather than value.
+    UR_BIND_SECURE,      ///< As UR_BIND_THREAD but unbind if not in context.
+    UR_BIND_USER         ///< Start of user defined bindings.
 };
 
 
@@ -272,8 +273,8 @@ struct UBuffer
     UIndex      used;       // Number of elements (for series).
     union
     {
-        UBuffer*    buf;    //!< Buffers
-        UCell*      cell;   //!< Cells
+        UBuffer*    buf;    //!< Array of buffers
+        UCell*      cell;   //!< Array of cells
         char*       c;      //!< chars
         uint8_t*    b;      //!< bytes
         int16_t*    i16;    //!< int16_t

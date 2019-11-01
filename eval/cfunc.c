@@ -579,17 +579,20 @@ CFUNC(cfunc_bindingQ)
 
 /*-cf-
     bind
-        words   word!/block!
-        context word!/context!
+        words       word!/block!
+        context     word!/context!
+        /secure     Unbind any words not found in the context.
     return: Bound words
     group: data
     see: binding?, unbind
 */
 CFUNC(cfunc_bind)
 {
+#define OPT_BIND_SECURE 0x01
     UIndex ctxN;
     UBuffer* blk;
     UCell* ctxArg = a2;
+    int bindType;
 
     if( ur_is(ctxArg, UT_WORD) )
     {
@@ -603,6 +606,13 @@ CFUNC(cfunc_bind)
     else
         return boron_badArg( ut, ur_type(ctxArg), 1 );
 
+    if( ur_isShared(ctxN) )
+        bindType = UR_BIND_ENV;
+    else if( CFUNC_OPTIONS & OPT_BIND_SECURE )
+        bindType = UR_BIND_SECURE;
+    else
+        bindType = UR_BIND_THREAD;
+
     if( ur_is(a1, UT_BLOCK) )
     {
         const UBuffer* ctx;
@@ -611,8 +621,7 @@ CFUNC(cfunc_bind)
             return UR_THROW;
         if( ! (ctx = ur_sortedContext(ut, ctxArg)) )
             return UR_THROW;
-        ur_bind( ut, blk, ctx,
-                 ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD );
+        ur_bind( ut, blk, ctx, bindType );
         *res = *a1;
         return UR_OK;
     }
@@ -623,8 +632,16 @@ CFUNC(cfunc_bind)
         if( ! (bt.ctx = ur_sortedContext(ut, ctxArg)) )
             return UR_THROW;
         bt.ctxN = ctxN;
-        bt.bindType = ur_isShared(ctxN) ? UR_BIND_ENV : UR_BIND_THREAD;
-        bt.self = UR_INVALID_ATOM;
+        if( bindType == UR_BIND_SECURE )
+        {
+            bt.bindType = UR_BIND_THREAD;
+            bt.self = UR_BIND_SECURE;
+        }
+        else
+        {
+            bt.bindType = bindType;
+            bt.self = UR_INVALID_ATOM;
+        }
 
         *res = *a1;
         ur_bindCells( ut, res, res + 1, &bt );

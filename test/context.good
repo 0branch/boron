@@ -46,3 +46,12 @@ context [
 ---- self override
 override
 override
+---- bind/secure
+Script Error: unbound word 'read
+Trace:
+ -> low: 2 high: read %/tmp/config
+ -> do bind/secure [low: 2 high: read %/tmp/config] sc
+context [
+    high: none
+    low: 2
+]
