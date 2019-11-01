@@ -30,7 +30,7 @@
 
   \return UR_OK or UR_THROW.
 */
-int calc_eval( UThread* ut, UCell* cell, double* res )
+UStatus calc_eval( UThread* ut, UCell* cell, double* res )
 {
     switch( ur_type(cell) )
     {
@@ -139,12 +139,12 @@ int calc_eval( UThread* ut, UCell* cell, double* res )
 
   \return UR_OK or UR_THROW.
 */
-int calc_evalCStr( UThread* ut, const char* cmd, double* result )
+UStatus calc_evalCStr( UThread* ut, const char* cmd, double* result )
 {
     UCell cell;
     UIndex blkN;
     UIndex hold;
-    int ok;
+    UStatus ok;
     int len = strlen( cmd );
     if( len )
     {
