@@ -2767,7 +2767,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    74
+#define FA_COUNT    76
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -2778,7 +2778,8 @@ static void _createFixedAtoms( UThread* ut )
         "on-window-created on-window-destroyed on-save-instance\n"
         "root parent child\n"
         "ambient diffuse specular pos shader vertex normal fragment\n"
-        "default dynamic static stream left right center horiz vert\n"
+        "default dynamic static stream\n"
+        "left right center bottom top horiz vert\n"
         "rgb rgba depth clamp nearest linear\n"
         "min mag mipmap gray\n"
         "burn color trans sprite\n"

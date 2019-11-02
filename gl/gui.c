@@ -375,6 +375,13 @@ static void widget_fullAreaLayout( GWidget* wp )
 {
     GWidget* it;
 
+#ifdef REPORT_LAYOUT
+    printf( "----------------\n"
+            "fullAreaLayout %p %s\t%d,%d,%d,%d\n",
+            wp, wp->wclass->name,
+            wp->area.x, wp->area.y, wp->area.w, wp->area.h );
+#endif
+
     EACH_SHOWN_CHILD( wp, it )
         if( it->flags & GW_SELF_LAYOUT )
             continue;
@@ -517,18 +524,17 @@ static GWidget* expand_make( UThread* ut, UBlockIter* bi,
 
     ++bi->it;
     wp = gui_allocWidget( sizeof(GWidget), wclass );
+    //wp->expandMin = 0;
 
     if( bi->it != bi->end && ur_is(bi->it, UT_INT) )
     {
-        wp->flags |= GW_NO_INPUT;
         wp->expandMin = ur_int(bi->it);
         ++bi->it;
     }
-    else
-    {
-        wp->flags |= GW_NO_INPUT | GW_NO_SPACE;
-        wp->expandMin = 0;
-    }
+
+    if( ! wp->expandMin )
+        wp->flags |= GW_NO_SPACE;
+
     return wp;
 }
 
@@ -858,27 +864,6 @@ static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
                             return UR_THROW;
                         if( ur_is(cell, UT_WIDGET) )
                             parent = ur_widgetPtr(cell);
-                    }
-                    ++bi->it;
-                    continue;
-                }
-                else if( atom == UR_ATOM_CENTER )
-                {
-                    if( wp && parent )
-                    {
-                        const UCell* nv = bi->it + 1;
-                        if( (nv != bi->end) && ur_is(nv, UT_DOUBLE) )
-                        {
-                            double percent = ur_double(nv);
-                            // Expecting layout to change area if too small.
-                            wp->area.w = (int16_t) (parent->area.w * percent);
-                            wp->area.h = (int16_t) (parent->area.h * percent);
-                            ++bi->it;
-                        }
-                        glEnv.guiStyle = gui_style( glEnv.guiUT );
-                        wp->wclass->layout( wp );
-                        gui_move( wp, (parent->area.w - wp->area.w) / 2,
-                                      (parent->area.h - wp->area.h) / 2 );
                     }
                     ++bi->it;
                     continue;
@@ -1328,7 +1313,8 @@ static void root_render( GWidget* wp )
     uint16_t marginT; \
     uint16_t marginR; \
     uint16_t marginB; \
-    uint16_t spacing; \
+    uint8_t  spacing; \
+    uint8_t  align; \
     uint8_t  rows; \
     uint8_t  cols;
 
@@ -1340,6 +1326,36 @@ typedef struct
 Box;
 
 #define EX_PTR  Box* ep = (Box*) wp
+
+#define GW_ALIGN_L      0x01
+#define GW_ALIGN_R      0x02
+#define GW_ALIGN_CH     0x03
+#define GW_ALIGN_B      0x04
+#define GW_ALIGN_T      0x08
+#define GW_ALIGN_CV     0x0C
+
+
+static void setBoxAlign( Box* wd, const UCell* ac )
+{
+    switch( ur_atom(ac) )
+    {
+        case UR_ATOM_LEFT:
+            wd->align = GW_ALIGN_L;
+            break;
+        case UR_ATOM_RIGHT:
+            wd->align = GW_ALIGN_R;
+            break;
+        case UR_ATOM_CENTER:
+            wd->align = GW_ALIGN_CH | GW_ALIGN_CV;
+            break;
+        case UR_ATOM_BOTTOM:
+            wd->align = GW_ALIGN_B;
+            break;
+        case UR_ATOM_TOP:
+            wd->align = GW_ALIGN_T;
+            break;
+    }
+}
 
 
 /*
@@ -1371,15 +1387,23 @@ static void setBoxMargins( Box* wd, const UCell* mc )
 
 
 static GWidget* box_make2( UThread* ut, const GWidgetClass* wclass,
-                           const UCell* margin, const UCell* child,
-                           const UCell* grid )
+                           const UCell* margin, const UCell* align,
+                           const UCell* child, const UCell* grid )
 {
     Box* ep = (Box*) gui_allocWidget( sizeof(Box), wclass );
+    /*
     ep->marginL = 0;
     ep->marginT = 0;
     ep->marginR = 0;
     ep->marginB = 0;
+    */
     ep->spacing = 8;
+
+    if( margin )
+        setBoxMargins( ep, margin );
+
+    if( align )
+        setBoxAlign( ep, align );
 
     if( grid )
     {
@@ -1387,29 +1411,27 @@ static GWidget* box_make2( UThread* ut, const GWidgetClass* wclass,
         ep->cols = grid->coord.n[0];
     }
 
-    if( margin )
-        setBoxMargins( ep, margin );
-
     if( ! gui_makeWidgets( ut, child, (GWidget*) ep, 0 ) )
     {
         wclass->free( (GWidget*) ep );
-        return 0;
+        return NULL;
     }
     return (GWidget*) ep;
 }
 
 
 /*-wid-
-    hbox [margins]   children
-         coord!      block!
+    hbox [margins] [/center]  children
+          coord!    option!   block!
 */
 /*-wid-
-    vbox [margins]   children
-         coord!      block!
+    vbox [margins] [/center]  children
+          coord!    option!   block!
 */
 static const uint8_t box_args[] =
 {
     GUIA_OPT,   UT_COORD,
+    GUIA_OPT,   UT_OPTION,
     GUIA_ARG,   UT_BLOCK,
     GUIA_END
 };
@@ -1417,10 +1439,10 @@ static const uint8_t box_args[] =
 static GWidget* box_make( UThread* ut, UBlockIter* bi,
                           const GWidgetClass* wclass )
 {
-    const UCell* arg[ 2 ];
+    const UCell* arg[ 3 ];
     if( ! gui_parseArgs( ut, bi, wclass, box_args, arg ) )
-        return 0;
-    return box_make2( ut, wclass, arg[0], arg[1], 0 );
+        return NULL;
+    return box_make2( ut, wclass, arg[0], arg[1], arg[2], NULL );
 }
 
 
@@ -1462,14 +1484,17 @@ typedef struct
 {
     int count;
     int spaceCount;
-    int required;
-    int widgetWeight;
-    int expandWeight;
+    int required;           // Sum of hint minW or minH.
+    int widgetWeight;       // Sum of non-expanding hint weightX or weightY.
+    int expandWeight;       // Sum of expanding hint weightX or weightY.
     GSizeHint hint[ MAX_LO_WIDGETS ];
 }
 LayoutData;
 
 
+/*
+  Collect sizeHint structures of visible children.
+*/
 static void layout_query( GWidget* wp, LayoutData* lo )
 {
     GWidget* it;
@@ -1488,6 +1513,11 @@ static void layout_query( GWidget* wp, LayoutData* lo )
 }
 
 
+/*
+  Set LayoutData required, widgetWeight, & expandWeight for a given axis.
+
+  \param axis  'x' or 'y' for horizontal or vertical.
+*/
 static void layout_stats( LayoutData* lo, int axis )
 {
     int used = 0;
@@ -1525,7 +1555,7 @@ static void layout_stats( LayoutData* lo, int axis )
 }
 
 
-static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
+static void hbox_layout( GWidget* wp )
 {
     EX_PTR;
     GWidget* it;
@@ -1535,12 +1565,15 @@ static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
     GRect cr;
     int dim;
     int room;
+    int align;
 
     layout_query( wp, &lo );
     layout_stats( &lo, 'x' );
 
     room = wp->area.w - ep->marginL - ep->marginR -
            (ep->spacing * (lo.spaceCount - 1));
+
+    // Compute and store children area width in lo.hint[i].minW.
     if( room > lo.required )
     {
         //int excess = room - lo.required;
@@ -1580,10 +1613,9 @@ static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
         }
     }
 
-    //gui_setArea( wp, rect );
-
     dim = wp->area.x + ep->marginL;
     room = wp->area.h - ep->marginT - ep->marginB;
+    align = ep->align & GW_ALIGN_CV;
     hint = lo.hint;
     EACH_SHOWN_CHILD( wp, it )
         cr.x = dim;
@@ -1591,12 +1623,25 @@ static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
         cr.w = hint->minW;
         cr.h = MIN( hint->maxH, room );
 
+        if( cr.h < room )
+        {
+            switch( align )
+            {
+                case GW_ALIGN_T:
+                    cr.y += room - cr.h;
+                    break;
+                case GW_ALIGN_CV:
+                    cr.y += (room - cr.h) / 2;
+                    break;
+            }
+        }
+
         dim += cr.w;
         if( ! (it->flags & GW_NO_SPACE) )
             dim += ep->spacing;
 
 #ifdef REPORT_LAYOUT
-        printf( "KR hbox layout  %p %s\t%d,%d,%d,%d\n",
+        printf( "  hbox layout  %p %s\t%d,%d,%d,%d\n",
                 it, it->wclass->name, cr.x, cr.y, cr.w, cr.h );
 #endif
 #if 1
@@ -1647,7 +1692,7 @@ static void vbox_sizeHint( GWidget* wp, GSizeHint* size )
 }
 
 
-static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
+static void vbox_layout( GWidget* wp )
 {
     EX_PTR;
     GWidget* it;
@@ -1657,12 +1702,15 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
     GRect cr;
     int dim;
     int room;
+    int align;
 
     layout_query( wp, &lo );
     layout_stats( &lo, 'y' );
 
     room = wp->area.h - ep->marginT - ep->marginB -
            (ep->spacing * (lo.spaceCount - 1));
+
+    // Compute and store children area height in lo.hint[i].minH.
     if( room > lo.required )
     {
         //int excess = room - lo.required;
@@ -1702,10 +1750,9 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
         }
     }
 
-    //gui_setArea( wp, rect );
-
     dim = wp->area.y + wp->area.h - ep->marginT;
     room = wp->area.w - ep->marginL - ep->marginR;
+    align = ep->align & GW_ALIGN_CH;
     hint = lo.hint;
     EACH_SHOWN_CHILD( wp, it )
         cr.x = wp->area.x + ep->marginL;
@@ -1713,12 +1760,25 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
         cr.h = hint->minH;
         cr.y = dim - cr.h;
 
+        if( cr.w < room )
+        {
+            switch( align )
+            {
+                case GW_ALIGN_R:
+                    cr.x += room - cr.w;
+                    break;
+                case GW_ALIGN_CH:
+                    cr.x += (room - cr.w) / 2;
+                    break;
+            }
+        }
+
         dim -= cr.h;
         if( ! (it->flags & GW_NO_SPACE) )
             dim -= ep->spacing;
 
 #ifdef REPORT_LAYOUT
-        printf( "KR vbox layout  %p %s\t%d,%d,%d,%d\n",
+        printf( "  vbox layout  %p %s\t%d,%d,%d,%d\n",
                 it, it->wclass->name, cr.x, cr.y, cr.w, cr.h );
 #endif
 #if 1
@@ -1757,8 +1817,8 @@ static GWidget* grid_make( UThread* ut, UBlockIter* bi,
 {
     const UCell* arg[ 3 ];
     if( ! gui_parseArgs( ut, bi, wclass, grid_args, arg ) )
-        return 0;
-    return box_make2( ut, wclass, arg[1], arg[2], arg[0] );
+        return NULL;
+    return box_make2( ut, wclass, arg[1], NULL, arg[2], arg[0] );
 }
 
 
@@ -1933,7 +1993,7 @@ static void grid_layout( GWidget* wp )
             cr.h = rowMin[ row ];
 
 #ifdef REPORT_LAYOUT
-        printf( "KR grid layout  %p %s\t%d,%d,%d,%d\n",
+        printf( "  grid layout  %p %s\t%d,%d,%d,%d\n",
                 it, it->wclass->name, cr.x, cr.y, cr.w, cr.h );
 #endif
         // Always call layout to recompile DL.
@@ -2309,8 +2369,8 @@ static void viewport_render( GWidget* wp )
 
 
 /*-wid-
-    overlay layout  [margins]   children
-            word!   coord!      block!
+    overlay layout  [margins]  [/center]  children
+            word!    coord!     option!   block!
 
     Place widgets over the parent area.
 
@@ -2320,6 +2380,7 @@ static const uint8_t overlay_args[] =
 {
     GUIA_ARG,   UT_WORD,
     GUIA_OPT,   UT_COORD,
+    GUIA_OPT,   UT_OPTION,
     GUIA_ARG,   UT_BLOCK,
     GUIA_END
 };
@@ -2328,7 +2389,7 @@ static GWidget* overlay_make( UThread* ut, UBlockIter* bi,
                               const GWidgetClass* wclass )
 {
     GWindow* ep;
-    const UCell* arg[ 3 ];
+    const UCell* arg[ 4 ];
 
     if( ! gui_parseArgs( ut, bi, wclass, overlay_args, arg ) )
         return 0;
@@ -2343,7 +2404,10 @@ static GWidget* overlay_make( UThread* ut, UBlockIter* bi,
     if( arg[1] )
         setBoxMargins( (Box*) ep, arg[1] );
 
-    if( gui_makeWidgets( ut, arg[2], (GWidget*) ep, 0 ) )
+    if( arg[2] )
+        setBoxAlign( (Box*) ep, arg[2] );
+
+    if( gui_makeWidgets( ut, arg[3], (GWidget*) ep, 0 ) )
         return (GWidget*) ep;
 
     wclass->free( (GWidget*) ep );
@@ -2367,6 +2431,12 @@ static void overlay_layout( GWidget* wp )
     DPCompiler dpc;
     UThread* ut = glEnv.guiUT;
 
+
+#ifdef REPORT_LAYOUT
+    printf( "  overlay      %p %s\t%d,%d,%d,%d\n",
+            wp, wp->wclass->name,
+            wp->area.x, wp->area.y, wp->area.w, wp->area.h );
+#endif
 
     if( ! glEnv.guiStyle )
     {
@@ -2490,7 +2560,7 @@ GWidgetClass wclass_expand =
     expand_make,        widget_free,        widget_markNul,
     widget_dispatchNul, expand_sizeHint,    widget_layoutNul,
     widget_renderNul,   gui_areaSelect,
-    0, GW_UPDATE_LAYOUT
+    0, GW_UPDATE_LAYOUT | GW_NO_INPUT
 };
 
 

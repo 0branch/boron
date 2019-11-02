@@ -77,13 +77,13 @@ enum ContextIndexStyle
 
 enum GUIArgumentOp
 {
-    GUIA_ARG,
-    GUIA_ARGM,
-    GUIA_ARGW,
-    GUIA_OPT,
-    GUIA_OPTM,
-    GUIA_ANY,
-    GUIA_END
+    GUIA_ARG,       // Argument of one specific type.
+    GUIA_ARGM,      // Argument matching more than one type.
+    GUIA_ARGW,      // Arg. from word!/path!/paren! matching one or more types.
+    GUIA_OPT,       // Optional argument of one specific type.
+    GUIA_OPTM,      // Optional argument matching more than one type.
+    GUIA_ANY,       // Skip one value of any type.
+    GUIA_END        // Terminator of parse program.
 };
 
 
