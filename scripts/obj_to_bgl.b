@@ -1,6 +1,6 @@
 /*
     Converts Wavefront OBJ files to Boron-GL buffers
-    Version: 1.0.0
+    Version: 1.1
 */
 
 
@@ -49,9 +49,9 @@ write-surf: func [surf] [
 
 write-geo: func [
     geo
-    | indices ic a b c key vi vcount new prev.l prev.k prim-end
+    /local key vi
 ][
-    indices: /*set-stride 3*/ reserve make vector! 'i32 1000
+    indices: /*set-stride 3*/ reserve make vector! 'u16 1000
 
     if geo/name [
         prin rejoin [{; object "} geo/name {"^/} ]
@@ -144,7 +144,7 @@ white:       charset " ^-^D"
 index-chars: charset "0123456789/"
 digits:      charset "0123456789"
 
-convert-face: func [line geo | verts len key t n] [
+convert-face: func [line geo] [
     len: 0
     parse line [some[
         some white | some index-chars (++ len)
@@ -169,7 +169,7 @@ convert-face: func [line geo | verts len key t n] [
 eol: '^/'
 
 ; Return surf-contexts
-load-mtl: func [file | sfs surf cl sl data] [
+load-mtl: func [file] [
     sfs: make block! 0
 
     ; Material
@@ -201,7 +201,7 @@ load-mtl: func [file | sfs surf cl sl data] [
 ]
 
 
-convert: func [file string!/file! | mtllib main geo cl data] [
+convert: func [file string!/file!] [
     prin rejoin [
         "; Boron-GL Draw List^/; File: " file
          "^/; Date: " now/date "^/^/"
@@ -240,7 +240,7 @@ convert: func [file string!/file! | mtllib main geo cl data] [
 
 
 /*
-geom-size: func [geo | min max v] [
+geom-size: func [geo] [
     max: min: make vec3! geo/verts
     iter/3 geo/verts [
         v: make vec3! it
