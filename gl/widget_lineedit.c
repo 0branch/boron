@@ -405,8 +405,8 @@ static void ledit_sizeHint( GWidget* wp, GSizeHint* size )
     size->maxH    = size->minH;
     size->weightX = 2;
     size->weightY = 1;
-    size->policyX = GW_EXPANDING;
-    size->policyY = GW_FIXED;
+    size->policyX = GW_POL_EXPANDING;
+    size->policyY = GW_POL_FIXED;
 
     tf = ur_texFontV( ut, style + CI_STYLE_EDIT_FONT );
     if( tf )

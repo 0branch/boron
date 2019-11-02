@@ -259,8 +259,8 @@ static void listw_sizeHint( GWidget* wp, GSizeHint* size )
     size->maxH    = MAX_DIM;
     size->weightX = 2;
     size->weightY = 3;
-    size->policyX = GW_EXPANDING;
-    size->policyY = GW_EXPANDING;
+    size->policyX = GW_POL_EXPANDING;
+    size->policyY = GW_POL_EXPANDING;
 }
 
 

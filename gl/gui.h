@@ -100,10 +100,10 @@ typedef struct
 UCellWidget;
 
 
-#define GW_MAX_DIM      0x7fff
-#define GW_FIXED        0
-#define GW_WEIGHTED     1
-#define GW_EXPANDING    2
+#define GW_MAX_DIM          0x7fff
+#define GW_POL_FIXED        0
+#define GW_POL_WEIGHTED     1
+#define GW_POL_EXPANDING    2
 
 typedef struct
 {
@@ -177,7 +177,8 @@ struct GWidget
 #define GW_FOCUS_MOUSE   0x0002
 #define GW_FOCUS_GRAB    0x0004
 
-#define gui_ignoreEvent(ev)     ((GLViewEvent*) ev)->type |= 0x1000
+#define GUI_EVENT_IGNORE    0x1000
+#define gui_ignoreEvent(ev)     ((GLViewEvent*) ev)->type |= GUI_EVENT_IGNORE
 #define gui_acceptEvent(ev)     ((GLViewEvent*) ev)->type &= 0x0fff
 
 

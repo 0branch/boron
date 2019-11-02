@@ -538,7 +538,7 @@ static void expand_sizeHint( GWidget* wp, GSizeHint* size )
     size->minW    = size->minH    = wp->expandMin;
     size->maxW    = size->maxH    = GW_MAX_DIM;
     size->weightX = size->weightY = 1;
-    size->policyX = size->policyY = GW_EXPANDING;
+    size->policyX = size->policyY = GW_POL_EXPANDING;
 }
 
 
@@ -1269,7 +1269,7 @@ dispatch:
 dispatch_used:
 
     cw->wclass->dispatch( ut, cw, ev );
-    if( ev->type & 0x1000 )
+    if( ev->type & GUI_EVENT_IGNORE )
     {
         gui_acceptEvent( ev );
         do
@@ -1293,7 +1293,7 @@ static void root_sizeHint( GWidget* wp, GSizeHint* size )
     size->weightX =
     size->weightY = 0;
     size->policyX =
-    size->policyY = GW_FIXED;
+    size->policyY = GW_POL_FIXED;
 }
 
 
@@ -1343,7 +1343,10 @@ Box;
 
 
 /*
-  mc must be a coord!
+  mc must be a coord! with 2-5 elements.
+
+    left&right, top&bottom [,spacing]
+    left, top, right, bottom [,spacing]
 */
 static void setBoxMargins( Box* wd, const UCell* mc )
 {
@@ -1435,8 +1438,8 @@ static void hbox_sizeHint( GWidget* wp, GSizeHint* size )
     size->maxH    = GW_MAX_DIM;
     size->weightX = 2;
     size->weightY = 2;
-    size->policyX = GW_FIXED;
-    size->policyY = GW_FIXED;
+    size->policyX = GW_POL_WEIGHTED;
+    size->policyY = GW_POL_WEIGHTED;
 
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->sizeHint( it, &cs );
@@ -1496,7 +1499,7 @@ static void layout_stats( LayoutData* lo, int axis )
     {
         while( it != end )
         {
-            if( it->policyY == GW_EXPANDING )
+            if( it->policyY == GW_POL_EXPANDING )
                 ew += it->weightY;
             else
                 weight += it->weightY;
@@ -1508,7 +1511,7 @@ static void layout_stats( LayoutData* lo, int axis )
     {
         while( it != end )
         {
-            if( it->policyX == GW_EXPANDING )
+            if( it->policyX == GW_POL_EXPANDING )
                 ew += it->weightX;
             else
                 weight += it->weightX;
@@ -1546,7 +1549,7 @@ static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
         hend = hint + lo.count;
         while( hint != hend )
         {
-            if( hint->policyX == GW_WEIGHTED )
+            if( hint->policyX == GW_POL_WEIGHTED )
             {
                 dim = (room * hint->weightX) / lo.widgetWeight;
                 if( dim > hint->maxW )
@@ -1555,7 +1558,7 @@ static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
                     hint->minW = dim;
                 avail -= hint->minW;
             }
-            else if( hint->policyX == GW_FIXED )
+            else if( hint->policyX == GW_POL_FIXED )
             {
                 avail -= hint->minW;
             }
@@ -1568,7 +1571,7 @@ static void hbox_layout( GWidget* wp /*, GRect* rect*/ )
             hint = lo.hint;
             while( hint != hend )
             {
-                if( hint->policyX == GW_EXPANDING )
+                if( hint->policyX == GW_POL_EXPANDING )
                 {
                     hint->minW = (avail * hint->weightX) / lo.expandWeight;
                 }
@@ -1626,8 +1629,8 @@ static void vbox_sizeHint( GWidget* wp, GSizeHint* size )
     size->maxH    = GW_MAX_DIM;
     size->weightX = 2;
     size->weightY = 2;
-    size->policyX = GW_WEIGHTED;
-    size->policyY = GW_WEIGHTED;
+    size->policyX = GW_POL_WEIGHTED;
+    size->policyY = GW_POL_WEIGHTED;
 
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->sizeHint( it, &cs );
@@ -1668,7 +1671,7 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
         hend = hint + lo.count;
         while( hint != hend )
         {
-            if( hint->policyY == GW_WEIGHTED )
+            if( hint->policyY == GW_POL_WEIGHTED )
             {
                 dim = (room * hint->weightY) / lo.widgetWeight;
                 if( dim > hint->maxH )
@@ -1677,7 +1680,7 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
                     hint->minH = dim;
                 avail -= hint->minH;
             }
-            else if( hint->policyY == GW_FIXED )
+            else if( hint->policyY == GW_POL_FIXED )
             {
                 avail -= hint->minH;
             }
@@ -1690,7 +1693,7 @@ static void vbox_layout( GWidget* wp /*, GRect* rect*/ )
             hint = lo.hint;
             while( hint != hend )
             {
-                if( hint->policyY == GW_EXPANDING )
+                if( hint->policyY == GW_POL_EXPANDING )
                 {
                     hint->minH = (avail * hint->weightY) / lo.expandWeight;
                 }
@@ -1826,8 +1829,8 @@ static void grid_sizeHint( GWidget* wp, GSizeHint* size )
     size->maxH    = GW_MAX_DIM;
     size->weightX = 2;
     size->weightY = 2;
-    size->policyX = GW_WEIGHTED;
-    size->policyY = GW_WEIGHTED;
+    size->policyX = GW_POL_WEIGHTED;
+    size->policyY = GW_POL_WEIGHTED;
 
     grid_stats( wp, ep->cols, colMin, rowMin, 0, 0 );
     size->minW += _int16Sum( colMin, ep->cols );
@@ -1849,7 +1852,7 @@ static void _distributeSpace( int16_t* val, int16_t* pol, int n, int space )
         int resizable = 0;
         for( i = 0; i < n; ++i )
         {
-            if( pol[i] != GW_FIXED )
+            if( pol[i] != GW_POL_FIXED )
                 ++resizable;
         }
         if( ! resizable )
@@ -1859,7 +1862,7 @@ static void _distributeSpace( int16_t* val, int16_t* pol, int n, int space )
         rem = space % resizable;
         for( i = 0; i < n; ++i )
         {
-            if( pol[i] == GW_FIXED )
+            if( pol[i] == GW_POL_FIXED )
                 continue;
             val[i] += div;
             if( rem )
@@ -1913,7 +1916,7 @@ static void grid_layout( GWidget* wp )
         if( row )
             cr.y -= row * ep->spacing;
 
-        if( cs.policyX == GW_FIXED )
+        if( cs.policyX == GW_POL_FIXED )
         {
             cr.w = cs.minW;
             cr.x += (colMin[ col ] - cs.minW) / 2;
@@ -1921,7 +1924,7 @@ static void grid_layout( GWidget* wp )
         else
             cr.w = colMin[ col ];
 
-        if( cs.policyY == GW_FIXED )
+        if( cs.policyY == GW_POL_FIXED )
         {
             cr.h = cs.minH;
             cr.y += (rowMin[ row ] - cs.minH) / 2;

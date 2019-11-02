@@ -81,8 +81,8 @@ static void label_sizeHint( GWidget* wp, GSizeHint* size )
     size->maxW    = 100;
     size->weightX = 1;
     size->weightY = 1;
-    size->policyX = GW_FIXED;
-    size->policyY = GW_FIXED;
+    size->policyX = GW_POL_FIXED;
+    size->policyY = GW_POL_FIXED;
 
     tf = ur_texFontV( ut, style + CI_STYLE_CONTROL_FONT );
     if( tf && ep->textN != UR_INVALID_BUF )
