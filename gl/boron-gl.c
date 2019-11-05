@@ -2468,7 +2468,7 @@ float* ur_matrixM( UThread* ut, const UCell* cell )
 /*
   Returns zero and throws error if matrix is invalid.
 */
-const float* ur_matrix( UThread* ut, const UCell* cell )
+float* ur_matrix( UThread* ut, const UCell* cell )
 {
     if( ur_is(cell, UT_VECTOR) )
     {
@@ -2556,6 +2556,52 @@ CFUNC( cfunc_mul_matrix )
             return UR_THROW;
         ur_matrixMult( matA, matB, matA );
     }
+    return UR_OK;
+}
+
+
+/*-cf-
+    translate
+        matrix  vector!
+        vector  vec3!
+    return: Modified matrix.
+    group: gl
+*/
+CFUNC( cfunc_translate )
+{
+    float* mat;
+    const UCell* a2 = a1 + 1;
+
+    if( ! (mat = ur_matrix( ut, a1 )) )
+        return UR_THROW;
+    *res = *a1;
+
+    mat[12] += a2->vec3.xyz[0];
+    mat[13] += a2->vec3.xyz[1];
+    mat[14] += a2->vec3.xyz[2];
+    return UR_OK;
+}
+
+
+/*-cf-
+    rotate
+        matrix  vector!
+        axis    vec3!
+        angle   double!  Angle in degrees.
+    return: Modified matrix.
+    group: gl
+*/
+CFUNC( cfunc_rotate )
+{
+    float rot[16];
+    float* mat;
+
+    if( ! (mat = ur_matrix( ut, a1 )) )
+        return UR_THROW;
+    *res = *a1;
+
+    ur_loadRotation( rot, (a1+1)->vec3.xyz, degToRad( ur_double(a1+2) ) );
+    ur_matrixMult( mat, rot, mat );
     return UR_OK;
 }
 
