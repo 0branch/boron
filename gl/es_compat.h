@@ -35,6 +35,7 @@ void esTranslatef( GLfloat x, GLfloat y, GLfloat z );
 void esOrtho( GLfloat left, GLfloat right, GLfloat bottom, GLfloat top,
               GLfloat near_val, GLfloat far_val );
 void es_updateUniformMatrix();
+void es_updateUniformMatrixView();
 
 
 extern GLfloat* matrixTop;

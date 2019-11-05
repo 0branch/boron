@@ -59,6 +59,31 @@ void es_updateUniformMatrix()
 }
 
 
+/*
+  Set projection*view & view matrices for cases where model matrix is
+  provided by other means (e.g. instanced draws with matrices in vertex
+  attributes).
+*/
+void es_updateUniformMatrixView()
+{
+    GLfloat mat[16];
+
+    es_matrixMod = 0;
+
+    // mat = projection * view
+    ur_matrixMult( projection, viewStack, mat );
+
+    glUniformMatrix4fv( 0 /*ULOC_TRANSFORM*/, 1, GL_FALSE, mat );
+    DUMP( "projectionView", mat );
+
+    if( es_matrixUsed > 1 )
+    {
+        glUniformMatrix4fv( 2 /*ULOC_MODELVIEW*/, 1, GL_FALSE, viewStack );
+        DUMP( "view", mat );
+    }
+}
+
+
 void esMatrixMode( GLenum mode )
 {
     if( mode == GL_MODELVIEW )

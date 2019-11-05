@@ -2834,25 +2834,27 @@ static void _createFixedAtoms( UThread* ut )
 
 static void _createDrawOpTable( UThread* ut )
 {
-#define DA_COUNT    55
+#define DA_COUNT    57
     UAtom atoms[ DA_COUNT ];
     UAtomEntry* ent;
     UBuffer* buf;
     UIndex bufN;
     int i;
 
+    // Matches order in draw_ops.h.
     ur_internAtoms( ut,
         "nop end clear enable disable\n"
         "call solid model decal image\n"
         "particle color colors verts normals\n"
         "uvs attrib points lines line-strip\n"
         "tris tri-strip tri-fan quads quad_strip\n"
+        "tris-inst\n"
         "sphere box quad camera light\n"
         "lighting push pop translate rotate\n"
         "scale font text shader uniform\n"
         "framebuffer framebuffer-tex\n"
         "shadow-begin shadow-end samples-query samples-begin\n"
-        "buffer depth-test blend cull color-mask\n"
+        "buffer buffer-inst depth-test blend cull color-mask\n"
         "depth-mask point-size point-sprite read-pixels",
         atoms );
 

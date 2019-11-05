@@ -1119,6 +1119,7 @@ UIndex ur_makeVbo( UThread* ut, GLenum attrUsage, int acount, float* attr,
         glBindBuffer( GL_ARRAY_BUFFER, *gbuf++ );
         glBufferData( GL_ARRAY_BUFFER, sizeof(float) * acount,
                       attr, attrUsage );
+        //glBindBuffer( GL_ARRAY_BUFFER, 0 );
     }
 
     if( icount )
@@ -1126,6 +1127,7 @@ UIndex ur_makeVbo( UThread* ut, GLenum attrUsage, int acount, float* attr,
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, *gbuf );
         glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof(uint16_t) * icount,
                       indices, GL_STATIC_DRAW );
+        //glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
     }
 
     return bufN;

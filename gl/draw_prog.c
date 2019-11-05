@@ -61,6 +61,7 @@ enum DPOpcode
     DP_COLOR_OFFSET_4,      // stride-offset
     DP_UV_OFFSET,           // stride-offset
     DP_ATTR_OFFSET,         // location-size stride-offset
+    DP_ATTR_DIVISOR,        // location-attrCount
     DP_DRAW_ARR_POINTS,     // count
     DP_DRAW_POINTS,         // count
     DP_DRAW_LINES,          // count
@@ -75,7 +76,7 @@ enum DPOpcode
     DP_DRAW_TRIS_I,         // count offset
     DP_DRAW_TRI_STRIP_I,    // count offset
     DP_DRAW_TRI_FAN_I,      // count offset
-    DP_DRAW_QUADS_I,        // count offset
+    DP_DRAW_INST_TRIS_WORD, // blkN index vertCount
     DP_DEPTH_ON,
     DP_DEPTH_OFF,
     DP_BLEND_ON,
@@ -453,11 +454,12 @@ static void dp_addRef( DPCompiler* emit, int type, int count,
 
   blk rules:
      word!         <- size 3
-     word! int!    <- size 1 to 4
+     word! int!    <- size 1 to 4 (or 16)
 
   Returns zero (and throws error) if fails.
 */
-static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk )
+static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk,
+                              int instanced )
 {
     UCell* it;
     UCell* end;
@@ -475,7 +477,11 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk )
             ++it;
             if( (it != end) && ur_is(it, UT_INT) )
             {
-                stride += ur_int(it);
+                size = ur_int(it);
+                if( size < 1 || size > 16 || (size > 4 && size < 16) )
+                    return ur_error( ut, UR_ERR_SCRIPT,
+                                 "Buffer attribute size must be 1-4 or 16" );
+                stride += size;
                 ++it;
             }
             else
@@ -536,7 +542,8 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk )
 
             default:
             {
-                // LIMIT: Shader attribute names must be lower-case.
+                // NOTE: There is no guarantee that the case of the attribute
+                // name will match that of the atom name.
                 const char* name = ur_atomCStr(ut, atom);
                 int loc = glGetAttribLocation( emit->shaderProg, name );
                 if( loc == -1 )
@@ -545,7 +552,25 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk )
                                      "Shader attrib '%s not found", name );
                 }
 
-                emitOp2( DP_ATTR_OFFSET, (loc << 8) | size, B_STRIDE_OFFSET );
+                if( size == 16 )
+                {
+                    int i;
+                    int aloc = loc;
+                    int aoff = offset;
+                    for( i = 0; i < 4; ++i, ++aloc, aoff += 16 )
+                    {
+                        emitOp2( DP_ATTR_OFFSET, (aloc << 8) | 4,
+                                 STRIDE_OFFSET(stride, aoff) );
+                    }
+                }
+                else
+                {
+                    emitOp2( DP_ATTR_OFFSET, (loc << 8) | size,
+                             B_STRIDE_OFFSET );
+                }
+
+                if( instanced )
+                    emitOp1( DP_ATTR_DIVISOR, (loc << 3) | ((size + 3) / 4) );
             }
                 break;
             }
@@ -580,6 +605,40 @@ static void dp_recordPrim( DPCompiler* emit, int dt, int opcode, UIndex n )
 
 
 /*
+  Create and fill a GL_ARRAY_BUFFER for each DPCompiler::vbuf and then reset
+  DPCompiler::vbufCount to zero.
+
+  \param bufCount   Set to vbufCount or higher (to create extra buffers).
+
+  \return Original vbufCount or -1 if an error was thrown.
+*/
+static int genVertexBuffers( UThread* ut, DPCompiler* emit, GLuint* buf,
+                             int bufCount )
+{
+    DPBuffer* vbuf = emit->vbuf;
+    int i;
+
+    glGenBuffers( bufCount, buf );
+    dp_addRef( emit, RES_GL_BUFFERS, bufCount, buf );
+
+    for( i = 0; i < emit->vbufCount; ++i, ++vbuf )
+    {
+        UBuffer* arr = ur_buffer( vbuf->vecN );
+
+        glBindBuffer( GL_ARRAY_BUFFER, buf[i] );
+        glBufferData( GL_ARRAY_BUFFER, sizeof(float) * arr->used,
+                      arr->ptr.f, vbuf->usage );
+
+        emitOp1( DP_BIND_ARRAY, buf[i] );
+        if( ! emitBufferOffsets( ut, emit, ur_buffer( vbuf->keyN ), 0 ) )
+            return -1;
+    }
+    emit->vbufCount = 0;
+    return i;
+}
+
+
+/*
   \param primOpcode    DP_DRAW_POINTS to DP_DRAW_QUADS.
   \param elemCount     Number of contiguous vertices to draw.
                        Zero if idxVec set.
@@ -591,7 +650,6 @@ static int genPrimitives( UThread* ut, DPCompiler* emit, int primOpcode,
                           int elemCount, const UCell* idxVec )
 {
     GLuint buf[ DP_MAX_VBUF + 1 ];
-    DPBuffer* vbuf;
     int bufCount;
     int drawArrPoints;
     int makeIndexBuf;
@@ -607,23 +665,9 @@ static int genPrimitives( UThread* ut, DPCompiler* emit, int primOpcode,
 
     if( bufCount )
     {
-        glGenBuffers( bufCount, buf );
-        dp_addRef( emit, RES_GL_BUFFERS, bufCount, buf );
-
-        vbuf = emit->vbuf;
-        for( i = 0; i < emit->vbufCount; ++i, ++vbuf )
-        {
-            UBuffer* arr = ur_buffer( vbuf->vecN );
-
-            glBindBuffer( GL_ARRAY_BUFFER, buf[i] );
-            glBufferData( GL_ARRAY_BUFFER, sizeof(float) * arr->used,
-                          arr->ptr.f, vbuf->usage );
-
-            emitOp1( DP_BIND_ARRAY, buf[i] );
-            if( ! emitBufferOffsets( ut, emit, ur_buffer( vbuf->keyN ) ) )
-                return 0;
-        }
-        emit->vbufCount = 0;
+        i = genVertexBuffers( ut, emit, buf, bufCount );
+        if( i < 0 )
+            return 0;
     }
 
     if( makeIndexBuf )
@@ -1818,6 +1862,54 @@ bad_prim:
             }
                 break;
 
+            case DOP_TRIS_INST:             // tris-inst vertCount instCount
+            {
+                uint32_t vertCount;
+
+                INC_PC
+                PC_VALUE(val)
+                if( ur_is(val, UT_VECTOR) )
+                {
+                    GLuint buf[ DP_MAX_VBUF + 1 ];
+                    int i;
+                    const UBuffer* vec = ur_bufferSer(val);
+
+                    if( /*vec->form != UR_VEC_I32 &&*/ vec->form != UR_VEC_U16 )
+                        goto bad_prim;
+                    vertCount = vec->used;
+#if 1
+                    i = genVertexBuffers( ut, emit, buf, emit->vbufCount + 1 );
+                    if( i < 0 )
+                        goto error;
+#else
+                    glGenBuffers( 1, &buf );
+                    dp_addRef( emit, RES_GL_BUFFERS, 1, &buf );
+#endif
+                    emitOp1( DP_BIND_ELEMENTS, buf[i] );
+                    //dp_recordPrim( emit, UT_VECTOR, DP_DRAW_TRIS,
+                    //               vec->series.buf );
+                    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buf[i] );
+                    glBufferData( GL_ELEMENT_ARRAY_BUFFER,
+                                  vec->used * sizeof(uint16_t),
+                                  vec->ptr.v,
+                                  GL_STATIC_DRAW );
+                }
+
+                INC_PC
+                if( ur_is(pc, UT_GETWORD) )
+                {
+                    emitWordOp( emit, pc, DP_DRAW_INST_TRIS_WORD );
+                    emitDPArg( emit, vertCount );
+                }
+                else
+                {
+                    ur_error( ut, UR_ERR_SCRIPT,
+                              "tris-inst expected get-word! instance count" );
+                    goto error;
+                }
+            }
+                break;
+
             case DOP_SPHERE:                 // sphere radius silces,stacks
             {
                 float radius; 
@@ -2223,7 +2315,8 @@ samples_err:
                 emitOp( DP_SAMPLES_BEGIN );
                 break;
 
-            case DOP_BUFFER:        // buffer attr-block vector!/vertex-buffer!
+            case DOP_BUFFER:        // buffer attr-block vector!/vbo!
+            case DOP_BUFFER_INST:
             {
                 DPBuffer* vbuf;
                 UIndex keyN;
@@ -2270,13 +2363,14 @@ samples_err:
                     {
                         refVBO( ur_vboResN(val) );
                         emitOp1( DP_BIND_ARRAY, buf[0] );
-                        if( ! emitBufferOffsets( ut, emit, ur_buffer(keyN) ) )
+                        if( ! emitBufferOffsets( ut, emit, ur_buffer(keyN),
+                                     (opcode == DOP_BUFFER_INST) ? 1 : 0 ) )
                             goto error;
                     }
                 }
                 else
                 {
-                    typeError( "buffer expected vector!/vertex-buffer!" );
+                    typeError( "buffer expected vector!/vbo!" );
                 }
             }
                 break;
@@ -2539,6 +2633,9 @@ static void disableVertexAttrib( struct ClientState* cs )
 
     for( f = 0; f < cs->attrCount; ++f )
         glDisableVertexAttribArray( cs->attr[ f ] );
+
+    for( f = 0; f < cs->divisorCount; ++f )
+        glVertexAttribDivisor( cs->divisor[ f ], 0 );
 }
 
 
@@ -2564,6 +2661,7 @@ void ur_initDrawState( DPState* state )
 {
     state->client.flags =
     state->client.attrCount = 0;
+    state->client.divisorCount = 0;
 
     state->samplesQueryId = 0;
     state->currentProgram = 0;
@@ -3004,6 +3102,7 @@ dispatch:
                 disableVertexAttrib( &ds->client );
                 ds->client.flags = 0;
                 ds->client.attrCount = 0;
+                ds->client.divisorCount = 0;
             }
 #endif
             glBindBuffer( GL_ARRAY_BUFFER, *pc++ );
@@ -3081,13 +3180,33 @@ dispatch:
             int size;
             uint32_t loc  = *pc++;
             uint32_t stof = *pc++;
-            REPORT_2( " ATTR_OFFSET %08x %08x\n", loc, stof );
             size = loc & 0xff;
             loc >>= 8;
+
+            REPORT( " ATTR_OFFSET loc:%d size:%d stof:0x%04x\n",
+                      loc, size, stof );
             glEnableVertexAttribArray( loc );
+            assert( ds->client.attrCount <= CS_MAX_ATTR );
             ds->client.attr[ ds->client.attrCount++ ] = loc;
             glVertexAttribPointer( loc, size, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
+        }
+            break;
+
+        case DP_ATTR_DIVISOR:
+        {
+            uint32_t loc  = *pc++;
+            int attrCount = loc & 7;
+            loc >>= 3;
+
+            REPORT( " ATTR_DIVISOR loc:%d count:%d\n", loc, attrCount );
+            do
+            {
+                assert( ds->client.divisorCount <= CS_MAX_DIVISOR );
+                ds->client.divisor[ ds->client.divisorCount++ ] = loc;
+                glVertexAttribDivisor( loc++, 1 );
+            }
+            while( --attrCount );
         }
             break;
 
@@ -3179,6 +3298,20 @@ dispatch:
             glDrawElements( GL_TRIANGLE_FAN, pc[0], GL_UNSIGNED_SHORT,
                             NULL + pc[1] );
             pc += 2;
+            break;
+
+        case DP_DRAW_INST_TRIS_WORD:
+        {
+            GLsizei icount;
+
+            PC_WORD;
+            icount = ur_int(val);
+            REPORT_2( "DRAW_TRIS_INST_WORD %d %d\n", pc[0], icount );
+            if( es_matrixUsed && es_matrixMod )
+                es_updateUniformMatrixView();
+            glDrawElementsInstanced( GL_TRIANGLES, *pc++, GL_UNSIGNED_SHORT,
+                                     NULL, icount );
+        }
             break;
 
         case DP_DEPTH_ON:
