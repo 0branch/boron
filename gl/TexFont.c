@@ -188,17 +188,27 @@ static void blitGlyphToBitmap( FT_Bitmap* src, TexFontImage* dst, int x, int y )
     int r;
 
     s = src->buffer;
+#ifdef IMAGE_BOTTOM_AT_0
+    d = dst->pixels + ((dst->height - 1 - y) * dst->pitch) + x;
+    dend = dst->pixels;
+
+    for( r = src->rows; r && (d >= dend); --r )
+    {
+        memcpy( d, s, src->width );
+        s += src->pitch;
+        d -= dst->pitch;
+    }
+#else
     d = dst->pixels + (y * dst->pitch) + x;
     dend = dst->pixels + (dst->height * dst->pitch);
 
-    r = src->rows;
-    while( r && (d < dend) )
+    for( r = src->rows; r && (d < dend); --r )
     {
         memcpy( d, s, src->width );
         s += src->pitch;
         d += dst->pitch;
-        r--;
     }
+#endif
 }
 
 

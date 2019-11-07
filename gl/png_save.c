@@ -81,11 +81,17 @@ error:
     png_write_info( png, info );
 
     row_pointer = (png_byte*) (rast + 1);
+#ifdef IMAGE_BOTTOM_AT_0
+    row_pointer += (rast->height - 1) * bpl;
+#endif
     for( i = 0; i < rast->height; i++ )
     {
         png_write_row( png, row_pointer );
-        //png_write_rows( png, &row_pointer, 1 );
+#ifdef IMAGE_BOTTOM_AT_0
+        row_pointer -= bpl;
+#else
         row_pointer += bpl;
+#endif
     }
 
     png_write_end( png, info );

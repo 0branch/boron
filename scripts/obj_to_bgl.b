@@ -128,7 +128,7 @@ write-geo: func [
                     b: skip geo/uvs     mul 2 vi/2
                     c: skip geo/normals mul 3 vi/3
                     vi: skip vi 3
-                    print [' ' a/1 a/2 a/3  b/1 sub 1.0 b/2  c/1 c/2 c/3]
+                    print [' ' a/1 a/2 a/3  b/1 /*sub 1.0*/ b/2  c/1 c/2 c/3]
                     append indices ++ ic
                 ]
             ]

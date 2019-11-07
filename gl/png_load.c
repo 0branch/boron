@@ -70,13 +70,22 @@ static int make_image( UThread* ut, png_structp png, png_infop info,
 
             row_pointers = png_get_rows( png, info );
 
+#ifdef IMAGE_BOTTOM_AT_0
+#define FOREACH_ROW for( y = height; y; )
+#define ADJUST_Y    --y;
+#else
+#define FOREACH_ROW for( y = 0; y < height; ++y )
+#define ADJUST_Y
+#endif
+
             if( color_type == PNG_COLOR_TYPE_GRAY_ALPHA )
             {
                 // Drop Alpha.
                 png_byte* rit;
                 png_byte* rend;
-                for( y = 0; y < height; y++ )
+                FOREACH_ROW
                 {
+                    ADJUST_Y
                     rit  = row_pointers[ y ];
                     rend = rit + png_bpl;
                     while( rit != rend )
@@ -88,8 +97,9 @@ static int make_image( UThread* ut, png_structp png, png_infop info,
             }
             else
             {
-                for( y = 0; y < height; y++ )
+                FOREACH_ROW
                 {
+                    ADJUST_Y
                     memCpy( dest, row_pointers[ y ], png_bpl );
                     dest += bpl;
 #ifdef PRINT_IMAGE

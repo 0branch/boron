@@ -21,6 +21,7 @@ default [
 ]
 
 shlib [%boron-gl 2,0,0] [
+    cflags {-DIMAGE_BOTTOM_AT_0}
     linux [
         cflags {-std=gnu99}
         cflags {-DUSE_XF86VMODE}

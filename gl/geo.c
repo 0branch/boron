@@ -243,8 +243,13 @@ void quad_init( QuadDim* qd, const int16_t* rect, const int16_t* tsize,
     qd->vs  = 1.0 / ((float) tsize[1]);
     qd->tx1 = ((float) tc[0]) * qd->us;
     qd->tx2 = ((float) (tc[2] + 1)) * qd->us;
+#ifdef IMAGE_BOTTOM_AT_0
+    qd->ty1 = ((float) tc[1]) * qd->vs;
+    qd->ty2 = ((float) (tc[3] + 1)) * qd->vs;
+#else
     qd->ty1 = 1.0 - ((float) tc[1]) * qd->vs;
     qd->ty2 = 1.0 - ((float) (tc[3] + 1)) * qd->vs;
+#endif
 
     //printf( "KR quad %f,%f %f,%f\n", qd->x,qd->y, qd->x2,qd->y2 );
     //printf( "        %f,%f %f,%f\n", qd->tx1,qd->ty1, qd->tx2,qd->ty2 );
@@ -327,8 +332,13 @@ void quad_emitSkinVT( const QuadDim* qd, float cx, float cy,
     yB = qd->y + cy;
     uA = qd->tx1 + tcx;
     uB = qd->tx2 - tcx;
+#ifdef IMAGE_BOTTOM_AT_0
+    vA = qd->ty1 + tcy;
+    vB = qd->ty2 - tcy;
+#else
     vA = qd->ty1 - tcy;
     vB = qd->ty2 + tcy;
+#endif
 
     Q_VERT( qd->tx1, qd->ty1, qd->x,  yA );
     Q_VERT( qd->tx1, vA,      qd->x,  yB );
@@ -429,10 +439,10 @@ void geo_image( Geometry* geo, GLfloat x, GLfloat y, GLfloat x2, GLfloat y2 )
     vert[2] = 0.0f; \
     vert += geo->attrSize
 
-    IMG_VERT( 0.0f, 1.0f, x,  y );
-    IMG_VERT( 1.0f, 1.0f, x2, y );
-    IMG_VERT( 1.0f, 0.0f, x2, y2 );
-    IMG_VERT( 0.0f, 0.0f, x,  y2 );
+    IMG_VERT( 0.0f, 0.0f, x,  y );
+    IMG_VERT( 1.0f, 0.0f, x2, y );
+    IMG_VERT( 1.0f, 1.0f, x2, y2 );
+    IMG_VERT( 0.0f, 1.0f, x,  y2 );
 
     geo_primEnd( geo );
 }

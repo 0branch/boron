@@ -1042,9 +1042,9 @@ int vbo_drawText( DrawTextState* ds,
 
                 min_s = gx / texW;
                 max_s = (gx + gw) / texW;
-#if 0
+#ifdef IMAGE_BOTTOM_AT_0
                 min_t = 1.0f - (gy / texH);
-                max_t = 1.0f - ((gy + gh) / texH);
+                max_t = 1.0f - ((gy - gh) / texH);
 #else
                 min_t = gy / texH;
                 max_t = (gy - gh) / texH;
