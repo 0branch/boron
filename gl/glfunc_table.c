@@ -49,6 +49,7 @@ DEF_CF( cfunc_set_matrix,   "set-matrix m q\n" )
 DEF_CF( cfunc_mul_matrix,   "mul-matrix m b\n" )
 DEF_CF( cfunc_translate,    "translate m a vec3!\n" )
 DEF_CF( cfunc_rotate,       "rotate m a vec3! n double!\n" )
+DEF_CF( cfunc_pick_drawn,   "pick-drawn prog draw-prog! pnt coord!\n" )
 
 #ifdef TIMER_GROUP
     DEF_CF( uc_timer_group,    "timer-group\n" )

@@ -2926,7 +2926,7 @@ void dop_shadow_end()
 
   \return UR_OK/UR_THROW.
 */
-int ur_runDrawProg2( UThread* ut, DPState* ds, UIndex n )
+UStatus ur_runDrawProg2( UThread* ut, DPState* ds, UIndex n )
 {
     DPHeader* ph;
     const UBuffer* blk;
@@ -3795,10 +3795,10 @@ dispatch:
 }
 
 
-int ur_runDrawProg( UThread* ut, UIndex n )
+UStatus ur_runDrawProg( UThread* ut, UIndex n )
 {
     DPState state;
-    int ok;
+    UStatus ok;
 
     ur_initDrawState( &state );
 
