@@ -127,6 +127,14 @@ void ur_rasterBlit( const RasterHead* src, uint16_t* srcRect,
     ses = ur_rasterElementSize( src );
     des = ur_rasterElementSize( dest );
 
+#ifdef IMAGE_BOTTOM_AT_0
+    sr.y = src->height  - 1 - sr.y;
+    dr.y = dest->height - 1 - dr.y;
+#define SKIP(ptr,n) ptr -= n
+#else
+#define SKIP(ptr,n) ptr += n
+#endif
+
     sp = ur_rasterElements( src )  + (sr.x * ses) + (sr.y * sskip);
     dp = ur_rasterElements( dest ) + (dr.x * des) + (dr.y * dskip);
 
@@ -136,39 +144,39 @@ void ur_rasterBlit( const RasterHead* src, uint16_t* srcRect,
         while( sr.h-- )
         {
             memCpy( dp, sp, ses );
-            sp += sskip;
-            dp += dskip;
+            SKIP(sp, sskip);
+            SKIP(dp, dskip);
         }
     }
     else if( src->format == UR_RAST_RGB && dest->format == UR_RAST_RGBA )
     {
-        const uint8_t* end;
+        const uint8_t* sit;
+        const uint8_t* send;
+        uint8_t* dit;
 
         ses *= sr.w;        // Source byte copy length.
-        sskip -= ses;
-        dskip -= sr.w * des;
-
         while( sr.h-- )
         {
-            end = sp + ses;
-            while( sp != end )
+            dit  = dp;
+            sit  = sp;
+            send = sp + ses;
+            while( sit != send )
             {
-                *dp++ = *sp++;
-                *dp++ = *sp++;
-                *dp++ = *sp++;
-                *dp++ = 255;
+                *dit++ = *sit++;
+                *dit++ = *sit++;
+                *dit++ = *sit++;
+                *dit++ = 255;
             }
-            sp += sskip;
-            dp += dskip;
+            SKIP(sp, sskip);
+            SKIP(dp, dskip);
         }
     }
     else if( src->format == UR_RAST_GRAY )
     {
-        const uint8_t* end;
+        const uint8_t* sit;
+        const uint8_t* send;
+        uint8_t* dit;
         int gray;
-
-        sskip -= sr.w;
-        dskip -= dr.w * des;
 
         // Copy gray value to the alpha channel (if present).  This is good
         // for converting font! rasters to color images, but in the future a
@@ -178,33 +186,37 @@ void ur_rasterBlit( const RasterHead* src, uint16_t* srcRect,
         {
             while( sr.h-- )
             {
-                end = sp + sr.w;
-                while( sp != end )
+                dit  = dp;
+                sit  = sp;
+                send = sp + sr.w;
+                while( sit != send )
                 {
-                    gray = *sp++;
-                    *dp++ = 255;
-                    *dp++ = 255;
-                    *dp++ = 255;
-                    *dp++ = gray;
+                    gray = *sit++;
+                    *dit++ = 255;
+                    *dit++ = 255;
+                    *dit++ = 255;
+                    *dit++ = gray;
                 }
-                sp += sskip;
-                dp += dskip;
+                SKIP(sp, sskip);
+                SKIP(dp, dskip);
             }
         }
         else if( dest->format == UR_RAST_RGB )
         {
             while( sr.h-- )
             {
-                end = sp + sr.w;
-                while( sp != end )
+                dit  = dp;
+                sit  = sp;
+                send = sp + sr.w;
+                while( sit != send )
                 {
-                    gray = *sp++;
-                    *dp++ = gray;
-                    *dp++ = gray;
-                    *dp++ = gray;
+                    gray = *sit++;
+                    *dit++ = gray;
+                    *dit++ = gray;
+                    *dit++ = gray;
                 }
-                sp += sskip;
-                dp += dskip;
+                SKIP(sp, sskip);
+                SKIP(dp, dskip);
             }
         }
     }
