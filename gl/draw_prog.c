@@ -98,6 +98,7 @@ enum DPOpcode
     DP_COLOR4,              // color
     DP_COLOR_GREY,          // greyf
     DP_COLOR_WORD,          // blkN index
+    DP_PUSH_MUL_WORD,       // blkN index
     DP_PUSH,
     DP_POP,
     DP_TRANSLATE,           // x y z
@@ -123,9 +124,6 @@ enum DPOpcode
     DP_READ_PIXELS,         // blkN index pos dim
     DP_FONT,                // blkN
     DP_TEXT_WORD,           // blkN index aoff x y (then DP_DRAW_TRIS_I)
-    DP_86,
-    DP_87,
-    DP_88,
     DP_89,
     DP_90
 };
@@ -2011,6 +2009,18 @@ bad_quad:
                 emitOp1( DP_LIGHT, pc->series.buf );
                 break;
 
+            case DOP_PUSH_MUL:
+                INC_PC
+                if( ur_is(pc, UT_GETWORD) )
+                {
+                    emitWordOp( emit, pc, DP_PUSH_MUL_WORD );
+                }
+                else
+                {
+                    typeError( "push-mul expected get-word!" );
+                }
+                break;
+
             case DOP_PUSH:
                 emitOp( DP_PUSH );
                 break;
@@ -3465,6 +3475,19 @@ dispatch:
                     ur_atomCStr(ut, ur_type(val)),
                     col[0], col[1], col[2], col[3] );
             glUniform4fv( ULOC_COLOR, 1, col );
+        }
+            break;
+
+        case DP_PUSH_MUL_WORD:
+        {
+            PC_WORD;
+            if( ur_is(val, UT_VECTOR) )
+            {
+                USeriesIter si;
+                ur_seriesSlice( ut, &si, val );
+                if( si.buf->form == UR_VEC_F32 )    // Assuming used == 16.
+                    es_pushMultMatrix( si.buf->ptr.f + si.it );
+            }
         }
             break;
 

@@ -2954,7 +2954,7 @@ static void _createDrawOpTable( UThread* ut )
         "tris tri-strip tri-fan quads quad_strip\n"
         "tris-inst\n"
         "sphere box quad camera light\n"
-        "lighting push pop translate rotate\n"
+        "push-mul push pop translate rotate\n"
         "scale font text shader uniform\n"
         "framebuffer framebuffer-tex\n"
         "shadow-begin shadow-end samples-query samples-begin\n"

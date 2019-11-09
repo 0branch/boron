@@ -3,6 +3,7 @@
 */
 
 
+#include <assert.h>
 #include <string.h>
 #include "glh.h"
 #include "math3d.h"
@@ -119,6 +120,20 @@ void esMultMatrixf( const GLfloat* mat )
 {
     ur_matrixMult( matrixTop, mat, matrixTop );
     es_matrixMod = 1;
+}
+
+
+// Combines glPushMatrix followed by glMultMatrixf.
+void es_pushMultMatrix( const float* mat )
+{
+    assert( _mode == GL_MODELVIEW );
+    if( matrixTop != viewStackEnd )
+    {
+        GLfloat* prev = matrixTop;
+        matrixTop += 16;
+        ur_matrixMult( prev, mat, matrixTop );
+        es_matrixMod = 1;
+    }
 }
 
 
