@@ -2763,7 +2763,8 @@ CFUNC( cfunc_shadowmap )
     pick-drawn
         prog    draw-prog!
         point   coord!      Position on display.
-    return: int! containing RGB color at point.
+    return: int! containing the RGB color at point, or none! if the background
+            was selected.
     group: gl
 
     NOTE: This renders into the display framebuffer, so it should be called
@@ -2771,6 +2772,7 @@ CFUNC( cfunc_shadowmap )
 */
 CFUNC( cfunc_pick_drawn )
 {
+    GLfloat ccol[4];
     uint8_t pixel[4];
     int px, py;
     UStatus ok;
@@ -2780,7 +2782,9 @@ CFUNC( cfunc_pick_drawn )
 
     glEnable( GL_SCISSOR_TEST );
     glScissor( px, py, 1, 1 );
-    //glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+    // Save current clear color.
+    glGetFloatv( GL_COLOR_CLEAR_VALUE, ccol );
+    glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_CULL_FACE );
@@ -2790,11 +2794,24 @@ CFUNC( cfunc_pick_drawn )
     glDisable( GL_SCISSOR_TEST );
     glReadPixels( px, py, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel );
 
+    // Restore clear color.
+    glClearColor( ccol[0], ccol[1], ccol[2], ccol[3] );
+
     if( ok == UR_OK )
     {
-        ur_setId(res, UT_INT);
-        ur_int(res) = ((int)pixel[0] << 16) | ((int)pixel[1] << 8) | pixel[2];
-        //printf( "KR pick-drawn %d,%d -> 0x%lX\n", px, py, ur_int(res) );
+        // Don't use a pixel with less than 1.0 alpha as the RGB values may
+        // then be a mix of the background and object colors.
+        if( pixel[3] == 255 )
+        {
+            ur_setId(res, UT_INT);
+            ur_int(res) = ((int) pixel[0] << 16) |
+                          ((int) pixel[1] <<  8) | pixel[2];
+            //printf( "KR pick-drawn %d,%d -> 0x%lX\n", px, py, ur_int(res) );
+        }
+        else
+        {
+            ur_setId(res, UT_NONE);
+        }
     }
     return ok;
 }
