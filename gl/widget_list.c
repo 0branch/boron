@@ -291,8 +291,6 @@ static void listw_layout( GWidget* wp )
     // Compile draw list for visible items.
 
     save = ur_beginDP( &dpc );
-    if( save )
-        dpc.shaderProg = save->shaderProg;
 
 
     // Header

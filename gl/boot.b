@@ -44,6 +44,10 @@ gui-style-proto: context [
     checkbox-size:
     checkbox-up:
     checkbox-down:
+    choice-size:
+    choice:
+    choice-item:
+    menu-bg:
     label-dl:
     editor:
     editor-active:

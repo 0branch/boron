@@ -2555,15 +2555,22 @@ DPCompiler* gDPC = 0;
 
 
 /*
-  \return previous compiler.
+  Initialize compiler to start a new series of instructions and set gDPC
+  to this compiler.
+
+  The shaderProg of any current gDPC is inherited.
+
+  \return Previous gDPC compiler.
 */
-DPCompiler* ur_beginDP( DPCompiler* dpc /*, UIndex dpResN*/ )
+DPCompiler* ur_beginDP( DPCompiler* dpc )
 {
     static uint32_t serial = 1;
     DPCompiler* save = gDPC;
 
     dp_init( dpc );
     dpc->uid = serial++;
+    if( save )
+        dpc->shaderProg = save->shaderProg;
     gDPC = dpc;
 
     return save;

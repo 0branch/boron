@@ -474,8 +474,6 @@ static void ledit_layout( GWidget* wp )
         DPCompiler* save;
 
         save = gx_beginDP( &dc );
-        if( save )
-            dc.shaderProg = save->shaderProg;
         ur_compileDP( ut, rc, 1 );
         gx_endDP( ur_buffer( ep->textResN ), save );
 

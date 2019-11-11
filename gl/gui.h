@@ -52,13 +52,17 @@ enum ContextIndexStyle
     CI_STYLE_START_DL,      // Draw list
     CI_STYLE_WINDOW_MARGIN, // coord!
     CI_STYLE_WINDOW,        // Draw list
-    CI_STYLE_BUTTON_SIZE,   // coord!
+    CI_STYLE_BUTTON_SIZE,   // coord! (minW, minH, init-maxW)
     CI_STYLE_BUTTON_UP,     // Draw list
     CI_STYLE_BUTTON_DOWN,   // Draw list
     CI_STYLE_BUTTON_HOVER,  // Draw list
     CI_STYLE_CHECKBOX_SIZE, // coord!
     CI_STYLE_CHECKBOX_UP,   // Draw list
     CI_STYLE_CHECKBOX_DOWN, // Draw list
+    CI_STYLE_CHOICE_SIZE,   // coord! (minW, minH, init-maxW)
+    CI_STYLE_CHOICE,        // Draw list
+    CI_STYLE_CHOICE_ITEM,   // Draw list
+    CI_STYLE_MENU_BG,       // Draw list
     CI_STYLE_LABEL_DL,      // Draw list
     CI_STYLE_EDITOR,        // Draw list
     CI_STYLE_EDITOR_ACTIVE, // Draw list

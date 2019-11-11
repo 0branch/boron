@@ -18,21 +18,6 @@
   along with Boron.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/*
-  TODO
-
-  [X] Layout dialect, way to make widgets
-     [X] Use 'parse or C code?
-     [X] Need to support custom widget classes (make method parses layout)
-  [X] class-specific data (inherited structure)
-  [X] Rendering
-     [X] styles
-  [X] Layout
-  [/] Input
-  [ ] Handle GUIs in viewports (interfaces on objects in simulation world).
-*/
-
-
 #include "glh.h"
 #include <glv_keys.h>
 #include "boron.h"
@@ -2566,6 +2551,7 @@ GWidgetClass wclass_expand =
 
 extern GWidgetClass wclass_button;
 extern GWidgetClass wclass_checkbox;
+extern GWidgetClass wclass_choice;
 extern GWidgetClass wclass_label;
 extern GWidgetClass wclass_lineedit;
 extern GWidgetClass wclass_list;
@@ -2575,7 +2561,6 @@ extern GWidgetClass wclass_itemview;
 /*
     "console",
     "option",
-    "choice",
     "menu",
     "data",         // label
     "data-edit",    // spin box, line editor
@@ -2583,7 +2568,7 @@ extern GWidgetClass wclass_itemview;
 
 void gui_addStdClasses()
 {
-    GWidgetClass* classes[ 16 ];
+    GWidgetClass* classes[ 17 ];
     GWidgetClass** wp = classes;
 
     *wp++ = &wclass_root;
@@ -2596,6 +2581,7 @@ void gui_addStdClasses()
     *wp++ = &wclass_overlay;
     *wp++ = &wclass_button;
     *wp++ = &wclass_checkbox;
+    *wp++ = &wclass_choice;
     *wp++ = &wclass_label;
     *wp++ = &wclass_lineedit;
     *wp++ = &wclass_list;

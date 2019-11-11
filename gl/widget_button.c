@@ -232,17 +232,35 @@ activate:
 }
 
 
+/*
+  Adjust GSizeHint minW & maxW to fit text.
+*/
+void button_textSizeHint( UThread* ut, GSizeHint* size, const UBuffer* str,
+                          const UCell* styleFont )
+{
+    TexFont* tf;
+    int width;
+
+    tf = ur_texFontV( ut, styleFont );
+    if( tf )
+    {
+        width = txf_width( tf, str->ptr.b, str->ptr.b + str->used );
+        if( width > size->minW )
+            size->minW += width;
+        if( size->maxW < size->minW )
+            size->maxW = size->minW;
+    }
+}
+
+
 GWidgetClass wclass_checkbox;
 
 static void button_sizeHint( GWidget* wp, GSizeHint* size )
 {
     UCell* rc;
     UCell* style;
-    UBuffer* str;
-    TexFont* tf;
     EX_PTR;
     UThread* ut = glEnv.guiUT;
-    int width;
 
     style = glEnv.guiStyle;
     rc = style + ((wp->wclass == &wclass_checkbox) ?
@@ -268,29 +286,20 @@ static void button_sizeHint( GWidget* wp, GSizeHint* size )
 
     if( ep->labelN )
     {
-        str = ur_buffer( ep->labelN );
-        tf = ur_texFontV( ut, style + CI_STYLE_CONTROL_FONT );
-        if( tf )
-        {
-            width = txf_width( tf, str->ptr.b, str->ptr.b + str->used );
-            if( width > size->minW )
-                size->minW += width;
-            if( size->maxW < size->minW )
-                size->maxW = size->minW;
-        }
+        button_textSizeHint( ut, size, ur_buffer(ep->labelN),
+                             style + CI_STYLE_CONTROL_FONT );
     }
 }
 
 
 void dp_tgeoInit( DPCompiler* );
 
-static void button_layout( GWidget* wp )
+static void button_layout2( GWidget* wp, int styleUpN, int styleDownN )
 {
     UCell* rc;
     UCell* style = glEnv.guiStyle;
     EX_PTR;
     UThread* ut = glEnv.guiUT;
-    int check = (wp->wclass == &wclass_checkbox);
 
     if( ! gDPC )
         return;
@@ -313,17 +322,29 @@ static void button_layout( GWidget* wp )
 
     ep->dpSwitch = dp_beginSwitch( gDPC, 2 );
 
-    rc = style + (check ? CI_STYLE_CHECKBOX_UP : CI_STYLE_BUTTON_UP);
+    rc = style + styleUpN;
     if( ur_is(rc, UT_BLOCK) )
         ur_compileDP( ut, rc, 1 );
     dp_endCase( gDPC, ep->dpSwitch );
 
-    rc = style + (check ? CI_STYLE_CHECKBOX_DOWN : CI_STYLE_BUTTON_DOWN);
+    rc = style + styleDownN;
     if( ur_is(rc, UT_BLOCK) )
         ur_compileDP( ut, rc, 1 );
     dp_endCase( gDPC, ep->dpSwitch );
 
     dp_endSwitch( gDPC, ep->dpSwitch, ep->state );
+}
+
+
+static void button_layout( GWidget* wp )
+{
+    button_layout2( wp, CI_STYLE_BUTTON_UP, CI_STYLE_BUTTON_DOWN );
+}
+
+
+static void check_layout( GWidget* wp )
+{
+    button_layout2( wp, CI_STYLE_CHECKBOX_UP, CI_STYLE_CHECKBOX_DOWN );
 }
 
 
@@ -364,7 +385,7 @@ GWidgetClass wclass_checkbox =
 {
     "checkbox",
     button_make,       widget_free,       button_mark,
-    check_dispatch,    button_sizeHint,   button_layout,
+    check_dispatch,    button_sizeHint,   check_layout,
     widget_renderNul,  button_select,
     0, 0
 };

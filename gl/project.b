@@ -94,6 +94,7 @@ shlib [%boron-gl 2,0,0] [
         %TexFont.c
         %port_joystick.c
         %widget_button.c
+        %widget_choice.c
         %widget_label.c
         %widget_lineedit.c
         %widget_list.c
