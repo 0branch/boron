@@ -912,10 +912,22 @@ typedef struct
     GWidget  wid;
     GWidget* keyFocus;
     GWidget* mouseFocus;
+    GWidget* popupMenu;
     GLViewEvent lastMotion;
     char     motionTracking;
 }
 GUIRoot;
+
+
+GWidgetClass wclass_root;
+
+static GUIRoot* gui_rootGui( GWidget* wp )
+{
+    assert( wp );
+    while( wp->parent )         // gui_root()
+        wp = wp->parent;
+    return (wp->wclass == &wclass_root) ? (GUIRoot*) wp : NULL;
+}
 
 
 static GWidget* root_make( UThread* ut, UBlockIter* bi,
@@ -953,6 +965,14 @@ fail:
 }
 
 
+static void root_free( GWidget* wp )
+{
+    GUIRoot* ep = (GUIRoot*) wp;
+    memFree( ep->popupMenu );
+    memFree( wp );
+}
+
+
 static void root_mark( UThread* ut, GWidget* wp )
 {
     ur_markBlkN( ut, wp->eventCtxN );
@@ -982,13 +1002,10 @@ static void _removeFocus( GUIRoot* ui, GWidget* wp )
 }
 
 
-GWidgetClass wclass_root;
-#define isRoot(ui)      ((ui)->wid.wclass == &wclass_root)
-
 static void gui_removeFocus( GWidget* wp )
 {
-    GUIRoot* ui = (GUIRoot*) gui_root( wp );
-    if( isRoot(ui) )
+    GUIRoot* ui = gui_rootGui( wp );
+    if( ui )
         _removeFocus( ui, wp );
 }
 
@@ -1018,8 +1035,8 @@ static void gui_setMouseFocus( GUIRoot* ui, GWidget* wp )
 
 void gui_setKeyFocus( GWidget* wp )
 {
-    GUIRoot* ui = (GUIRoot*) gui_root( wp );
-    if( isRoot(ui) )
+    GUIRoot* ui = gui_rootGui( wp );
+    if( ui )
     {
         ui->keyFocus = wp;
         //glv_showSoftInput( glEnv.view, 1 );
@@ -1032,8 +1049,8 @@ void gui_setKeyFocus( GWidget* wp )
 */
 void gui_grabMouse( GWidget* wp, int keyFocus )
 {
-    GUIRoot* ui = (GUIRoot*) gui_root( wp );
-    if( isRoot(ui) )
+    GUIRoot* ui = gui_rootGui( wp );
+    if( ui )
     {
         ui->mouseFocus = wp;
         ui->mouseGrabbed = 1;
@@ -1045,8 +1062,8 @@ void gui_grabMouse( GWidget* wp, int keyFocus )
 
 void gui_ungrabMouse( GWidget* wp )
 {
-    GUIRoot* ui = (GUIRoot*) gui_root( wp );
-    if( isRoot(ui) )
+    GUIRoot* ui = gui_rootGui( wp );
+    if( ui )
     {
         if( ui->mouseFocus == wp )
             ui->mouseGrabbed = 0;
@@ -1056,9 +1073,9 @@ void gui_ungrabMouse( GWidget* wp )
 
 int gui_hasFocus( GWidget* wp )
 {
-    GUIRoot* ui = (GUIRoot*) gui_root( wp );
+    GUIRoot* ui = gui_rootGui( wp );
     int mask = 0;
-    if( isRoot(ui) )
+    if( ui )
     {
         if( ui->keyFocus == wp )
             mask |= GW_FOCUS_KEY;
@@ -1070,6 +1087,46 @@ int gui_hasFocus( GWidget* wp )
         }
     }
     return mask;
+}
+
+
+extern GWidgetClass wclass_menu;
+extern void menu_present( GWidget* wp, GWidget* owner );
+
+void gui_showMenu( GWidget* wp, UIndex dataBlkN, uint16_t selItem )
+{
+    GWidget* menu;
+    GUIRoot* ui = gui_rootGui( wp );
+    if( ui )
+    {
+        menu = ui->popupMenu;
+        if( ! menu )
+        {
+            UCell arg[2];
+            UBlockIter bi;
+            UThread* ut = glEnv.guiUT;
+
+            ur_setId( arg, UT_WORD );
+            ur_setWordUnbound( arg, UT_WIDGET /*UR_ATOM_MENU*/ );
+
+            ur_setId( arg+1, UT_BLOCK );
+            ur_setSeries( arg+1, dataBlkN, selItem );
+
+            bi.buf = NULL;
+            bi.it  = arg;
+            bi.end = arg + 2;
+
+            menu = ui->popupMenu = wclass_menu.make( ut, &bi, &wclass_menu );
+        }
+
+        gui_appendChild( &ui->wid, menu );
+        menu_present( menu, wp );
+
+        // gui_grabMouse( menu, 1 );
+        ui->mouseFocus = menu;
+        ui->mouseGrabbed = 1;
+        ui->keyFocus = menu;
+    }
 }
 
 
@@ -2472,7 +2529,7 @@ static void overlay_render( GWidget* wp )
 GWidgetClass wclass_root =
 {
     "root",
-    root_make,              widget_free,        root_mark,
+    root_make,              root_free,          root_mark,
     root_dispatch,          root_sizeHint,      widget_layoutNul,
     root_render,            eventContextSelect,
     0, GW_UPDATE_LAYOUT
@@ -2561,14 +2618,13 @@ extern GWidgetClass wclass_itemview;
 /*
     "console",
     "option",
-    "menu",
     "data",         // label
     "data-edit",    // spin box, line editor
 */
 
 void gui_addStdClasses()
 {
-    GWidgetClass* classes[ 17 ];
+    GWidgetClass* classes[ 18 ];
     GWidgetClass** wp = classes;
 
     *wp++ = &wclass_root;
@@ -2585,6 +2641,7 @@ void gui_addStdClasses()
     *wp++ = &wclass_label;
     *wp++ = &wclass_lineedit;
     *wp++ = &wclass_list;
+    *wp++ = &wclass_menu;
     *wp++ = &wclass_slider;
     *wp++ = &wclass_scrollbar;
     *wp++ = &wclass_itemview;
@@ -2705,6 +2762,7 @@ void gui_appendChild( GWidget* parent, GWidget* child )
     {
         parent->child = child;
     }
+    assert( child->parent == NULL );
     child->parent = parent;
 }
 

@@ -47,7 +47,9 @@ gui-style-proto: context [
     choice-size:
     choice:
     choice-item:
+    menu-margin:
     menu-bg:
+    menu-item-selected:
     label-dl:
     editor:
     editor-active:

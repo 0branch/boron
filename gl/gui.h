@@ -33,7 +33,8 @@ enum GUIEvent
     GUI_EVENT_TIMER = GLV_EVENT_USER,
     GUI_EVENT_JOYSTICK,
     GUI_EVENT_WINDOW_CREATED,
-    GUI_EVENT_WINDOW_DESTROYED
+    GUI_EVENT_WINDOW_DESTROYED,
+    GUI_EVENT_MENU_SELECTION
 };
 
 
@@ -62,7 +63,9 @@ enum ContextIndexStyle
     CI_STYLE_CHOICE_SIZE,   // coord! (minW, minH, init-maxW)
     CI_STYLE_CHOICE,        // Draw list
     CI_STYLE_CHOICE_ITEM,   // Draw list
+    CI_STYLE_MENU_MARGIN,   // coord!
     CI_STYLE_MENU_BG,       // Draw list
+    CI_STYLE_MENU_ITEM_SELECTED, // Draw list
     CI_STYLE_LABEL_DL,      // Draw list
     CI_STYLE_EDITOR,        // Draw list
     CI_STYLE_EDITOR_ACTIVE, // Draw list
@@ -220,6 +223,7 @@ void     gui_grabMouse( GWidget*, int keyFocus );
 void     gui_ungrabMouse( GWidget* );
 void     gui_signalWindowCreated( int w, int h );
 int      gui_hasFocus( GWidget* );
+void     gui_showMenu( GWidget*, UIndex dataBlkN, uint16_t selItem );
 UIndex   gui_parentDrawProg( GWidget* );
 const int16_t* gui_parentTranslation( GWidget* );
 int      gui_limitX( int x, const GRect* );

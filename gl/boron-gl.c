@@ -73,7 +73,7 @@ TexFont* ur_texFontV( UThread* ut, const UCell* cell )
 {
     if( ur_is(cell, UT_FONT) )
         return (TexFont*) ur_buffer( ur_fontTF(cell) )->ptr.v;
-    return 0;
+    return NULL;
 }
 
 

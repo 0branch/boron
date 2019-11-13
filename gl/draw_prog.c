@@ -985,7 +985,8 @@ static const uint8_t* drawTextReturn( DrawTextState* ds, const uint8_t* it,
 }
 
 
-void vbo_drawTextInit( DrawTextState* ds, TexFont* tf, GLfloat x, GLfloat y )
+void vbo_drawTextInit( DrawTextState* ds, const TexFont* tf,
+                       GLfloat x, GLfloat y )
 {
     ds->tf      = tf;
     ds->lowChar = drawTextReturn;
@@ -1115,7 +1116,7 @@ int vbo_drawText( DrawTextState* ds,
    of the first line of text.
    The pen is moved to the end of text.
 */
-void dp_drawText( DPCompiler* emit, TexFont* tf,
+void dp_drawText( DPCompiler* emit, const TexFont* tf,
                   const uint8_t* it, const uint8_t* end )
 {
     Primitives prim;

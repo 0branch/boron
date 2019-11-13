@@ -98,6 +98,7 @@ shlib [%boron-gl 2,0,0] [
         %widget_label.c
         %widget_lineedit.c
         %widget_list.c
+        %widget_menu.c
         %widget_slider.c
         %widget_itemview.c
     ]

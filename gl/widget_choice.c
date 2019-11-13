@@ -124,61 +124,73 @@ static void choice_updateLabel( UThread* ut, GChoice* ep )
 }
 
 
-static void choice_selectNextItem( UThread* ut, GWidget* wp )
+static void choice_selected( UThread* ut, GChoice* ep )
 {
-    EX_PTR;
+    choice_updateLabel( ut, ep );
+    if( ep->actionN )
+        gui_doBlockN( ut, ep->actionN );
+}
+
+
+static void choice_selectNextItem( UThread* ut, GChoice* ep )
+{
     if( choice_validRow( ut, ep, ep->selItem + 1 ) )
     {
         ++ep->selItem;
-        choice_updateLabel( ut, ep );
-        if( ep->actionN )
-            gui_doBlockN( ut, ep->actionN );
+        choice_selected( ut, ep );
     }
 }
 
 
-static void choice_selectPrevItem( UThread* ut, GWidget* wp )
+static void choice_selectPrevItem( UThread* ut, GChoice* ep )
 {
-    EX_PTR;
     if( ep->selItem > 0 )
     {
         --ep->selItem;
-        choice_updateLabel( ut, ep );
-        if( ep->actionN )
-            gui_doBlockN( ut, ep->actionN );
+        choice_selected( ut, ep );
     }
 }
 
 
 static void choice_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
+    EX_PTR;
     switch( ev->type )
     {
         case GLV_EVENT_BUTTON_DOWN:
-            gui_setKeyFocus( wp );
+            gui_showMenu( wp, ep->dataBlkN, ep->selItem );
+            //gui_setKeyFocus( wp );
             break;
 
         case GLV_EVENT_WHEEL:
             if( ev->y < 0 )
-                choice_selectNextItem( ut, wp );
+                choice_selectNextItem( ut, ep );
             else
-                choice_selectPrevItem( ut, wp );
+                choice_selectPrevItem( ut, ep );
             break;
 
         case GLV_EVENT_KEY_DOWN:
             switch( ev->code )
             {
                 case KEY_Up:
-                    choice_selectPrevItem( ut, wp );
+                    choice_selectPrevItem( ut, ep );
                     return;
                 case KEY_Down:
-                    choice_selectNextItem( ut, wp );
+                    choice_selectNextItem( ut, ep );
                     return;
             }
             // Fall through...
 
         case GLV_EVENT_KEY_UP:
             gui_ignoreEvent( ev );
+            break;
+
+        case GUI_EVENT_MENU_SELECTION:
+            if( ep->selItem != ev->code )
+            {
+                ep->selItem = ev->code;
+                choice_selected( ut, ep );
+            }
             break;
     }
 }

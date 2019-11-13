@@ -67,7 +67,7 @@ DPCompiler;
 typedef struct DrawTextState DrawTextState;
 struct DrawTextState
 {
-    TexFont* tf;
+    const TexFont* tf;
     const uint8_t* (*lowChar)( DrawTextState*, const uint8_t*,
                                                const uint8_t* ); 
     TexFontGlyph* prev;
@@ -151,6 +151,9 @@ void     dp_endSwitch( DPCompiler*, DPSwitch sid, uint16_t n );
 DPSwitch dp_beginTransXY( DPCompiler*, float x, float y );
 void     dp_endTransXY( DPCompiler* );
 
+void     dp_drawText( DPCompiler*, const TexFont*,
+                      const uint8_t* it, const uint8_t* end );
+
 void vbo_initTextIndices( uint16_t* ip, int idx, int glyphCount );
 /*
 int  vbo_drawText( TexFont* tf,
@@ -158,7 +161,7 @@ int  vbo_drawText( TexFont* tf,
                    GLfloat x, GLfloat y, GLfloat* newXY,
                    const uint8_t* it, const uint8_t* end );
                    */
-void vbo_drawTextInit( DrawTextState* ds, TexFont*, GLfloat x, GLfloat y );
+void vbo_drawTextInit( DrawTextState*, const TexFont*, GLfloat x, GLfloat y );
 int  vbo_drawText( DrawTextState* ds,
                    GLfloat* tp, GLfloat* vp, int stride,
                    const uint8_t* it, const uint8_t* end );
