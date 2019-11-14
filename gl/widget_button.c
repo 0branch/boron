@@ -279,8 +279,8 @@ static void button_sizeHint( GWidget* wp, GSizeHint* size )
     }
 
     size->maxH    = size->minH;
-    size->weightX = 2;
-    size->weightY = 1;
+    size->weightX = GW_WEIGHT_STD;
+    size->weightY = GW_WEIGHT_FIXED;
     size->policyX = GW_POL_WEIGHTED;
     size->policyY = GW_POL_FIXED;
 

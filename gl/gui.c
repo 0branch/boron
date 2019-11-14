@@ -41,6 +41,7 @@ extern int itemview_parse( UThread* ut, UBlockIter* bi, GWidget* wp );
 
 
 //#define REPORT_LAYOUT   1
+//#define REPORT_HINT     1
 #define EVAL_PATH       1
 
 
@@ -528,7 +529,7 @@ static void expand_sizeHint( GWidget* wp, GSizeHint* size )
 {
     size->minW    = size->minH    = wp->expandMin;
     size->maxW    = size->maxH    = GW_MAX_DIM;
-    size->weightX = size->weightY = 1;
+    size->weightX = size->weightY = GW_WEIGHT_STD / 2;
     size->policyX = size->policyY = GW_POL_EXPANDING;
 }
 
@@ -1318,7 +1319,7 @@ static void root_sizeHint( GWidget* wp, GSizeHint* size )
     size->minH    =
     size->maxH    = wp->area.h;
     size->weightX =
-    size->weightY = 0;
+    size->weightY = GW_WEIGHT_FIXED;
     size->policyX =
     size->policyY = GW_POL_FIXED;
 }
@@ -1498,10 +1499,10 @@ static void hbox_sizeHint( GWidget* wp, GSizeHint* size )
 
     size->minW    = ep->marginL + ep->marginR;
     size->minH    = marginH;
-    size->maxW    = GW_MAX_DIM;
-    size->maxH    = GW_MAX_DIM;
-    size->weightX = 2;
-    size->weightY = 2;
+    size->maxW    = size->minW;
+    size->maxH    = marginH;
+    size->weightX = GW_WEIGHT_STD;
+    size->weightY = GW_WEIGHT_STD;
     size->policyX = GW_POL_WEIGHTED;
     size->policyY = GW_POL_WEIGHTED;
 
@@ -1510,13 +1511,34 @@ static void hbox_sizeHint( GWidget* wp, GSizeHint* size )
         if( ! (it->flags & GW_NO_SPACE) )   // cs.minW != 0
             ++count;
         size->minW += cs.minW;
+
         cs.minH += marginH;
         if( size->minH < cs.minH )
             size->minH = cs.minH;
+
+        cs.maxH += marginH;
+        if( size->maxH < cs.maxH )
+            size->maxH = cs.maxH;
+
+        // Accumulate maxW unless an expander is present.
+        if( size->maxW != GW_MAX_DIM )
+        {
+            if( cs.policyX == GW_POL_EXPANDING )
+                size->maxW = GW_MAX_DIM;
+            else if( cs.policyX == GW_POL_FIXED )
+                size->maxW += cs.minW;
+            else
+                size->maxW += cs.maxW;
+        }
     EACH_END
 
     if( count > 1 )
-        size->minW += (count - 1) * ep->spacing;
+    {
+        int space = (count - 1) * ep->spacing;
+        size->minW += space;
+        if( size->maxW != GW_MAX_DIM )
+            size->maxW += space;
+    }
 }
 
 
@@ -1547,6 +1569,14 @@ static void layout_query( GWidget* wp, LayoutData* lo )
     EACH_SHOWN_CHILD( wp, it )
         assert( lo->count < MAX_LO_WIDGETS );
         it->wclass->sizeHint( it, hint );
+
+#ifdef REPORT_HINT
+        printf( "hint %p %s\tmin:%d,%d max:%d,%d wt:%d,%d pol:%d,%d\n",
+                it, it->wclass->name, hint->minW, hint->minH,
+                hint->maxW, hint->maxH, hint->weightX, hint->weightY,
+                hint->policyX, hint->policyY );
+#endif
+
         if( ! (it->flags & GW_NO_SPACE) )
             ++lo->spaceCount;
         ++lo->count;
@@ -1712,10 +1742,10 @@ static void vbox_sizeHint( GWidget* wp, GSizeHint* size )
 
     size->minW    = marginW;
     size->minH    = ep->marginT + ep->marginB;
-    size->maxW    = GW_MAX_DIM;
-    size->maxH    = GW_MAX_DIM;
-    size->weightX = 2;
-    size->weightY = 2;
+    size->maxW    = marginW;
+    size->maxH    = size->minH;
+    size->weightX = GW_WEIGHT_STD;
+    size->weightY = GW_WEIGHT_STD;
     size->policyX = GW_POL_WEIGHTED;
     size->policyY = GW_POL_WEIGHTED;
 
@@ -1724,13 +1754,34 @@ static void vbox_sizeHint( GWidget* wp, GSizeHint* size )
         if( ! (it->flags & GW_NO_SPACE) )   // cs.minH != 0
             ++count;
         size->minH += cs.minH;
+
         cs.minW += marginW;
         if( size->minW < cs.minW )
             size->minW = cs.minW;
+
+        cs.maxW += marginW;
+        if( size->maxW < cs.maxW )
+            size->maxW = cs.maxW;
+
+        // Accumulate maxH unless an expander is present.
+        if( size->maxH != GW_MAX_DIM )
+        {
+            if( cs.policyY == GW_POL_EXPANDING )
+                size->maxH = GW_MAX_DIM;
+            else if( cs.policyY == GW_POL_FIXED )
+                size->maxH += cs.minH;
+            else
+                size->maxH += cs.maxH;
+        }
     EACH_END
 
     if( count > 1 )
-        size->minH += (count - 1) * ep->spacing;
+    {
+        int space = (count - 1) * ep->spacing;
+        size->minH += space;
+        if( size->maxH != GW_MAX_DIM )
+            size->maxH += space;
+    }
 }
 
 
@@ -1929,8 +1980,8 @@ static void grid_sizeHint( GWidget* wp, GSizeHint* size )
     size->minH    = ep->marginT + ep->marginB;
     size->maxW    = GW_MAX_DIM;
     size->maxH    = GW_MAX_DIM;
-    size->weightX = 2;
-    size->weightY = 2;
+    size->weightX = GW_WEIGHT_STD;
+    size->weightY = GW_WEIGHT_STD;
     size->policyX = GW_POL_WEIGHTED;
     size->policyY = GW_POL_WEIGHTED;
 

@@ -389,8 +389,8 @@ static void slider_sizeHint( GWidget* wp, GSizeHint* size )
         size->minW = 100;
         size->maxW = GW_MAX_DIM;
         size->maxH = size->minH;
-        size->weightX = 2;
-        size->weightY = 1;
+        size->weightX = GW_WEIGHT_STD;
+        size->weightY = GW_WEIGHT_FIXED;
         size->policyX = GW_POL_EXPANDING;
         size->policyY = GW_POL_FIXED;
     }
@@ -399,8 +399,8 @@ static void slider_sizeHint( GWidget* wp, GSizeHint* size )
         size->minH = 100;
         size->maxW = size->minW;
         size->maxH = GW_MAX_DIM;
-        size->weightX = 1;
-        size->weightY = 2;
+        size->weightX = GW_WEIGHT_FIXED;
+        size->weightY = GW_WEIGHT_STD;
         size->policyX = GW_POL_FIXED;
         size->policyY = GW_POL_EXPANDING;
     }

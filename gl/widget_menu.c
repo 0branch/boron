@@ -244,7 +244,7 @@ static void menu_sizeHint( GWidget* wp, GSizeHint* size )
     size->minH    =
     size->maxH    = ep->itemHeight * itemCount + ep->marginY * 2;
     size->weightX =
-    size->weightY = 0;
+    size->weightY = GW_WEIGHT_FIXED;
     size->policyX =
     size->policyY = GW_POL_FIXED;
 }

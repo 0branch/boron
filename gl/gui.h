@@ -107,10 +107,17 @@ typedef struct
 UCellWidget;
 
 
-#define GW_MAX_DIM          0x7fff
-#define GW_POL_FIXED        0
-#define GW_POL_WEIGHTED     1
-#define GW_POL_EXPANDING    2
+#define GW_MAX_DIM      0x7fff
+#define GW_WEIGHT_STD   4
+#define GW_WEIGHT_FIXED 1
+
+enum GUISizePolicy
+{
+    GW_POL_FIXED,       // Size set to min.
+    GW_POL_WEIGHTED,    // Size between min & max, based on relative weight.
+    GW_POL_EXPANDING    // Similar to WEIGHTED but also allocated excess space.
+};
+
 
 typedef struct
 {
