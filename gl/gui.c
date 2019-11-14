@@ -537,6 +537,66 @@ static void expand_sizeHint( GWidget* wp, GSizeHint* size )
 //----------------------------------------------------------------------------
 
 
+#define spaceWeight     user16
+#define spaceDim        user32
+
+
+/*-wid-
+    space   [weight [,minimum,maximum]]
+            int!/coord!
+
+    Fill some space to leave a gap.
+*/
+static GWidget* space_make( UThread* ut, UBlockIter* bi,
+                            const GWidgetClass* wclass )
+{
+    GWidget* wp;
+    int dmin = 8;
+    int dmax = 24;
+    (void) ut;
+
+    ++bi->it;
+    wp = gui_allocWidget( sizeof(GWidget), wclass );
+    wp->spaceWeight = GW_WEIGHT_STD;
+
+    if( bi->it != bi->end )
+    {
+        const UCell* arg = bi->it;
+        if( ur_is(arg, UT_INT) )
+        {
+            wp->spaceWeight = ur_int(arg);
+            ++bi->it;
+        }
+        else if( ur_is(arg, UT_COORD) )
+        {
+            wp->spaceWeight = arg->coord.n[0];
+            dmin = arg->coord.n[1];
+            if( arg->coord.len > 2 )
+                dmax = arg->coord.n[2];
+            else
+                dmax = dmin * 3;
+            ++bi->it;
+        }
+    }
+
+    wp->spaceDim = (dmax << 16) | dmin;
+
+    return wp;
+}
+
+
+static void space_sizeHint( GWidget* wp, GSizeHint* size )
+{
+    size->minW    = size->minH    = wp->spaceDim & 0xffff;
+    size->maxW    = size->maxH    = wp->spaceDim >> 16;
+    size->weightX = size->weightY = wp->spaceWeight;
+    size->policyX = size->policyY = GW_POL_WEIGHTED;
+}
+
+
+//----------------------------------------------------------------------------
+
+
 enum EventContextIndex
 {
     EI_EVENT,
@@ -2657,6 +2717,16 @@ GWidgetClass wclass_expand =
 };
 
 
+GWidgetClass wclass_space =
+{
+    "space",
+    space_make,         widget_free,        widget_markNul,
+    widget_dispatchNul, space_sizeHint,     widget_layoutNul,
+    widget_renderNul,   gui_areaSelect,
+    0, GW_UPDATE_LAYOUT | GW_NO_INPUT
+};
+
+
 extern GWidgetClass wclass_button;
 extern GWidgetClass wclass_checkbox;
 extern GWidgetClass wclass_choice;
@@ -2675,11 +2745,12 @@ extern GWidgetClass wclass_itemview;
 
 void gui_addStdClasses()
 {
-    GWidgetClass* classes[ 18 ];
+    GWidgetClass* classes[ 19 ];
     GWidgetClass** wp = classes;
 
     *wp++ = &wclass_root;
     *wp++ = &wclass_expand;
+    *wp++ = &wclass_space;
     *wp++ = &wclass_hbox;
     *wp++ = &wclass_vbox;
     *wp++ = &wclass_grid;
