@@ -1,0 +1,15 @@
+---- bind/secure
+true
+context [
+    size: 100,200
+    path: %/tmp/save
+    auto-save: true
+]
+Script Error: unbound word 'quit
+Trace:
+ -> size: quit
+ -> do bind/secure blk pref
+Script Error: unbound word 'new-word
+Trace:
+ -> new-word: 0
+ -> do bind/secure blk pref

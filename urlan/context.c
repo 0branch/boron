@@ -631,8 +631,12 @@ void ur_bindCells( UThread* ut, UCell* it, UCell* end, const UBindTarget* bt )
                 }
                 else if( self == UR_BIND_SECURE )
                 {
-                    ur_setBinding( it, UR_BIND_UNBOUND );
-                    it->word.ctx = UR_INVALID_BUF;
+                    if( ur_atom(it) > UR_ATOM_NO ||
+                        ur_binding(it) != UR_BIND_ENV )
+                    {
+                        ur_setBinding( it, UR_BIND_UNBOUND );
+                        it->word.ctx = UR_INVALID_BUF;
+                    }
                 }
                 else if( ur_atom(it) == self )
                 {
