@@ -148,7 +148,7 @@ GWidgetClass wclass_label =
     "label",
     label_make,         widget_free,        label_mark,
     widget_dispatch,    label_sizeHint,     label_layout,
-    widget_renderNul,   label_select,
+    widget_renderNul,   label_select,       widget_setNul,
     0, 0
 };
 

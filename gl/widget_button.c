@@ -371,12 +371,21 @@ static int button_select( GWidget* wp, UAtom atom, UCell* res )
 }
 
 
+static UStatus button_set( UThread* ut, GWidget* wp, const UCell* val )
+{
+    EX_PTR;
+    ep->checked = ur_true(val);
+    button_setState( ut, ep, ep->checked );
+    return UR_OK;
+}
+
+
 GWidgetClass wclass_button =
 {
     "button",
     button_make,       widget_free,       button_mark,
     button_dispatch,   button_sizeHint,   button_layout,
-    widget_renderNul,  button_select,
+    widget_renderNul,  button_select,     button_set,
     0, 0
 };
 
@@ -386,7 +395,7 @@ GWidgetClass wclass_checkbox =
     "checkbox",
     button_make,       widget_free,       button_mark,
     check_dispatch,    button_sizeHint,   check_layout,
-    widget_renderNul,  button_select,
+    widget_renderNul,  button_select,     button_set,
     0, 0
 };
 

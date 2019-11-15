@@ -1029,7 +1029,7 @@ GWidgetClass wclass_itemview =
     "item-view",
     itemview_make,      itemview_free,       itemview_mark,
     itemview_dispatch,  itemview_sizeHint,   itemview_layout,
-    itemview_render,    itemview_select,
+    itemview_render,    itemview_select,     widget_setNul,
     0, 0
 };
 

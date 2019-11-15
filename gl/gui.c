@@ -344,6 +344,15 @@ void widget_renderNul( GWidget* wp )
 }
 
 
+UStatus widget_setNul( UThread* ut, GWidget* wp, const UCell* val )
+{
+    (void) ut;
+    (void) wp;
+    (void) val;
+    return UR_OK;
+}
+
+
 void widget_renderChildren( GWidget* wp )
 {
     GWidget* it;
@@ -2642,7 +2651,7 @@ GWidgetClass wclass_root =
     "root",
     root_make,              root_free,          root_mark,
     root_dispatch,          root_sizeHint,      widget_layoutNul,
-    root_render,            eventContextSelect,
+    root_render,            eventContextSelect, widget_setNul,
     0, GW_UPDATE_LAYOUT
 };
 
@@ -2652,7 +2661,7 @@ GWidgetClass wclass_hbox =
     "hbox",
     box_make,               widget_free,        widget_markChildren,
     widget_dispatch,        hbox_sizeHint,      hbox_layout,
-    widget_renderChildren,  gui_areaSelect,
+    widget_renderChildren,  gui_areaSelect,     widget_setNul,
     0, GW_UPDATE_LAYOUT | GW_NO_INPUT
 };
 
@@ -2662,7 +2671,7 @@ GWidgetClass wclass_vbox =
     "vbox",
     box_make,               widget_free,        widget_markChildren,
     widget_dispatch,        vbox_sizeHint,      vbox_layout,
-    widget_renderChildren,  gui_areaSelect,
+    widget_renderChildren,  gui_areaSelect,     widget_setNul,
     0, GW_UPDATE_LAYOUT | GW_NO_INPUT
 };
 
@@ -2672,7 +2681,7 @@ GWidgetClass wclass_grid =
     "grid",
     grid_make,              widget_free,        widget_markChildren,
     widget_dispatch,        grid_sizeHint,      grid_layout,
-    widget_renderChildren,  gui_areaSelect,
+    widget_renderChildren,  gui_areaSelect,     widget_setNul,
     0, GW_UPDATE_LAYOUT | GW_NO_INPUT
 };
 
@@ -2682,7 +2691,7 @@ GWidgetClass wclass_window =
     "window",
     window_make,            widget_free,        window_mark,
     window_dispatch,        window_sizeHint,    window_layout,
-    window_render,          eventContextSelect,
+    window_render,          eventContextSelect, widget_setNul,
     0, GW_UPDATE_LAYOUT | GW_SELF_LAYOUT | WINDOW_PRESENT
 };
 
@@ -2692,7 +2701,7 @@ GWidgetClass wclass_viewport =
     "viewport",
     viewport_make,          widget_free,        viewport_mark,
     viewport_dispatch,      expand_sizeHint,    viewport_layout,
-    viewport_render,        eventContextSelect,
+    viewport_render,        eventContextSelect, widget_setNul,
     0, GW_UPDATE_LAYOUT
 };
 
@@ -2702,7 +2711,7 @@ GWidgetClass wclass_overlay =
     "overlay",
     overlay_make,       widget_free,        overlay_mark,
     widget_dispatch,    window_sizeHint,    overlay_layout,
-    overlay_render,     gui_areaSelect,
+    overlay_render,     gui_areaSelect,     widget_setNul,
     0, GW_UPDATE_LAYOUT //| GW_SELF_LAYOUT
 };
 
@@ -2712,7 +2721,7 @@ GWidgetClass wclass_expand =
     "expand",
     expand_make,        widget_free,        widget_markNul,
     widget_dispatchNul, expand_sizeHint,    widget_layoutNul,
-    widget_renderNul,   gui_areaSelect,
+    widget_renderNul,   gui_areaSelect,     widget_setNul,
     0, GW_UPDATE_LAYOUT | GW_NO_INPUT
 };
 
@@ -2722,7 +2731,7 @@ GWidgetClass wclass_space =
     "space",
     space_make,         widget_free,        widget_markNul,
     widget_dispatchNul, space_sizeHint,     widget_layoutNul,
-    widget_renderNul,   gui_areaSelect,
+    widget_renderNul,   gui_areaSelect,     widget_setNul,
     0, GW_UPDATE_LAYOUT | GW_NO_INPUT
 };
 

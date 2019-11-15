@@ -354,7 +354,7 @@ GWidgetClass wclass_menu =
     "menu",
     menu_make,          widget_free,        menu_mark,
     menu_dispatch,      menu_sizeHint,      menu_layout,
-    menu_render,        gui_areaSelect,
+    menu_render,        gui_areaSelect,     widget_setNul,
     0, GW_HIDDEN
 };
 

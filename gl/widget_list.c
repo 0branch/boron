@@ -406,7 +406,7 @@ GWidgetClass wclass_list =
     "list",
     listw_make,         widget_free,        listw_mark,
     listw_dispatch,     listw_sizeHint,     listw_layout,
-    listw_render,       listw_select,
+    listw_render,       listw_select,       widget_setNul,
     0, 0
 };
 

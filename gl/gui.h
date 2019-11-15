@@ -155,6 +155,7 @@ struct GWidgetClass
     void     (*layout)  ( GWidget* );
     void     (*render)  ( GWidget* );
     int      (*select)  ( GWidget*, UAtom, UCell* );
+    UStatus  (*set)     ( UThread*, GWidget*, const UCell* );
     UAtom       nameAtom;
     uint16_t    flags;
 };
@@ -241,6 +242,7 @@ void widget_markChildren( UThread*, GWidget* );
 void widget_dispatch( UThread*, GWidget*, const GLViewEvent* );
 void widget_dispatchNul( UThread*, GWidget*, const GLViewEvent* );
 void widget_renderNul( GWidget* );
+UStatus widget_setNul( UThread*, GWidget*, const UCell* );
 void widget_renderChildren( GWidget* );
 #define widget_markNul      0
 #define widget_layoutNul    widget_renderNul

@@ -606,7 +606,7 @@ GWidgetClass wclass_lineedit =
     "line-edit",
     ledit_make,         widget_free,        ledit_mark,
     ledit_dispatch,     ledit_sizeHint,     ledit_layout,
-    ledit_render,       ledit_select,
+    ledit_render,       ledit_select,       widget_setNul,
     0, 0
 };
 

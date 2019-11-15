@@ -496,12 +496,20 @@ static int slider_select( GWidget* wp, UAtom atom, UCell* res )
 }
 
 
+static UStatus slider_set( UThread* ut, GWidget* wp, const UCell* val )
+{
+    (void) ut;
+    slider_setValue( (GSlider*) wp, val );
+    return UR_OK;
+}
+
+
 GWidgetClass wclass_slider =
 {
     "slider",
     slider_make,        widget_free,        slider_mark,
     slider_dispatch,    slider_sizeHint,    slider_layout,
-    widget_renderNul,   slider_select,
+    widget_renderNul,   slider_select,      slider_set,
     0, 0
 };
 
@@ -511,7 +519,7 @@ GWidgetClass wclass_scrollbar =
     "scroll-bar",
     slider_make,        widget_free,        slider_mark,
     slider_dispatch,    slider_sizeHint,    slider_layout,
-    widget_renderNul,   slider_select,
+    widget_renderNul,   slider_select,      slider_set,
     0, 0
 };
 

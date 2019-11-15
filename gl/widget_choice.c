@@ -38,6 +38,7 @@ typedef struct
 GChoice;
 
 #define EX_PTR  GChoice* ep = (GChoice*) wp
+#define FLAG_UPDATE_LABEL   GW_FLAG_USER1
 
 
 /*-wid-
@@ -82,12 +83,12 @@ static void choice_mark( UThread* ut, GWidget* wp )
 }
 
 
-static int choice_validRow( UThread* ut, GChoice* ep, unsigned int row )
+static int choice_validRow( UThread* ut, GChoice* ep, uint16_t row )
 {
     if( ep->dataBlkN > 0 )
     {
         UBuffer* blk  = ur_buffer( ep->dataBlkN );
-        if( row < (unsigned int) blk->used )
+        if( row < (uint16_t) blk->used )
             return 1;
     }
     return 0;
@@ -124,9 +125,15 @@ static void choice_updateLabel( UThread* ut, GChoice* ep )
 }
 
 
-static void choice_selected( UThread* ut, GChoice* ep )
+/*
+  Set new selItem value.
+
+  \param index     Valid index not equal to current selItem.
+*/
+static void choice_selectItem( UThread* ut, GChoice* ep, uint16_t index )
 {
-    choice_updateLabel( ut, ep );
+    ep->selItem = index;
+    ep->wid.flags |= FLAG_UPDATE_LABEL;
     if( ep->actionN )
         gui_doBlockN( ut, ep->actionN );
 }
@@ -134,21 +141,16 @@ static void choice_selected( UThread* ut, GChoice* ep )
 
 static void choice_selectNextItem( UThread* ut, GChoice* ep )
 {
-    if( choice_validRow( ut, ep, ep->selItem + 1 ) )
-    {
-        ++ep->selItem;
-        choice_selected( ut, ep );
-    }
+    uint16_t n = ep->selItem + 1;
+    if( choice_validRow( ut, ep, n ) )
+        choice_selectItem( ut, ep, n );
 }
 
 
 static void choice_selectPrevItem( UThread* ut, GChoice* ep )
 {
     if( ep->selItem > 0 )
-    {
-        --ep->selItem;
-        choice_selected( ut, ep );
-    }
+        choice_selectItem( ut, ep, ep->selItem - 1 );
 }
 
 
@@ -187,10 +189,7 @@ static void choice_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 
         case GUI_EVENT_MENU_SELECTION:
             if( ep->selItem != ev->code )
-            {
-                ep->selItem = ev->code;
-                choice_selected( ut, ep );
-            }
+                choice_selectItem( ut, ep, ev->code );
             break;
     }
 }
@@ -236,8 +235,6 @@ static void choice_layout( GWidget* wp )
 {
     UCell* rc;
     UCell* style = glEnv.guiStyle;
-    EX_PTR;
-    UThread* ut = glEnv.guiUT;
 
     if( ! gDPC )
         return;
@@ -252,15 +249,22 @@ static void choice_layout( GWidget* wp )
 
     rc = style + CI_STYLE_CHOICE;
     if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( glEnv.guiUT, rc, 1 );
 
-    choice_updateLabel( ut, ep );
+    wp->flags |= FLAG_UPDATE_LABEL;
 }
 
 
 static void choice_render( GWidget* wp )
 {
     EX_PTR;
+
+    if( wp->flags & FLAG_UPDATE_LABEL )
+    {
+        wp->flags &= ~FLAG_UPDATE_LABEL;
+        choice_updateLabel( glEnv.guiUT, ep );
+    }
+
     ur_runDrawProg( glEnv.guiUT, ep->labelDraw );
 }
 
@@ -291,13 +295,32 @@ static int choice_select( GWidget* wp, UAtom atom, UCell* res )
 }
 
 
+static UStatus choice_set( UThread* ut, GWidget* wp, const UCell* val )
+{
+    USeriesIter si;
+    UIndex i;
+    EX_PTR;
+
+#define SERIES_DT(dt)   ((const USeriesType*) (ut->types[ dt ]))
+
+    si.buf = ur_buffer( ep->dataBlkN );
+    si.it  = 0;
+    si.end = si.buf->used;
+
+    i = SERIES_DT( UT_BLOCK )->find( ut, &si, val, 0 );
+    if( i >= 0 && ep->selItem != i )
+        choice_selectItem( ut, ep, i );
+    return UR_OK;
+}
+
+
 GWidgetClass wclass_choice =
 {
     "choice",
     choice_make,        widget_free,        choice_mark,
     choice_dispatch,    choice_sizeHint,    choice_layout,
-    choice_render,      choice_select,
-    0, 0
+    choice_render,      choice_select,      choice_set,
+    0, FLAG_UPDATE_LABEL
 };
 
 

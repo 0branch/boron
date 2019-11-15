@@ -1084,6 +1084,22 @@ CFUNC( cfunc_set_volume )
 
 
 /*-cf-
+    set-widget
+        widget  widget!
+        value
+    return: unset!
+*/
+CFUNC( cfunc_set_widget )
+{
+    GWidget* wp = ur_widgetPtr( a1 );
+    ur_setId(res, UT_UNSET);
+    if( wp )
+        return wp->wclass->set( ut, wp, a1+1 );
+    return UR_OK;
+}
+
+
+/*-cf-
     show
         widget  draw-prog!/widget!
     return: unset!
