@@ -19,26 +19,32 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #ifdef _WIN32
 #include <winsock2.h>
 #define setenv(name,val,over)   SetEnvironmentVariable(name, val)
 #endif
+
 #ifdef CONFIG_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
+
 #ifdef CONFIG_LINENOISE
 #include "linenoise.h"
 #define readline    linenoise
 #define add_history linenoiseHistoryAdd
 #endif
+
 #include "boron.h"
 #include "urlan_atoms.h"
 #include "str.h"
+
 #ifdef BORON_GL
 #include "boron-gl.h"
 #define boron_makeEnv   boron_makeEnvGL
 #define boron_freeEnv   boron_freeEnvGL
+extern void ur_initGLData(UThread*);
 #define APPNAME     "Boron-GL"
 #else
 #define APPNAME     "Boron"
@@ -316,6 +322,10 @@ usage_err:
         return 70;      // EX_SOFTWARE
     }
     ur_freezeEnv( ut );
+
+#ifdef BORON_GL
+    ur_initGLData( ut );
+#endif
 
     if( secure )
         boron_setAccessFunc( ut, promptDisabled ? denyAccess : requestAccess );

@@ -2702,6 +2702,215 @@ CFUNC( cfunc_draw )
 }
 
 
+// Matches scene-proto context in boot.b.
+enum SceneValues
+{
+    SCENE_ENTER,
+    SCENE_LEAVE,
+    SCENE_UPDATE
+};
+
+
+static char _initScript[] =
+    "_scene: scene-proto\n"
+    "_scene-next: scene-dl: scene-ui: none\n"
+    "rclock-delta: rclock: none\n"
+    "go-scene: func [next /extern _scene-next][_scene-next: next]\n";
+
+/*
+   Called after ur_freezeEnv() to create user modifiable data in the main
+   thread.
+*/
+void ur_initGLData( UThread* ut )
+{
+    boron_evalUtf8( ut, _initScript, sizeof(_initScript) - 1 );
+}
+
+
+extern CFUNC_PUB( cfunc_sleep );
+extern CFUNC_PUB( cfunc_animatef );
+extern double ur_now();
+
+/*-cf-
+    scene-loop
+        fps int!/decimal!
+    return: unset!
+    group: control
+*/
+CFUNC( uc_scene_loop )
+{
+    double t, rclock, fdur;
+    UAtom index[7];
+    const UBuffer* ctx;
+    UCell* scene;
+    UCell* cell;
+    int i;
+    UStatus ok;
+
+#define SET_RCLOCK(delta, now) \
+    cell = ur_ctxCell(ctx, index[5]); \
+    ur_double(cell) = delta; \
+    cell = ur_ctxCell(ctx, index[6]); \
+    ur_double(cell) = rclock = now
+
+
+    if( ur_is(a1, UT_INT) )
+        fdur = (double) ur_int(a1);
+    else
+        fdur = ur_double(a1);
+    fdur = 1.0 / fdur;
+
+
+    // do on-window-created
+    cell = ur_ctxValueOfType( ur_threadContext(ut), UR_ATOM_ON_WINDOW_CREATED,
+                              UT_BLOCK );
+    if( cell && ! boron_doBlock( ut, cell, res ) )
+        return UR_THROW;
+
+    ur_internAtoms( ut, "_scene _scene-next _scene-update scene-dl scene-ui\n"
+                        "rclock-delta rclock", index );
+    ctx = ur_threadContext(ut);
+    for( i = 0; i < 7; ++i )
+        index[i] = ur_ctxLookup( ctx, index[i] );
+
+    // rclock-delta: frame-duration
+    // rclock: now
+    SET_RCLOCK( fdur, ur_now() );
+
+    for(;;)
+    {
+        // either display-area
+#if defined(__ANDROID__)
+        if( gView && gView->ctx )
+#else
+        if( gView )
+#endif
+        {
+            // if _scene-next
+            ctx = ur_threadContext(ut);
+            if( ur_true( ur_ctxCell(ctx, index[1]) ) )
+            {
+                // do _scene/leave
+
+                scene = ur_ctxCell(ctx, index[0]);
+                if( ur_is(scene, UT_CONTEXT) )
+                {
+                    ctx = ur_bufferE(scene->context.buf);
+                    cell = ur_ctxCell(ctx, SCENE_LEAVE);
+                    if( ur_is(cell, UT_BLOCK) )
+                    {
+                        if( ! boron_doBlock( ut, cell, res ) )
+                            return UR_THROW;
+                    }
+                    ctx = ur_threadContext(ut);
+                }
+
+                // _scene: _scene-next
+                // _scene-next: none
+
+                scene = ur_ctxCell(ctx, index[0]);
+                cell  = ur_ctxCell(ctx, index[1]);
+                *scene = *cell;
+                ur_setId(cell, UT_NONE);
+
+                // do _scene/enter
+
+                if( ur_is(scene, UT_CONTEXT) )
+                {
+                    ctx = ur_bufferE(scene->context.buf);
+                    cell = ur_ctxCell(ctx, SCENE_ENTER);
+                    if( ur_is(cell, UT_BLOCK) )
+                    {
+                        if( ! boron_doBlock( ut, cell, res ) )
+                            return UR_THROW;
+                    }
+                    ctx = ur_threadContext(ut);
+                }
+            }
+
+            // do _scene/update
+
+            scene = ur_ctxCell(ctx, index[0]);
+            if( ur_is(scene, UT_CONTEXT) )
+            {
+                ctx = ur_bufferE(scene->context.buf);
+                cell = ur_ctxCell(ctx, SCENE_UPDATE);
+                if( ur_is(cell, UT_BLOCK) )
+                {
+                    if( ! boron_doBlock( ut, cell, res ) )
+                        return UR_THROW;
+                }
+                ctx = ur_threadContext(ut);
+            }
+
+            // animatef rclock-delta 0
+
+            ur_pushCell(ut, ur_ctxCell(ctx, index[5]));
+            cell = ur_push(ut, UT_INT);
+            ur_int(cell) = 0;
+            ok = cfunc_animatef(ut, cell - 1, res);
+            ut->stack.used -= 2;
+            if( ! ok )
+                return UR_THROW;
+
+            // draw scene-dl
+
+            ctx = ur_threadContext(ut);
+            ok = cfunc_draw( ut, ur_pushCell(ut, ur_ctxCell(ctx, index[3])),
+                             res );
+            ur_pop(ut);
+            if( ! ok )
+                return UR_THROW;
+
+            // display-swap
+
+            glUseProgram( 0 );
+            glv_swapBuffers( gView );
+
+            // handle-events scene-ui
+            // sleep 0.002 ; (sub fps loop-time)
+
+            ctx = ur_threadContext(ut);
+            CFUNC_OPTIONS = 0;
+            ok = uc_handle_events( ut,
+                           ur_pushCell(ut, ur_ctxCell(ctx, index[4])), res );
+            ur_pop(ut);
+            if( ! ok )
+                return UR_THROW;
+
+            cell = ur_push(ut, UT_DOUBLE);
+            ur_double(cell) = 0.002;
+            cfunc_sleep( ut, cell, res );
+            ur_pop(ut);
+
+            // rclock-delta: to-double sub tmp: now rclock
+            // rclock: tmp
+
+            t = ur_now();
+            ctx = ur_threadContext(ut);
+            SET_RCLOCK( t - rclock, t );
+        }
+        else
+        {
+            // handle-events/wait scene-ui
+            // rclock-delta: frame-duration
+            // rclock: now
+
+            ctx = ur_threadContext(ut);
+            CFUNC_OPTIONS = 1;
+            ok = uc_handle_events( ut,
+                           ur_pushCell(ut, ur_ctxCell(ctx, index[4])), res );
+            ur_pop(ut);
+            if( ! ok )
+                return UR_THROW;
+
+            ctx = ur_threadContext(ut);
+            SET_RCLOCK( fdur, ur_now() );
+        }
+    }
+}
+
+
 CFUNC_PUB( cfunc_free );
 
 // Override Boron free.
@@ -2722,7 +2931,6 @@ static char _bootScript[] =
     ;
 
 
-extern CFUNC_PUB( cfunc_animatef );
 extern CFUNC_PUB( cfunc_buffer_audio );
 extern CFUNC_PUB( cfunc_load_png );
 extern CFUNC_PUB( cfunc_save_png );

@@ -168,6 +168,22 @@ load-wav: func [file /local sdata] [
 
 
 ;-----------------------------------------------------------------------------
+; Scene
+
+scene-proto: context [
+    enter:
+    leave:
+    update:
+    gl-setup:
+        none
+]
+
+scene: func [spec] [
+    make scene-proto spec
+]
+
+
+;-----------------------------------------------------------------------------
 ; Math Helpers
 
 

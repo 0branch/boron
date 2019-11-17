@@ -51,6 +51,7 @@ DEF_CF( cfunc_translate,    "translate m a vec3! /loc\n" )
 DEF_CF( cfunc_rotate,       "rotate m a vec3! n double!\n" )
 DEF_CF( cfunc_matrix_xform, "matrix-xform m vector! a vector! pos coord! b binary!\n" )
 DEF_CF( cfunc_pick_drawn,   "pick-drawn prog draw-prog! pnt coord!\n" )
+DEF_CF( uc_scene_loop,      "scene-loop fps int!/double!\n" )
 
 #ifdef TIMER_GROUP
     DEF_CF( uc_timer_group,    "timer-group\n" )
