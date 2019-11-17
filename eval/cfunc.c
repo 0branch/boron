@@ -4286,6 +4286,8 @@ CFUNC(cfunc_save)
 
     str = ur_makeStringCell( ut, UR_ENC_UTF8, 0, res );
     ur_toStr( ut, a2, str, -1 );
+    if( str->used && str->ptr.c[ str->used - 1 ] != '\n' )
+        ur_strAppendChar( str, '\n' );
     args[2] = *res;
 
     return cfunc_write( ut, args + 1, res );
