@@ -2474,7 +2474,7 @@ float* ur_matrixM( UThread* ut, const UCell* cell )
         if( ! mat )
             return 0;
         if( (mat->form == UR_VEC_F32) && (mat->used >= 16) )
-            return mat->ptr.f;
+            return mat->ptr.f + cell->series.it;
     }
     ur_error( ut, UR_ERR_TYPE, "Expected matrix vector!" );
     return 0;
@@ -2484,13 +2484,13 @@ float* ur_matrixM( UThread* ut, const UCell* cell )
 /*
   Returns zero and throws error if matrix is invalid.
 */
-float* ur_matrix( UThread* ut, const UCell* cell )
+const float* ur_matrix( UThread* ut, const UCell* cell )
 {
     if( ur_is(cell, UT_VECTOR) )
     {
         const UBuffer* mat = ur_bufferSer( cell );
         if( (mat->form == UR_VEC_F32) && (mat->used >= 16) )
-            return mat->ptr.f;
+            return mat->ptr.f + cell->series.it;
     }
     ur_error( ut, UR_ERR_TYPE, "Expected matrix vector!" );
     return 0;
@@ -2588,7 +2588,7 @@ CFUNC( cfunc_translate )
     float* mat;
     const UCell* a2 = a1 + 1;
 
-    if( ! (mat = ur_matrix( ut, a1 )) )
+    if( ! (mat = ur_matrixM( ut, a1 )) )
         return UR_THROW;
     *res = *a1;
 
@@ -2612,12 +2612,90 @@ CFUNC( cfunc_rotate )
     float rot[16];
     float* mat;
 
-    if( ! (mat = ur_matrix( ut, a1 )) )
+    if( ! (mat = ur_matrixM( ut, a1 )) )
         return UR_THROW;
     *res = *a1;
 
     ur_loadRotation( rot, (a1+1)->vec3.xyz, degToRad( ur_double(a1+2) ) );
     ur_matrixMult( mat, rot, mat );
+    return UR_OK;
+}
+
+
+/*-cf-
+    matrix-xform
+        mbuf    vector!     Input matrix buffer.
+        rbuf    vector!     Result matrix buffer.
+        rloc    coord!      Float offset and stride of rbuf matrices.
+        prog    binary!     Transform program bytecode.
+    return: unset!
+    group: gl
+
+    Transform matrix hierarchy.
+*/
+
+enum XFormOpcodes
+{
+    XF_End,     // 0
+    XF_Reset,   // 1 mbuf-index (matrix index)
+    XF_Mul,     // 2 rbuf-index (float index, modified by rloc)
+    XF_Push,    // 3
+    XF_Pop      // 4
+};
+
+CFUNC( cfunc_matrix_xform )
+{
+#define MAT_SIZE    16
+    const float* stack[8];
+    const float* parent;
+    const float* matB;
+    const float* mbuf;
+    float* rbuf;
+    float* r0;
+    const uint8_t* bc;
+    int off, stride;
+    int sp = 0;
+
+
+    mbuf   = ur_bufferSer(a1)->ptr.f;
+    rbuf   = ur_bufferSer(a1+1)->ptr.f;
+    off    = a1[2].coord.n[0];
+    stride = a1[2].coord.n[1];
+    bc     = ur_bufferSer(a1+3)->ptr.b;
+
+eval:
+    switch( *bc++ )
+    {
+        case XF_End:
+            break;
+
+        case XF_Reset:
+            parent = mbuf + (MAT_SIZE * *bc++);
+            matB = parent + MAT_SIZE;
+            goto eval;
+
+        case XF_Mul:
+            r0 = rbuf + (stride * *bc++) + off;
+            ur_matrixMult( parent, matB, r0 );
+            matB += MAT_SIZE;
+            goto eval;
+
+        case XF_Push:
+            assert( sp < 8 );
+            stack[ sp++ ] = parent;
+            parent = r0;
+            goto eval;
+
+        case XF_Pop:
+            assert( sp );
+            parent = stack[ --sp ];
+            goto eval;
+
+        default:
+            return ur_error(ut, UR_ERR_TYPE, "Invalid xform opcode %d", bc[-1]);
+    }
+
+    ur_setId(res, UT_UNSET);
     return UR_OK;
 }
 
