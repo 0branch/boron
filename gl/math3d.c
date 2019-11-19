@@ -61,6 +61,10 @@ void ur_loadIdentity( float* mat )
 }
 
 
+/**
+  \param mat   Result matrix.
+  \param axis  Unit vector on axis of rotation.
+*/
 void ur_loadRotation( float* mat, const float* axis, float radians )
 {
     float x, y, z;
@@ -116,7 +120,7 @@ void ur_perspective( float* mat, float fovYDegrees, float aspect,
 }
 
 
-/*
+/**
   Result can be the same matrix as A, but not B.
 */
 void ur_matrixMult( const float* a, const float* b, float* result )
