@@ -2,7 +2,7 @@
 " Language:		Boron
 " Maintainer:	Karl Robillard <wickedsmoke@users.sf.net>
 " Filenames:	*.b
-" Last Change:	13 Nov 2016
+" Last Change:	21 Nov 2019
 " URL:			http://urlan.sf.net/boron
 
 
@@ -66,9 +66,10 @@ syn match       boronDate       "\d\{4}-\d\{1,2}-\d\{1,2}\>"
 syn match       boronDate       "\d\{1,2}\.\d\{1,2}\.\d\{4}\>"
 " Strings
 syn region      boronString     oneline start=+"+ skip=+^"+ end=+"+ contains=boronSpecialChar
-syn region      boronString     start=+{+ end=+}+ skip=+{[^}]*}+ contains=boronSpecialChar
+syn region      boronString     start="{" end="}" skip="{[^}]*}" contains=boronSpecialChar
+syn region      boronString     start="{{\+\n" end="}}\+\n" contains=boronSpecialChar
 " Binary
-syn region      boronBinary     start=+\d*#{+ end=+}+ contains=boronComment
+syn region      boronBinary     start="\d*#{" end="}" contains=boronComment
 " File
 syn match       boronFile       "%\(\k\+/\)*\k\+[/]\=" contains=boronSpecialChar
 syn region      boronFile       oneline start=+%"+ end=+"+ contains=boronSpecialChar
@@ -104,38 +105,38 @@ syn keyword     boronBinaryOperator complement and or xor
 "syn match       boronLogicOperator "<>"
 syn keyword     boronLogicOperator not
 syn keyword     boronLogicFunction all any
-syn keyword     boronLogicFunction head? tail?
-"syn keyword     boronLogicFunction negative? positive? zero? even? odd?
-syn keyword     boronLogicFunction binary? block? char? date? decimal? empty?
-syn keyword     boronLogicFunction file? func? int? logic?
-syn keyword     boronLogicFunction cfunc? none? context? paren? path? series?
-syn keyword     boronLogicFunction string? time? coord? word?
-syn keyword     boronLogicFunction exists? same?
+syn keyword     boronLogicFunction head? tail? empty? exists? series?
+syn keyword     boronLogicFunction same? equal? ne? gt? lt? zero?
+syn keyword     boronLogicFunction unset? datatype? none? logic? char? int?
+syn keyword     boronLogicFunction double? time? date? coord? vec3?
+syn keyword     boronLogicFunction word? lit-word? set-word? get-word? option?
+syn keyword     boronLogicFunction binary? bitset? string? file? vector?
+syn keyword     boronLogicFunction block? paren? path? lit-path? set-path?
+syn keyword     boronLogicFunction context? hash-map? error? func? cfunc?
 
 " Datatypes
 syn keyword     boronType	unset! datatype! none! logic! char! int!
-syn keyword     boronType	decimal! bignum! time! date! coord! vec3!
+syn keyword     boronType	double! time! date! coord! vec3!
 syn keyword     boronType	word! lit-word! set-word! get-word! option!
 syn keyword     boronType	binary! bitset! string! file! vector!
 syn keyword     boronType	block! paren! path! lit-path! set-path!
-syn keyword     boronType	context! error! func! cfunc!
-"syn keyword     boronTypeFunction type?
+syn keyword     boronType	context! hash-map! error! func! cfunc!
+syn keyword     boronStatement	type?
 
 " Control statements
 syn keyword     boronStatement		catch try throw halt quit return break
 syn keyword     boronConditional	if ifn either case
 syn keyword     boronRepeat			forall foreach loop while
-"for forskip repeat until do
 
 " Series statements
-syn keyword     boronStatement  make does func ++ -- reduce parse
+syn keyword     boronStatement  make do does func ++ -- reduce parse
 syn keyword     boronStatement  append change clear copy find first free head
 syn keyword     boronStatement  insert join last next prev pick poke remove
-syn keyword     boronStatement  second select skip sort tail third trim length?
-"match
+syn keyword     boronStatement  second select skip sort tail third trim
 
 " Context
-syn keyword     boronStatement  bind infuse set get in
+syn keyword     boronStatement  binding? bind unbind infuse set get in
+syn keyword     boronStatement  value? words-of values-of
 
 " I/O statements
 syn keyword     boronStatement  print probe read load save write
