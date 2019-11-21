@@ -218,31 +218,7 @@ void esOrtho( GLfloat left, GLfloat right, GLfloat bottom, GLfloat top,
 {
     GLfloat mat[16];
 
-    if( left == right || bottom == top || near_val == far_val )
-        return;
-
-#define M(row,col)  mat[col * 4 + row]
-
-    M(0,0) = 2.0f / (right - left);
-    M(0,1) = 0.0f;
-    M(0,2) = 0.0f;
-    M(0,3) = -(right + left) / (right - left);
-
-    M(1,0) = 0.0f;
-    M(1,1) = 2.0f / (top - bottom);
-    M(1,2) = 0.0f;
-    M(1,3) = -(top + bottom) / (top - bottom);
-
-    M(2,0) = 0.0f;
-    M(2,1) = 0.0f;
-    M(2,2) = -2.0f / (far_val - near_val);
-    M(2,3) = -(far_val + near_val) / (far_val - near_val);
-
-    M(3,0) = 0.0f;
-    M(3,1) = 0.0f;
-    M(3,2) = 0.0f;
-    M(3,3) = 1.0f;
-
+    ur_ortho( mat, left, right, bottom, top, near_val, far_val );
     ur_matrixMult( matrixTop, mat, matrixTop );
 }
 

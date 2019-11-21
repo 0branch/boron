@@ -120,6 +120,34 @@ void ur_perspective( float* mat, float fovYDegrees, float aspect,
 }
 
 
+void ur_ortho( float* mat, float left, float right, float bottom, float top,
+               float zNear, float zFar )
+{
+    //if( left == right || bottom == top || zNear == zFar )
+    //    return;
+
+    mat[k00] = 2.0f / (right - left);
+    mat[k10] = 0.0f;
+    mat[k20] = 0.0f;
+    mat[k30] = -(right + left) / (right - left);
+
+    mat[k01] = 0.0f;
+    mat[k11] = 2.0f / (top - bottom);
+    mat[k21] = 0.0f;
+    mat[k31] = -(top + bottom) / (top - bottom);
+
+    mat[k02] = 0.0f;
+    mat[k12] = 0.0f;
+    mat[k22] = -2.0f / (zFar - zNear);
+    mat[k32] = -(zFar + zNear) / (zFar - zNear);
+
+    mat[k03] = 0.0f;
+    mat[k13] = 0.0f;
+    mat[k23] = 0.0f;
+    mat[k33] = 1.0f;
+}
+
+
 /**
   Result can be the same matrix as A, but not B.
 */

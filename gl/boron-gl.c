@@ -1998,10 +1998,12 @@ typedef struct
     float zNear;
     float zFar;
     float view[4];
+    int   perspective;
 }
 Camera;
 
 
+/*
 float number_f( const UCell* cell )
 {
     if( ur_is(cell, UT_DOUBLE) )
@@ -2010,22 +2012,24 @@ float number_f( const UCell* cell )
         return (float) ur_int(cell);
     return 0.0f;
 }
+*/
 
 
 /*
-  Returns non-zero if ctx is a valid camera with a perspective projection.
+  Returns non-zero if ctx is a valid camera.
 */
 static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
 {
     const UCell* viewC;
     const UCell* val;
     const UBuffer* mat;
-    float fov;
     float w, h;
     int i;
 
     if( ctx->used < CAM_CTX_COUNT )
         return 0;
+
+    // This code matches dop_camera() behavior.
 
     viewC = ur_ctxCell( ctx, CAM_CTX_VIEWPORT );
     if( ur_is(viewC, UT_COORD) && (viewC->coord.len > 3) )
@@ -2033,7 +2037,9 @@ static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
         for( i = 0; i < 4; ++i )
             cam->view[ i ] = (float) viewC->coord.n[ i ];
 
-        // This clipping plane fetch matches dop_camera().
+        w = cam->view[2];
+        h = cam->view[3];
+
         val = ur_ctxCell( ctx, CAM_CTX_CLIP );
         if( ur_is(val, UT_VEC3) )
         {
@@ -2046,27 +2052,49 @@ static int cameraData( UThread* ut, const UBuffer* ctx, Camera* cam )
             cam->zFar  = 10.0;
         }
 
-        fov = number_f( ur_ctxCell( ctx, CAM_CTX_FOV ) );
-        if( fov > 0.0 )
+        val = ur_ctxCell( ctx, CAM_CTX_FOV );
+        switch( ur_type(val) )
         {
+            case UT_DOUBLE:
+                ur_perspective( cam->proj, ur_double(val), w / h,
+                                cam->zNear, cam->zFar );
+                cam->perspective = 1;
+                break;
 
-            w = (float) viewC->coord.n[2];
-            h = (float) viewC->coord.n[3];
-            ur_perspective( cam->proj, fov, w / h, cam->zNear, cam->zFar );
+            case UT_WORD:
+            // 'pixels sets projection to show viewport pixels at a 1:1 ratio.
+                ur_ortho( cam->proj, 0, w, 0, h, cam->zNear, cam->zFar );
+                cam->perspective = 0;
+                break;
 
-            if( (mat = _cameraOrientMatrix( ut, ctx )) )
+            case UT_VEC3:
             {
-                ur_matrixInverse( cam->orient, mat->ptr.f );
-                return 1;
+            // The FOV vec3 x,y are the orthographic left & right.
+            // Bottom & top are calculated from this and the viewport aspect.
+                float left  = val->vec3.xyz[0];
+                float right = val->vec3.xyz[1];
+                h = ((right - left) * h / w) * 0.5;
+                ur_ortho(cam->proj, left, right, -h, h, cam->zNear, cam->zFar);
+                cam->perspective = 0;
             }
+                break;
+
+            default:
+                return 0;
         }
+
+        if( (mat = _cameraOrientMatrix( ut, ctx )) )
+            ur_matrixInverse( cam->orient, mat->ptr.f );
+        else
+            ur_loadIdentity( cam->orient );
+        return 1;
     }
     return 0;
 }
 
 
 /*
-  http://www.opengl.org/wiki/GluProject_and_gluUnProject_code
+  https://www.khronos.org/opengl/wiki/GluProject_and_gluUnProject_code
 */
 static int projectPoint( const float* pnt, const Camera* cam, float* windowPos,
                          int dropNear )
@@ -2089,25 +2117,29 @@ static int projectPoint( const float* pnt, const Camera* cam, float* windowPos,
 #ifdef PROJECT_Z
     tmp[6] = mat[2]*tmp[0] + mat[6]*tmp[1] + mat[10]*tmp[2] + mat[14]*tmp[3];
 #endif
-    w = -tmp[2];    // Last row of projection matrix is always [0 0 -1 0].
 
-    // Do perspective division to normalize between -1 and 1.
-    if( w == 0.0 )
-        return 0;
-    if( w < cam->zNear )
+    if( cam->perspective )
     {
-        if( dropNear )
-            return 0;
-        if( w < 0.0 )
-            w = -w;
-    }
+        w = -tmp[2];    // Last row of projection matrix is always [0 0 -1 0].
 
-    w = 1.0 / w;
-    tmp[4] *= w;
-    tmp[5] *= w;
+        // Do perspective division to normalize between -1 and 1.
+        if( w == 0.0 )
+            return 0;
+        if( w < cam->zNear )
+        {
+            if( dropNear )
+                return 0;
+            if( w < 0.0 )
+                w = -w;
+        }
+
+        w = 1.0 / w;
+        tmp[4] *= w;
+        tmp[5] *= w;
 #ifdef PROJECT_Z
-    tmp[6] *= w;
+        tmp[6] *= w;
 #endif
+    }
 
     // Map to window coordinates.
     windowPos[0] = (tmp[4] * 0.5 + 0.5) * cam->view[2] + cam->view[0];
