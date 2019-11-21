@@ -534,14 +534,14 @@ static void ledit_render( GWidget* wp )
                 int xpos = txf_width(tf, str->ptr.b,
                                          str->ptr.b + ep->editPos );
 
-                // FIXME: UVs require black pixels at upper-left of texture.
-                fdata[0] = 0.003f;
-                fdata[1] = 0.0f;  //95f;
+                // FIXME: UVs require black pixel at lower-left of texture.
+                fdata[0] = 0.0f;
+                fdata[1] = 0.0f;
                 fdata[2] = (GLfloat) (wp->area.x + xpos + MARGIN_L);
                 fdata[3] = (GLfloat) wp->area.y;
 
-                fdata[4] = 0.003f;
-                fdata[5] = 0.01f; //998f;
+                fdata[4] = 0.0f;
+                fdata[5] = 0.0f;
                 fdata[6] = fdata[2];
                 fdata[7] = fdata[3] + txf_lineSpacing( tf );
 
