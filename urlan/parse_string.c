@@ -39,7 +39,7 @@ enum StringParseException
 
 typedef struct
 {
-    int (*eval)( UThread*, const UCell* );
+    UStatus (*eval)( UThread*, const UCell* );
     UBuffer* str;
     UIndex   inputBuf;
     UIndex   inputEnd;
@@ -626,9 +626,9 @@ parse_err:
 
   \return UR_OK or UR_THROW.
 */
-int ur_parseString( UThread* ut, UBuffer* str, UIndex start, UIndex end,
-                    UIndex* parsePos, const UBuffer* ruleBlk,
-                    int (*eval)( UThread*, const UCell* ), int matchCase )
+UStatus ur_parseString( UThread* ut, UBuffer* str, UIndex start, UIndex end,
+                        UIndex* parsePos, const UBuffer* ruleBlk,
+                        UStatus (*eval)(UThread*, const UCell*), int matchCase )
 {
     StringParser p;
 

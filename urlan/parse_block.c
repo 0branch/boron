@@ -32,7 +32,7 @@ enum BlockParseException
 
 typedef struct
 {
-    int (*eval)( UThread*, const UCell* );
+    UStatus (*eval)( UThread*, const UCell* );
     const UBuffer* blk;
     UIndex   inputBuf;
     UIndex   inputEnd;
@@ -589,9 +589,9 @@ parse_err:
 
   \return UR_OK or UR_THROW.
 */
-int ur_parseBlock( UThread* ut, UBuffer* blk, UIndex start, UIndex end,
-                   UIndex* parsePos, const UBuffer* ruleBlk,
-                   int (*eval)( UThread*, const UCell* ) )
+UStatus ur_parseBlock( UThread* ut, UBuffer* blk, UIndex start, UIndex end,
+                       UIndex* parsePos, const UBuffer* ruleBlk,
+                       UStatus (*eval)(UThread*, const UCell*) )
 {
     BlockParser p;
 

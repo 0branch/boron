@@ -4294,17 +4294,17 @@ CFUNC(cfunc_save)
 }
 
 
-extern int ur_parseBinary( UThread* ut, UBuffer*, UIndex start, UIndex end,
-                           UIndex* parsePos, const UBuffer* ruleBlk,
-                           UStatus (*eval)( UThread*, const UCell* ) );
+extern UStatus ur_parseBinary( UThread* ut, UBuffer*, UIndex start, UIndex end,
+                               UIndex* parsePos, const UBuffer* ruleBlk,
+                               UStatus (*eval)( UThread*, const UCell* ) );
 
-extern int ur_parseBlock( UThread* ut, UBuffer*, UIndex start, UIndex end,
-                          UIndex* parsePos, const UBuffer* ruleBlk,
-                          UStatus (*eval)( UThread*, const UCell* ) );
+extern UStatus ur_parseBlock( UThread* ut, UBuffer*, UIndex start, UIndex end,
+                              UIndex* parsePos, const UBuffer* ruleBlk,
+                              UStatus (*eval)( UThread*, const UCell* ) );
 
-extern int ur_parseString( UThread* ut, UBuffer*, UIndex start, UIndex end,
-                           UIndex* parsePos, const UBuffer* ruleBlk,
-                           UStatus (*eval)( UThread*, const UCell* ), int );
+extern UStatus ur_parseString( UThread* ut, UBuffer*, UIndex start, UIndex end,
+                               UIndex* parsePos, const UBuffer* ruleBlk,
+                               UStatus (*eval)( UThread*, const UCell* ), int );
 
 /*-cf-
     parse
@@ -4323,7 +4323,7 @@ CFUNC(cfunc_parse)
     USeriesIterM si;
     const UBuffer* rules;
     UIndex pos;
-    int ok = 0;
+    UStatus ok = UR_THROW;
 
     if( ! ur_seriesSliceM( ut, &si, a1 ) )
         return UR_THROW;

@@ -50,7 +50,7 @@ BitPipe;
 
 typedef struct
 {
-    int (*eval)( UThread*, const UCell* );
+    UStatus (*eval)( UThread*, const UCell* );
     UIndex   inputBufN;
     UIndex   inputEnd;
     uint8_t  sliced;
@@ -522,9 +522,9 @@ parse_err:
 
   \return UR_OK or UR_THROW.
 */
-int ur_parseBinary( UThread* ut, UBuffer* bin, UIndex start, UIndex end,
-                    UIndex* parsePos, const UBuffer* ruleBlk,
-                    int (*eval)( UThread*, const UCell* ) )
+UStatus ur_parseBinary( UThread* ut, UBuffer* bin, UIndex start, UIndex end,
+                        UIndex* parsePos, const UBuffer* ruleBlk,
+                        UStatus (*eval)(UThread*, const UCell*) )
 {
     BinaryParser p;
 
