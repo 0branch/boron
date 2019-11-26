@@ -498,28 +498,39 @@ build:
 static void textureToRaster( UThread* ut, GLenum target, GLuint name,
                              UCell* res )
 {
-#if defined(GL_ES_VERSION_2_0) && ! defined(GL_ES_VERSION_3_1)
-    (void) ut;
-    (void) target;
-    (void) name;
-    // Must use framebuffer and glReadPixels.
-    ur_setId(res, UT_NONE);
-#else
     UBuffer* bin;
     GLint dim[ 2 ];
+#if defined(GL_ES_VERSION_3_1) || defined(USE_GLES)
+    const int rform = UR_RAST_RGBA;
+#else
+    const int rform = UR_RAST_RGB;
+#endif
 
+    // glGetTexLevelParameteriv requires GLES 3.1
     glBindTexture( target, name );
     glGetTexLevelParameteriv( target, 0, GL_TEXTURE_WIDTH,  dim );
     glGetTexLevelParameteriv( target, 0, GL_TEXTURE_HEIGHT, dim + 1 );
 
-    bin = ur_makeRaster( ut, UR_RAST_RGB, dim[0], dim[1], res );
+    bin = ur_makeRaster( ut, rform, dim[0], dim[1], res );
     if( bin->ptr.b )
     {
+#if defined(GL_ES_VERSION_3_1) || defined(USE_GLES)
+        // Must use framebuffer and glReadPixels rather than glGetTexImage.
+        GLuint fbo;
+        glGenFramebuffers( 1, &fbo );
+        glBindFramebuffer( GL_FRAMEBUFFER, fbo );
+        glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                target, name, 0 );
+        glReadPixels( 0, 0, dim[0], dim[1], GL_RGBA, GL_UNSIGNED_BYTE,
+                      ur_rastElem(bin) );
+        glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+        glDeleteFramebuffers( 1, &fbo );
+#else
         int bpr = ur_ptr(RasterHead, bin)->bytesPerRow;
         glPixelStorei( GL_PACK_ALIGNMENT, (bpr & 3) ? 1 : 4 );
         glGetTexImage( target, 0, GL_RGB, GL_UNSIGNED_BYTE, ur_rastElem(bin) );
-    }
 #endif
+    }
 }
 
 
