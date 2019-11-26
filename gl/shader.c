@@ -62,6 +62,28 @@ static int printInfoLog( UThread* ut, GLuint obj, int prog )
 }
 
 
+#if ! defined(USE_GLES) && ! defined(__ANDROID__)
+#define REPLACE_ES_HEADER
+#endif
+
+#ifdef REPLACE_ES_HEADER
+static const char* _skipEsHeader( const char* orig )
+{
+    const char* found;
+
+    found = strstr( orig, "#version 310 es\n" );
+    if( found )
+        orig = found + 16;
+    if( strncmp( orig, "precision", 9 ) == 0 )
+    {
+        if( (found = strstr( orig, ";" )) )
+            orig = found + 2;
+    }
+    return orig;
+}
+#endif
+
+
 /**
     Returns UR_OK/UR_THROW.
 */
@@ -71,20 +93,37 @@ static int compileProgram( UThread* ut, GLuint program,
     GLint ok;
     GLuint vertexObj;
     GLuint fragmentObj;
+#ifdef REPLACE_ES_HEADER
+    const char* source[2];
+#endif
 
 
     vertexObj   = glCreateShader( GL_VERTEX_SHADER );
     fragmentObj = glCreateShader( GL_FRAGMENT_SHADER );
 
 
+#ifdef REPLACE_ES_HEADER
+    // The extension is required until #version 430.
+    source[0] = "#version 330\n"
+                "#extension GL_ARB_explicit_uniform_location : enable\n";
+    source[1] = _skipEsHeader( vert );
+    glShaderSource( vertexObj, 2, (const GLchar**) source, 0 );
+#else
     glShaderSource( vertexObj, 1, (const GLchar**) &vert, 0 );
+#endif
     glCompileShader( vertexObj );
     glGetShaderiv( vertexObj, GL_COMPILE_STATUS, &ok );
     if( ! ok )
         return printInfoLog( ut, vertexObj, 0 );
 
 
+#ifdef REPLACE_ES_HEADER
+    source[0] = "#version 330\n";
+    source[1] = _skipEsHeader( frag );
+    glShaderSource( fragmentObj, 2, (const GLchar**) source, 0 );
+#else
     glShaderSource( fragmentObj, 1, (const GLchar**) &frag, 0 );
+#endif
     glCompileShader( fragmentObj );
     glGetShaderiv( fragmentObj, GL_COMPILE_STATUS, &ok );
     if( ! ok )

@@ -150,6 +150,7 @@ struct GLEnv
     UThread* guiUT;
     UCell*   guiStyle;          // For GWidget layout & render.
     UIndex   guiArgBlkN;        // For gui_parseArgs() path! results.
+    GLuint  globalVAO;
     UBuffer tmpBin;
     UBuffer tmpStr;
     UBuffer widgetClasses;

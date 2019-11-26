@@ -3,6 +3,7 @@ project: "boron-gl"
 options [
     -debug: false   "Compile for debugging"
     audio:  true    "Enable OpenAL audio"
+    gles:   true    "On desktop systems use the OpenGL Embedded Systems API"
 ]
 
 default [
@@ -22,6 +23,7 @@ default [
 
 shlib [%boron-gl 2,0,0] [
     cflags {-DIMAGE_BOTTOM_AT_0}
+    if gles [cflags "-DUSE_GLES"]
     linux [
         cflags {-std=gnu99}
         cflags {-DUSE_XF86VMODE}

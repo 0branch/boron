@@ -51,6 +51,29 @@
 
 #define MOUSE_UNSET     -9999
 
+#if defined(DEBUG) && defined(GL_DEBUG_OUTPUT)
+#define DEBUG_GL
+#endif
+
+#define ATTRIB_0        GLV_ATTRIB_DOUBLEBUFFER|GLV_ATTRIB_MULTISAMPLE
+#ifdef DEBUG_GL
+#define ATTRIB_1        ATTRIB_0|GLV_ATTRIB_DEBUG
+#else
+#define ATTRIB_1        ATTRIB_0
+#endif
+#ifdef USE_GLES
+#define CREATE_ATTRIB   ATTRIB_1|GLV_ATTRIB_ES
+#else
+#define CREATE_ATTRIB   ATTRIB_1
+#endif
+
+#if defined(USE_GLES) || defined(__ANDROID__)
+#define CREATE_VERSION  0x301
+#else
+#define CREATE_VERSION  0x303
+#define USE_VAO
+#endif
+
 
 extern UPortDevice port_joystick;
 struct GLEnv glEnv;
@@ -77,9 +100,6 @@ TexFont* ur_texFontV( UThread* ut, const UCell* cell )
 }
 
 
-#if defined(DEBUG) && defined(GL_DEBUG_OUTPUT)
-#define DEBUG_GL
-#endif
 #ifdef DEBUG_GL
 void _debugGL( GLenum source, GLenum type, GLuint id, GLenum severity,
                GLsizei length, const GLchar* message, const void* userParam )
@@ -513,12 +533,13 @@ CFUNC( uc_handle_events )
             boron_releaseGL( ut );
             glv_destroy( gView );
 
-            gView = glv_create( GLV_ATTRIB_DOUBLEBUFFER |
-                                GLV_ATTRIB_MULTISAMPLE |
-                                GLV_ATTRIB_DEBUG |
-                                GLV_ATTRIB_ES );
+            gView = glv_create( CREATE_ATTRIB, CREATE_VERSION );
 #ifdef DEBUG_GL
             enableGLDebug();
+#endif
+#ifdef USE_VAO
+            glGenVertexArrays( 1, &glEnv.globalVAO );
+            glBindVertexArray( glEnv.globalVAO );
 #endif
             gView->user = &glEnv;
             glv_resize( gView, w, h );
@@ -3188,11 +3209,7 @@ UThread* boron_makeEnvGL( UEnvParameters* param )
     }
 #endif
 
-    gView = glv_create( GLV_ATTRIB_DOUBLEBUFFER | GLV_ATTRIB_MULTISAMPLE |
-#ifdef DEBUG_GL
-                        GLV_ATTRIB_DEBUG |
-#endif
-                        GLV_ATTRIB_ES );
+    gView = glv_create( CREATE_ATTRIB, CREATE_VERSION );
     if( ! gView )
     {
         fprintf( stderr, "glv_create() failed\n" );
@@ -3204,16 +3221,27 @@ cleanup:
     //printf( "GL_VERSION: %s\n", (const char*) glGetString( GL_VERSION ) );
     glGetIntegerv(GL_MAJOR_VERSION, version);
     glGetIntegerv(GL_MINOR_VERSION, version+1);
-    if( version[0] < 3 || (version[0] == 3 && version[1] < 1) )
+    if( version[0] < 3 ||
+        (version[0] == 3 && version[1] < (CREATE_VERSION & 15)) )
     {
         glv_destroy( gView );
         gView = 0;
+#if defined(USE_GLES) || defined(__ANDROID__)
         fprintf( stderr, "OpenGL ES 3.1 required\n" );
+#else
+        fprintf( stderr, "OpenGL 3.3 required\n" );
+#endif
         goto cleanup;
     }
 
 #ifdef DEBUG_GL
     enableGLDebug();
+#endif
+
+#ifdef USE_VAO
+    // Core profile requires use of VAO.
+    glGenVertexArrays( 1, &glEnv.globalVAO );
+    glBindVertexArray( glEnv.globalVAO );
 #endif
 
 #if 0
@@ -3302,6 +3330,10 @@ void boron_releaseGL( UThread* ut )
     }
 
     glid_release();
+
+#ifdef USE_VAO
+    glDeleteVertexArrays( 1, &glEnv.globalVAO );
+#endif
 }
 
 
