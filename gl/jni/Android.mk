@@ -32,7 +32,7 @@ include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := libboron-gl
-#LOCAL_CFLAGS := -DNO_AUDIO
+LOCAL_CFLAGS := -DIMAGE_BOTTOM_AT_0 #-DNO_AUDIO
 LOCAL_C_INCLUDES := ../include ../urlan ../eval jni/glv
 LOCAL_SRC_FILES := es_compat.c \
     audio.c \
@@ -50,9 +50,11 @@ LOCAL_SRC_FILES := es_compat.c \
     TexFont.c \
     port_joystick.c \
     widget_button.c \
+    widget_choice.c \
     widget_label.c \
     widget_lineedit.c \
     widget_list.c \
+    widget_menu.c \
     widget_slider.c \
     widget_itemview.c
 # LOCAL_LDLIBS := -llog -landroid -lEGL -lGLESv2 -lz
