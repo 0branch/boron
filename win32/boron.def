@@ -134,7 +134,7 @@ EXPORTS
    ur_blkSlice               @132
    ur_blkSliceM              @133
    ur_blkCollectType         @134
-   ur_pathValue              @135
+   ur_pathResolve            @135
    ur_pathCell               @136
    ur_setPath                @137
    ur_makeContext            @138
@@ -185,4 +185,5 @@ EXPORTS
    block_markBuf             @183
    cfunc_free                @184
    vec3_toString             @185
-;   ur_stringToTimeCode       @186
+   str_copy                  @186
+;   ur_stringToTimeCode       @187
