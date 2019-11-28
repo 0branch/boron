@@ -186,4 +186,8 @@ EXPORTS
    cfunc_free                @184
    vec3_toString             @185
    str_copy                  @186
-;   ur_stringToTimeCode       @187
+   boron_doVoid              @187
+   ur_fileInfo               @188
+   ur_now                    @189
+   checksum_crc32            @190
+;   ur_stringToTimeCode       @191

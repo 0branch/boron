@@ -62,13 +62,14 @@ shlib [%boron-gl 2,0,0] [
               libs_from %"C:/Program Files/OpenAL 1.1 SDK/libs/Win32" %OpenAL32
             ]
         ][
-            cflags {-DGLEW_BUILD}
+            cflags {-DGLEW_BUILD -DGLEW_NO_GLU}
             include_from [
                 %/usr/x86_64-w64-mingw32/sys-root/mingw/include/freetype2
                 %../win32
             ]
             libs_from %.. %boron
-            libs "vorbis vorbisfile OpenAL32 glew32 opengl32 freetype png z"
+            libs "vorbis vorbisfile OpenAL32 glew32 opengl32 gdi32 freetype png z"
+           ;libs %ws2_32   ; Needed if boron.lib is static.
         ]
     ]
 
