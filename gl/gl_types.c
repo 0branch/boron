@@ -28,7 +28,7 @@
 extern void binary_copy( UThread*, const UCell* from, UCell* res );
 extern void binary_mark( UThread*, UCell* cell );
 extern void binary_toShared( UCell* cell );
-extern int boron_doVoid( UThread* ut, const UCell* blkC );
+extern UStatus boron_doVoid( UThread* ut, const UCell* blkC );
 
 
 //----------------------------------------------------------------------------

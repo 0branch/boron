@@ -35,7 +35,7 @@
 
 
 extern void block_markBuf( UThread* ut, UBuffer* buf );
-extern int boron_doVoid( UThread* ut, const UCell* blkC );
+extern UStatus boron_doVoid( UThread* ut, const UCell* blkC );
 //void gui_dumpWidget( const GWidget* wp, int indent );
 extern int itemview_parse( UThread* ut, UBlockIter* bi, GWidget* wp );
 

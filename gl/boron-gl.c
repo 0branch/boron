@@ -3018,7 +3018,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    76
+#define FA_COUNT    80
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -3034,7 +3034,7 @@ static void _createFixedAtoms( UThread* ut )
         "rgb rgba depth clamp nearest linear\n"
         "min mag mipmap gray\n"
         "burn color trans sprite\n"
-        "once ping-pong pong\n"
+        "update finish -> >> once ping-pong pong\n"
         "collide fall integrate attach anchor action face",
         atoms );
 
@@ -3127,6 +3127,7 @@ static void _createDrawOpTable( UThread* ut )
 
 #include "gl_types.c"
 #include "math3d.c"
+#include "anim.c"
 
 #define DEF_CF(f,spec)  f,
 static BoronCFunc _glfuncs[] =
@@ -3271,6 +3272,8 @@ cleanup:
     ur_arrInit( &glEnv.rootWidgets, sizeof(GWidget*), 0 );
 
     gui_addStdClasses();
+    anim_initList( &_animUI );
+    anim_initList( &_animSim );
 
     return ut;
 }
@@ -3292,6 +3295,8 @@ void boron_freeEnvGL( UThread* ut )
         }
 
         //gui_cleanup( &glEnv.gui );
+        anim_cleanupList( &_animUI );
+        anim_cleanupList( &_animSim );
         glid_shutdown();
 #ifndef NO_AUDIO
         aud_shutdown();
