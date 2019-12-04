@@ -2643,12 +2643,15 @@ CFUNC(cfunc_sizeQ)
 
 /*-cf-
     index?
-        series  Series or word.
+        series  Series, word! or datatype!.
     return: int!
     group: series
     see: size?
 
-    Current position of series.
+    Get the current position of series.
+
+    For words the internal atom value is returned.
+    For datatypes a type bitmask is returned.
 */
 CFUNC(cfunc_indexQ)
 {
@@ -2658,6 +2661,9 @@ CFUNC(cfunc_indexQ)
         ur_int(res) = a1->series.it + 1;
     else if( ur_isWordType( type ) )
         ur_int(res) = ur_atom(a1);
+    else if( type == UT_DATATYPE )
+        ur_int(res) = (int64_t) a1->datatype.mask0 |
+                      (int64_t) a1->datatype.mask1 << 32;
     //else if( type == UT_PORT )
     else
         return boron_badArg( ut, type, 0 );
