@@ -9,34 +9,34 @@
 #include "urlan.h"
 
 
-enum ParseBlockOperator
+enum ParseBlockInstruction
 {
     PB_End,
-    PB_Flag,
-    PB_Report,
-    PB_ReportEnd,
-    PB_Next,
+    PB_Flag,        // rflag bitmask (limit 8 bits)
+    PB_Report,      // report id
+    PB_ReportEnd,   // report id
+    PB_Next,        // Number of bytes to skip to next alternate rule
     //PB_Repeat,
     //PB_RepeatV,
     PB_Skip,
-    PB_LitWord,
-    PB_Rule,
-    PB_Type,
-    PB_Typeset,
-    PB_OptR,
-    PB_OptT,
-    PB_OptTs,
-    PB_AnyR,
-    PB_AnyT,
-    PB_AnyTs,
-    PB_SomeR,
-    PB_SomeT,
-    PB_SomeTs,
-    PB_ToT,
-    PB_ToTs,
-    PB_ToLitWord,
-    PB_ThruT,
-    PB_ThruTs
+    PB_LitWord,     // atoms index
+    PB_Rule,        // rules offset to instructions
+    PB_Type,        // Datatype
+    PB_Typeset,     // rules offset of 64-bit mask
+    PB_OptR,        // rules offset to instructions
+    PB_OptT,        // Datatype
+    PB_OptTs,       // rules offset of 64-bit mask
+    PB_AnyR,        // rules offset to instructions
+    PB_AnyT,        // Datatype
+    PB_AnyTs,       // rules offset of 64-bit mask
+    PB_SomeR,       // rules offset to instructions
+    PB_SomeT,       // Datatype
+    PB_SomeTs,      // rules offset of 64-bit mask
+    PB_ToT,         // Datatype
+    PB_ToTs,        // rules offset of 64-bit mask
+    PB_ToLitWord,   // atoms index
+    PB_ThruT,       // Datatype
+    PB_ThruTs       // rules offset of 64-bit mask
 };
 
 
