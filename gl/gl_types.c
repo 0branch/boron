@@ -579,6 +579,8 @@ texture_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* tmp )
 }
 
 
+extern void anim_recycle( UThread* );
+
 static void texture_recycle( UThread* ut, int phase )
 {
     // The comparison with guiUT makes sure that we are in the GL thread
@@ -607,6 +609,7 @@ static void texture_recycle( UThread* ut, int phase )
 
         case UR_RECYCLE_SWEEP:
             glid_gcSweep();
+            anim_recycle( ut ); // Using texture! to notify animation system.
             break;
     }
 }

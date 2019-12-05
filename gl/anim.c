@@ -36,24 +36,34 @@ typedef struct
     UIndex   finishBlkN;
     float*   curve;
     float    curvePos;
-    float    timeScale;     // or duration?
+    float    timeScale;     // 1.0 / duration
     float    fraction;      // Temporary result of curve calculation.
-    float    v1[3];
-    float    v2[3];
+    float    v1[3];         // Start value
+    float    v2[3];         // End value
     uint16_t curveLen;
     uint16_t behavior;      // Loop, LoopBack, Ping, Pong, PingPong
     uint16_t repeatCount;
-    uint16_t cellType;
+    uint8_t  cellType;
+    uint8_t  allocState;
 }
-Anim;                       // sizeof(Anim) = 68;
+Anim;                       // sizeof(Anim) = 72;
 
 
 enum AnimBehavior
 {
-    ANIM_UNSET,
-    ANIM_COMPLETE,
     ANIM_ONCE,
-    ANIM_LOOP
+    ANIM_LOOP,
+    ANIM_COMPLETE,          // Only used within anim_process().
+    ANIM_UNSET,
+    ANIM_DISABLED = 0x80
+};
+
+
+enum AnimAllocState
+{
+    ANIM_FREE,
+    ANIM_SINGLE_USE,
+    ANIM_USED
 };
 
 
@@ -130,23 +140,38 @@ void anim_free( AnimList* list, uint32_t id )
     int n = ID_INDEX(id);
 
     buf = list->buf + ftype;
+    anim = ur_ptr(Anim, buf) + n;
+    anim->behavior   = ANIM_UNSET;
+    anim->allocState = ANIM_FREE;
+
     if( n == buf->used - 1 )
     {
         --buf->used;
     }
     else
     {
-        anim = ur_ptr(Anim, buf) + n;
-        anim->behavior = ANIM_UNSET;
         anim->updateBlkN = list->firstFree[ ftype ];
         list->firstFree[ ftype ] = n;
     }
 }
 
 
+static Anim* anim_pointer( AnimList* list, uint32_t id )
+{
+    UBuffer* buf = list->buf + ID_FTYPE(id);
+    return ur_ptr(Anim, buf) + ID_INDEX(id);
+}
+
+
 /*
 void anim_enable( AnimList* list, uint32_t id, int on )
 {
+    UBuffer* buf = list->buf + ID_FTYPE(id);
+    Anim* anim = ur_ptr(Anim, buf) + ID_INDEX(id);
+    if( on )
+        anim->behavior &= ~ANIM_DISABLED;
+    else
+        anim->behavior |= ANIM_DISABLED;
 }
 */
 
@@ -224,26 +249,8 @@ void calc_linear2( const float* a, const float* b, float t, float* res )
 
 #define ANIM_ID(AT,PTR)     ID_MAKE(AT, PTR - (Anim*) list->buf[AT].ptr.v)
 
-
-/*
-static void anim_finish( AnimList* list, int ftype, Anim* it, Anim* end,
-                         uint32_t freeCount )
-{
-    do
-    {
-        if( it->behavior != ANIM_COMPLETE )
-            continue;
-        if( it->finishBlkN != UR_INVALID_BUF )
-        {
-            // Do finishBlkN.
-        }
-        anim_free( list, ANIM_ID(ftype, it) );
-        if( --freeCount == 0 )
-            break;
-    }
-    while( ++it != end );
-}
-*/
+#define ANIM_RESULT_CELL(it) \
+    ur_buffer(it->out.cell.bufN)->ptr.cell + it->out.cell.i
 
 
 extern UStatus boron_doVoid( UThread* ut, const UCell* blkC );
@@ -267,7 +274,7 @@ uint32_t anim_process( UThread* ut, AnimList* list, double dt )
     ANIM_BEGIN( AFT_CELL );
     for( ; it != end; ++it )
     {
-        if( it->behavior == ANIM_UNSET )
+        if( it->behavior >= ANIM_UNSET )
             continue;
         ++count;
 
@@ -279,13 +286,9 @@ uint32_t anim_process( UThread* ut, AnimList* list, double dt )
         {
             // Animation complete.
             if( it->behavior == ANIM_LOOP )
-            {
                 it->curvePos = pos - 1.0f;
-            }
             else    // ANIM_ONCE
-            {
                 it->behavior = ANIM_COMPLETE;
-            }
         }
         else
         {
@@ -297,12 +300,12 @@ uint32_t anim_process( UThread* ut, AnimList* list, double dt )
     it = (Anim*) list->buf[ AFT_CELL ].ptr.v;
     for( ; it != end; ++it )
     {
-        if( it->behavior == ANIM_UNSET )
+        if( it->behavior >= ANIM_UNSET )
             continue;
 
 #define ANIM_INTERP(A,B)   A + (B - A) * it->fraction
 
-        resC = ur_buffer( it->out.cell.bufN )->ptr.cell + it->out.cell.i;
+        resC = ANIM_RESULT_CELL( it );
         if( it->cellType == UT_VEC3 )
         {
             ur_setId(resC, UT_VEC3);
@@ -367,7 +370,10 @@ uint32_t anim_process( UThread* ut, AnimList* list, double dt )
                 if( boron_doVoid( ut, &blkC ) == UR_THROW )
                     printf( "TODO: Handle animate finish exception!\n" );
             }
-            anim_free( list, ANIM_ID(AFT_CELL, it) );
+            if( it->allocState == ANIM_SINGLE_USE )
+                anim_free( list, ANIM_ID(AFT_CELL, it) );
+            else
+                it->behavior = ANIM_ONCE | ANIM_DISABLED;
         }
     }
 
@@ -412,6 +418,33 @@ AnimList _animUI;
 AnimList _animSim;
 
 
+static void anim_recycleList( UThread* ut, AnimList* list )
+{
+    Anim* it;
+    Anim* end;
+    int ft;
+
+    for( ft = 0; ft < AFT_COUNT; ++ft )
+    {
+        ANIM_BEGIN( ft );
+        for( ; it != end; ++it )
+        {
+            if( it->behavior == ANIM_UNSET )
+                continue;
+            ur_markBlkN( ut, it->updateBlkN );
+            ur_markBlkN( ut, it->finishBlkN );
+        }
+    }
+}
+
+
+void anim_recycle( UThread* ut )
+{
+    anim_recycleList( ut, &_animUI );
+    //anim_recycleList( ut, &_animSim );
+}
+
+
 typedef struct
 {
     UBlockParser bp;
@@ -423,12 +456,13 @@ AnimSpecParser;
 /*
   scripts/parse_blk_compile.b -p Anim -e gl/anim.c
 
-    word! '-> word!     (io)
-    any [
-        double!         (duration)
+    some [
+        word! '-> word! (io)
+      | double!         (duration)
       | 'update block!  (update)
       | 'finish block!  (finish)
-      | word!/vector!   (curve)
+      | word!           (word)
+      | vector!         (curve)
     ]
 */
 
@@ -438,6 +472,7 @@ enum AnimRulesReport
     ANIM_REP_DURATION,
     ANIM_REP_UPDATE,
     ANIM_REP_FINISH,
+    ANIM_REP_WORD,
     ANIM_REP_CURVE
 };
 
@@ -453,11 +488,9 @@ enum AnimRulesAtomIndex
 static const uint8_t _animParseRules[] =
 {
     // 0
-    0x08, 0x0D, 0x06, 0x00, 0x08, 0x0D, 0x02, 0x00, 0x0D, 0x0B, 0x00,
-    // 11
-    0x04, 0x04, 0x08, 0x06, 0x03, 0x01, 0x04, 0x06, 0x06, 0x01, 0x08, 0x17, 0x03, 0x02, 0x04, 0x06, 0x06, 0x02, 0x08, 0x17, 0x03, 0x03, 0x09, 0x25, 0x03, 0x04,
-    // 37 - Typesets
-    0x00, 0x20, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00
+    0x10, 0x03, 0x00,
+    // 3
+    0x04, 0x08, 0x08, 0x0D, 0x06, 0x00, 0x08, 0x0D, 0x03, 0x00, 0x04, 0x04, 0x08, 0x06, 0x03, 0x01, 0x04, 0x06, 0x06, 0x01, 0x08, 0x17, 0x03, 0x02, 0x04, 0x06, 0x06, 0x02, 0x08, 0x17, 0x03, 0x03, 0x04, 0x04, 0x08, 0x0D, 0x03, 0x04, 0x08, 0x16, 0x03, 0x05,
 };
 
 
@@ -505,23 +538,12 @@ static void _animRuleHandler( UBlockParser* par, int rule,
             AR_REPORT( "ANIM_REP_IO\n" );
             _animSetValue(ut, it,   anim->v1);
             _animSetValue(ut, it+2, anim->v2);
+            anim->behavior &= ~ANIM_DISABLED;
             break;
 
         case ANIM_REP_DURATION:
             AR_REPORT( "ANIM_REP_DURATION %f\n", ur_double(it) );
             anim->timeScale = (float) (1.0 / ur_double(it));
-            break;
-
-        case ANIM_REP_CURVE:
-            AR_REPORT( "ANIM_REP_CURVE\n" );
-            if( ur_is(it, UT_WORD) )
-                it = ur_wordCell(ut, it);
-            if( ur_is(it, UT_VECTOR) )
-            {
-                USeriesIter si;
-                ur_seriesSlice( ut, &si, it );
-                anim->curve = si.buf->ptr.f + si.it;
-            }
             break;
 
         case ANIM_REP_UPDATE:
@@ -532,6 +554,35 @@ static void _animRuleHandler( UBlockParser* par, int rule,
         case ANIM_REP_FINISH:
             AR_REPORT( "ANIM_REP_FINISH\n" );
             anim->finishBlkN = it[1].series.buf;
+            break;
+
+        case ANIM_REP_WORD:
+            AR_REPORT( "ANIM_REP_WORD %s\n", ur_atomCStr(ut, ur_atom(it)) );
+            switch( ur_atom(it) )
+            {
+                case UR_ATOM_LOOP:
+                    anim->behavior = ANIM_LOOP|(anim->behavior & ANIM_DISABLED);
+                    break;
+                case UR_ATOM_SINGLE_USE:
+                    if( anim->allocState == ANIM_USED )
+                        anim->allocState = ANIM_SINGLE_USE;
+                    break;
+                default:
+                    it = ur_wordCell(ut, it);
+                    if( ur_is(it, UT_VECTOR) )
+                        goto curve;
+                    break;
+            }
+            break;
+
+        case ANIM_REP_CURVE:
+            AR_REPORT( "ANIM_REP_CURVE\n" );
+curve:
+            {
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, it );
+            anim->curve = si.buf->ptr.f + si.it;
+            }
             break;
     }
 }
@@ -547,16 +598,17 @@ static void anim_init( Anim* anim, UCell* wordC, int dataType )
     anim->curvePos      = 0.0f;
     anim->timeScale     = 1.0f;
     anim->curveLen      = 0;
-    anim->behavior      = ANIM_ONCE;
+    anim->behavior      = ANIM_ONCE | ANIM_DISABLED;
     anim->repeatCount   = 0;
     anim->cellType      = dataType;
+    anim->allocState    = ANIM_USED;
 }
 
 
 /*-cf-
     animatef
         value   int!/double!/word!  Value to animate or bank time delta.
-        spec    int!/block!         Animation data or bank id.
+        spec                        Animation specification or bank id (int!).
     return: int! Animation id (for new animation) or count (for update).
 
     Starts a new animation if value is a word!, restarts an existing animation
@@ -568,31 +620,87 @@ static void anim_init( Anim* anim, UCell* wordC, int dataType )
 */
 CFUNC( cfunc_animatef )
 {
+    UCell* cell;
+    const UCell* a2 = a1+1;
     uint32_t id;
 
     if( ur_is(a1, UT_INT) )
     {
+        Anim* anim;
+
         id = ur_int(a1);
+        // TODO: Handle both animation banks.
+        anim = anim_pointer( &_animUI, id );
+        if( anim->allocState == ANIM_FREE )
+            return ur_error( ut, UR_ERR_SCRIPT,
+                             "Animation 0x%X has been freed", id );
+
+        switch( ur_type(a2) )
+        {
+            /*
+            case UT_NONE:
+                anim_free( &_animUI, id );
+                ur_setId(res, UT_UNSET);
+                return UR_OK;
+            */
+            case UT_LOGIC:
+                if( ur_logic(a2) )
+                    anim->behavior &= ~ANIM_DISABLED;
+                else
+                    anim->behavior |= ANIM_DISABLED;
+                break;
+
+            case UT_DOUBLE:
+                if( anim->cellType == UT_DOUBLE )
+                {
+                    cell = ANIM_RESULT_CELL(anim);
+                    anim->v1[0] = ur_double(cell);
+                    anim->v2[0] = ur_double(a2);
+                    goto restart_anim;
+                }
+                break;
+
+            case UT_VEC3:
+                if( anim->cellType == UT_VEC3 )
+                {
+                    cell = ANIM_RESULT_CELL(anim);
+                    memcpy( anim->v1, cell->vec3.xyz, sizeof(float)*3 );
+                    memcpy( anim->v2, a2->vec3.xyz, sizeof(float)*3 );
+restart_anim:
+                    anim->curvePos = 0.0f;
+                    anim->behavior &= ~ANIM_DISABLED;
+                }
+                break;
+
+            //case UT_BLOCk:
+            //    break;
+
+            default:
+                return boron_badArg( ut, ur_type(a2), 2 );
+        }
     }
     else if( ur_is(a1, UT_WORD) )
     {
         AnimSpecParser sp;
         Anim* anim;
         int type;
-        UCell* cell = ur_wordCellM(ut, a1);
+
+        cell = ur_wordCellM(ut, a1);
         if( ! cell )
             return UR_THROW;
 
         type = ur_type(cell);
         if( type == UT_VEC3 || type == UT_DOUBLE )
         {
+            // TODO: Handle both animation banks.
             anim = anim_alloc( &_animUI, AFT_CELL, &id );
             anim_init( anim, a1, type );
         }
         else
         {
-            return ur_error( ut, UR_ERR_TYPE, "Invalid animatef value type %d",
-                             ur_atomCStr(ut, type) );
+            return boron_badArg( ut, type, 1 );
+          //return ur_error( ut, UR_ERR_TYPE, "Invalid animatef value type %d",
+          //                 ur_atomCStr(ut, type) );
         }
 
         sp.bp.ut = ut;
@@ -600,7 +708,7 @@ CFUNC( cfunc_animatef )
         sp.bp.rules  = _animParseRules;
         sp.bp.report = _animRuleHandler;
         sp.bp.rflag  = 0;
-        ur_blockIt( ut, (UBlockIt*) &sp.bp.it, a1+1 );
+        ur_blockIt( ut, (UBlockIt*) &sp.bp.it, a2 );
 
         sp.anim = anim;
 
@@ -609,7 +717,7 @@ CFUNC( cfunc_animatef )
     }
     else // if( ur_is(a1, UT_DOUBLE) )
     {
-        id = anim_process( ut, ur_int(a1+1) ? &_animSim : &_animUI,
+        id = anim_process( ut, ur_int(a2) ? &_animSim : &_animUI,
                            ur_double(a1) );
     }
     ur_setId(res, UT_INT);

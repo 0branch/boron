@@ -3034,7 +3034,7 @@ static void _createFixedAtoms( UThread* ut )
         "rgb rgba depth clamp nearest linear\n"
         "min mag mipmap gray\n"
         "burn color trans sprite\n"
-        "update finish -> >> once ping-pong pong\n"
+        "update finish -> >> single-use ping-pong pong\n"
         "collide fall integrate attach anchor action face",
         atoms );
 
