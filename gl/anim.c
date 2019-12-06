@@ -19,7 +19,16 @@
 */
 
 
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#include "boron.h"
 #include "i_parse_blk.h"
+#include "urlan_atoms.h"
+#include "gl_atoms.h"
+
+
+extern void ur_markBlkN( UThread* ut, UIndex blkN );
 
 
 typedef struct
@@ -417,9 +426,25 @@ ease-in: [
 ]
 */
 
+
 // Two animation banks for interface (0) and simulation (1).
 AnimList _animUI;
 AnimList _animSim;
+
+
+void anim_system( int boot )
+{
+    if( boot )
+    {
+        anim_initList( &_animUI );
+        anim_initList( &_animSim );
+    }
+    else
+    {
+        anim_cleanupList( &_animUI );
+        anim_cleanupList( &_animSim );
+    }
+}
 
 
 static void anim_recycleList( UThread* ut, AnimList* list )
@@ -641,7 +666,7 @@ static void anim_init( Anim* anim, UIndex buf, UIndex bufIndex, int outType )
     There are two animation banks, 0 and 1, for real-time (e.g. GUI) updates
     and simulation updates respectively.
 */
-CFUNC( cfunc_animatef )
+CFUNC_PUB( cfunc_animatef )
 {
     UCell* cell;
     const UCell* a2 = a1+1;

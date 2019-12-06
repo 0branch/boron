@@ -3005,6 +3005,7 @@ static char _bootScript[] =
     ;
 
 
+extern CFUNC_PUB( cfunc_animatef );
 extern CFUNC_PUB( cfunc_buffer_audio );
 extern CFUNC_PUB( cfunc_load_png );
 extern CFUNC_PUB( cfunc_save_png );
@@ -3127,7 +3128,6 @@ static void _createDrawOpTable( UThread* ut )
 
 #include "gl_types.c"
 #include "math3d.c"
-#include "anim.c"
 
 #define DEF_CF(f,spec)  f,
 static BoronCFunc _glfuncs[] =
@@ -3143,6 +3143,7 @@ static const char _glfuncSpecs[] =
 };
 
 extern void gui_addStdClasses();
+extern void anim_system(int);
 
 
 UThread* boron_makeEnvGL( UEnvParameters* param )
@@ -3272,8 +3273,7 @@ cleanup:
     ur_arrInit( &glEnv.rootWidgets, sizeof(GWidget*), 0 );
 
     gui_addStdClasses();
-    anim_initList( &_animUI );
-    anim_initList( &_animSim );
+    anim_system( 1 );
 
     return ut;
 }
@@ -3295,8 +3295,7 @@ void boron_freeEnvGL( UThread* ut )
         }
 
         //gui_cleanup( &glEnv.gui );
-        anim_cleanupList( &_animUI );
-        anim_cleanupList( &_animSim );
+        anim_system( 0 );
         glid_shutdown();
 #ifndef NO_AUDIO
         aud_shutdown();
