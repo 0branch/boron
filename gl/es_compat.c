@@ -40,6 +40,12 @@ void dumpMatrix( const char* label, const float* mat )
 #endif
 
 
+GLfloat* es_viewStack()
+{
+    return viewStack;
+}
+
+
 void es_updateUniformMatrix()
 {
     GLfloat mat[16];

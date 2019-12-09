@@ -48,7 +48,7 @@ void ur_matrixInverse( float* mat, const float* a );
 
 float ur_distance( const float* vecA, const float* vecB );
 void  ur_transform( float* pnt, const float* mat );
-void  ur_transform3x3( float* pnt, const float* mat );
+void  ur_transform3x3( const float* pnt, const float* mat, float* result );
 void  ur_reflect( const float* a, const float* b, float* result );
 void  ur_lineToPoint( const float* a, const float* b, const float* pnt,
                       float* vec );

@@ -298,8 +298,9 @@ void ur_transform( float* pnt, const float* mat )
 
 /**
   Applies the upper 3x3 portion of the matrix to this point.
+  Result can be the same as pnt.
 */
-void ur_transform3x3( float* pnt, const float* mat )
+void ur_transform3x3( const float* pnt, const float* mat, float* result )
 {
     float ox, oy, oz;
 
@@ -307,9 +308,9 @@ void ur_transform3x3( float* pnt, const float* mat )
     oy = pnt[1];
     oz = pnt[2];
 
-    pnt[0] = mat[ k00 ] * ox + mat[ k10 ] * oy + mat[ k20 ] * oz;
-    pnt[1] = mat[ k01 ] * ox + mat[ k11 ] * oy + mat[ k21 ] * oz;
-    pnt[2] = mat[ k02 ] * ox + mat[ k12 ] * oy + mat[ k22 ] * oz;
+    result[0] = mat[ k00 ] * ox + mat[ k10 ] * oy + mat[ k20 ] * oz;
+    result[1] = mat[ k01 ] * ox + mat[ k11 ] * oy + mat[ k21 ] * oz;
+    result[2] = mat[ k02 ] * ox + mat[ k12 ] * oy + mat[ k22 ] * oz;
 }
 
 

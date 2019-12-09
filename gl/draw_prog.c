@@ -51,6 +51,7 @@ enum DPOpcode
     DP_UNIFORM_1I,          // loc val
     DP_UNIFORM_1F,          // loc val
     DP_UNIFORM_3F,          // loc f0 f1 f2
+    DP_VIEW_UNIFORM,        // ctxN index loc
     DP_BIND_TEXTURE,        // texUnit gltex 
     DP_BIND_ARRAY,          // glbuffer
     DP_BIND_ELEMENTS,       // glbuffer
@@ -120,7 +121,6 @@ enum DPOpcode
     DP_SAMPLES_QUERY,
     DP_SAMPLES_BEGIN,
     DP_SAMPLES_END,         // blkN index
-    DP_LIGHT,               // blkN
     DP_READ_PIXELS,         // blkN index pos dim
     DP_FONT,                // blkN
     DP_TEXT_WORD,           // blkN index aoff x y (then DP_DRAW_TRIS_I)
@@ -2000,14 +2000,38 @@ bad_quad:
                 }
                 break;
 
-            case DOP_LIGHT:
+            case DOP_VIEW_UNIFORM:      // view-uniform name vec3
+            {
+                const char* name;
+                GLint loc;
+
+                // Transform vec3 by inverse view matrix and store in uniform.
+
                 INC_PC
-                if( ! ur_is(pc, UT_BLOCK) )
+                if( ! ur_is(pc, UT_WORD) )
                 {
-                    typeError( "light expected block!" );
+                    typeError( "uniform expected word! name" );
                 }
-                refBlock( emit, pc->series.buf );
-                emitOp1( DP_LIGHT, pc->series.buf );
+                name = ur_atomCStr(ut, ur_atom(pc));
+                loc = glGetUniformLocation( emit->shaderProg, name );
+                if( loc == -1 )
+                {
+                    ur_error( ut, UR_ERR_SCRIPT,
+                              "uniform \"%s\" not found in program %d",
+                              name, emit->shaderProg );
+                    goto error;
+                }
+                INC_PC
+                if( ur_is(pc, UT_GETWORD) )
+                {
+                    emitWordOp( emit, pc, DP_VIEW_UNIFORM );
+                    emitDPArg( emit, loc );
+                }
+                else
+                {
+                    typeError( "view-uniform expected get-word!" );
+                }
+            }
                 break;
 
             case DOP_PUSH_MUL:
@@ -2782,83 +2806,6 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
 
 
 #ifndef GL_ES_VERSION_2_0
-static void _lightv3( GLenum light, GLenum pname, const UCell* cell, GLfloat w )
-{
-    GLfloat pos[4];
-
-    pos[0] = cell->vec3.xyz[0];
-    pos[1] = cell->vec3.xyz[1];
-    pos[2] = cell->vec3.xyz[2];
-    pos[3] = w;
-
-    //printf( "KR light %d %d %g\n", light, pname, w );
-    glLightfv( light, pname, pos ); 
-}
-
-
-static void _lightEn( GLenum light, const UCell* cell )
-{
-    if( ur_logic(cell) )
-        glEnable( light );
-    else
-        glDisable( light );
-}
-
-
-void dop_light( UThread* ut, const UCell* val, int light )
-{
-    if( ur_is(val, UT_LOGIC) )
-    {
-        _lightEn( light, val );
-    }
-    else if( ur_is(val, UT_VEC3) )
-    {
-        _lightv3( light, GL_POSITION, val, 0.0f );
-    }
-    else if( ur_is(val, UT_BLOCK) )
-    {
-        UBlockIt bi;
-        GLenum name = GL_POSITION;
-        GLfloat w = 0.0f;
-
-        ur_blockIt( ut, &bi, val );
-        ur_foreach( bi )
-        {
-            if( ur_isWordType( ur_type(bi.it) ) )
-            {
-                switch( ur_atom(bi.it) )
-                {
-                    case UR_ATOM_AMBIENT: name = GL_AMBIENT;  w = 1.0f; break;
-                    case UR_ATOM_DIFFUSE: name = GL_DIFFUSE;  w = 1.0f; break;
-                    case UR_ATOM_POS:     name = GL_POSITION; w = 0.0f; break;
-
-                    default:
-                        val = ur_wordCell( ut, bi.it );
-                        if( val )
-                        {
-                            if( ur_is(val, UT_LOGIC) )
-                                _lightEn( light, val );
-                            else if( ur_is(val, UT_VEC3) )
-                                _lightv3( light, name, val, w );
-                        }
-                        break;
-                }
-            }
-            else if( ur_is(bi.it, UT_VEC3) )
-            {
-                _lightv3( light, name, bi.it, w );
-            }
-            else if( ur_is(bi.it, UT_LOGIC) )
-            {
-                _lightEn( light, bi.it );
-            }
-        }
-    }
-}
-#endif
-
-
-#ifndef GL_ES_VERSION_2_0
 //#define SHADOW_BACK_FACES   1
 
 static GLfloat lightViewMatrix[ 16 ];
@@ -2937,6 +2884,8 @@ void dop_shadow_end()
 
 /*--------------------------------------------------------------------------*/
 
+
+extern GLfloat* es_viewStack();
 
 /*
   \param ds     Parent draw program state.  May be zero.
@@ -3103,6 +3052,17 @@ dispatch:
             REPORT_2( "UNIFORM_3F %d %f ...\n", pc[0], *((GLfloat*) (pc+1)) );
             glUniform3fv( pc[0], 1, (GLfloat*) (pc+1) );
             pc += 4;
+            break;
+
+        case DP_VIEW_UNIFORM:
+            PC_WORD;
+            if( ur_is(val, UT_VEC3) )
+            {
+                float vec[3];
+                ur_transform3x3( val->vec3.xyz, es_viewStack(), vec );
+                glUniform3fv( pc[0], 1, vec );
+            }
+            ++pc;
             break;
 
         case DP_BIND_TEXTURE:
@@ -3724,15 +3684,6 @@ dispatch:
                     ur_int(val) = samples;
                 }
             }
-        }
-            break;
-
-        case DP_LIGHT:
-        {
-            UCell cell;
-            ur_initSeries( &cell, UT_BLOCK, *pc++ );
-
-            dop_light( ut, &cell, GL_LIGHT0 );
         }
             break;
 

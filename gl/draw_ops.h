@@ -28,7 +28,7 @@
 #define DOP_BOX             27
 #define DOP_QUAD            28
 #define DOP_CAMERA          29
-#define DOP_LIGHT           30
+#define DOP_VIEW_UNIFORM    30
 #define DOP_PUSH_MUL        31
 #define DOP_PUSH            32
 #define DOP_POP             33
