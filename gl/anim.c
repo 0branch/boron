@@ -277,9 +277,11 @@ void calc_linear2( const float* a, const float* b, float t, float* res )
 extern UStatus boron_doVoid( UThread* ut, const UCell* blkC );
 
 /*
-  Return number of animations running.
+  Update all animations in list.
+  Return number of animations running in runCount.
 */
-uint32_t anim_process( UThread* ut, AnimList* list, double dt )
+UStatus anim_process( UThread* ut, AnimList* list, double dt,
+                      uint32_t* runCount )
 {
     UCell blkC;
     UCell* resC;
@@ -372,7 +374,7 @@ store_3f:
         {
             ur_initSeries( &blkC, UT_BLOCK, it->updateBlkN );
             if( boron_doVoid( ut, &blkC ) == UR_THROW )
-                printf( "TODO: Handle animate update exception!\n" );
+                return UR_THROW;
         }
 
         if( it->behavior == ANIM_COMPLETE )
@@ -381,7 +383,7 @@ store_3f:
             {
                 ur_initSeries( &blkC, UT_BLOCK, it->finishBlkN );
                 if( boron_doVoid( ut, &blkC ) == UR_THROW )
-                    printf( "TODO: Handle animate finish exception!\n" );
+                    return UR_THROW;
             }
             if( it->allocState == ANIM_SINGLE_USE )
                 anim_free( list, ANIM_ID(AFT_CELL, it) );
@@ -390,7 +392,8 @@ store_3f:
         }
     }
 
-    return count;
+    *runCount = count;
+    return UR_OK;
 }
 
 
@@ -774,8 +777,9 @@ restart_anim:
     }
     else // if( ur_is(a1, UT_DOUBLE) )
     {
-        id = anim_process( ut, ur_int(a2) ? &_animSim : &_animUI,
-                           ur_double(a1) );
+        if( ! anim_process( ut, ur_int(a2) ? &_animSim : &_animUI,
+                            ur_double(a1), &id ) )
+            return UR_THROW;
     }
     ur_setId(res, UT_INT);
     ur_int(res) = id;
