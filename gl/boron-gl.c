@@ -2321,148 +2321,118 @@ CFUNC( cfunc_project_point )
 }
 
 
-#if defined(GL_ES_VERSION_2_0) && ! defined(GL_OES_mapbuffer)
-#define CHANGE_SUBDATA  1
-#endif
-
 /*-cf-
     change-vbo
-        buffer  vbo!
-        data    vector!
-        length  int!/coord! (stride,offset,npv)
+        buffer  vbo!        The destination buffer to modify.
+        data    vector!     The source f32 values to copy.
+        length  int!/coord! (stride,offset,npv)  Number of floats to copy.
     return: unset!
     group: data
+
+    The stride, if provided, is for skipping contents of the vbo! only.
+    The values in the data vector! must be tightly packed.
 */
 CFUNC( cfunc_change_vbo )
 {
-    UCell* vec = a1 + 1;
-    UCell* len = a1 + 2;
+    USeriesIter si;
+    UBuffer* vbo;
+    GLuint* buf;
+    const UCell* vec = a1 + 1;
+    const UCell* len = a1 + 2;
     int copyLen;
-
-#ifdef CHANGE_SUBDATA
-    if( ur_is(len, UT_INT) )
-        copyLen = ur_int(len);
-#else
     int stride;
     int offset;
-    int loops;
+
 
     if( ur_is(len, UT_COORD) )
     {
         stride  = len->coord.n[0];
-        offset  = len->coord.n[1];
+        offset  = len->coord.n[1] * sizeof(float);
         copyLen = len->coord.n[2];
     }
-    else if( ur_is(len, UT_INT) )
+    else //if( ur_is(len, UT_INT) )
     {
         stride  = 0;
         offset  = 0;
         copyLen = ur_int(len);
     }
-#endif
-    else
-        goto bad_dt;
 
-    if( ur_is(vec, UT_VECTOR) && //(ur_vectorDT(vec) == UT_DOUBLE) &&
-        ur_is(a1, UT_VBO) )
+    vbo = ur_buffer( ur_vboResN(a1) );
+    buf = vbo_bufIds(vbo);
+
+    ur_seriesSlice( ut, &si, vec );
+    assert( si.buf->form == UR_VEC_F32 );
+
+    // TODO: Need way to check if buf[0] is an GL_ARRAY_BUFFER.
+
+    if( vbo_count(vbo) && (si.it < si.end) && copyLen > 0 )
     {
-        USeriesIter si;
-        UBuffer* vbo = ur_buffer( ur_vboResN(a1) );
-        GLuint* buf = vbo_bufIds(vbo);
+        float* src = si.buf->ptr.f + si.it;
 
-        ur_seriesSlice( ut, &si, vec );
-
-        // TODO: Need way to check if buf[0] is an GL_ARRAY_BUFFER.
-
-        if( vbo_count(vbo) && (si.it < si.end) && copyLen )
+        glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
+        if( stride )
         {
-            float* src = si.buf->ptr.f + si.it;
-
-#ifdef CHANGE_SUBDATA
-            glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
-            glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(float) * copyLen, src );
-#else
             GLfloat* dst;
+            int byteLen;
+            int loops = (si.end - si.it) / copyLen;
 
-            glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
-            dst = (GLfloat*) glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY );
+            dst = (GLfloat*) glMapBufferRange( GL_ARRAY_BUFFER, offset,
+                                    sizeof(float) * loops * stride,
+                                    GL_MAP_WRITE_BIT );
             if( ! dst )
-                return ur_error( ut, UR_ERR_INTERNAL, "glMapBuffer failed" );
+                return ur_error( ut, UR_ERR_INTERNAL,
+                                 "glMapBufferRange failed" );
 
-            dst += offset;
-            if( stride )
+            switch( copyLen )
             {
-                loops = si.end - si.it;
-                switch( copyLen )
-                {
-                    case 1:
-                        while( loops-- )
-                        {
-                            dst[0] = *src++; 
-                            dst += stride;
-                        }
-                        break;
-
-                    case 2:
-                        loops /= 2;
-                        while( loops-- )
-                        {
-                            dst[0] = *src++; 
-                            dst[1] = *src++; 
-                            dst += stride;
-                        }
-                        break;
-
-                    case 3:
-                        loops /= 3;
-                        while( loops-- )
-                        {
-                            dst[0] = *src++; 
-                            dst[1] = *src++; 
-                            dst[2] = *src++; 
-                            dst += stride;
-                        }
-                        break;
-
-                    default:
+                case 1:
+                    while( loops-- )
                     {
-                        GLfloat* it;
-                        GLfloat* end;
-
-                        loops /= copyLen;
-                        while( loops-- )
-                        {
-                            it  = dst;
-                            end = it + copyLen;
-                            while( it != end )
-                                *it++ = *src++; 
-                            dst += stride;
-                        }
+                        dst[0] = *src++;
+                        dst += stride;
                     }
-                        break;
-                }
-            }
-            else
-            {
-                memCpy( dst, src, sizeof(float) * copyLen );
+                    break;
+
+                case 2:
+                    while( loops-- )
+                    {
+                        dst[0] = *src++;
+                        dst[1] = *src++;
+                        dst += stride;
+                    }
+                    break;
+
+                case 3:
+                    while( loops-- )
+                    {
+                        dst[0] = *src++;
+                        dst[1] = *src++;
+                        dst[2] = *src++;
+                        dst += stride;
+                    }
+                    break;
+
+                default:
+                    byteLen = copyLen * sizeof(float);
+                    while( loops-- )
+                    {
+                        memcpy( dst, src, byteLen );
+                        src += copyLen;
+                        dst += stride;
+                    }
+                    break;
             }
 
             glUnmapBuffer( GL_ARRAY_BUFFER );
-#endif
         }
-        ur_setId(res, UT_UNSET);
-        return UR_OK;
+        else
+        {
+            glBufferSubData( GL_ARRAY_BUFFER, offset,
+                             sizeof(float) * copyLen, src );
+        }
     }
-
-bad_dt:
-
-    return ur_error( ut, UR_ERR_TYPE, "change-vbo expected vbo! vector! "
-#ifdef CHANGE_SUBDATA
-                     "int!"
-#else
-                     "int!/coord!"
-#endif
-                   );
+    ur_setId(res, UT_UNSET);
+    return UR_OK;
 }
 
 
