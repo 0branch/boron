@@ -82,7 +82,8 @@ enum GLFixedAtoms
 	UR_ATOM_ATTACH,
 	UR_ATOM_ANCHOR,
 	UR_ATOM_ACTION,
-	UR_ATOM_FACE
+	UR_ATOM_AS,
+	UR_ATOM_FACE,
 };
 
 #endif

@@ -24,11 +24,18 @@
 #include <string.h>
 #include "boron.h"
 #include "i_parse_blk.h"
+#include "quat.h"
 #include "urlan_atoms.h"
 #include "gl_atoms.h"
 
 
 extern void ur_markBlkN( UThread* ut, UIndex blkN );
+
+#if 0
+#define AR_REPORT(...)  printf(__VA_ARGS__)
+#else
+#define AR_REPORT(...)
+#endif
 
 
 typedef struct
@@ -47,15 +54,15 @@ typedef struct
     float    curvePos;
     float    timeScale;     // 1.0 / duration
     float    fraction;      // Temporary result of curve calculation.
-    float    v1[3];         // Start value
-    float    v2[3];         // End value
+    float    v1[4];         // Start value
+    float    v2[4];         // End value
     uint16_t curveLen;
     uint16_t behavior;      // Loop, LoopBack, Ping, Pong, PingPong
     uint16_t repeatCount;
     uint8_t  outType;
     uint8_t  allocState;
 }
-Anim;                       // sizeof(Anim) = 72;
+Anim;                       // sizeof(Anim) = 80
 
 
 enum AnimBehavior
@@ -72,6 +79,8 @@ enum AnimOutput
 {
     ANIM_OUT_VECTOR_1,      // out.cell.bufN is a vector!
     ANIM_OUT_VECTOR_3,      // out.cell.bufN is a vector!
+    ANIM_OUT_MATRIX_ROT,    // out.cell.bufN is a vector!
+    ANIM_OUT_MATRIX_TRANS,  // out.cell.bufN is a vector!
     ANIM_OUT_CELL_DOUBLE,   // out.cell.bufN is a block!/context!
     ANIM_OUT_CELL_VEC3      // out.cell.bufN is a block!/context!
 };
@@ -329,45 +338,63 @@ UStatus anim_process( UThread* ut, AnimList* list, double dt,
 
 #define ANIM_INTERP(A,B)   A + (B - A) * it->fraction
 
-        if( it->outType == ANIM_OUT_VECTOR_3 )
+        switch( it->outType )
         {
-            // Quick version of ur_seriesIterM().
-            const UBuffer* buf = ur_buffer( it->out.cell.bufN );
-            resF = buf->ptr.f + it->out.cell.i;
+            case ANIM_OUT_VECTOR_3:
+            {
+                // Quick version of ur_seriesIterM().
+                const UBuffer* buf = ur_buffer( it->out.cell.bufN );
+                resF = buf->ptr.f + it->out.cell.i;
 
-            assert( buf->type == UT_VECTOR );
-            assert( buf->form == UR_ATOM_F32 );
-            goto store_3f;
-        }
-        else if( it->outType == ANIM_OUT_CELL_VEC3 )
-        {
-            resC = ANIM_RESULT_CELL( it );
-            ur_setId(resC, UT_VEC3);
-            resF = resC->vec3.xyz;
+                assert( buf->type == UT_VECTOR );
+                assert( buf->form == UR_VEC_F32 );
+            }
+                goto store_3f;
+
+            case ANIM_OUT_MATRIX_ROT:
+            {
+                float quat[4];
+                resF = ANIM_RESULT_PF(it);
+                quat_slerp( it->v1, it->v2, it->fraction, quat );
+                //printf( "KR quat %f %f %f %f\n",
+                //        quat[0], quat[1], quat[2], quat[3] );
+                quat_toMatrix( quat, quat[3], resF, 1 );
+            }
+                break;
+
+            case ANIM_OUT_MATRIX_TRANS:
+                resF = ANIM_RESULT_PF(it) + 12;
+                goto store_3f;
+
+            case ANIM_OUT_CELL_VEC3:
+                resC = ANIM_RESULT_CELL( it );
+                ur_setId(resC, UT_VEC3);
+                resF = resC->vec3.xyz;
 store_3f:
-            v2 = it->v2;
-            if( it->behavior == ANIM_COMPLETE )
-            {
-                *resF++ = v2[0];
-                *resF++ = v2[1];
-                *resF   = v2[2];
-            }
-            else
-            {
-                v1 = it->v1;
-                *resF++ = ANIM_INTERP( v1[0], v2[0] );
-                *resF++ = ANIM_INTERP( v1[1], v2[1] );
-                *resF   = ANIM_INTERP( v1[2], v2[2] );
-            }
-        }
-        else if( it->outType == ANIM_OUT_CELL_DOUBLE )
-        {
-            resC = ANIM_RESULT_CELL( it );
-            ur_setId(resC, UT_DOUBLE);
-            if( it->behavior == ANIM_COMPLETE )
-                ur_double(resC) = it->v2[0];
-            else
-                ur_double(resC) = ANIM_INTERP( it->v1[0], it->v2[0] );
+                v2 = it->v2;
+                if( it->behavior == ANIM_COMPLETE )
+                {
+                    *resF++ = v2[0];
+                    *resF++ = v2[1];
+                    *resF   = v2[2];
+                }
+                else
+                {
+                    v1 = it->v1;
+                    *resF++ = ANIM_INTERP( v1[0], v2[0] );
+                    *resF++ = ANIM_INTERP( v1[1], v2[1] );
+                    *resF   = ANIM_INTERP( v1[2], v2[2] );
+                }
+                break;
+
+            case ANIM_OUT_CELL_DOUBLE:
+                resC = ANIM_RESULT_CELL( it );
+                ur_setId(resC, UT_DOUBLE);
+                if( it->behavior == ANIM_COMPLETE )
+                    ur_double(resC) = it->v2[0];
+                else
+                    ur_double(resC) = ANIM_INTERP( it->v1[0], it->v2[0] );
+                break;
         }
 
         if( it->updateBlkN != UR_INVALID_BUF )
@@ -489,7 +516,9 @@ AnimSpecParser;
   scripts/parse_blk_compile.b -p Anim -e gl/anim.c
 
     some [
-        word! '-> word! (io)
+        word! '-> word! (init_target)
+      | '-> word!       (target)
+      | 'as word!       (as)
       | double!         (duration)
       | 'update block!  (update)
       | 'finish block!  (finish)
@@ -500,7 +529,9 @@ AnimSpecParser;
 
 enum AnimRulesReport
 {
-    ANIM_REP_IO,
+    ANIM_REP_INIT_TARGET,
+    ANIM_REP_TARGET,
+    ANIM_REP_AS,
     ANIM_REP_DURATION,
     ANIM_REP_UPDATE,
     ANIM_REP_FINISH,
@@ -512,6 +543,7 @@ enum AnimRulesReport
 enum AnimRulesAtomIndex
 {
     ANIM_AI_->,
+    ANIM_AI_AS,
     ANIM_AI_UPDATE,
     ANIM_AI_FINISH,
 };
@@ -522,40 +554,67 @@ static const uint8_t _animParseRules[] =
     // 0
     0x10, 0x03, 0x00,
     // 3
-    0x04, 0x08, 0x08, 0x0D, 0x06, 0x00, 0x08, 0x0D, 0x03, 0x00, 0x04, 0x04, 0x08, 0x06, 0x03, 0x01, 0x04, 0x06, 0x06, 0x01, 0x08, 0x17, 0x03, 0x02, 0x04, 0x06, 0x06, 0x02, 0x08, 0x17, 0x03, 0x03, 0x04, 0x04, 0x08, 0x0D, 0x03, 0x04, 0x08, 0x16, 0x03, 0x05,
+    0x04, 0x08, 0x08, 0x0D, 0x06, 0x00, 0x08, 0x0D, 0x03, 0x00, 0x04, 0x06, 0x06, 0x00, 0x08, 0x0D, 0x03, 0x01, 0x04, 0x06, 0x06, 0x01, 0x08, 0x0D, 0x03, 0x02, 0x04, 0x04, 0x08, 0x06, 0x03, 0x03, 0x04, 0x06, 0x06, 0x02, 0x08, 0x17, 0x03, 0x04, 0x04, 0x06, 0x06, 0x03, 0x08, 0x17, 0x03, 0x05, 0x04, 0x04, 0x08, 0x0D, 0x03, 0x06, 0x08, 0x16, 0x03, 0x07,
 };
 
 
-static const UAtom _animAtoms[3] =
+static const UAtom _animAtoms[4] =
 {
     UR_ATOM_SYMBOL_R_ARROW,     // ->
+    UR_ATOM_AS,
     UR_ATOM_UPDATE,
     UR_ATOM_FINISH,
   //UR_ATOM_SYMBOL_R_SHIFT,     // >>
-  //UR_ATOM_ONCE,
 };
 
 
-#if 0
-#define AR_REPORT(...)  printf(__VA_ARGS__)
-#else
-#define AR_REPORT(...)
-#endif
+static const float vzero[4] = { 0.0, 0.0, 0.0, 0.0 };
 
-static void _animSetValue( UThread* ut, const UCell* cell, float* f3 )
+static void _animSetValue3( UThread* ut, const UCell* cell, float* f3 )
 {
     if( ur_is(cell, UT_WORD) )
         cell = ur_wordCell(ut, cell);
-    if( ur_is(cell, UT_VEC3) )
-        memcpy( f3, cell->vec3.xyz, sizeof(float)*3 );
-    else if( ur_is(cell, UT_DOUBLE) )
+
+    switch( ur_type(cell) )
     {
-        f3[0] = ur_double(cell);
-        f3[1] = f3[2] = 0.0f;
+        case UT_DOUBLE:
+            f3[0] = ur_double(cell);
+            f3[1] = f3[2] = 0.0f;
+            break;
+
+        case UT_VEC3:
+            memcpy( f3, cell->vec3.xyz, sizeof(float)*3 );
+            break;
+
+        case UT_VECTOR:
+        {
+            USeriesIter si;
+            ur_seriesSlice( ut, &si, cell );
+            assert( si.buf->form == UR_VEC_F32 );
+            memcpy( f3, si.buf->ptr.f + si.it, sizeof(float)*3 );
+        }
+            break;
+
+        default:
+            memcpy( f3, vzero, sizeof(float)*3 );
+            break;
     }
-    else
-        f3[0] = f3[1] = f3[2] = 0.0f;
 }
+
+
+static const float* _animVector( UThread* ut, const UCell* cell )
+{
+    USeriesIter si;
+
+    if( ur_is(cell, UT_WORD) )
+        cell = ur_wordCell(ut, cell);
+    if( ! ur_is(cell, UT_VECTOR) )
+        return NULL;
+    ur_seriesSlice( ut, &si, cell );
+    assert( si.buf->form == UR_VEC_F32 );
+    return si.buf->ptr.f + si.it;
+}
+
 
 static void _animRuleHandler( UBlockParser* par, int rule,
                               const UCell* it, const UCell* end )
@@ -566,11 +625,55 @@ static void _animRuleHandler( UBlockParser* par, int rule,
 
     switch( rule )
     {
-        case ANIM_REP_IO:
-            AR_REPORT( "ANIM_REP_IO\n" );
-            _animSetValue(ut, it,   anim->v1);
-            _animSetValue(ut, it+2, anim->v2);
+        case ANIM_REP_INIT_TARGET:
+            AR_REPORT( "ANIM_REP_INIT_TARGET\n" );
+            _animSetValue3(ut, it, anim->v1);
+            _animSetValue3(ut, it+2, anim->v2);
             anim->behavior &= ~ANIM_DISABLED;
+            break;
+
+        case ANIM_REP_TARGET:
+            AR_REPORT( "ANIM_REP_TARGET %d\n", anim->outType );
+            // Animate from the current value of the result to a target.
+            ++it;
+            switch( anim->outType )
+            {
+                case ANIM_OUT_VECTOR_3:
+                    memcpy( anim->v1, ANIM_RESULT_PF(anim), sizeof(float)*3 );
+                    _animSetValue3(ut, it, anim->v2);
+                    break;
+
+                case ANIM_OUT_MATRIX_ROT:
+                    quat_fromMatrix( anim->v1, ANIM_RESULT_PF(anim) );
+                    {
+                    const float* mat = _animVector( ut, it );
+                    if( mat )
+                        quat_fromMatrix( anim->v2, mat );
+                    else
+                    {
+                        anim->v2[0] = 1.0f;
+                        memcpy( anim->v2 + 1, vzero, sizeof(float)*3 );
+                    }
+                    }
+                    break;
+
+                case ANIM_OUT_MATRIX_TRANS:
+                    memcpy( anim->v1, ANIM_RESULT_PF(anim) + 12,
+                            sizeof(float)*3 );
+                    {
+                    const float* mat = _animVector( ut, it );
+                    memcpy( anim->v2, mat ? mat + 12 : vzero, sizeof(float)*3 );
+                    }
+                    break;
+            }
+            anim->behavior &= ~ANIM_DISABLED;
+            break;
+
+        case ANIM_REP_AS:
+            if( ur_atom(it+1) == UR_ATOM_TRANS )
+                anim->outType = ANIM_OUT_MATRIX_TRANS;
+            else //if( ur_atom(it+1) == UR_ATOM_ROTATION )
+                anim->outType = ANIM_OUT_MATRIX_ROT;
             break;
 
         case ANIM_REP_DURATION:

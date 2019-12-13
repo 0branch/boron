@@ -1561,7 +1561,7 @@ static int _lerpCells( const UCell* v1, const UCell* v2, double frac,
         else if( type1 == UT_QUAT )
         {
             ur_setId(res, UT_QUAT);
-            quat_slerp( v1, v2, frac, res );
+            quat_slerpC( v1, v2, frac, res );
             return 1;
         }
     }
@@ -2535,7 +2535,7 @@ CFUNC( cfunc_set_matrix )
         return UR_THROW;
     if( ur_is(a2, UT_QUAT) )
     {
-        quat_toMatrix( a2, matf, 0 );
+        quat_toMatrixC( a2, matf, 0 );
 set_res:
         *res = *a1;
         return UR_OK;
@@ -2989,7 +2989,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    80
+#define FA_COUNT    81
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -3006,7 +3006,7 @@ static void _createFixedAtoms( UThread* ut )
         "min mag mipmap gray\n"
         "burn color trans sprite\n"
         "update finish -> >> single-use ping-pong pong\n"
-        "collide fall integrate attach anchor action face",
+        "collide fall integrate attach anchor action as face",
         atoms );
 
 #ifdef DEBUG

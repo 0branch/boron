@@ -284,27 +284,84 @@ void quat_fromSpherical( UCell* q, float lat, float lon, float angle )
 #endif
 
 
-void quat_toMatrix( const UCell* q, float* m, int initialize )
+float quat_fromMatrix3( float* quat3, const float* m )
+{
+#define MI(r,c) m[r*4+c]
+    static const int next[3] = { 1, 2, 0 };
+    double diagonal;
+    float s, w;
+
+    diagonal = m[0] + m[5] + m[10];
+
+    if( diagonal > 0.0 )
+    {
+        // Diagonal is positive.
+        s = (float) sqrt( diagonal + 1.0 );
+        w = s / 2.0f;
+        s = 0.5f / s;
+        quat3[0] = (m[6] - m[9]) * s;
+        quat3[1] = (m[8] - m[2]) * s;
+        quat3[2] = (m[1] - m[4]) * s;
+    }
+    else
+    {
+        // Diagonal is negative.
+        int i, j, k;
+
+        i = 0;
+        if( m[5] > m[0] )
+            i = 1;
+        if( m[10] > MI(i,i) )
+            i = 2;
+        j = next[i];
+        k = next[j];
+        s = (float) sqrt( (MI(i,i) - (MI(j,j) + MI(k,k))) + 1.0 );
+
+        quat3[i] = s * 0.5f;
+
+        if( s != 0.0f )
+            s = 0.5f / s;
+
+        w = (MI(j,k) - MI(k,j)) * s;
+        quat3[j] = (MI(i,j) + MI(j,i)) * s;
+        quat3[k] = (MI(i,k) + MI(k,i)) * s;
+    }
+    return w;
+}
+
+
+void quat_fromMatrix( float* q, const float* m )
+{
+    q[3] = quat_fromMatrix3( q, m );
+}
+
+
+void quat_fromMatrixC( UCell* q, const float* m )
+{
+    quat_setW( q, quat_fromMatrix3( q->vec3.xyz, m ) );
+}
+
+
+void quat_toMatrix( const float* quat3, float w, float* m, int initialize )
 {
     float txy, txz, tyz, twx, twy, twz;
     float txx, tyy, tzz;
     float t2;
-    float w = quat_w( q );
 
 
-    t2  = ur_z(q) * 2.0f;
-    txz = ur_x(q) * t2;
-    tyz = ur_y(q) * t2;
+    t2  = quat3[2] * 2.0f;
+    txz = quat3[0] * t2;
+    tyz = quat3[1] * t2;
     twz = w * t2;
-    tzz = ur_z(q) * t2;
+    tzz = quat3[2] * t2;
 
-    t2  = ur_y(q) * 2.0f;
-    txy = ur_x(q) * t2;
-    tyy = ur_y(q) * t2;
+    t2  = quat3[1] * 2.0f;
+    txy = quat3[0] * t2;
+    tyy = quat3[1] * t2;
     twy = w * t2;
 
-    t2  = ur_x(q) * 2.0f;
-    txx = ur_x(q) * t2;
+    t2  = quat3[0] * 2.0f;
+    txx = quat3[0] * t2;
     twx = w * t2;
 
 
@@ -326,6 +383,12 @@ void quat_toMatrix( const UCell* q, float* m, int initialize )
         m[3] = m[7] = m[11] = m[12] = m[13] = m[14] = 0.0f;
         m[15] = 1.0f;
     }
+}
+
+
+void quat_toMatrixC( const UCell* q, float* m, int initialize )
+{
+    quat_toMatrix( q->vec3.xyz, quat_w(q), m, initialize );
 }
 
 
@@ -360,38 +423,36 @@ void quat_mul( const UCell* A, const UCell* B, UCell* res )
     \param t    Time from 0.0 to 1.0.
     \param res  Result quaternion.  May be the same as from or to.
 */
-void quat_slerp( const UCell* from, const UCell* to, float t, UCell* res )
+static
+float quat_slerp3( const float* from, double fw, const float* to, double tw,
+                   float t, float* res )
 {
     // Nick Bobick's code.
 
     const double DELTA = 0.0001;
-    double fw, tw;
     double to1[4];
     double cosom, scale0, scale1;
 
 
-    fw = quatWd( from );
-    tw = quatWd( to );
-
     // calc cosine
-    cosom = ur_x(from) * ur_x(to) +
-            ur_y(from) * ur_y(to) +
-            ur_z(from) * ur_z(to) + fw * tw;
+    cosom = from[0] * to[0] +
+            from[1] * to[1] +
+            from[2] * to[2] + fw * tw;
 
     // adjust signs (if necessary)
     if( cosom < 0.0 )
     {
         cosom = -cosom;
-        to1[0] = - ur_x(to);
-        to1[1] = - ur_y(to);
-        to1[2] = - ur_z(to);
+        to1[0] = - to[0];
+        to1[1] = - to[1];
+        to1[2] = - to[2];
         to1[3] = - tw;
     }
     else
     {
-        to1[0] = ur_x(to);
-        to1[1] = ur_y(to);
-        to1[2] = ur_z(to);
+        to1[0] = to[0];
+        to1[1] = to[1];
+        to1[2] = to[2];
         to1[3] = tw;
     }
 
@@ -415,10 +476,24 @@ void quat_slerp( const UCell* from, const UCell* to, float t, UCell* res )
     }
 
     // calculate final values
-    ur_x(res) = (float) (scale0 * ur_x(from) + scale1 * to1[0]);
-    ur_y(res) = (float) (scale0 * ur_y(from) + scale1 * to1[1]);
-    ur_z(res) = (float) (scale0 * ur_z(from) + scale1 * to1[2]);
-    quat_setW( res, scale0 * fw + scale1 * to1[3] );
+    res[0] = (float) (scale0 * from[0] + scale1 * to1[0]);
+    res[1] = (float) (scale0 * from[1] + scale1 * to1[1]);
+    res[2] = (float) (scale0 * from[2] + scale1 * to1[2]);
+    return   (float) (scale0 * fw + scale1 * to1[3]);
+}
+
+
+void quat_slerp( const float* from, const float* to, float t, float* res )
+{
+    res[3] = quat_slerp3( from, from[3], to, to[3], t, res );
+}
+
+
+void quat_slerpC( const UCell* from, const UCell* to, float t, UCell* res )
+{
+    quat_setW( res, quat_slerp3( from->vec3.xyz, quatWd( from ),
+                                 to->vec3.xyz, quatWd( to ),
+                                 t, res->vec3.xyz ) );
 }
 
 
