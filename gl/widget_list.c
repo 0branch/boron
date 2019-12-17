@@ -34,10 +34,13 @@ typedef struct
     UIndex    actionN;
     UIndex    dp[2];
     UIndex    selRow;
-    uint8_t   colCount;
-    int8_t    selCol;
+    uint16_t  colWidth;
+    uint16_t  colCount;
+    //int8_t    selCol;
     uint8_t   itemHeight;
-    uint8_t   _pad;
+    uint8_t   charWidth;
+    uint8_t   sizeCW;
+    uint8_t   sizeCH;
     //GWidget* scrollBar;
 }
 GList;
@@ -46,13 +49,14 @@ GList;
 
 
 /*-wid-
-    list    headers      items   [action]
-            block!/int!  block!  block!
+    list    headers      items   [char-size]  [action]
+            block!/int!  block!  coord!       block!
 */
 static const uint8_t listw_args[] =
 {
     GUIA_ARGM, 2, UT_BLOCK, UT_INT,
     GUIA_ARGW, 1, UT_BLOCK,
+    GUIA_OPT,     UT_COORD,
     GUIA_OPT,     UT_BLOCK,
     GUIA_END
 };
@@ -62,7 +66,7 @@ static GWidget* listw_make( UThread* ut, UBlockIter* bi,
 {
     GList* ep;
     int colCount;
-    const UCell* arg[3];
+    const UCell* arg[4];
 
     if( ! gui_parseArgs( ut, bi, wclass, listw_args, arg ) )
         return 0;
@@ -70,12 +74,20 @@ static GWidget* listw_make( UThread* ut, UBlockIter* bi,
     ep = (GList*) gui_allocWidget( sizeof(GList), wclass );
 
     ep->dp[0]      = ur_makeDrawProg( ut );
-    ep->selCol     = -1;
     ep->selRow     = -1;
-    ep->itemHeight = 0;
+    //ep->selCol     = -1;
+    //ep->itemHeight = ep->charWidth = 0;
     ep->dataBlkN   = arg[1]->series.buf;
+
     if( arg[2] )
-        ep->actionN = arg[2]->series.buf;
+    {
+        const int16_t* pn = arg[2]->coord.n;
+        ep->sizeCW = pn[0];
+        ep->sizeCH = pn[1];
+    }
+
+    if( arg[3] )
+        ep->actionN = arg[3]->series.buf;
 
     if( ur_is(arg[0], UT_BLOCK) )
     {
@@ -248,42 +260,60 @@ static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 }
 
 
-static void listw_calcItemHeight( UThread* ut, GList* ep )
+static void listw_calcMetrics( UThread* ut, GList* ep )
 {
-    TexFont* tf;
-    tf = ur_texFontV( ut, glEnv.guiStyle + CI_STYLE_LIST_FONT );
+    const int MIN_COLW = 120;
+    static const char* wstr = "w";
+    TexFont* tf = ur_texFontV( ut, glEnv.guiStyle + CI_STYLE_LIST_FONT );
     if( tf )
+    {
+        const uint8_t* str = (const uint8_t*) wstr;
         ep->itemHeight = txf_lineSpacing( tf ) + 2;
+        ep->charWidth  = txf_width( tf, str, str+1 );
+    }
+    ep->colWidth = ep->sizeCW ? (ep->sizeCW * ep->charWidth) / ep->colCount
+                              : MIN_COLW;
 }
 
 
-#define MAX_DIM     0x7fff
-#define MIN_COLW    120
-
 static void listw_sizeHint( GWidget* wp, GSizeHint* size )
 {
-    UBuffer* blk;
-    int rowCount;
     EX_PTR;
-    UThread* ut  = glEnv.guiUT;
+    UThread* ut = glEnv.guiUT;
+    int rowCount = 0;
 
 
     if( ! ep->itemHeight )
-        listw_calcItemHeight( ut, ep );
+        listw_calcMetrics( ut, ep );
 
-    blk = ur_buffer( ep->dataBlkN );
-    rowCount = blk->used / ep->colCount;
     if( ep->headerBlkN != UR_INVALID_BUF )
         ++rowCount;
 
-    size->minW    = ep->colCount * MIN_COLW;
-    size->minH    = ep->itemHeight * rowCount;
-    size->maxW    = MAX_DIM;
-    size->maxH    = MAX_DIM;
-    size->weightX = GW_WEIGHT_STD;
-    size->weightY = GW_WEIGHT_STD + GW_WEIGHT_STD / 2;
-    size->policyX = GW_POL_EXPANDING;
-    size->policyY = GW_POL_EXPANDING;
+    if( ep->sizeCW )
+    {
+        size->minW    = ep->sizeCW * ep->charWidth;
+        size->minH    = (ep->sizeCH + rowCount) * ep->itemHeight;
+        size->maxW    = size->minW;
+        size->maxH    = size->minH;
+        size->weightX =
+        size->weightY = GW_WEIGHT_FIXED;
+        size->policyX =
+        size->policyY = GW_POL_FIXED;
+    }
+    else
+    {
+        UBuffer* blk = ur_buffer( ep->dataBlkN );
+        rowCount += blk->used / ep->colCount;
+
+        size->minW    = ep->colCount * ep->colWidth;
+        size->minH    = ep->itemHeight * rowCount;
+        size->maxW    = GW_MAX_DIM;
+        size->maxH    = GW_MAX_DIM;
+        size->weightX = GW_WEIGHT_STD;
+        size->weightY = GW_WEIGHT_STD + GW_WEIGHT_STD / 2;
+        size->policyX = GW_POL_EXPANDING;
+        size->policyY = GW_POL_EXPANDING;
+    }
 }
 
 
@@ -306,7 +336,7 @@ static void listw_layout( GWidget* wp )
     if( ep->dataBlkN <= 0 )
         return;
 
-    listw_calcItemHeight( ut, ep );
+    listw_calcMetrics( ut, ep );
 
     itemY = wp->area.y + wp->area.h - ep->itemHeight;
 
@@ -333,9 +363,9 @@ static void listw_layout( GWidget* wp )
 
             rc = style + CI_STYLE_AREA;
             ur_initCoord(rc, 4);
-            rc->coord.n[0] = wp->area.x + (col * MIN_COLW);
+            rc->coord.n[0] = wp->area.x + (col * ep->colWidth);
             rc->coord.n[1] = itemY;
-            rc->coord.n[2] = MIN_COLW;
+            rc->coord.n[2] = ep->colWidth;
             rc->coord.n[3] = ep->itemHeight;
 
             rc = style + CI_STYLE_LIST_HEADER;
@@ -377,9 +407,9 @@ static void listw_layout( GWidget* wp )
 
             rc = style + CI_STYLE_AREA;
             ur_initCoord(rc, 4);
-            rc->coord.n[0] = wp->area.x + (col * MIN_COLW);
+            rc->coord.n[0] = wp->area.x + (col * ep->colWidth);
             rc->coord.n[1] = itemY;
-            rc->coord.n[2] = MIN_COLW;
+            rc->coord.n[2] = ep->colWidth;
             rc->coord.n[3] = ep->itemHeight;
 
             rc = style + ((row == ep->selRow) ?
