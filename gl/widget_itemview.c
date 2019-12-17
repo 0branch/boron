@@ -304,8 +304,7 @@ static void itemview_rebuildAttr( UThread* ut, GItemView* ep,
         dc.penY = ep->wid.area.h;
 
         cell = glEnv.guiStyle + CI_STYLE_AREA;
-        //ur_setId(cell, UT_COORD)
-        cell->coord.len = 4;
+        ur_initCoord(cell, 4);
         cell->coord.n[0] = 0;
         cell->coord.n[1] = (ep->selRow + 1) * -height;
         cell->coord.n[2] = ep->itemWidth;
@@ -849,7 +848,7 @@ static void itemview_layout( GWidget* wp )
         }
 
         rc = style + CI_STYLE_AREA;
-        rc->coord.len = 4;
+        ur_initCoord(rc, 4);
         rc->coord.n[0] = wp->area.x + (col * MIN_COLW);
         rc->coord.n[1] = itemY;
         rc->coord.n[2] = MIN_COLW;
@@ -892,7 +891,7 @@ static void itemview_layout( GWidget* wp )
             }
 
             rc = style + CI_STYLE_AREA;
-            rc->coord.len = 4;
+            ur_initCoord(rc, 4);
             rc->coord.n[0] = wp->area.x + (col * MIN_COLW);
             rc->coord.n[1] = itemY;
             rc->coord.n[2] = MIN_COLW;

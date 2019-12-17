@@ -142,16 +142,14 @@ int gui_widgetContains( const GWidget* wp, int x, int y )
 */
 void gui_initRectCoord( UCell* cell, GWidget* w, UAtom what )
 {
-    ur_setId(cell, UT_COORD);
+    ur_initCoord(cell, 2);
     if( what == UR_ATOM_SIZE )
     {
-        cell->coord.len = 2;
         cell->coord.n[0] = w->area.w;
         cell->coord.n[1] = w->area.h;
     }
     else if( what == UR_ATOM_POS )
     {
-        cell->coord.len = 2;
         cell->coord.n[0] = w->area.x;
         cell->coord.n[1] = w->area.y;
     }
@@ -781,8 +779,7 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
                 return;
 
             // coord elements: x, y, width, height
-            ur_setId(val, UT_COORD);
-            val->coord.len  = 4;
+            ur_initCoord(val, 4);
             val->coord.n[0] = wp->area.x;
             val->coord.n[1] = wp->area.y;
             val->coord.n[2] = event->x;
@@ -803,8 +800,7 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
                 goto ignore;
 
             // coord elements: x, y, button
-            ur_setId(val, UT_COORD);
-            val->coord.len  = 3;
+            ur_initCoord(val, 3);
             val->coord.n[0] = event->x /*- wp->area.x*/;
             val->coord.n[1] = event->y /*- wp->area.y*/;
             val->coord.n[2] = mapButton( event->code );
@@ -816,8 +812,7 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
                 goto ignore;
 
             // coord elements: x, y, button
-            ur_setId(val, UT_COORD);
-            val->coord.len  = 3;
+            ur_initCoord(val, 3);
             val->coord.n[0] = event->x /*- wp->area.x*/;
             val->coord.n[1] = event->y /*- wp->area.y*/;
             val->coord.n[2] = mapButton( event->code );
@@ -829,8 +824,7 @@ static void eventContextDispatch( UThread* ut, GWidget* wp,
                 goto ignore;
 
             // coord elements: x, y, dx, dy, btn-mask
-            ur_setId(val, UT_COORD);
-            val->coord.len  = 5;
+            ur_initCoord(val, 5);
             val->coord.n[0] = event->x /*- wp->area.x*/;
             val->coord.n[1] = event->y /*- wp->area.y*/;
             //val->coord.n[1] = (ui->rootH - event->y - 1) - wp->y;

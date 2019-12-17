@@ -97,8 +97,7 @@ set_len:
     else if( ur_is(from, UT_VEC3) )
     {
         int i;
-        ur_setId(res, UT_COORD);
-        res->coord.len = 3;
+        ur_initCoord(res, 3);
         for( i = 0; i < 3; ++i )
             res->coord.n[i] = (int16_t) from->vec3.xyz[i];
         return UR_OK;

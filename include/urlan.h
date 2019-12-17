@@ -684,8 +684,10 @@ void     ur_arrAppendFloat( UBuffer*, float );
 #define ur_type(c)          (c)->id.type
 #ifdef __BIG_ENDIAN__
 #define ur_setId(c,t)       *((uint32_t*) (c)) = (t) << 24
+#define ur_initCoord(c,n)   *((uint32_t*) (c)) = UT_COORD << 24 | (n)
 #else
 #define ur_setId(c,t)       *((uint32_t*) (c)) = t
+#define ur_initCoord(c,n)   *((uint32_t*) (c)) = UT_COORD | (n) << 16
 #endif
 #define ur_setFlags(c,m)    (c)->id.flags |= m
 #define ur_clrFlags(c,m)    (c)->id.flags &= ~(m)

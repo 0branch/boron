@@ -494,8 +494,7 @@ CFUNC( cfunc_text_size )
             txf_pixelSize( tf, si.buf->ptr.b + si.it,
                                si.buf->ptr.b + si.end, size );
 
-            ur_setId(res, UT_COORD);
-            res->coord.len = 2;
+            ur_initCoord(res, 2);
             res->coord.n[0] = size[0];
             res->coord.n[1] = size[1];
             return UR_OK;
@@ -651,8 +650,7 @@ CFUNC( uc_display_area )
     if( gView )
 #endif
     {
-        ur_setId(res, UT_COORD);
-        res->coord.len = 4;
+        ur_initCoord(res, 4);
         res->coord.n[0] = 0;
         res->coord.n[1] = 0;
         res->coord.n[2] = gView->width;

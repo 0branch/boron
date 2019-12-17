@@ -131,8 +131,7 @@ static void menu_updateSelection( UThread* ut, GMenu* ep )
     ur_initSeries( rc, UT_STRING, ep->labelN );
 
     rc = style + CI_STYLE_AREA;
-    ur_setId(rc, UT_COORD);
-    rc->coord.len = 4;
+    ur_initCoord(rc, 4);
     rc->coord.n[ 0 ] = ep->wid.area.x + ep->marginX;
     rc->coord.n[ 1 ] = ep->wid.area.y + ep->marginY +
                         ((ep->selMax - 1 - ep->selItem) * ep->itemHeight);

@@ -3536,8 +3536,7 @@ set_logic:
 
                 *cell++ = *a1;
 
-                ur_setId(cell, UT_COORD);
-                cell->coord.len = 4;
+                ur_initCoord(cell, 4);
                 memCpy( cell->coord.n, info.perm, sizeof(int16_t) * 4 );
                 return UR_OK;
             }

@@ -161,8 +161,7 @@ read_again:
 
     if( events )
     {
-        ur_setId(dest, UT_COORD);
-        dest->coord.len = 3;
+        ur_initCoord(dest, 3);
     }
     else
         ur_setId(dest, UT_NONE);

@@ -135,8 +135,7 @@ raster_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
 
         case UR_ATOM_SIZE:
             rh = ur_rastHead(cell);
-            ur_setId(res, UT_COORD);
-            res->coord.len = 2;
+            ur_initCoord(res, 2);
             if( rh )
             {
                 res->coord.n[0] = rh->width;
@@ -552,8 +551,7 @@ texture_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* tmp )
                 return tmp;
 
             case UR_ATOM_SIZE:
-                ur_setId(tmp, UT_COORD);
-                tmp->coord.len = 2;
+                ur_initCoord(tmp, 2);
                 tmp->coord.n[0] = ur_texW(cell);
                 tmp->coord.n[1] = ur_texH(cell);
                 return tmp;

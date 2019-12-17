@@ -181,8 +181,7 @@ static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 
         case GLV_EVENT_MOTION:
             // coord elements: x, y, dx, dy
-            ur_initType(val, UT_COORD);
-            val->coord.len     = 5;
+            ur_initCoord(val, 5);
             val->coord.n[0] = ev->x - wp->x;
             //val->coord.n[1] = (ui->rootH - ev->y - 1) - wp->y;
             val->coord.n[1] = ev->y - wp->y;
@@ -308,7 +307,7 @@ static void listw_layout( GWidget* wp )
         }
 
         rc = style + CI_STYLE_AREA;
-        rc->coord.len = 4;
+        ur_initCoord(rc, 4);
         rc->coord.n[0] = wp->area.x + (col * MIN_COLW);
         rc->coord.n[1] = itemY;
         rc->coord.n[2] = MIN_COLW;
@@ -351,7 +350,7 @@ static void listw_layout( GWidget* wp )
             }
 
             rc = style + CI_STYLE_AREA;
-            rc->coord.len = 4;
+            ur_initCoord(rc, 4);
             rc->coord.n[0] = wp->area.x + (col * MIN_COLW);
             rc->coord.n[1] = itemY;
             rc->coord.n[2] = MIN_COLW;
