@@ -1,6 +1,6 @@
 /*
   Boron OpenGL GUI
-  Copyright 2011 Karl Robillard
+  Copyright 2011,2019 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -37,7 +37,6 @@ typedef struct
     int8_t    selCol;
     uint8_t   itemHeight;
     uint8_t   _pad;
-    //GWidget* header;
     //GWidget* scrollBar;
 }
 GList;
@@ -46,13 +45,13 @@ GList;
 
 
 /*-wid-
-    list    headers     items
-            block!      block!
+    list    headers      items
+            block!/int!  block!
 */
 static const uint8_t listw_args[] =
 {
-    GUIA_ARG,   UT_BLOCK,
-    GUIA_ARG,   UT_BLOCK,
+    GUIA_ARGM, 2, UT_BLOCK, UT_INT,
+    GUIA_ARGW, 1, UT_BLOCK,
     GUIA_END
 };
 
@@ -60,6 +59,7 @@ static GWidget* listw_make( UThread* ut, UBlockIter* bi,
                             const GWidgetClass* wclass )
 {
     GList* ep;
+    int colCount;
     const UCell* arg[2];
 
     if( ! gui_parseArgs( ut, bi, wclass, listw_args, arg ) )
@@ -71,8 +71,25 @@ static GWidget* listw_make( UThread* ut, UBlockIter* bi,
     ep->selCol     = -1;
     ep->selRow     = -1;
     ep->itemHeight = 0;
-    ep->headerBlkN = arg[0]->series.buf;
     ep->dataBlkN   = arg[1]->series.buf;
+
+    if( ur_is(arg[0], UT_BLOCK) )
+    {
+        ep->headerBlkN = arg[0]->series.buf;
+        colCount = ur_bufferE( ep->headerBlkN )->used;
+    }
+    else
+    {
+        ep->headerBlkN = UR_INVALID_BUF;
+        colCount = ur_int(arg[0]);
+    }
+
+    // Sanity check column count.
+    if( colCount < 1 )
+        colCount = 1;
+    else if( colCount > 16 )
+        colCount = 16;
+    ep->colCount = colCount;
 
     return (GWidget*) ep;
 }
@@ -90,11 +107,10 @@ static void listw_mark( UThread* ut, GWidget* wp )
 
 static int listw_validRow( UThread* ut, GList* ep, unsigned int row )
 {
-    if( (ep->headerBlkN > 0) && (ep->dataBlkN > 0) )
+    if( ep->dataBlkN > 0 )
     {
-        UBuffer* hblk = ur_buffer( ep->headerBlkN );
         UBuffer* blk  = ur_buffer( ep->dataBlkN );
-        if( (hblk->used) && (row < (unsigned int) (blk->used / hblk->used)) )
+        if( row < (unsigned int) (blk->used / ep->colCount) )
             return 1;
     }
     return 0;
@@ -159,7 +175,9 @@ static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 */
         case GLV_EVENT_BUTTON_DOWN:
         {
-            int row = (((wp->area.y + wp->area.h) - ev->y) / ep->itemHeight)-1;
+            int row = ((wp->area.y + wp->area.h) - ev->y) / ep->itemHeight;
+            if( ep->headerBlkN != UR_INVALID_BUF )
+                --row;
             if( row != ep->selRow )
             {
                 if( listw_validRow( ut, ep, row ) )
@@ -238,7 +256,6 @@ static void listw_sizeHint( GWidget* wp, GSizeHint* size )
 {
     UBuffer* blk;
     int rowCount;
-    int colCount;
     EX_PTR;
     UThread* ut  = glEnv.guiUT;
 
@@ -246,14 +263,13 @@ static void listw_sizeHint( GWidget* wp, GSizeHint* size )
     if( ! ep->itemHeight )
         listw_calcItemHeight( ut, ep );
 
-    blk = ur_buffer( ep->headerBlkN );
-    colCount = blk->used;
-
     blk = ur_buffer( ep->dataBlkN );
-    rowCount = blk->used / colCount;
+    rowCount = blk->used / ep->colCount;
+    if( ep->headerBlkN != UR_INVALID_BUF )
+        ++rowCount;
 
-    size->minW    = colCount * MIN_COLW;
-    size->minH    = ep->itemHeight * (rowCount + 1);
+    size->minW    = ep->colCount * MIN_COLW;
+    size->minH    = ep->itemHeight * rowCount;
     size->maxW    = MAX_DIM;
     size->maxH    = MAX_DIM;
     size->weightX = GW_WEIGHT_STD;
@@ -267,7 +283,7 @@ static void listw_layout( GWidget* wp )
 {
     UCell* rc;
     UCell* it;
-    UBuffer* blk;
+    const UBuffer* blk;
     int row, rowCount;
     int col, colCount;
     int itemY;
@@ -279,7 +295,7 @@ static void listw_layout( GWidget* wp )
     DPCompiler dpc;
 
 
-    if( (ep->headerBlkN <= 0) ||(ep->dataBlkN <= 0) )
+    if( ep->dataBlkN <= 0 )
         return;
 
     listw_calcItemHeight( ut, ep );
@@ -294,30 +310,32 @@ static void listw_layout( GWidget* wp )
 
     // Header
 
-    blk = ur_buffer( ep->headerBlkN );
-    it  = blk->ptr.cell;
-    colCount = ep->colCount = blk->used;
+    colCount = ep->colCount;
 
-    for( col = 0; col < colCount; ++col, ++it )
+    if( ep->headerBlkN != UR_INVALID_BUF )
     {
-        rc = style + CI_STYLE_LABEL;
-        if( ur_is(it, UT_STRING) )
+        blk = ur_bufferE( ep->headerBlkN );
+        it  = blk->ptr.cell;
+
+        for( col = 0; col < colCount; ++col, ++it )
         {
-            *rc = *it;
+            rc = style + CI_STYLE_LABEL;
+            if( ur_is(it, UT_STRING) )
+                *rc = *it;
+
+            rc = style + CI_STYLE_AREA;
+            ur_initCoord(rc, 4);
+            rc->coord.n[0] = wp->area.x + (col * MIN_COLW);
+            rc->coord.n[1] = itemY;
+            rc->coord.n[2] = MIN_COLW;
+            rc->coord.n[3] = ep->itemHeight;
+
+            rc = style + CI_STYLE_LIST_HEADER;
+            if( ur_is(rc, UT_BLOCK) )
+                ur_compileDP( ut, rc, 1 );
         }
-
-        rc = style + CI_STYLE_AREA;
-        ur_initCoord(rc, 4);
-        rc->coord.n[0] = wp->area.x + (col * MIN_COLW);
-        rc->coord.n[1] = itemY;
-        rc->coord.n[2] = MIN_COLW;
-        rc->coord.n[3] = ep->itemHeight;
-
-        rc = style + CI_STYLE_LIST_HEADER;
-        if( ur_is(rc, UT_BLOCK) )
-            ur_compileDP( ut, rc, 1 );
+        itemY -= ep->itemHeight;
     }
-    itemY -= ep->itemHeight;
 
 
     // Items
