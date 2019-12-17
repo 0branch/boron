@@ -62,6 +62,7 @@ static GWidget* menu_make( UThread* ut, UBlockIter* bi,
                            const GWidgetClass* wclass )
 {
     GMenu* ep;
+    UBuffer* str;
     const UCell* arg[2];
 
     if( ! gui_parseArgs( ut, bi, wclass, menu_args, arg ) )
@@ -70,10 +71,12 @@ static GWidget* menu_make( UThread* ut, UBlockIter* bi,
     ep = (GMenu*) gui_allocWidget( sizeof(GMenu), wclass );
     ep->dataBlkN = arg[0]->series.buf;
     ep->selItem  = arg[0]->series.it;
-    ep->bgDraw   = ur_makeDrawProg( ut );
-    ep->selDraw  = ur_makeDrawProg( ut );
     ep->selRendered = ITEM_UNSET;
-    ep->labelN   = ur_makeString( ut, UR_ENC_UTF8, 0 );
+
+    str = ur_genBuffers( ut, 3, &ep->labelN );  // Sets labelN, bgDraw, selDraw.
+    ur_strInit( str, UR_ENC_UTF8, 0 );
+    dprog_init( ur_buffer(ep->bgDraw) );
+    dprog_init( ur_buffer(ep->selDraw) );
 
     return (GWidget*) ep;
 }

@@ -196,21 +196,19 @@ Number;
 */
 
 
-UIndex ur_makeDrawProg( UThread* ut /*, UBuffer** bp*/ )
+void dprog_init( UBuffer* buf )
 {
-    UIndex bufN;
-    UBuffer* buf;
-
-    ur_genBuffers( ut, 1, &bufN );
-
-    buf = ur_buffer( bufN );
     *((uint32_t*) buf) = 0;
     buf->type  = UT_DRAWPROG;
     buf->used  = 0;
     buf->ptr.b = 0;
+}
 
-    //if( bp )
-    //    *bp = buf;
+
+UIndex ur_makeDrawProg( UThread* ut /*, UBuffer** bp*/ )
+{
+    UIndex bufN;
+    dprog_init( ur_genBuffers( ut, 1, &bufN ) );
     return bufN;
 }
 

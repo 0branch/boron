@@ -140,7 +140,7 @@ static GWidget* ledit_make( UThread* ut, UBlockIter* bi,
     //ep->state = LEDIT_STATE_DISPLAY;
     ep->strN     = arg[0]->series.buf;
     ep->maxChars = maxChars;
-    ep->vboN     = ledit_vbo( ut, maxChars );
+    ep->vboN     = ledit_vbo( ut, maxChars );       // gc!
 
     return (GWidget*) ep;
 }

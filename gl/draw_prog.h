@@ -134,6 +134,7 @@ extern DPCompiler* gDPC;
 
 UIndex  ur_makeDrawProg( UThread* );
 void    ur_markDrawProg( UThread*, UIndex );
+void    dprog_init( UBuffer* );
 void    dprog_destroy( UBuffer* );
 void    ur_initDrawState( DPState* );
 UStatus ur_runDrawProg( UThread*, UIndex progN );

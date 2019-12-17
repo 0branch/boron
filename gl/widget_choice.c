@@ -56,6 +56,7 @@ static GWidget* choice_make( UThread* ut, UBlockIter* bi,
                              const GWidgetClass* wclass )
 {
     GChoice* ep;
+    UBuffer* str;
     const UCell* arg[2];
 
     if( ! gui_parseArgs( ut, bi, wclass, choice_args, arg ) )
@@ -65,8 +66,10 @@ static GWidget* choice_make( UThread* ut, UBlockIter* bi,
     ep->dataBlkN = arg[0]->series.buf;
     if( arg[1] )
         ep->actionN = arg[1]->series.buf;
-    ep->labelN = ur_makeString( ut, UR_ENC_LATIN1, 0 );
-    ep->labelDraw = ur_makeDrawProg( ut );
+
+    str = ur_genBuffers( ut, 2, &ep->labelN );  // Sets labelN & labelDraw.
+    ur_strInit( str, UR_ENC_LATIN1, 0 );
+    dprog_init( ur_buffer(ep->labelDraw) );
 
     return (GWidget*) ep;
 }
