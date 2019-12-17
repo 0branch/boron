@@ -31,6 +31,7 @@ typedef struct
     GWidget   wid;
     UIndex    headerBlkN;
     UIndex    dataBlkN;
+    UIndex    actionN;
     UIndex    dp[2];
     UIndex    selRow;
     uint8_t   colCount;
@@ -45,13 +46,14 @@ GList;
 
 
 /*-wid-
-    list    headers      items
-            block!/int!  block!
+    list    headers      items   [action]
+            block!/int!  block!  block!
 */
 static const uint8_t listw_args[] =
 {
     GUIA_ARGM, 2, UT_BLOCK, UT_INT,
     GUIA_ARGW, 1, UT_BLOCK,
+    GUIA_OPT,     UT_BLOCK,
     GUIA_END
 };
 
@@ -60,7 +62,7 @@ static GWidget* listw_make( UThread* ut, UBlockIter* bi,
 {
     GList* ep;
     int colCount;
-    const UCell* arg[2];
+    const UCell* arg[3];
 
     if( ! gui_parseArgs( ut, bi, wclass, listw_args, arg ) )
         return 0;
@@ -72,6 +74,8 @@ static GWidget* listw_make( UThread* ut, UBlockIter* bi,
     ep->selRow     = -1;
     ep->itemHeight = 0;
     ep->dataBlkN   = arg[1]->series.buf;
+    if( arg[2] )
+        ep->actionN = arg[2]->series.buf;
 
     if( ur_is(arg[0], UT_BLOCK) )
     {
@@ -101,6 +105,7 @@ static void listw_mark( UThread* ut, GWidget* wp )
 
     ur_markBlkN( ut, ep->headerBlkN );
     ur_markBlkN( ut, ep->dataBlkN );
+    ur_markBlkN( ut, ep->actionN );
     ur_markDrawProg( ut, ep->dp[0] );
 }
 
@@ -119,25 +124,34 @@ static int listw_validRow( UThread* ut, GList* ep, unsigned int row )
 
 static void listw_layout( GWidget* );
 
-static void listw_selectNextItem( UThread* ut, GWidget* wp )
+/*
+  Set new selRow value.
+
+  \param index     Valid index not equal to current selRow.
+*/
+static void listw_selectRow( UThread* ut, GList* ep, UIndex index )
 {
-    EX_PTR;
-    if( listw_validRow( ut, ep, ep->selRow + 1 ) )
-    {
-        ++ep->selRow;
-        listw_layout( wp );
-    }
+    ep->selRow = index;
+    listw_layout( &ep->wid );
+    if( ep->actionN )
+        gui_doBlockN( ut, ep->actionN );
 }
 
 
-static void listw_selectPrevItem( GWidget* wp )
+static void listw_selectNextItem( UThread* ut, GWidget* wp )
+{
+    EX_PTR;
+    UIndex n = ep->selRow + 1;
+    if( listw_validRow( ut, ep, n ) )
+        listw_selectRow( ut, ep, n );
+}
+
+
+static void listw_selectPrevItem( UThread* ut, GWidget* wp )
 {
     EX_PTR;
     if( ep->selRow > 0 )
-    {
-        --ep->selRow;
-        listw_layout( wp );
-    }
+        listw_selectRow( ut, ep, ep->selRow - 1 );
 }
 
 
@@ -175,17 +189,11 @@ static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 */
         case GLV_EVENT_BUTTON_DOWN:
         {
-            int row = ((wp->area.y + wp->area.h) - ev->y) / ep->itemHeight;
+            UIndex row = ((wp->area.y + wp->area.h) - ev->y) / ep->itemHeight;
             if( ep->headerBlkN != UR_INVALID_BUF )
                 --row;
-            if( row != ep->selRow )
-            {
-                if( listw_validRow( ut, ep, row ) )
-                {
-                    ep->selRow = row;
-                    listw_layout( wp );
-                }
-            }
+            if( row != ep->selRow && listw_validRow( ut, ep, row ) )
+                listw_selectRow( ut, ep, row );
             gui_setKeyFocus( wp );
             //printf( "KR row %d\n", row );
         }
@@ -214,14 +222,14 @@ static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
             if( ev->y < 0 )
                 listw_selectNextItem( ut, wp );
             else
-                listw_selectPrevItem( wp );
+                listw_selectPrevItem( ut, wp );
             break;
 
         case GLV_EVENT_KEY_DOWN:
             switch( ev->code )
             {
                 case KEY_Up:
-                    listw_selectPrevItem( wp );
+                    listw_selectPrevItem( ut, wp );
                     return;
                 case KEY_Down:
                     listw_selectNextItem( ut, wp );
