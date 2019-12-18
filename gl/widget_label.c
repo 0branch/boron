@@ -46,7 +46,7 @@ static const uint8_t label_args[] =
 };
 
 static GWidget* label_make( UThread* ut, UBlockIter* bi,
-                            const GWidgetClass* wclass )
+                            const GWidgetClass* wclass, GWidget* parent )
 {
     GLabel* ep;
     const UCell* arg;
@@ -54,7 +54,7 @@ static GWidget* label_make( UThread* ut, UBlockIter* bi,
     if( ! gui_parseArgs( ut, bi, wclass, label_args, &arg ) )
         return 0;
 
-    ep = (GLabel*) gui_allocWidget( sizeof(GLabel), wclass );
+    ep = (GLabel*) gui_allocWidget( sizeof(GLabel), wclass, parent );
     ep->wid.flags |= GW_NO_INPUT;
     ep->textN = arg->series.buf;
     return (GWidget*) ep;

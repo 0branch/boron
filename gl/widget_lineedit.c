@@ -116,7 +116,7 @@ static const uint8_t ledit_args[] =
     line-edit word!/string! <max-chars>
 */
 static GWidget* ledit_make( UThread* ut, UBlockIter* bi,
-                            const GWidgetClass* wclass )
+                            const GWidgetClass* wclass, GWidget* parent )
 {
     LineEdit* ep;
     const UCell* arg[2];
@@ -134,7 +134,7 @@ static GWidget* ledit_make( UThread* ut, UBlockIter* bi,
     if( arg[1] )
         maxChars = ur_int(arg[1]);
 
-    ep = (LineEdit*) gui_allocWidget( sizeof(LineEdit), wclass );
+    ep = (LineEdit*) gui_allocWidget( sizeof(LineEdit), wclass, parent );
     ep->wid.flags |= CHANGED;
 
     //ep->state = LEDIT_STATE_DISPLAY;

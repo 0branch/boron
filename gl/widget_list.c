@@ -62,7 +62,7 @@ static const uint8_t listw_args[] =
 };
 
 static GWidget* listw_make( UThread* ut, UBlockIter* bi,
-                            const GWidgetClass* wclass )
+                            const GWidgetClass* wclass, GWidget* parent )
 {
     GList* ep;
     int colCount;
@@ -71,7 +71,7 @@ static GWidget* listw_make( UThread* ut, UBlockIter* bi,
     if( ! gui_parseArgs( ut, bi, wclass, listw_args, arg ) )
         return 0;
 
-    ep = (GList*) gui_allocWidget( sizeof(GList), wclass );
+    ep = (GList*) gui_allocWidget( sizeof(GList), wclass, parent );
 
     ep->dp[0]      = ur_makeDrawProg( ut );
     ep->selRow     = -1;

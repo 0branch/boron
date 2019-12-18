@@ -422,7 +422,7 @@ static const uint8_t itemview_args[] =
 void itemview_free( GWidget* wp );
 
 static GWidget* itemview_make( UThread* ut, UBlockIter* bi,
-                               const GWidgetClass* wclass )
+                               const GWidgetClass* wclass, GWidget* parent )
 {
     GItemView* ep;
     UIndex itemBlkN;
@@ -432,7 +432,7 @@ static GWidget* itemview_make( UThread* ut, UBlockIter* bi,
     if( ! gui_parseArgs( ut, bi, wclass, itemview_args, arg ) )
         return 0;
 
-    ep = (GItemView*) gui_allocWidget( sizeof(GItemView), wclass );
+    ep = (GItemView*) gui_allocWidget( sizeof(GItemView), wclass, parent );
 
     assert( sizeof(GLint) == sizeof(GLsizei) );
     ur_arrInit( ep->fc + 0, sizeof(GLint), 0 );
@@ -530,8 +530,7 @@ bad_layout:
 
 fail:
 
-    itemview_free( (GWidget*) ep );
-    return 0;
+    return gui_makeFail( (GWidget*) ep );
 }
 
 

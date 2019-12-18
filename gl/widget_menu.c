@@ -59,7 +59,7 @@ static const uint8_t menu_args[] =
 };
 
 static GWidget* menu_make( UThread* ut, UBlockIter* bi,
-                           const GWidgetClass* wclass )
+                           const GWidgetClass* wclass, GWidget* parent )
 {
     GMenu* ep;
     UBuffer* str;
@@ -68,7 +68,7 @@ static GWidget* menu_make( UThread* ut, UBlockIter* bi,
     if( ! gui_parseArgs( ut, bi, wclass, menu_args, arg ) )
         return 0;
 
-    ep = (GMenu*) gui_allocWidget( sizeof(GMenu), wclass );
+    ep = (GMenu*) gui_allocWidget( sizeof(GMenu), wclass, parent );
     ep->dataBlkN = arg[0]->series.buf;
     ep->selItem  = arg[0]->series.it;
     ep->selRendered = ITEM_UNSET;
@@ -110,7 +110,8 @@ static void menu_mark( UThread* ut, GWidget* wp )
     EX_PTR;
 
     ur_markBlkN( ut, ep->dataBlkN );
-    ur_markBuffer( ut, ep->labelN );
+    if( ep->labelN )
+        ur_markBuffer( ut, ep->labelN );
     ur_markDrawProg( ut, ep->bgDraw );
     ur_markDrawProg( ut, ep->selDraw );
 }

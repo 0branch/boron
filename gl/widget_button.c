@@ -65,7 +65,7 @@ static const uint8_t button_args[] =
 };
 
 static GWidget* button_make( UThread* ut, UBlockIter* bi,
-                             const GWidgetClass* wclass )
+                             const GWidgetClass* wclass, GWidget* parent )
 {
     GButton* ep;
     const UCell* arg[2];
@@ -73,7 +73,7 @@ static GWidget* button_make( UThread* ut, UBlockIter* bi,
     if( ! gui_parseArgs( ut, bi, wclass, button_args, arg ) )
         return 0;
 
-    ep = (GButton*) gui_allocWidget( sizeof(GButton), wclass );
+    ep = (GButton*) gui_allocWidget( sizeof(GButton), wclass, parent );
     ep->state   = BTN_STATE_UP;
     ep->labelN  = arg[0]->series.buf;
     ep->actionN = arg[1]->series.buf;

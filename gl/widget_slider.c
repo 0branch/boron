@@ -101,7 +101,7 @@ static const uint8_t slider_args[] =
 };
 
 static GWidget* slider_make( UThread* ut, UBlockIter* bi,
-                             const GWidgetClass* wclass )
+                             const GWidgetClass* wclass, GWidget* parent )
 {
     GSlider* ep;
     const UCell* arg[4];
@@ -109,7 +109,7 @@ static GWidget* slider_make( UThread* ut, UBlockIter* bi,
     if( ! gui_parseArgs( ut, bi, wclass, slider_args, arg ) )
         return 0;
 
-    ep = (GSlider*) gui_allocWidget( sizeof(GSlider), wclass );
+    ep = (GSlider*) gui_allocWidget( sizeof(GSlider), wclass, parent );
     ep->state = BTN_STATE_UP;
 
     // Optional orientaion.

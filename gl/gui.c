@@ -66,7 +66,16 @@ extern int itemview_parse( UThread* ut, UBlockIter* bi, GWidget* wp );
     ms.y     = ey
 
 
-GWidget* gui_allocWidget( int size, const GWidgetClass* wclass )
+static void ur_arrAppendPtr( UBuffer* arr, void* ptr )
+{
+    ur_arrReserve( arr, arr->used + 1 );
+    ((void**) arr->ptr.v)[ arr->used ] = ptr;
+    ++arr->used;
+}
+
+
+GWidget* gui_allocWidget( int size, const GWidgetClass* wclass,
+                          GWidget* parent )
 {
     GWidget* wp = (GWidget*) memAlloc( size );
     if( wp )
@@ -74,8 +83,38 @@ GWidget* gui_allocWidget( int size, const GWidgetClass* wclass )
         memSet( wp, 0, size );
         wp->wclass = wclass;
         wp->flags  = wclass->flags;
+
+        // Link to parent immediately so any recycle that occurs during
+        // make will call the child's mark method.
+        if( parent )
+            gui_appendChild( parent, wp );
+        else
+            ur_arrAppendPtr( &glEnv.rootWidgets, wp );
     }
     return wp;
+}
+
+
+void gui_unlink( GWidget* );
+
+// Pass pointer returned from gui_allocWidget().
+GWidget* gui_makeFail( GWidget* wp )
+{
+    if( wp )
+    {
+        // Undo setup of gui_allocWidget.
+        if( wp->parent )
+        {
+            gui_unlink( wp );
+            wp->wclass->free( wp );
+        }
+        else
+        {
+            // Leave cleanup to widget_recycle().
+            wp->flags |= GW_HIDDEN | GW_DISABLED | GW_DESTRUCT;
+        }
+    }
+    return NULL;
 }
 
 
@@ -510,13 +549,13 @@ static int _remapKeys( UThread* ut, const UCell* cell, const UAtom* modAtom )
     edges.
 */
 static GWidget* expand_make( UThread* ut, UBlockIter* bi,
-                             const GWidgetClass* wclass )
+                             const GWidgetClass* wclass, GWidget* parent )
 {
     GWidget* wp;
     (void) ut;
 
     ++bi->it;
-    wp = gui_allocWidget( sizeof(GWidget), wclass );
+    wp = gui_allocWidget( sizeof(GWidget), wclass, parent );
     //wp->expandMin = 0;
 
     if( bi->it != bi->end && ur_is(bi->it, UT_INT) )
@@ -555,7 +594,7 @@ static void expand_sizeHint( GWidget* wp, GSizeHint* size )
     Fill some space to leave a gap.
 */
 static GWidget* space_make( UThread* ut, UBlockIter* bi,
-                            const GWidgetClass* wclass )
+                            const GWidgetClass* wclass, GWidget* parent )
 {
     GWidget* wp;
     int dmin = 8;
@@ -563,7 +602,7 @@ static GWidget* space_make( UThread* ut, UBlockIter* bi,
     (void) ut;
 
     ++bi->it;
-    wp = gui_allocWidget( sizeof(GWidget), wclass );
+    wp = gui_allocWidget( sizeof(GWidget), wclass, parent );
     wp->spaceWeight = GW_WEIGHT_STD;
 
     if( bi->it != bi->end )
@@ -870,14 +909,6 @@ ignore:
 }
 
 
-static void ur_arrAppendPtr( UBuffer* arr, void* ptr )
-{
-    ur_arrReserve( arr, arr->used + 1 );
-    ((void**) arr->ptr.v)[ arr->used ] = ptr;
-    ++arr->used;
-}
-
-
 static UStatus _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
                               UCell* res )
 {
@@ -924,14 +955,9 @@ static UStatus _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
                                      ur_wordCStr( bi->it ) );
                 }
             }
-            wp = wclass->make( ut, bi, wclass );
+            wp = wclass->make( ut, bi, wclass, parent );
             if( ! wp )
                 return UR_THROW;
-
-            if( parent )
-                gui_appendChild( parent, wp );
-            else
-                ur_arrAppendPtr( &glEnv.rootWidgets, wp );
 
             if( setWord )
             {
@@ -995,9 +1021,9 @@ static GUIRoot* gui_rootGui( GWidget* wp )
 
 
 static GWidget* root_make( UThread* ut, UBlockIter* bi,
-                           const GWidgetClass* wclass )
+                           const GWidgetClass* wclass, GWidget* parent )
 {
-    GUIRoot* ep = (GUIRoot*) gui_allocWidget( sizeof(GUIRoot), wclass );
+    GUIRoot* ep = (GUIRoot*) gui_allocWidget( sizeof(GUIRoot), wclass, parent );
     ep->keyFocus = ep->mouseFocus = 0;
     ep->mouseGrabbed = 0;
     ep->lastMotion.type = 0;
@@ -1024,8 +1050,7 @@ done:
     return (GWidget*) ep;
 
 fail:
-    wclass->free( (GWidget*) ep );
-    return 0;
+    return gui_makeFail( (GWidget*) ep );
 }
 
 
@@ -1039,8 +1064,17 @@ static void root_free( GWidget* wp )
 
 static void root_mark( UThread* ut, GWidget* wp )
 {
+    GUIRoot* ep = (GUIRoot*) wp;
+    GWidget* popup;
+
     ur_markBlkN( ut, wp->eventCtxN );
     widget_markChildren( ut, wp );
+
+    // If the popup menu is not currently active (i.e. linked as a child)
+    // we must manually call it's mark method.
+    popup = ep->popupMenu;
+    if( popup && ! popup->parent )
+        popup->wclass->mark( ut, popup );
 }
 
 
@@ -1180,10 +1214,15 @@ void gui_showMenu( GWidget* wp, UIndex dataBlkN, uint16_t selItem )
             bi.it  = arg;
             bi.end = arg + 2;
 
-            menu = ui->popupMenu = wclass_menu.make( ut, &bi, &wclass_menu );
+            menu = ui->popupMenu =
+                wclass_menu.make( ut, &bi, &wclass_menu, &ui->wid );
+        }
+        else
+        {
+            // NOTE: menu_hide calls gui_unlink to remove itself from parent.
+            gui_appendChild( &ui->wid, menu );
         }
 
-        gui_appendChild( &ui->wid, menu );
         menu_present( menu, wp );
 
         // gui_grabMouse( menu, 1 );
@@ -1493,10 +1532,11 @@ static void setBoxMargins( Box* wd, const UCell* mc )
 
 
 static GWidget* box_make2( UThread* ut, const GWidgetClass* wclass,
+                           GWidget* parent,
                            const UCell* margin, const UCell* align,
                            const UCell* child, const UCell* grid )
 {
-    Box* ep = (Box*) gui_allocWidget( sizeof(Box), wclass );
+    Box* ep = (Box*) gui_allocWidget( sizeof(Box), wclass, parent );
     /*
     ep->marginL = 0;
     ep->marginT = 0;
@@ -1518,10 +1558,8 @@ static GWidget* box_make2( UThread* ut, const GWidgetClass* wclass,
     }
 
     if( ! gui_makeWidgets( ut, child, (GWidget*) ep, 0 ) )
-    {
-        wclass->free( (GWidget*) ep );
-        return NULL;
-    }
+        return gui_makeFail( (GWidget*) ep );
+
     return (GWidget*) ep;
 }
 
@@ -1543,12 +1581,12 @@ static const uint8_t box_args[] =
 };
 
 static GWidget* box_make( UThread* ut, UBlockIter* bi,
-                          const GWidgetClass* wclass )
+                          const GWidgetClass* wclass, GWidget* parent )
 {
     const UCell* arg[ 3 ];
     if( ! gui_parseArgs( ut, bi, wclass, box_args, arg ) )
         return NULL;
-    return box_make2( ut, wclass, arg[0], arg[1], arg[2], NULL );
+    return box_make2( ut, wclass, parent, arg[0], arg[1], arg[2], NULL );
 }
 
 
@@ -1969,12 +2007,12 @@ static const uint8_t grid_args[] =
 
 
 static GWidget* grid_make( UThread* ut, UBlockIter* bi,
-                           const GWidgetClass* wclass )
+                           const GWidgetClass* wclass, GWidget* parent )
 {
     const UCell* arg[ 3 ];
     if( ! gui_parseArgs( ut, bi, wclass, grid_args, arg ) )
         return NULL;
-    return box_make2( ut, wclass, arg[1], NULL, arg[2], arg[0] );
+    return box_make2( ut, wclass, parent, arg[1], NULL, arg[2], arg[0] );
 }
 
 
@@ -2204,15 +2242,15 @@ static const uint8_t window_args[] =
 };
 
 static GWidget* window_make( UThread* ut, UBlockIter* bi,
-                             const GWidgetClass* wclass )
+                             const GWidgetClass* wclass, GWidget* parent )
 {
     GWindow* ep;
     const UCell* arg[ 3 ];
 
     if( ! gui_parseArgs( ut, bi, wclass, window_args, arg ) )
-        return 0;
+        return NULL;
 
-    ep = (GWindow*) gui_allocWidget( sizeof(GWindow), wclass );
+    ep = (GWindow*) gui_allocWidget( sizeof(GWindow), wclass, parent );
 
     ep->marginL = 8;
     ep->marginT = 8;
@@ -2243,8 +2281,7 @@ static GWidget* window_make( UThread* ut, UBlockIter* bi,
         return (GWidget*) ep;
 
 fail:
-    wclass->free( (GWidget*) ep );
-    return 0;
+    return gui_makeFail( (GWidget*) ep );
 }
 
 
@@ -2444,16 +2481,16 @@ static const uint8_t viewport_args[] =
 
 
 static GWidget* viewport_make( UThread* ut, UBlockIter* bi,
-                               const GWidgetClass* wclass )
+                               const GWidgetClass* wclass, GWidget* parent )
 {
     GWidget* wp;
     const UCell* arg[ 1 ];
     int emask;
 
     if( ! gui_parseArgs( ut, bi, wclass, viewport_args, arg ) )
-        return 0;
+        return NULL;
 
-    wp = gui_allocWidget( sizeof(GWidget), wclass );
+    wp = gui_allocWidget( sizeof(GWidget), wclass, parent );
 
     wp->expandMin = 0;      // For expand_sizeHint().
 
@@ -2466,8 +2503,7 @@ static GWidget* viewport_make( UThread* ut, UBlockIter* bi,
         return wp;
     }
 
-    wclass->free( wp );
-    return 0;
+    return gui_makeFail( wp );
 }
 
 
@@ -2542,15 +2578,15 @@ static const uint8_t overlay_args[] =
 };
 
 static GWidget* overlay_make( UThread* ut, UBlockIter* bi,
-                              const GWidgetClass* wclass )
+                              const GWidgetClass* wclass, GWidget* parent )
 {
     GWindow* ep;
     const UCell* arg[ 4 ];
 
     if( ! gui_parseArgs( ut, bi, wclass, overlay_args, arg ) )
-        return 0;
+        return NULL;
 
-    ep = (GWindow*) gui_allocWidget( sizeof(GWindow), wclass );
+    ep = (GWindow*) gui_allocWidget( sizeof(GWindow), wclass, parent );
 
     ep->dp[0] = ur_makeDrawProg( ut );
 
@@ -2566,8 +2602,7 @@ static GWidget* overlay_make( UThread* ut, UBlockIter* bi,
     if( gui_makeWidgets( ut, arg[3], (GWidget*) ep, 0 ) )  // gc!
         return (GWidget*) ep;
 
-    wclass->free( (GWidget*) ep );
-    return 0;
+    return gui_makeFail( (GWidget*) ep );
 }
 
 

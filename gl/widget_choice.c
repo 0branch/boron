@@ -53,7 +53,7 @@ static const uint8_t choice_args[] =
 };
 
 static GWidget* choice_make( UThread* ut, UBlockIter* bi,
-                             const GWidgetClass* wclass )
+                             const GWidgetClass* wclass, GWidget* parent )
 {
     GChoice* ep;
     UBuffer* str;
@@ -62,7 +62,7 @@ static GWidget* choice_make( UThread* ut, UBlockIter* bi,
     if( ! gui_parseArgs( ut, bi, wclass, choice_args, arg ) )
         return 0;
 
-    ep = (GChoice*) gui_allocWidget( sizeof(GChoice), wclass );
+    ep = (GChoice*) gui_allocWidget( sizeof(GChoice), wclass, parent );
     ep->dataBlkN = arg[0]->series.buf;
     if( arg[1] )
         ep->actionN = arg[1]->series.buf;
@@ -81,7 +81,8 @@ static void choice_mark( UThread* ut, GWidget* wp )
 
     ur_markBlkN( ut, ep->dataBlkN );
     ur_markBlkN( ut, ep->actionN );
-    ur_markBuffer( ut, ep->labelN );
+    if( ep->labelN )
+        ur_markBuffer( ut, ep->labelN );
     ur_markDrawProg( ut, ep->labelDraw );
 }
 

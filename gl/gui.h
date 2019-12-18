@@ -147,7 +147,8 @@ typedef struct GWidgetClass GWidgetClass;
 struct GWidgetClass
 {
     const char* name;
-    GWidget* (*make)    ( UThread*, UBlockIter*, const GWidgetClass* );
+    GWidget* (*make)    ( UThread*, UBlockIter*, const GWidgetClass*,
+                          GWidget* );
     void     (*free)    ( GWidget* );
     void     (*mark)    ( UThread*, GWidget* );
     void     (*dispatch)( UThread*, GWidget*, const GLViewEvent* );
@@ -207,7 +208,8 @@ UStatus gui_parseArgs( UThread*, UBlockIter*, const GWidgetClass*,
 void gui_doBlock( UThread*, const UCell* );
 void gui_doBlockN( UThread*, UIndex );
 
-GWidget* gui_allocWidget( int size, const GWidgetClass* );
+GWidget* gui_allocWidget( int size, const GWidgetClass*, GWidget* parent );
+GWidget* gui_makeFail( GWidget* );
 void     gui_freeWidget( GWidget* );
 void     gui_freeWidgetDefer( GWidget* );
 void     gui_appendChild( GWidget* parent, GWidget* child );
