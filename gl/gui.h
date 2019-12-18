@@ -199,10 +199,10 @@ struct GWidget
 
 void gui_addWidgetClasses( GWidgetClass** classTable, int count );
 GWidgetClass* gui_widgetClass( UAtom name );
-int  gui_makeWidgets( UThread*, const UCell* blkC, GWidget* parent,
-                      UCell* result );
-int  gui_parseArgs( UThread*, UBlockIter*, const GWidgetClass*,
-                    const uint8_t* pc, const UCell** args );
+UStatus gui_makeWidgets( UThread*, const UCell* blkC, GWidget* parent,
+                         UCell* result );
+UStatus gui_parseArgs( UThread*, UBlockIter*, const GWidgetClass*,
+                       const uint8_t* pc, const UCell** args );
 
 void gui_doBlock( UThread*, const UCell* );
 void gui_doBlockN( UThread*, UIndex );

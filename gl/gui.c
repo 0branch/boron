@@ -202,8 +202,8 @@ static int _matchMultTypes( const uint8_t* pc, const UCell* cell )
 /*
   Return UR_OK/UR_THROW.
 */
-int gui_parseArgs( UThread* ut, UBlockIter* bi, const GWidgetClass* wc,
-                   const uint8_t* pc, const UCell** args )
+UStatus gui_parseArgs( UThread* ut, UBlockIter* bi, const GWidgetClass* wc,
+                       const uint8_t* pc, const UCell** args )
 {
     const UCell* command = bi->it++;
 #ifdef EVAL_PATH
@@ -878,8 +878,8 @@ static void ur_arrAppendPtr( UBuffer* arr, void* ptr )
 }
 
 
-static int _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
-                          UCell* res )
+static UStatus _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
+                              UCell* res )
 {
     GWidgetClass* wclass;
     GWidget* wp = 0;
@@ -2239,7 +2239,7 @@ static GWidget* window_make( UThread* ut, UBlockIter* bi,
             goto fail;
     }
 
-    if( gui_makeWidgets( ut, arg[2], (GWidget*) ep, 0 ) )
+    if( gui_makeWidgets( ut, arg[2], (GWidget*) ep, 0 ) )   // gc!
         return (GWidget*) ep;
 
 fail:
@@ -2563,7 +2563,7 @@ static GWidget* overlay_make( UThread* ut, UBlockIter* bi,
     if( arg[2] )
         setBoxAlign( (Box*) ep, arg[2] );
 
-    if( gui_makeWidgets( ut, arg[3], (GWidget*) ep, 0 ) )
+    if( gui_makeWidgets( ut, arg[3], (GWidget*) ep, 0 ) )  // gc!
         return (GWidget*) ep;
 
     wclass->free( (GWidget*) ep );
@@ -3093,8 +3093,8 @@ GWidgetClass* gui_widgetClass( UAtom name )
 
   \return UR_OK/UR_THROW
 */
-int gui_makeWidgets( UThread* ut, const UCell* blkC, GWidget* parent,
-                     UCell* result )
+UStatus gui_makeWidgets( UThread* ut, const UCell* blkC, GWidget* parent,
+                         UCell* result )
 {
     UBlockIter bi;
 
