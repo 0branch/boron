@@ -2987,7 +2987,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    81
+#define FA_COUNT    82
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -3003,7 +3003,7 @@ static void _createFixedAtoms( UThread* ut )
         "rgb rgba depth clamp nearest linear\n"
         "min mag mipmap gray\n"
         "burn color trans sprite\n"
-        "update finish -> >> single-use ping-pong pong\n"
+        "update finish frames -> >> single-use ping-pong pong\n"
         "collide fall integrate attach anchor action as face",
         atoms );
 
