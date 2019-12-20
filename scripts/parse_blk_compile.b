@@ -116,9 +116,13 @@ type-word: func [ins word word!] [
 
 typeset: func [ins type datatype!] [
     append offset-loc tail bin
-    emit2 ins size? typesets        ; Offset to be replaced.
-    append typesets index? type
-    ; TODO: Eliminate duplicate typesets.
+    mask: index? type
+    either pos: find typesets mask [
+        emit2 ins sub index? pos 1      ; Offset to be replaced.
+    ][
+        emit2 ins size? typesets        ; Offset to be replaced.
+        append typesets mask
+    ]
 ]
 
 end-rule: does [
