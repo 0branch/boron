@@ -85,11 +85,11 @@ enum AnimOutput
     ANIM_OUT_VECTOR_3,      // out.cell.bufN is a vector!
     ANIM_OUT_MATRIX_ROT,    // out.cell.bufN is a vector!
     ANIM_OUT_MATRIX_TRANS,  // out.cell.bufN is a vector!
-    ANIM_OUT_CELL_DOUBLE,   // out.cell.bufN is a block!/context!
-    ANIM_OUT_CELL_VEC3      // out.cell.bufN is a block!/context!
+    ANIM_OUT_CELL_VEC3,     // out.cell.bufN is a block!/context!
+    ANIM_OUT_CELL_DOUBLE    // out.cell.bufN is a block!/context!
 };
 
-static const char anim_keySize[6] = { 2, 4, 5, 4, 2, 4 };
+static const char anim_keySize[6] = { 2, 4, 5, 4, 4, 2 };
 
 
 enum AnimAllocState
@@ -548,16 +548,12 @@ UStatus anim_processLinearKey( UThread* ut, AnimList* list, double dt,
 store_3f:
                 memcpy( resF, it->v2, sizeof(float)*3 );
                 break;
-/*
+
             case ANIM_OUT_CELL_DOUBLE:
                 resC = ANIM_RESULT_CELL( it );
                 ur_setId(resC, UT_DOUBLE);
-                if( it->behavior == ANIM_COMPLETE )
-                    ur_double(resC) = it->v2[0];
-                else
-                    ur_double(resC) = ANIM_INTERP( it->v1[0], it->v2[0] );
+                ur_double(resC) = it->v2[0];
                 break;
-*/
         }
 
         if( it->updateBlkN != UR_INVALID_BUF )
@@ -664,8 +660,8 @@ AnimSpecParser;
   scripts/parse_blk_compile.b -p Anim -e gl/anim.c
 
     some [
-        word! '-> word! (init_target)
-      | '-> word!       (target)
+        double!/vec3!/word! '-> double!/vec3!/word! (init_target)
+      | '-> double!/vec3!/word! (target)
       | 'as word!       (as)
       | double!         (duration)
       | 'update block!  (update)
@@ -705,7 +701,9 @@ static const uint8_t _animParseRules[] =
     // 0
     0x10, 0x03, 0x00,
     // 3
-    0x04, 0x08, 0x08, 0x0D, 0x06, 0x00, 0x08, 0x0D, 0x03, 0x00, 0x04, 0x06, 0x06, 0x00, 0x08, 0x0D, 0x03, 0x01, 0x04, 0x06, 0x06, 0x01, 0x08, 0x0D, 0x03, 0x02, 0x04, 0x04, 0x08, 0x06, 0x03, 0x03, 0x04, 0x06, 0x06, 0x02, 0x08, 0x17, 0x03, 0x04, 0x04, 0x06, 0x06, 0x03, 0x08, 0x17, 0x03, 0x05, 0x04, 0x06, 0x06, 0x04, 0x08, 0x16, 0x03, 0x06, 0x04, 0x04, 0x08, 0x0D, 0x03, 0x07, 0x08, 0x16, 0x03, 0x08,
+    0x04, 0x08, 0x09, 0x45, 0x06, 0x00, 0x09, 0x45, 0x03, 0x00, 0x04, 0x06, 0x06, 0x00, 0x09, 0x45, 0x03, 0x01, 0x04, 0x06, 0x06, 0x01, 0x08, 0x0D, 0x03, 0x02, 0x04, 0x04, 0x08, 0x06, 0x03, 0x03, 0x04, 0x06, 0x06, 0x02, 0x08, 0x17, 0x03, 0x04, 0x04, 0x06, 0x06, 0x03, 0x08, 0x17, 0x03, 0x05, 0x04, 0x06, 0x06, 0x04, 0x08, 0x16, 0x03, 0x06, 0x04, 0x04, 0x08, 0x0D, 0x03, 0x07, 0x08, 0x16, 0x03, 0x08,
+    // 69 - Typesets
+    0x40, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
 
@@ -821,8 +819,7 @@ static void _animRuleHandler( UBlockParser* par, int rule,
             {
                 case ANIM_OUT_VECTOR_3:
                     memcpy( anim->v1, ANIM_RESULT_PF(anim), sizeof(float)*3 );
-                    _animSetValue3(ut, it, anim->v2);
-                    break;
+                    goto restart_vec3;
 
                 case ANIM_OUT_MATRIX_ROT:
                     quat_fromMatrix( anim->v1, ANIM_RESULT_PF(anim) );
@@ -845,6 +842,20 @@ static void _animRuleHandler( UBlockParser* par, int rule,
                     const float* mat = _animVector( ut, it );
                     memcpy( anim->v2, mat ? mat + 12 : vzero, sizeof(float)*3 );
                     }
+                    break;
+
+                case ANIM_OUT_CELL_VEC3:
+                    _animSetValue3(ut, ANIM_RESULT_CELL(anim), anim->v1);
+restart_vec3:
+                    _animSetValue3(ut, it, anim->v2);
+                    break;
+
+                case ANIM_OUT_CELL_DOUBLE:
+                {
+                    const UCell* cell = ANIM_RESULT_CELL(anim);
+                    anim->v1[0] = ur_double(cell);
+                    anim->v2[0] = ur_double(it);
+                }
                     break;
             }
             anim->behavior &= ~ANIM_DISABLED;
