@@ -43,7 +43,7 @@ extern void block_markBuf( UThread*, UBuffer* );
 
 void ur_gcReport( const UBuffer* store, UThread* ut )
 {
-    static const char datatypeChar[] = ".!nlcidDty+3w'::ob0s%v[(/|<CeFfp~~~~~";
+    static const char datatypeChar[] = ".!nlcidDty+3Tw':gob0s%v[(/|<CHeFfap~~~~~";
     int used = 0;
     int unused = 0;
     const UBuffer* it  = store->ptr.buf;
@@ -157,8 +157,8 @@ void ur_recycle( UThread* ut )
 
 #ifdef GC_REPORT
     dprint( "\nRecycle UThread %p:\n\n", (void*) ut );
-    ur_blkReport( &ut->env->dataStore, "Env" );
-    ur_blkReport( &ut->dataStore,      "Thr" );
+    ur_blkReport( &ut->env->sharedStore, "Env" );
+    ur_blkReport( &ut->dataStore, "Thr" );
     ur_gcReport( &ut->dataStore, ut );
 #endif
 
