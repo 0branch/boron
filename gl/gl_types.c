@@ -1471,6 +1471,18 @@ widget_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
 }
 
 
+static void widget_markOnce( UThread* ut, GWidget* wp )
+{
+    if( wp->flags & GW_RECYCLE )
+    {
+        GMarkFunc func = wp->wclass->mark;
+        if( func )
+            func( ut, wp );
+        wp->flags &= ~GW_RECYCLE;
+    }
+}
+
+
 static void widget_recycle( UThread* ut, int phase )
 {
     if( ut == glEnv.guiUT )
@@ -1489,19 +1501,25 @@ static void widget_recycle( UThread* ut, int phase )
 
             case UR_RECYCLE_SWEEP:
             {
+                GWidget* wp;
                 GWidget** start  = it;
                 GWidget** packIt = 0;
                 while( it != end )
                 {
-                    if( (*it)->flags & GW_RECYCLE )
+                    wp = *it;
+
+                    if( wp->flags & GW_CONSTRUCT )
+                        widget_markOnce( ut, wp );
+
+                    if( wp->flags & GW_RECYCLE )
                     {
-                        gui_freeWidget( *it );
+                        gui_freeWidget( wp );
                         if( ! packIt )
                             packIt = it;
                     }
                     else if( packIt )
                     {
-                        *packIt++ = *it;
+                        *packIt++ = wp;
                     }
                     ++it;
                 }
@@ -1524,14 +1542,8 @@ static void widget_mark( UThread* ut, UCell* cell )
     }
     else
     {
-        wp = gui_root( wp );
-        if( wp && (wp->flags & GW_RECYCLE) )
-        {
-            GMarkFunc func = wp->wclass->mark;
-            if( func )
-                func( ut, wp );
-            wp->flags &= ~GW_RECYCLE;
-        }
+        if( (wp = gui_root( wp )) )
+            widget_markOnce( ut, wp );
     }
 }
 

@@ -87,9 +87,14 @@ GWidget* gui_allocWidget( int size, const GWidgetClass* wclass,
         // Link to parent immediately so any recycle that occurs during
         // make will call the child's mark method.
         if( parent )
+        {
             gui_appendChild( parent, wp );
+        }
         else
+        {
             ur_arrAppendPtr( &glEnv.rootWidgets, wp );
+            wp->flags |= GW_CONSTRUCT;
+        }
     }
     return wp;
 }
@@ -111,7 +116,8 @@ GWidget* gui_makeFail( GWidget* wp )
         else
         {
             // Leave cleanup to widget_recycle().
-            wp->flags |= GW_HIDDEN | GW_DISABLED | GW_DESTRUCT;
+            wp->flags = (wp->flags & ~GW_CONSTRUCT) |
+                        GW_HIDDEN | GW_DISABLED | GW_DESTRUCT;
         }
     }
     return NULL;
@@ -967,6 +973,9 @@ static UStatus _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
                 ur_widgetPtr(cell) = wp;
                 setWord = 0;
             }
+
+            if( ! parent )
+                wp->flags &= ~GW_CONSTRUCT;
         }
         else
         {
@@ -1024,10 +1033,13 @@ static GWidget* root_make( UThread* ut, UBlockIter* bi,
                            const GWidgetClass* wclass, GWidget* parent )
 {
     GUIRoot* ep = (GUIRoot*) gui_allocWidget( sizeof(GUIRoot), wclass, parent );
+    /*
+    // These are set to zero by gui_allocWidget.
     ep->keyFocus = ep->mouseFocus = 0;
     ep->mouseGrabbed = 0;
     ep->lastMotion.type = 0;
     ep->motionTracking = 0;
+    */
 
     if( ++bi->it == bi->end )
         goto done;
