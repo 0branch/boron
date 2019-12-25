@@ -893,16 +893,48 @@ static int _mathFunc( const UCell* a1, UCell* res, double (*func)(double) )
     return: Sine of number.
     group: math
 */
-/*-cf-
-    atan
-        n   int!/double!
-    return: Arc tangent of number.
-    group: math
-*/
 CFUNC(cfunc_sqrt) { (void) ut; return _mathFunc( a1, res, sqrt ); }
 CFUNC(cfunc_cos)  { (void) ut; return _mathFunc( a1, res, cos ); }
 CFUNC(cfunc_sin)  { (void) ut; return _mathFunc( a1, res, sin ); }
-CFUNC(cfunc_atan) { (void) ut; return _mathFunc( a1, res, atan ); }
+
+
+/*-cf-
+    atan
+        n   int!/double!/coord!/vec3!
+    return: Arc tangent of number or x,y coordinate.
+    group: math
+*/
+CFUNC(cfunc_atan)
+{
+    double n, rise;
+    (void) ut;
+
+    switch( ur_type(a1) )
+    {
+        case UT_INT:
+            n = (double) ur_int(a1);
+            goto arctan1;
+        case UT_DOUBLE:
+            n = ur_double(a1);
+arctan1:
+            n = atan( n );
+            break;
+
+        case UT_COORD:
+            n    = (double) a1->coord.n[0];
+            rise = (double) a1->coord.n[1];
+            goto arctan2;
+        case UT_VEC3:
+            n    = a1->vec3.xyz[0];
+            rise = a1->vec3.xyz[1];
+arctan2:
+            n = atan2( rise, n );
+            break;
+    }
+    ur_setId(res, UT_DOUBLE);
+    ur_double(res) = n;
+    return UR_OK;
+}
 
 
 extern int context_make( UThread* ut, const UCell* from, UCell* res );
