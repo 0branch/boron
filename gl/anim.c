@@ -854,6 +854,9 @@ restart_vec3:
                 {
                     const UCell* cell = ANIM_RESULT_CELL(anim);
                     anim->v1[0] = ur_double(cell);
+
+                    if( ur_is(it, UT_WORD) )
+                        it = ur_wordCell(ut, it);
                     anim->v2[0] = ur_double(it);
                 }
                     break;
@@ -870,6 +873,7 @@ restart_vec3:
 
         case ANIM_REP_DURATION:
             AR_REPORT( "ANIM_REP_DURATION %f\n", ur_double(it) );
+duration:
             anim->timeScale = (float) (1.0 / ur_double(it));
             break;
 
@@ -904,6 +908,8 @@ restart_vec3:
                     it = ur_wordCell(ut, it);
                     if( ur_is(it, UT_VECTOR) )
                         goto curve;
+                    if( ur_is(it, UT_DOUBLE) )
+                        goto duration;
                     break;
             }
             break;
@@ -939,16 +945,18 @@ static void animInit_init( AnimInit* init, UIndex buf, UIndex bufIndex,
 }
 
 
+static float _hermiteLinear[8] = { 0.5, 0.5, 0.1, 0.1, 0.0, 0.0, 1.0, 1.0 };
+
 static void anim_init( Anim* anim, UIndex buf, UIndex bufIndex, int outType )
 {
     anim->out.cell.bufN = buf;
     anim->out.cell.i    = bufIndex;
     anim->updateBlkN    = UR_INVALID_BUF;
     anim->finishBlkN    = UR_INVALID_BUF;
-    anim->curve         = NULL;
+    anim->curve         = _hermiteLinear;
     anim->curvePos      = 0.0f;
     anim->timeScale     = 1.0f;
-    anim->curveLen      = 0;
+    anim->curveLen      = 8;
     anim->behavior      = ANIM_ONCE | ANIM_DISABLED;
     anim->repeatCount   = 0;
     anim->outType       = outType;
