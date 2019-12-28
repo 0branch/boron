@@ -2266,6 +2266,10 @@ bad_quad:
                                         vp[0], vp[1], vp[2] );
                         }
                             break;
+
+                        default:
+                            typeError( "uniform expected "
+                                       "logic!/int!/double!/vec3! value" );
                     }
                 }
             }
