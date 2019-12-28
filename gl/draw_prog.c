@@ -52,6 +52,7 @@ enum DPOpcode
     DP_UNIFORM_1F,          // loc val
     DP_UNIFORM_3F,          // loc f0 f1 f2
     DP_VIEW_UNIFORM,        // ctxN index loc
+    DP_VIEW_UNIFORM_DIR,    // ctxN index loc
     DP_BIND_TEXTURE,        // texUnit gltex 
     DP_BIND_ARRAY,          // glbuffer
     DP_BIND_ELEMENTS,       // glbuffer
@@ -1999,6 +2000,7 @@ bad_quad:
                 break;
 
             case DOP_VIEW_UNIFORM:      // view-uniform name vec3
+                                        // view-uniform/dir name vec3
             {
                 const char* name;
                 GLint loc;
@@ -2022,7 +2024,8 @@ bad_quad:
                 INC_PC
                 if( ur_is(pc, UT_GETWORD) )
                 {
-                    emitWordOp( emit, pc, DP_VIEW_UNIFORM );
+                    emitWordOp( emit, pc, option ? DP_VIEW_UNIFORM_DIR
+                                                 : DP_VIEW_UNIFORM );
                     emitDPArg( emit, loc );
                 }
                 else
@@ -3057,11 +3060,20 @@ dispatch:
             break;
 
         case DP_VIEW_UNIFORM:
+        case DP_VIEW_UNIFORM_DIR:
             PC_WORD;
             if( ur_is(val, UT_VEC3) )
             {
                 float vec[3];
-                ur_transform3x3( val->vec3.xyz, es_viewStack(), vec );
+                if( ((uint8_t) ops) == DP_VIEW_UNIFORM_DIR )
+                {
+                    ur_transform3x3( val->vec3.xyz, es_viewStack(), vec );
+                }
+                else
+                {
+                    memcpy( vec, val->vec3.xyz, sizeof(vec) );
+                    ur_transform( vec, es_viewStack() );
+                }
                 glUniform3fv( pc[0], 1, vec );
             }
             ++pc;
