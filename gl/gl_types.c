@@ -238,32 +238,32 @@ static void _texRast( TextureDef* tex, const RasterHead* rh )
 
 static void _texCoord( TextureDef* tex, const UCell* cell )
 {
+    tex->pixels = 0;
+    tex->comp   =
+    tex->format = GL_RGBA;
+
     if( ur_is(cell, UT_COORD) )
     {
         tex->width  = cell->coord.n[0];
         tex->height = cell->coord.n[1];
+
+        if( cell->coord.len > 2 )
+        {
+            if( cell->coord.n[2] == 3 )
+            {
+                tex->comp = tex->format = GL_RGB;
+            }
+            else if( cell->coord.n[2] == 1 )
+            {
+                tex->comp   = IFORMAT_GRAY;
+                tex->format = FORMAT_GRAY;
+            }
+        }
     }
     else
     {
         tex->width  = ur_int(cell);
         tex->height = 1;
-    }
-
-    tex->pixels = 0;
-    tex->comp   =
-    tex->format = GL_RGBA;
-
-    if( cell->coord.len > 2 )
-    {
-        if( cell->coord.n[2] == 3 )
-        {
-            tex->comp = tex->format = GL_RGB;
-        }
-        else if( cell->coord.n[2] == 1 )
-        {
-            tex->comp   = IFORMAT_GRAY;
-            tex->format = FORMAT_GRAY;
-        }
     }
 }
 
@@ -335,7 +335,7 @@ static int _textureKeyword( UAtom name, TextureDef* def )
 
 /*
   texture! raster
-  texture! coord   ; 2D Texture
+  texture! coord   ; 2D Texture (w,h  w,h,fmt)
   texture! int     ; 1D Texture
   texture! [
     raster!/coord!/int!/binary!/vector!
@@ -362,7 +362,7 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
         _texRast( &def, ur_rastHead(from) );
         goto build;
     }
-    else if( ur_is(from, UT_COORD) )
+    else if( ur_is(from, UT_COORD) || ur_is(from, UT_INT) )
     {
         _texCoord( &def, from );
         goto build;
@@ -451,9 +451,7 @@ build:
     {
         GLenum err = glGetError();
         if( err != GL_NO_ERROR )
-        {
             return ur_error( ut, UR_ERR_INTERNAL, gl_errorString( err ) );
-        }
     }
 
     if( def.mipmap )
