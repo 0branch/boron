@@ -187,9 +187,10 @@ raster_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
 typedef struct
 {
     const void* pixels;
-    int    width;
-    int    height;
-    int    mipmap;
+    uint16_t    width;
+    uint16_t    height;
+    uint16_t    depth;
+    uint16_t    mipmap;
     GLenum format;
     GLint  comp;    // internalFormat
     GLint  wrap;
@@ -326,6 +327,15 @@ static int _textureKeyword( UAtom name, TextureDef* def )
             }
             break;
 
+        case UR_ATOM_DEPTH:
+            // Treat as GL_TEXTURE_3D with all dimensions equal.
+            if( def->height )
+            {
+                def->depth  = def->height / def->width;
+                def->height = def->width;
+            }
+            break;
+
         default:
             return 0;
     }
@@ -341,6 +351,7 @@ static int _textureKeyword( UAtom name, TextureDef* def )
     raster!/coord!/int!/binary!/vector!
     'mipmap 'nearest 'linear 'repeat 'clamp
     'gray 'rgb 'rgba 'f32
+    'depth
   ]
 */
 int texture_make( UThread* ut, const UCell* from, UCell* res )
@@ -351,6 +362,7 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
     GLenum target = GL_TEXTURE_2D;
 
 
+    def.depth      = 1;
     def.mipmap     = 0;
     def.comp       = 0;
     def.wrap       = GL_REPEAT;
@@ -439,14 +451,18 @@ valid_val:
 
 build:
 
+    if( def.depth > 1 )
+        target = GL_TEXTURE_3D;
+
     name = glid_genTexture();
     glBindTexture( target, name );
 
-    //if( target == GL_TEXTURE_2D )
-    {
+    if( target == GL_TEXTURE_3D )
+        glTexImage3D( GL_TEXTURE_3D, 0, def.comp, def.width, def.height,
+                      def.depth, 0, def.format, type, def.pixels );
+    else
         glTexImage2D( GL_TEXTURE_2D, 0, def.comp, def.width, def.height,
                       0, def.format, type, def.pixels );
-    }
 
     {
         GLenum err = glGetError();
@@ -471,6 +487,8 @@ build:
     // GL_CLAMP, GL_CLAMP_TO_EDGE, GL_REPEAT.
     glTexParameteri( target, GL_TEXTURE_WRAP_S, def.wrap );
     glTexParameteri( target, GL_TEXTURE_WRAP_T, def.wrap );
+    if( target == GL_TEXTURE_3D )
+        glTexParameteri( target, GL_TEXTURE_WRAP_R, def.wrap );
 
     // TODO: Support all GL_TEXTURE_MIN_FILTER types.
     // GL_NEAREST, GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST, etc.

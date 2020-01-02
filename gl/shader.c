@@ -555,13 +555,16 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
 
             case GL_SAMPLER_2D:
             case GL_SAMPLER_2D_SHADOW:
-                glActiveTexture( GL_TEXTURE0 + texUnit );
                 glBindTexture( GL_TEXTURE_2D, ur_texId(cval) );
+sampler_uniform:
+                glActiveTexture( GL_TEXTURE0 + texUnit );
                 glUniform1i( pi->location, texUnit );
                 ++texUnit;
                 break;
 
-            //case GL_SAMPLER_3D:
+            case GL_SAMPLER_3D:
+                glBindTexture( GL_TEXTURE_3D, ur_texId(cval) );
+                goto sampler_uniform;
 
             case GL_FLOAT_MAT4:
                 /*
