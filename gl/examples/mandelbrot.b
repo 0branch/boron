@@ -76,7 +76,6 @@ demo-exec draw-list [
     clear
 
     camera view-cam
-    scale :zoom
     cull on
     shader mandel-sh
     call cube-dl

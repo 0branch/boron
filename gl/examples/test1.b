@@ -51,7 +51,6 @@ test-sh: make shader! [
 box-sh: copy test-sh
 box-sh/cmap: load-texture %data/image/color_numbers.png
 box-dl: draw-list append [
-    scale :zoom
     depth-test on
     blend off
     shader box-sh
@@ -72,6 +71,7 @@ font-dl: draw-list [
     uniform test_alpha true
     text 10,300 "Hello World!"
 
+    (zoom: view-cam/orbit/3)
     text 10,280 "Zoom: "
     text /*10,280*/ :zoom
 ]

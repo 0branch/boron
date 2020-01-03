@@ -13,8 +13,6 @@ ifn args [
 display 640,480
 clear-color 0.1,0.3,0.8
 
-zoom: 1.0
-
 controls: context [
     con: none
     value:
@@ -111,8 +109,7 @@ demo-window: [
             ]
         ]
         mouse-wheel: [
-            zoom: mul zoom pick [1.1 0.90909] gt? event 0
-           ;print ["zoom:" zoom]
+            view-cam/zoom pick [0.90909 1.1] gt? event 0
         ]
         resize: [view-cam/viewport: event]
     ]
@@ -128,6 +125,11 @@ view-cam: make orbit-cam [
     focal-pnt: 0.0, 0.0, 0.0
 
     turntable self 0,0
+
+    zoom: func [scale /extern orbit] [
+        orbit: poke orbit 3 mul third orbit scale
+        turntable self 0,0
+    ]
 ]
 
 demo-exec: func [dl /update /extern rclock-delta rclock] [
