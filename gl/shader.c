@@ -302,6 +302,12 @@ void destroyShader( Shader* sh )
 }
 
 
+#define ARRAY_ENUM_OFF  3   // 0x8B4D - 0x8B4F
+#define ARRAY_FLOAT_VEC2    (GL_FLOAT_VEC2 - ARRAY_ENUM_OFF)
+#define ARRAY_FLOAT_VEC3    (GL_FLOAT_VEC3 - ARRAY_ENUM_OFF)
+#define ARRAY_FLOAT_VEC4    (GL_FLOAT_VEC4 - ARRAY_ENUM_OFF)
+
+
 /*
   Sets res to either a shader! or a context! whose first value is a shader!.
   Returns UR_OK/UR_THROW.
@@ -344,8 +350,13 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
         if( name[0] == 'g' && name[1] == 'l' && name[2] == '_' )
             continue;
 
+        // Remove any "[0]" array suffix for Boron atom.
+        if( name[ length-1 ] == ']' )
+            length -= 3;
+
         pi->type     = type;
         pi->location = glGetUniformLocation( shad.program, name );
+        pi->size     = size;
         pi->name     = ur_intern( ut, name, length );
         if( pi->name == UR_INVALID_ATOM )
             return UR_THROW;
@@ -371,8 +382,8 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
         {
             cval = ur_ctxAddWord( ctx, pi->name );
 #if 0
-            printf( "KR Shader Param %d is type %d\n",
-                    (int) (pi - param), pi->type );
+            printf( "KR Shader Param %d type:0x%X size:%d\n",
+                    (int) (pi - param), pi->type, pi->size );
 #endif
             switch( pi->type )
             {
@@ -383,7 +394,11 @@ int ur_makeShader( UThread* ut, const char* vert, const char* frag, UCell* res )
 
                 case GL_FLOAT_VEC2:
                 case GL_FLOAT_VEC3:
-                //case GL_FLOAT_VEC4:
+                case GL_FLOAT_VEC4:
+                    // Use custom non-GL enum for arrays.
+                    if( pi->size > 1 )
+                        pi->type -= ARRAY_ENUM_OFF;
+
                     ur_setId( cval, UT_VEC3 );
                     cval->vec3.xyz[0] =
                     cval->vec3.xyz[1] =
@@ -498,8 +513,9 @@ GLuint ur_shaderProgram( UThread* ut, const UCell* cell )
 }
 
 
-void setShaderUniforms( const Shader* sh, const UBuffer* blk )
+void setShaderUniforms( UThread* ut, const Shader* sh, const UBuffer* blk )
 {
+    USeriesIter si;
     const ShaderParam* pi   = sh->param;
     const ShaderParam* pend = sh->param + sh->paramCount;
     const UCell* cval = blk->ptr.cell;
@@ -519,6 +535,27 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
                 glUniform1f( pi->location, ur_double(cval) );
                 break;
 
+            case ARRAY_FLOAT_VEC2:
+                ur_seriesSlice( ut, &si, cval );
+                assert( si.buf->form == UR_VEC_F32 );
+                glUniform2fv( pi->location, (si.end - si.it) / 2,
+                              si.buf->ptr.f + si.it );
+                break;
+
+            case ARRAY_FLOAT_VEC3:
+                ur_seriesSlice( ut, &si, cval );
+                assert( si.buf->form == UR_VEC_F32 );
+                glUniform3fv( pi->location, (si.end - si.it) / 3,
+                              si.buf->ptr.f + si.it );
+                break;
+
+            case ARRAY_FLOAT_VEC4:
+                ur_seriesSlice( ut, &si, cval );
+                assert( si.buf->form == UR_VEC_F32 );
+                glUniform4fv( pi->location, (si.end - si.it) / 4,
+                              si.buf->ptr.f + si.it );
+                break;
+
             case GL_FLOAT_VEC2:
                 glUniform2fv( pi->location, 1, cval->vec3.xyz );
                 break;
@@ -535,7 +572,10 @@ void setShaderUniforms( const Shader* sh, const UBuffer* blk )
 
             case GL_INT:
             case GL_BOOL:
-                glUniform1i( pi->location, ur_int(cval) );
+                if( ur_is(cval, UT_LOGIC) )
+                    glUniform1i( pi->location, ur_logic(cval) );
+                else
+                    glUniform1i( pi->location, ur_int(cval) );
                 break;
 
             case GL_INT_VEC2:

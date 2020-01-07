@@ -26,6 +26,7 @@ typedef struct
     GLenum type;
     GLint  location;
     UAtom  name;
+    uint16_t size;
 }
 ShaderParam;
 
@@ -43,7 +44,7 @@ int  ur_makeShader( UThread*, const char* vert, const char* frag, UCell* );
 void destroyShader( Shader* );
 //void loadShader( UThread*, UCell* );
 //void setUniform( UThread*, UAtom name, UCell* );
-void setShaderUniforms( const Shader*, const UBuffer* );
+void setShaderUniforms( UThread*, const Shader*, const UBuffer* );
 int  shaderTextureUnit( const Shader*, UAtom name );
 const Shader* shaderContext( UThread*, const UCell*, const UBuffer** ctxPtr );
 

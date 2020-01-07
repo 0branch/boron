@@ -3037,7 +3037,7 @@ dispatch:
             cc.series.buf = *pc++;
             sh = shaderContext( ut, &cc, &blk );
             if( sh && blk )
-                setShaderUniforms( sh, blk );
+                setShaderUniforms( ut, sh, blk );
         }
             break;
 
