@@ -90,6 +90,9 @@ controls: context [
     ]
 ]
 
+ortho-cam: copy ortho-cam
+
+_window-spec:
 demo-window: [
     root [
         close: [quit]
@@ -111,7 +114,7 @@ demo-window: [
         mouse-wheel: [
             view-cam/zoom pick [0.90909 1.1] gt? event 0
         ]
-        resize: [view-cam/viewport: event]
+        resize: [view-cam/viewport: ortho-cam/viewport: event]
     ]
 ]
 
@@ -132,18 +135,34 @@ view-cam: make orbit-cam [
     ]
 ]
 
+gui-style: none
+
+demo-widgets: func [spec /extern gui-style _window-spec] [
+    ; Load gui-style only once but always apply any widget changes.
+    ifn gui-style [
+        gui-style: do %data/style/oxif/gui.b
+        gui-style/gl-setup
+    ]
+    _window-spec: append copy demo-window spec
+]
+
 demo-exec: func [dl /update /extern rclock-delta rclock] [
-    window: make widget! demo-window
+    window: make widget! _window-spec
+    resize window display-area
+    gui-dl: either gui-style window none
+
     forever pick [[
         rclock-delta: to-double sub tmp: now rclock
         rclock: tmp
 
         draw dl
+        draw gui-dl
         display-swap
         handle-events window
         sleep 0.002
     ][
         draw dl
+        draw gui-dl
         display-swap
         handle-events/wait window
     ]] update
