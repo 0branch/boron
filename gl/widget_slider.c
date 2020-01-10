@@ -65,6 +65,9 @@ GSlider;
 #define EX_PTR  GSlider* ep = (GSlider*) wp
 
 
+/*
+  Set internal data.val clamped to min/max.
+*/
 static void slider_setValue( GSlider* ep, const UCell* cell )
 {
     struct Value* da = &ep->data;
@@ -168,6 +171,15 @@ static uint16_t slider_knobTrans( GSlider* ep, float movef, float range )
 }
 
 
+static void slider_updateTd( GSlider* ep )
+{
+    int majorD = (ep->orient == HORIZONTAL) ? ep->wid.area.w
+                                            : ep->wid.area.h;
+    ep->td = slider_knobTrans( ep, (float) (majorD - ep->knobLen),
+                               ep->data.max - ep->data.min );
+}
+
+
 static int slider_place( GSlider* ep, int px )
 {
     int nx, moveW;
@@ -217,14 +229,39 @@ static int slider_adjust( GSlider* ep, float adj )
         n = da->max;
     if( da->val != n )
     {
-        int majorD = (ep->orient == HORIZONTAL) ? ep->wid.area.w
-                                                : ep->wid.area.h;
         da->val = n;
-        ep->td = slider_knobTrans( ep, (float) (majorD - ep->knobLen),
-                                   ep->data.max - ep->data.min );
+        slider_updateTd( ep );
         return 1;
     }
     return 0;
+}
+
+
+static void slider_updateDpTrans( UThread* ut, GSlider* ep )
+{
+    if( ep->dpTrans )
+    {
+        UIndex resN = gui_parentDrawProg( (GWidget*) ep );
+        if( resN != UR_INVALID_BUF )
+        {
+            float tx, ty;
+            if( ep->orient == HORIZONTAL )
+            {
+                tx = (float) ep->td;
+                ty = 0.0f;
+            }
+            else
+            {
+                tx = 0.0f;
+#ifdef YTOP
+                ty = (float) ep->td;
+#else
+                ty = (float) (ep->wid.area.h - ep->knobLen - ep->td);
+#endif
+            }
+            ur_setTransXY( ut, resN, ep->dpTrans, tx, ty );
+        }
+    }
 }
 
 
@@ -336,29 +373,7 @@ static void slider_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
     return;
 
 trans:
-    if( ep->dpTrans )
-    {
-        UIndex resN = gui_parentDrawProg( wp );
-        if( resN != UR_INVALID_BUF )
-        {
-            float tx, ty;
-            if( ep->orient == HORIZONTAL )
-            {
-                tx = (float) ep->td;
-                ty = 0.0f;
-            }
-            else
-            {
-                tx = 0.0f;
-#ifdef YTOP
-                ty = (float) ep->td;
-#else
-                ty = (float) (wp->area.h - ep->knobLen - ep->td);
-#endif
-            }
-            ur_setTransXY( ut, resN, ep->dpTrans, tx, ty );
-        }
-    }
+    slider_updateDpTrans( ut, ep );
 activate:
     if( ep->actionN )
         gui_doBlockN( ut, ep->actionN );
@@ -496,10 +511,17 @@ static int slider_select( GWidget* wp, UAtom atom, UCell* res )
 }
 
 
+/*
+  Set the internal value and update knob, but the action block is not called.
+*/
 static UStatus slider_set( UThread* ut, GWidget* wp, const UCell* val )
 {
+    EX_PTR;
     (void) ut;
-    slider_setValue( (GSlider*) wp, val );
+
+    slider_setValue( ep, val );
+    slider_updateTd( ep );
+    slider_updateDpTrans( ut, ep );
     return UR_OK;
 }
 
