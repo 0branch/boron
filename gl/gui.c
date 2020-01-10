@@ -2078,16 +2078,44 @@ static int _int16Sum( const int16_t* it, int n )
 }
 
 
+static int _int16Max( const int16_t* it, int n )
+{
+    const int16_t* end = it + n;
+    for( n = 0; it != end; ++it )
+    {
+        if( *it > n )
+            n = *it;
+    }
+    return n;
+}
+
+
+typedef struct
+{
+    int16_t colMin[64];
+    int16_t* colPol;
+    int16_t* rowMin;
+    int16_t* rowPol;
+}
+GridStats;
+
+
+static void grid_initStats( GridStats* gs, int cols, int rows )
+{
+    int cells = cols * 2 + rows * 2;
+    assert( cells < 64 );
+    memset( gs->colMin, 0, sizeof(int16_t) * cells );
+
+    gs->colPol = gs->colMin + cols;
+    gs->rowMin = gs->colPol + cols;
+    gs->rowPol = gs->rowMin + rows;
+}
+
+
 static void grid_sizeHint( GWidget* wp, GSizeHint* size )
 {
     EX_PTR;
-    int16_t colMin[32];
-    int16_t* rowMin;
-    int cells = ep->cols + ep->rows;
-
-    assert( cells < 32 );
-    memset( colMin, 0, sizeof(int16_t) * cells );
-    rowMin = colMin + ep->cols;
+    GridStats gs;
 
     size->minW    = ep->marginL + ep->marginR;
     size->minH    = ep->marginT + ep->marginB;
@@ -2095,17 +2123,20 @@ static void grid_sizeHint( GWidget* wp, GSizeHint* size )
     size->maxH    = GW_MAX_DIM;
     size->weightX = GW_WEIGHT_STD;
     size->weightY = GW_WEIGHT_STD;
-    size->policyX = GW_POL_WEIGHTED;
-    size->policyY = GW_POL_WEIGHTED;
 
-    grid_stats( wp, ep->cols, colMin, rowMin, 0, 0 );
-    size->minW += _int16Sum( colMin, ep->cols );
-    size->minH += _int16Sum( rowMin, ep->rows );
+    grid_initStats( &gs, ep->cols, ep->rows );
+    grid_stats( wp, ep->cols, gs.colMin, gs.rowMin, gs.colPol, gs.rowPol );
+
+    size->minW += _int16Sum( gs.colMin, ep->cols );
+    size->minH += _int16Sum( gs.rowMin, ep->rows );
 
     if( ep->cols > 1 )
         size->minW += (ep->cols - 1) * ep->spacing;
     if( ep->rows > 1 )
         size->minH += (ep->rows - 1) * ep->spacing;
+
+    size->policyX = _int16Max( gs.colPol, ep->cols );
+    size->policyY = _int16Max( gs.rowPol, ep->rows );
 }
 
 
@@ -2147,26 +2178,18 @@ static void grid_layout( GWidget* wp )
     GWidget* it;
     GSizeHint cs;
     GRect cr;
-    int16_t colMin[64];
-    int16_t* colPol;
-    int16_t* rowMin;
-    int16_t* rowPol;
-    int cells = ep->cols * 2 + ep->rows * 2;
+    GridStats gs;
     int row, col;
     int sx = wp->area.x + ep->marginL;
     int sy = wp->area.y + wp->area.h - ep->marginT;
 
-    assert( cells < 64 );
-    memset( colMin, 0, sizeof(int16_t) * cells );
-    colPol = colMin + ep->cols;
-    rowMin = colPol + ep->cols;
-    rowPol = rowMin + ep->rows;
 
-    grid_stats( wp, ep->cols, colMin, rowMin, colPol, rowPol );
-    _distributeSpace( colMin, colPol, ep->cols,
+    grid_initStats( &gs, ep->cols, ep->rows );
+    grid_stats( wp, ep->cols, gs.colMin, gs.rowMin, gs.colPol, gs.rowPol );
+    _distributeSpace( gs.colMin, gs.colPol, ep->cols,
                       wp->area.w - (ep->marginL + ep->marginR) -
                       ((ep->cols - 1) * ep->spacing) );
-    _distributeSpace( rowMin, rowPol, ep->rows,
+    _distributeSpace( gs.rowMin, gs.rowPol, ep->rows,
                       wp->area.h - (ep->marginT + ep->marginB) -
                       ((ep->rows - 1) * ep->spacing) );
 
@@ -2174,29 +2197,29 @@ static void grid_layout( GWidget* wp )
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->sizeHint( it, &cs );
 
-        cr.x = sx + _int16Sum( colMin, col );
+        cr.x = sx + _int16Sum( gs.colMin, col );
         if( col )
             cr.x += (col - 1) * ep->spacing;
 
-        cr.y = sy - _int16Sum( rowMin, row + 1 );
+        cr.y = sy - _int16Sum( gs.rowMin, row + 1 );
         if( row )
             cr.y -= row * ep->spacing;
 
         if( cs.policyX == GW_POL_FIXED )
         {
             cr.w = cs.minW;
-            cr.x += (colMin[ col ] - cs.minW) / 2;
+            cr.x += (gs.colMin[ col ] - cs.minW) / 2;
         }
         else
-            cr.w = colMin[ col ];
+            cr.w = gs.colMin[ col ];
 
         if( cs.policyY == GW_POL_FIXED )
         {
             cr.h = cs.minH;
-            cr.y += (rowMin[ row ] - cs.minH) / 2;
+            cr.y += (gs.rowMin[ row ] - cs.minH) / 2;
         }
         else
-            cr.h = rowMin[ row ];
+            cr.h = gs.rowMin[ row ];
 
 #ifdef REPORT_LAYOUT
         printf( "  grid layout  %p %s\t%d,%d,%d,%d\n",
