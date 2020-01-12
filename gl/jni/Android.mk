@@ -37,6 +37,7 @@ LOCAL_C_INCLUDES := ../include ../urlan ../eval jni/glv
 LOCAL_SRC_FILES := es_compat.c \
     audio.c \
     boron-gl.c \
+    anim.c \
     draw_prog.c \
     geo.c \
     glid.c \
