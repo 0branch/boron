@@ -82,23 +82,16 @@ struct DrawTextState
 typedef uint16_t    DPSwitch;
 
 
-#define CS_MAX_ATTR     4
+#define CS_MAX_ATTR     8
 #define CS_MAX_DIVISOR  8
 
 struct ClientState
 {
-    uint16_t flags;
     uint16_t attrCount;
     uint16_t divisorCount;
-    uint16_t _pad;
     GLuint attr[ CS_MAX_ATTR ];
     GLuint divisor[ CS_MAX_DIVISOR ];
 };
-
-// Client State Array Flags
-#define CSA_NORMAL  0x01
-#define CSA_COLOR   0x02
-#define CSA_UV      0x04
 
 
 typedef struct

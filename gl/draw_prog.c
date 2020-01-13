@@ -2665,18 +2665,10 @@ void ur_setDPSwitch( UThread* ut, UIndex resN, DPSwitch sid, int n )
 
 
 
+// Disable all enabled vertex attributes except ALOC_VERTEX.
 static void disableVertexAttrib( struct ClientState* cs )
 {
-    int f = cs->flags;
-
-    // Always leaving ALOC_VERTEX enabled.
-
-    if( f & CSA_NORMAL )
-        glDisableVertexAttribArray( ALOC_NORMAL );
-    if( f & CSA_COLOR )
-        glDisableVertexAttribArray( ALOC_COLOR );
-    if( f & CSA_UV )
-        glDisableVertexAttribArray( ALOC_TEXTURE );
+    int f;
 
     for( f = 0; f < cs->attrCount; ++f )
         glDisableVertexAttribArray( cs->attr[ f ] );
@@ -2706,7 +2698,6 @@ static void disableVertexAttrib( struct ClientState* cs )
 
 void ur_initDrawState( DPState* state )
 {
-    state->client.flags =
     state->client.attrCount = 0;
     state->client.divisorCount = 0;
 
@@ -2910,6 +2901,10 @@ UStatus ur_runDrawProg2( UThread* ut, DPState* ds, UIndex n )
     blk = ur_buffer( *pc++ ); \
     val = blk->ptr.cell + *pc++
 
+#define CLIENT_ATTRIB(loc) \
+    assert( ds->client.attrCount <= CS_MAX_ATTR ); \
+    ds->client.attr[ ds->client.attrCount++ ] = loc
+
     blk = ur_buffer( n );
     if( blk->flags )    // UR_DRAWPROG_HIDDEN
         return UR_OK;
@@ -3089,10 +3084,9 @@ dispatch:
         case DP_BIND_ARRAY:
             REPORT_1( "BIND_ARRAY %d\n", *pc );
 #if 1
-            if( ds->client.flags )
+            if( ds->client.attrCount )
             {
                 disableVertexAttrib( &ds->client );
-                ds->client.flags = 0;
                 ds->client.attrCount = 0;
                 ds->client.divisorCount = 0;
             }
@@ -3128,7 +3122,7 @@ dispatch:
             uint32_t stof = *pc++;
             REPORT_1( " NORMAL_OFFSET %08x\n", stof );
             glEnableVertexAttribArray( ALOC_NORMAL );
-            ds->client.flags |= CSA_NORMAL;
+            CLIENT_ATTRIB( ALOC_NORMAL );
             glVertexAttribPointer( ALOC_NORMAL, 3, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
         }
@@ -3139,7 +3133,7 @@ dispatch:
             uint32_t stof = *pc++;
             REPORT_1( " COLOR_OFFSET %08x\n", stof );
             glEnableVertexAttribArray( ALOC_COLOR );
-            ds->client.flags |= CSA_COLOR;
+            CLIENT_ATTRIB( ALOC_COLOR );
             glVertexAttribPointer( ALOC_COLOR, 3, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
         }
@@ -3150,7 +3144,7 @@ dispatch:
             uint32_t stof = *pc++;
             REPORT_1( " COLOR_OFFSET_4 %08x\n", stof );
             glEnableVertexAttribArray( ALOC_COLOR );
-            ds->client.flags |= CSA_COLOR;
+            CLIENT_ATTRIB( ALOC_COLOR );
             glVertexAttribPointer( ALOC_COLOR, 4, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
         }
@@ -3161,7 +3155,7 @@ dispatch:
             uint32_t stof = *pc++;
             REPORT_1( " UV_OFFSET %08x\n", stof );
             glEnableVertexAttribArray( ALOC_TEXTURE );
-            ds->client.flags |= CSA_UV;
+            CLIENT_ATTRIB( ALOC_TEXTURE );
             glVertexAttribPointer( ALOC_TEXTURE, 2, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
         }
@@ -3178,8 +3172,7 @@ dispatch:
             REPORT( " ATTR_OFFSET loc:%d size:%d stof:0x%04x\n",
                       loc, size, stof );
             glEnableVertexAttribArray( loc );
-            assert( ds->client.attrCount <= CS_MAX_ATTR );
-            ds->client.attr[ ds->client.attrCount++ ] = loc;
+            CLIENT_ATTRIB( loc );
             glVertexAttribPointer( loc, size, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
         }
@@ -3804,7 +3797,7 @@ UStatus ur_runDrawProg( UThread* ut, UIndex n )
     glEnableVertexAttribArray( ALOC_VERTEX );
 
     ok = ur_runDrawProg2( ut, &state, n );
-    if( state.client.flags )
+    if( state.client.attrCount )
         disableVertexAttrib( &state.client );
     return ok;
 }
