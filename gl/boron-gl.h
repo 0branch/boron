@@ -159,6 +159,9 @@ struct GLEnv
     int     mouseDeltaY;
     int     prevMouseX;
     int     prevMouseY;
+#ifdef __ANDROID__
+    float   pinchStartDist;
+#endif
     char    guiThrow;
 };
 

@@ -238,6 +238,38 @@ static void eventHandler( GLView* view, GLViewEvent* event )
             */
             }
             break;
+
+        case GLV_EVENT_PINCH:
+        {
+            // Simulate mouse wheel.
+            float dd;
+            float* df = glv_eventPinch(event);
+            float dist = sqrtf( df[0] * df[0] + df[1] * df[1] );
+
+            //fprintf( stderr, "GLV_EVENT_PINCH %d\n", event->code );
+            switch( event->code )
+            {
+                case 1:
+                    env->pinchStartDist = dist;
+                    return;
+                case 2:
+                    dd = dist - env->pinchStartDist;
+                    if( dd < 80.0f && dd > -80.0f )
+                        return;
+
+                    // Reset start for another 'click' of the wheel.
+                    env->pinchStartDist = dist;
+
+                    event->type = GLV_EVENT_WHEEL;
+                    event->code = 0;
+                    event->x    = 0;
+                    event->y    = (int) dd;
+                    break;
+                default:
+                    return;
+            }
+        }
+            break;
 #endif
     }
 
