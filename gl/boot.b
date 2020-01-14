@@ -54,6 +54,7 @@ gui-style-proto: context [
     editor:
     editor-active:
     editor-cursor:
+    list-bg:
     list-header:
     list-item:
     list-item-selected:

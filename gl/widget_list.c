@@ -346,6 +346,16 @@ static void listw_layout( GWidget* wp )
     save = ur_beginDP( &dpc );
 
 
+    // Background
+
+    rc = style + CI_STYLE_LIST_BG;
+    if( ur_is(rc, UT_BLOCK) )
+    {
+        gui_initRectCoord( style + CI_STYLE_AREA, wp, UR_ATOM_RECT );
+        ur_compileDP( ut, rc, 1 );
+    }
+
+
     // Header
 
     colCount = ep->colCount;

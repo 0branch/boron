@@ -42,6 +42,7 @@
   "    editor:\n"
   "    editor-active:\n"
   "    editor-cursor:\n"
+  "    list-bg:\n"
   "    list-header:\n"
   "    list-item:\n"
   "    list-item-selected:\n"

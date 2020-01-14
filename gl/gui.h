@@ -70,6 +70,7 @@ enum ContextIndexStyle
     CI_STYLE_EDITOR,        // Draw list
     CI_STYLE_EDITOR_ACTIVE, // Draw list
     CI_STYLE_EDITOR_CURSOR, // Draw list
+    CI_STYLE_LIST_BG,       // Draw list
     CI_STYLE_LIST_HEADER,   // Draw list
     CI_STYLE_LIST_ITEM,     // Draw list
     CI_STYLE_LIST_ITEM_SELECTED, // Draw list
