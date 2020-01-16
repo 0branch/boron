@@ -55,6 +55,7 @@ enum DPOpcode
     DP_VIEW_UNIFORM_DIR,    // ctxN index loc
     DP_BIND_TEXTURE,        // texUnit gltex 
     DP_BIND_ARRAY,          // glbuffer
+    DP_BIND_ARRAY_CONTINUE, // glbuffer
     DP_BIND_ELEMENTS,       // glbuffer
     DP_VERTEX_OFFSET,       // stride-offset
     DP_VERTEX_OFFSET_4,     // stride-offset
@@ -2399,12 +2400,14 @@ samples_err:
                 {
                     UBuffer* res = ur_buffer( ur_vboResN(val) );
                     GLuint* buf = vbo_bufIds(res);
+                    int isInstanced = (opcode == DOP_BUFFER_INST) ? 1 : 0;
                     if( vbo_count(res) )
                     {
                         refVBO( ur_vboResN(val) );
-                        emitOp1( DP_BIND_ARRAY, buf[0] );
+                        emitOp1( isInstanced ? DP_BIND_ARRAY_CONTINUE
+                                             : DP_BIND_ARRAY, buf[0] );
                         if( ! emitBufferOffsets( ut, emit, ur_buffer(keyN),
-                                     (opcode == DOP_BUFFER_INST) ? 1 : 0 ) )
+                                                 isInstanced ) )
                             goto error;
                     }
                 }
@@ -2672,9 +2675,11 @@ static void disableVertexAttrib( struct ClientState* cs )
 
     for( f = 0; f < cs->attrCount; ++f )
         glDisableVertexAttribArray( cs->attr[ f ] );
+    cs->attrCount = 0;
 
     for( f = 0; f < cs->divisorCount; ++f )
         glVertexAttribDivisor( cs->divisor[ f ], 0 );
+    cs->divisorCount = 0;
 }
 
 
@@ -3083,14 +3088,13 @@ dispatch:
 
         case DP_BIND_ARRAY:
             REPORT_1( "BIND_ARRAY %d\n", *pc );
-#if 1
             if( ds->client.attrCount )
-            {
                 disableVertexAttrib( &ds->client );
-                ds->client.attrCount = 0;
-                ds->client.divisorCount = 0;
-            }
-#endif
+            glBindBuffer( GL_ARRAY_BUFFER, *pc++ );
+            break;
+
+        case DP_BIND_ARRAY_CONTINUE:    // Bind array without attribute reset.
+            REPORT_1( "BIND_ARRAY_CONTINUE %d\n", *pc );
             glBindBuffer( GL_ARRAY_BUFFER, *pc++ );
             break;
 
