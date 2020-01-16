@@ -594,7 +594,7 @@ static void expand_sizeHint( GWidget* wp, GSizeHint* size )
 
 
 /*-wid-
-    space   [weight [,minimum,maximum]]
+    space   [weight minimum maximum]
             int!/coord!
 
     Fill some space to leave a gap.

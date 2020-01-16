@@ -1,6 +1,6 @@
 ---
 title:  Boron-GL User Manual
-date:   Version 0.2.4, 2014-01-05
+date:   Version 2.0.1, 2020-01-15
 ---
 
 
@@ -8,7 +8,7 @@ Overview
 ========
 
 Boron-GL extends the Boron scripting language with datatypes and functions
-for working with OpenGL 2.1.
+for working with OpenGL 3.3 & ES 3.1.
 
 Features include:
 
@@ -16,6 +16,8 @@ Features include:
   * Texture-based fonts loaded from TrueType files.
   * Loading PNG images.
   * Plays audio from WAV and OGG formats.
+  * GUI system with automatic layout and styling.
+  * Animation system.
 
 
 About This Document
@@ -94,7 +96,8 @@ Draw-Prog!
 ----------
 
 A draw program is a list of display operations compiled to byte-code.
-It is reminiscent of the GL display list (now deprecated in OpenGL 3.0).
+It is reminiscent of the OpenGL 1.0 display list (now deprecated in OpenGL 3.0)
+but operates on modern elements such as shaders and vertex buffers.
 
 **NOTE**: The terms *draw program* and *draw list* are used interchangeably.
 
@@ -117,6 +120,7 @@ Full specification:
         binary!
         'mipmap 'nearest 'linear 'repeat 'clamp
         'gray 'rgb' 'rgba
+        'depth
     ]
 
 
@@ -214,8 +218,19 @@ trans  glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA )
 Buffer
 ------
 
-Calls [glBindBuffer] and sets pointer offsets using [glVertexPointer][],
-[glNormalPointer], etc.
+Calls [glBindBuffer] and sets pointer offsets using [glVertexAttribPointer].
+
+Currently only a single *buffer* command can be used between one or more
+primitive draw commands ([tris], [points], etc.).
+
+
+Buffer-inst
+-----------
+
+Binds an array buffer like [buffer], but also sets the [glVertexAttribDivisor]
+to 1 for use in instanced draws.
+
+Currently buffer-inst must follow a [buffer] command.
 
 
 Camera
@@ -230,6 +245,8 @@ and `GL_MODELVIEW` matrices are set.
 
 Call
 ----
+
+Runs another draw program.
 
 Calling a none! value does nothing and can be used to disable the display
 of an item.
@@ -247,16 +264,20 @@ Calls [glClear] ( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT ).
 Color
 -----
 
-Sets the `gl_Color` for shaders.
+Sets a shader vec4 uniform at layout(location = 1).
 
     color
-        value   int!/coord!/vec3!/get-word!
+        value   int!/double!/coord!/vec3!/get-word!
 
-The following all set the color to red::
+The following all set the color to red (with alpha 1.0)::
 
     color 0xff0000
     color 255,0,0
     color 1.0,0.0,0.0
+
+It is recommended to use vec3!.
+
+Grey values (with alpha 1.0) can be set using int!/double!.
 
 
 Color-Mask
@@ -270,7 +291,7 @@ Calls [glColorMask] with all GL_TRUE or GL_FALSE arguments.
 Cull
 ----
 
-Calls glEnable/glDisable with GL_CULL_FACE.
+Calls [glEnable]/[glDisable] with GL_CULL_FACE.
 
     cull on/off
 
@@ -294,14 +315,25 @@ draw-prog.  The [shader][Shader] instruction must be used to specify the texture
         which   font!
 
 
+Framebuffer
+-----------
+
+Calls [glBindFramebuffer] with target GL_FRAMEBUFFER.  Pass zero to restore rendering to the display.
+
+    framebuffer
+        which   fbo! or 0
+
+
 Image
 -----
 
 Display image at 1:1 texel to pixel scale.
 An optional X,Y position can be specified.
 
-    image texture!
-    image coord!/vec3! texture!
+    image [x,y] texture!
+    image x,y,w,h
+    image/horiz xmin,xmax,ycenter texture!
+    image/vert  ymin,ymax,xcenter texture!
 
 
 Light
@@ -310,10 +342,37 @@ Light
 Controls lights.
 
 
+Lines
+-----
+
+Draw line primitives using [glDrawElements] with GL_LINES.
+
+    lines
+        elements    int!/vector!
+
+
+Line-strip
+----------
+
+Draw line primitives using [glDrawElements] with GL_LINES.
+
+    line-strip
+        elements    int!/vector!
+
+
 Pop
 ---
 
-Calls [glPopMatrix].
+Calls the equivalent of [glPopMatrix].
+
+
+Points
+------
+
+Draw point primitives using [glDrawArrays] or [glDrawElements] with GL_POINTS.
+
+    points
+        elements    int!/vector!
 
 
 Point-Size
@@ -331,7 +390,7 @@ Point-Sprite
 Push
 ----
 
-Calls [glPushMatrix].
+Calls the equivalent of [glPushMatrix].
 
 
 Rotate
@@ -395,33 +454,87 @@ Translate the model view matrix.
         distance    vec3!/get-word!
 
 
+Tris
+----
+
+Draw triangles primitives using [glDrawElements] with GL_TRIANGLES.
+
+    tris
+        elements    int!/vector!
+
+
+Tri-fan
+-------
+
+Draw triangles primitives using [glDrawElements] with GL_TRIANGLE_FAN.
+
+    tri-fan
+        elements    int!/vector!
+
+
+Tri-strip
+---------
+
+Draw triangles primitives using [glDrawElements] with GL_TRIANGLE_STRIP.
+
+    tri-strip
+        elements    int!/vector!
+
+
+Tris-inst
+---------
+
+Draw triangles primitives using [glDrawElementsInstanced].
+
+    tris-inst
+        elements    int!/vector!
+        count
+
+
+Quad
+----
+
+Draw a single textured rectangle.
+
+    quad
+        tex-size    int!/vector!
+        uvs         coord!
+        area        coord!
+
+
+Quads
+-----
+
+Draw quadrangle primitives (each as two triangles).
+
+    quads
+        elements    int!/vector!
+
+
 Uniform
 -------
 
-
-Framebuffer
------------
-
-Calls [glBindFramebuffer] with target GL_FRAMEBUFFER.  Pass zero to restore rendering to the display.
-
-    framebuffer
-        which   fbo! or 0
 
 
 [comment]: <> (include widgets.md)
 
 
 [function reference]: http://urlan.sf.net/boron/doc/func_ref_gl.html
-[glBindBuffer]: http://www.opengl.org/sdk/docs/man2/xhtml/glBindBuffer.xml
-[glBindFramebuffer]: http://www.opengl.org/sdk/docs/man3/xhtml/glBindFramebuffer.xml
-[glBlendFunc]: http://www.opengl.org/sdk/docs/man2/xhtml/glBlendFunc.xml
-[glClear]: http://www.opengl.org/sdk/docs/man2/xhtml/glClear.xml
-[glColorMask]: http://www.opengl.org/sdk/docs/man2/xhtml/glColorMask.xml
-[glDepthMask]: http://www.opengl.org/sdk/docs/man2/xhtml/glDepthMask.xml
-[glNormalPointer]: http://www.opengl.org/sdk/docs/man2/xhtml/glNormalPointer.xml
+[glBindBuffer]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glBindBuffer.xhtml
+[glBindFramebuffer]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glBindFramebuffer.xhtml
+[glBlendFunc]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glBlendFunc.xhtml
+[glClear]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glClear.xhtml
+[glColorMask]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glColorMask.xhtml
+[glDepthMask]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glDepthMask.xhtml
+[glDisable]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glEnable.xhtml
+[glDrawArrays]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glDrawArrays.xhtml
+[glDrawElements]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glDrawElements.xhtml
+[glDrawElementsInstanced]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glDrawElementsInstanced.xhtml
+[glEnable]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glEnable.xhtml
 [glPopMatrix]: http://www.opengl.org/sdk/docs/man2/xhtml/glPopMatrix.xml
 [glPushMatrix]: http://www.opengl.org/sdk/docs/man2/xhtml/glPushMatrix.xml
-[glUniform]: http://www.opengl.org/sdk/docs/man2/xhtml/glUniform.xml
-[glUseProgram]: http://www.opengl.org/sdk/docs/man2/xhtml/glUseProgram.xml
-[glVertexPointer]: http://www.opengl.org/sdk/docs/man2/xhtml/glVertexPointer.xml
-[glViewport]: http://www.opengl.org/sdk/docs/man2/xhtml/glViewport.xml
+[glUniform]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glUniform.xhtml
+[glUseProgram]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glUseProgram.xhtml
+[glVertexAttribPointer]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glVertexAttribPointer.xhtml
+[glVertexAttribDivisor]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glVertexAttribDivisor.xhtml
+[glViewport]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glViewport.xhtml
