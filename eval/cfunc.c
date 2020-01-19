@@ -930,6 +930,9 @@ arctan1:
 arctan2:
             n = atan2( rise, n );
             break;
+        default:
+            n = 0.0;
+            break;
     }
     ur_setId(res, UT_DOUBLE);
     ur_double(res) = n;
