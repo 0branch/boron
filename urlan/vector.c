@@ -602,33 +602,43 @@ int vector_append( UThread* ut, UBuffer* buf, const UCell* val )
 int vector_insert( UThread* ut, UBuffer* buf, UIndex index,
                    const UCell* val, UIndex part )
 {
-    (void) index;
-    (void) part;
-
     switch( ur_type(val) )
     {
         case UT_CHAR:
         case UT_INT:
-            ur_arrReserve( buf, buf->used + 1 );
-            vector_pokeInt( buf, buf->used++, ur_int(val) );
+            ur_arrExpand( buf, index, 1 );
+            vector_pokeInt( buf, index, ur_int(val) );
             break;
 
         case UT_DOUBLE:
-            ur_arrReserve( buf, buf->used + 1 );
-            vector_pokeDouble( buf, buf->used++, ur_double(val) );
+            ur_arrExpand( buf, index, 1 );
+            vector_pokeDouble( buf, index, ur_double(val) );
             break;
 
         case UT_VEC3:
-            ur_arrReserve( buf, buf->used + 3 );
-            buf->used += 3;
-            vector_pokeFloatV( buf, buf->used - 3, val->vec3.xyz, 3 );
+            ur_arrExpand( buf, index, 3 );
+            vector_pokeFloatV( buf, index, val->vec3.xyz, 3 );
             break;
 
         case UT_VECTOR:
         {
             USeriesIter si;
+            UIndex saveUsed;
+            int len;
+
             ur_seriesSlice( ut, &si, val );
-            ur_vecAppend( buf, si.buf, si.it, si.end );
+            len = si.end - si.it;
+            if( len > part )
+                len = part;
+            if( len )
+            {
+                ur_arrExpand( buf, index, len );
+
+                saveUsed = buf->used;
+                buf->used = index;
+                ur_vecAppend( buf, si.buf, si.it, si.it + len );
+                buf->used = saveUsed;
+            }
         }
             break;
 #if 0
@@ -655,45 +665,35 @@ int vector_insert( UThread* ut, UBuffer* buf, UIndex index,
 int vector_change( UThread* ut, USeriesIterM* si, const UCell* val,
                    UIndex part )
 {
-    (void) ut;
-    (void) si;
-    (void) val;
-    (void) part;
-#if 0
+    UBuffer* buf = si->buf;
     int type = ur_type(val);
-    if( type == UT_CHAR || type == UT_INT )
+    if( type == UT_VECTOR )
     {
-        UBuffer* buf = si->buf;
-        if( si->it == buf->used )
-            ur_binReserve( buf, ++buf->used );
-        buf->ptr.b[ si->it++ ] = ur_int(val);
-        if( part > 1 )
-            ur_binErase( buf, si->it, part - 1 );
-        return UR_OK;
-    }
-    else if( type == UT_BINARY )
-    {
-        UBinaryIter ri;
-        UBuffer* buf;
+        USeriesIter ri;
         UIndex newUsed;
-        int slen;
+        int rlen;
 
-        ur_binSlice( ut, &ri, val );
-        slen = ri.end - ri.it;
-        if( slen > 0 )
+        ur_seriesSlice( ut, &ri, val );
+        rlen = ri.end - ri.it;
+        if( rlen > 0 )
         {
-            buf = si->buf;
             if( part > 0 )
             {
-                if( part < slen )
-                    ur_binExpand( buf, si->it, slen - part );
-                else if( part > slen )
-                    ur_binErase( buf, si->it, part - slen );
-                newUsed = buf->used;
+                if( part > rlen )
+                {
+                    ur_arrErase( buf, si->it, part - rlen );
+                    newUsed = (buf->used < rlen) ? rlen : buf->used;
+                }
+                else
+                {
+                    if( part < rlen )
+                        ur_arrExpand( buf, si->it, rlen - part );
+                    newUsed = buf->used;
+                }
             }
             else
             {
-                newUsed = si->it + slen;
+                newUsed = si->it + rlen;
                 if( newUsed < buf->used )
                     newUsed = buf->used;
             }
@@ -701,15 +701,37 @@ int vector_change( UThread* ut, USeriesIterM* si, const UCell* val,
             // TODO: Handle overwritting self when buf is val.
 
             buf->used = si->it;
-            ur_binAppendData( buf, ri.it, slen );
+            ur_vecAppend( buf, ri.buf, ri.it, ri.end );
             si->it = buf->used;
             buf->used = newUsed;
         }
         return UR_OK;
     }
-#endif
+    else if( type == UT_VEC3 )
+    {
+        int rend = si->it + 3;
+        if( rend > buf->used )
+        {
+            ur_arrReserve( buf, rend );
+            buf->used = rend;
+        }
+        vector_pokeFloatV( buf, si->it, val->vec3.xyz, 3 );
+        si->it += 3;
+        if( part > 3 )
+            ur_arrErase( buf, si->it, part - 3 );
+        return UR_OK;
+    }
+    else if( (1<<type) & (1<<UT_CHAR | 1<<UT_INT | 1<<UT_DOUBLE) )
+    {
+        if( si->it == buf->used )
+            ur_arrReserve( buf, ++buf->used );
+        vector_poke( buf, si->it++, val );
+        if( part > 1 )
+            ur_arrErase( buf, si->it, part - 1 );
+        return UR_OK;
+    }
     return ur_error( ut, UR_ERR_TYPE,
-                     "change vector! expected char!/int!/double!/vector!" );
+                 "change vector! expected char!/int!/double!/vec3!/vector!" );
 }
 
 

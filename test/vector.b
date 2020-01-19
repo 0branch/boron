@@ -44,3 +44,22 @@ probe poke a 3 8.0,9.2,10
 print "---- reverse"
 probe reverse #[1 2 3 4]
 probe reverse/part #[1 2 3 4 5] 3
+
+
+print "---- insert"
+a: #[0]
+probe insert a 9
+probe insert a 3.0,2.0,1.0
+probe insert/part skip a 4 #[-1 -2 -3] 1
+probe a
+
+
+print "---- change"
+a: #[1.0 2 3]
+b: #[-1.5 -2.5 -3.5]
+probe change next a b
+probe a
+
+a: #[1.0 2 3]
+probe change a 7.0,6,5
+probe a
