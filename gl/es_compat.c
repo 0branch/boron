@@ -11,7 +11,7 @@
 
 #define DEG2RAD         (UR_PI / 180.0f)
 #define STACK_DEPTH     6
-#define viewStackEnd  (viewStack + 16 * STACK_DEPTH)
+#define viewStackLast   (viewStack + 16 * (STACK_DEPTH-1))
 
 static GLfloat  projection[ 16 ];
 static GLfloat  viewStack[ 16 * STACK_DEPTH ];
@@ -133,7 +133,7 @@ void esMultMatrixf( const GLfloat* mat )
 void es_pushMultMatrix( const float* mat )
 {
     assert( _mode == GL_MODELVIEW );
-    if( matrixTop != viewStackEnd )
+    assert( matrixTop != viewStackLast );
     {
         GLfloat* prev = matrixTop;
         matrixTop += 16;
@@ -155,7 +155,8 @@ void esPopMatrix()
 
 void esPushMatrix()
 {
-    if( _mode == GL_MODELVIEW && matrixTop != viewStackEnd )
+    assert( _mode == GL_MODELVIEW );
+    assert( matrixTop != viewStackLast );
     {
         GLfloat* prev = matrixTop;
         matrixTop += 16;
