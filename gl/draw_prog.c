@@ -231,7 +231,7 @@ void ur_markDrawProg( UThread* ut, UIndex n )
 {
     DPHeader* ph;
 
-    if( n == UR_INVALID_BUF || ur_markBuffer( ut, n ) )
+    if( n == UR_INVALID_BUF || ! ur_markBuffer( ut, n ) )
         return;
 
     ph = (DPHeader*) ur_buffer( n )->ptr.v;
