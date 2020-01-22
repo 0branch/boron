@@ -68,67 +68,6 @@ gui-style-proto: context [
 ]
 
 
-animation: context [
-    value: none
-    curve: none
-    scale: 1.0
-    time:  0.0
-    behavior: 1
-]
-
-ease-in: [
-    0.00 0.0
-    0.15 0.003375
-    0.30 0.027000
-    0.50 0.125000
-    0.70 0.343000
-    0.85 0.614125
-    1.00 1.0
-]
-
-ease-out: [
-    0.00 0.0
-    0.15 0.385875
-    0.30 0.657000
-    0.50 0.875000
-    0.70 0.973000
-    0.85 0.996625
-    1.00 1.0
-]
-
-ease-in-out: [
-    0.00 0.0
-    0.10 0.004
-    0.20 0.032
-    0.30 0.108
-    0.40 0.256
-    0.50 0.500
-    0.60 0.744
-    0.70 0.892
-    0.80 0.968
-    0.90 0.996
-    1.00 1.0
-]
-
-
-/*-hf- recal-curve
-        curve   block!
-        a       decimal!/coord!/vec3!
-        b       decimal!/coord!/vec3!
-   return: Recalibrated copy of curve.
-
-   A and B must be of the same type.
-*/
-recal-curve: func [orig a b] [
-    nc: copy orig
-    forall nc [
-        poke nc 2 lerp a b second nc
-        ++ nc
-    ]
-    head nc
-]
-
-
 /*-hf- draw-list
         blk
    return: draw-prog!
