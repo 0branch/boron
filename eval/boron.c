@@ -409,11 +409,10 @@ UStatus boron_defineCFunc( UThread* ut, UIndex ctxN, const BoronCFunc* funcTable
         if( ! ur_tokenize( ut, spec, spec + slen, &tmp ) )
             return UR_THROW;
     }
+    hold[0] = ur_hold( tmp.series.buf );
 
     argProg = ur_genBuffers( ut, 1, &binN );        // gc!
     ur_binInit( argProg, 0 );
-
-    hold[0] = ur_hold( tmp.series.buf );
     hold[1] = ur_hold( binN );
 
     // Append terminator cell for loop below.
