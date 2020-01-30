@@ -2392,9 +2392,10 @@ enum XFormOpcodes
 {
     XF_End,     // 0
     XF_Reset,   // 1 mbuf-index (matrix index)
-    XF_Mul,     // 2 rbuf-index (float index, modified by rloc)
-    XF_Push,    // 3
-    XF_Pop      // 4
+    XF_MulR,    // 2 rbuf-index (float index, modified by rloc)
+    XF_MulM,    // 3 mbuf-index (matrix index)
+    XF_Push,    // 4
+    XF_Pop      // 5
 };
 
 CFUNC( cfunc_matrix_xform )
@@ -2403,7 +2404,7 @@ CFUNC( cfunc_matrix_xform )
     const float* stack[8];
     const float* parent;
     const float* matB;
-    const float* mbuf;
+    float* mbuf;
     float* rbuf;
     float* r0;
     const uint8_t* bc;
@@ -2428,8 +2429,14 @@ eval:
             matB = parent + MAT_SIZE;
             goto eval;
 
-        case XF_Mul:
+        case XF_MulR:
             r0 = rbuf + (stride * *bc++) + off;
+            ur_matrixMult( parent, matB, r0 );
+            matB += MAT_SIZE;
+            goto eval;
+
+        case XF_MulM:
+            r0 = mbuf + (MAT_SIZE * *bc++);
             ur_matrixMult( parent, matB, r0 );
             matB += MAT_SIZE;
             goto eval;
