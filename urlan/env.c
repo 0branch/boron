@@ -1448,6 +1448,41 @@ void dumpBuf( UThread* ut, UIndex bufN )
         dprint( "UBuffer type %d  used %d\n", buf->type, buf->used );
     }
 }
+
+
+void dumpStore( UThread* ut )
+{
+    const UBuffer* store = &ut->dataStore;
+    const UBuffer* buf  = store->ptr.buf;
+    const UBuffer* bend = buf + store->used;
+    const UCell* it;
+    const UCell* end;
+    int type;
+
+    for( ; buf != bend; ++buf )
+    {
+        switch( buf->type )
+        {
+            case UT_BLOCK:
+            case UT_PAREN:
+            case UT_CONTEXT:
+                dprint( "%ld %s [", buf - store->ptr.buf,
+                        ur_atomCStr(ut, buf->type)  );
+                it  = buf->ptr.cell;
+                end = it + buf->used;
+                for( ; it != end; ++it )
+                {
+                    type = ur_type(it);
+                    if( ur_isSeriesType(type) || (type == UT_CONTEXT) )
+                        dprint( "%d ", it->series.buf );
+                    else
+                        dprint( ". " );
+                }
+                dprint( "]\n" );
+                break;
+        }
+    }
+}
 #endif
 
 

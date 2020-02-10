@@ -40,6 +40,9 @@ extern void block_markBuf( UThread*, UBuffer* );
 
 #ifdef GC_REPORT
 #include "env.h"
+extern void dumpStore( UThread* );
+
+int gcRun = 0;
 
 void ur_gcReport( const UBuffer* store, UThread* ut )
 {
@@ -68,12 +71,16 @@ void ur_gcReport( const UBuffer* store, UThread* ut )
         if( ut->freeBufCount != unused )
             dprint( " (freeBufCount: %d)", ut->freeBufCount );
 
-        dprint( "\n  holds: %d ", ut->holds.used );
+        dprint( "\n  holds: %d (", ut->holds.used );
         while( hi != hend )
         {
-            dprint( "%c", (*hi < 0) ? '-' : 'h' );
+            if( *hi < 0 )
+                dprint( ". " );
+            else
+                dprint( "%d ", *hi );
             ++hi;
         }
+        dprint( ")" );
     }
     dprint( "\n\n" );
 }
@@ -156,7 +163,7 @@ void ur_recycle( UThread* ut )
 #endif
 
 #ifdef GC_REPORT
-    dprint( "\nRecycle UThread %p:\n\n", (void*) ut );
+    dprint( "\nRecycle UThread %p (cycle %d):\n\n", (void*) ut, gcRun++ );
     ur_blkReport( &ut->env->sharedStore, "Env" );
     ur_blkReport( &ut->dataStore, "Thr" );
     ur_gcReport( &ut->dataStore, ut );
