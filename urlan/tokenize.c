@@ -1043,7 +1043,7 @@ invalid_binary:
                 else
                 {
                     mode = UR_VEC_I32;
-                    cell = ur_blkAppendNew( blk, UT_VECTOR );
+                    cell = ur_blkAppendNew( blk, UT_NONE );
                 }
                 ur_makeVectorCell( ut, mode, 0, cell );
                 vectorN = cell->series.buf;
