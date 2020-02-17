@@ -118,7 +118,7 @@ static int compileProgram( UThread* ut, GLuint program,
 
 
 #ifdef REPLACE_ES_HEADER
-    source[0] = "#version 330\n";
+    // Using the same source[0] as vertex shader.
     source[1] = _skipEsHeader( frag );
     glShaderSource( fragmentObj, 2, (const GLchar**) source, 0 );
 #else
