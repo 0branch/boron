@@ -1,5 +1,19 @@
 			Boron Change Log
 
+
+V2.0.2 - 7 Mar 2020
+
+  * Update Boron-GL to use OpenGL 3.3 & ES 3.1 and support Android.
+  * On Android environs/os is set to 'Android.
+  * Add bind /secure option.
+  * Atan accepts coord!/vec3! to return result in the range -PI to PI.
+  * Math operators accept (coord! int!) arguments.
+  * Parse with binary! value handles to & thru rules.
+  * Fix save to append newline.
+  * Fix recycle bugs.
+  * User defined C function specification can type check user defined types.
+
+
 V2.0.0 - 1 Feb 2019
 
   * Evaluator rewritten to use the stack more efficiently.
