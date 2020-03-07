@@ -2334,21 +2334,30 @@ CFUNC( cfunc_mul_matrix )
     translate
         matrix  vector!
         vector  vec3!
+        /loc
     return: Modified matrix.
     group: gl
 */
 CFUNC( cfunc_translate )
 {
     float* mat;
-    const UCell* a2 = a1 + 1;
+    const float* v;
 
     if( ! (mat = ur_matrixM( ut, a1 )) )
         return UR_THROW;
     *res = *a1;
 
-    mat[12] += a2->vec3.xyz[0];
-    mat[13] += a2->vec3.xyz[1];
-    mat[14] += a2->vec3.xyz[2];
+    v = a1[1].vec3.xyz;
+    if( CFUNC_OPTIONS )
+    {
+        ur_transLocal( mat, v[0], v[1], v[2] );
+    }
+    else
+    {
+        mat[12] += v[0];
+        mat[13] += v[1];
+        mat[14] += v[2];
+    }
     return UR_OK;
 }
 
