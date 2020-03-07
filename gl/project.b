@@ -21,7 +21,7 @@ default [
     ;macx [universal]
 ]
 
-shlib [%boron-gl 2,0,0] [
+shlib [%boron-gl 2,0,2] [
     cflags {-DIMAGE_BOTTOM_AT_0}
     if gles [cflags "-DUSE_GLES"]
     linux [

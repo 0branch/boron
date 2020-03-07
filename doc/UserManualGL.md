@@ -1,6 +1,6 @@
 ---
 title:  Boron-GL User Manual
-date:   Version 2.0.1, 2020-01-15
+date:   Version 2.0.2, 2020-03-07
 ---
 
 
