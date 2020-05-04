@@ -2712,6 +2712,7 @@ enum SceneValues
 
 
 static char _initScript[] =
+    "gui-cam: copy pixmap-camera\n"
     "_scene: scene-proto\n"
     "_scene-next: scene-dl: scene-ui: none\n"
     "rclock-delta: rclock: none\n"

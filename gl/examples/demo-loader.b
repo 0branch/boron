@@ -90,8 +90,6 @@ controls: context [
     ]
 ]
 
-ortho-cam: copy ortho-cam
-
 _window-spec:
 demo-window: [
     root [
@@ -114,11 +112,11 @@ demo-window: [
         mouse-wheel: [
             view-cam/zoom pick [0.90909 1.1] gt? event 0
         ]
-        resize: [view-cam/viewport: ortho-cam/viewport: event]
+        resize: [view-cam/viewport: gui-cam/viewport: event]
     ]
 ]
 
-view-cam: make orbit-cam [
+view-cam: make orbit-camera [
     fov:   60.0
     clip:  1.0, 9000.0
     viewport: display-area

@@ -2,7 +2,6 @@
 ;save-png %out p
 
 ;print gl-extensions
-;ortho-cam: copy ortho-cam
 
 
 fontA: make font!
@@ -82,6 +81,6 @@ demo-exec draw-list [
     camera view-cam
     call box-dl
 
-    camera ortho-cam
+    camera gui-cam
     call font-dl
 ]

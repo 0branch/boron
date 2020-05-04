@@ -8,12 +8,12 @@ camera: context [
     clip: 0.1,10.0
 ]
 
-ortho-cam: make camera [
+pixmap-camera: make camera [
     fov: 'pixels            ; 'pixels to match viewport or left,right vec3!
     clip: -10.0,10.0
 ]
 
-orbit-cam: make camera [
+orbit-camera: make camera [
     orbit:     0.0, 0.0, 10.0   ; azimuth, elevation, dist (angles in radians)
     focal-pnt: 0.0, 0.0, 0.0
 ]
