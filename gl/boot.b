@@ -187,11 +187,15 @@ scene: func [spec] [
 ; Math Helpers
 
 
-/*
+hermite-ease-in:  #[2.28 0.0   0.1  0.1  0.0 0.0  1.0 1.0]
+hermite-ease-out: #[0.78 3.24  0.1  0.1  0.0 0.0  1.0 1.0]
+hermite-ease:     #[1.4  0.0   1.19 0.0  0.0 0.0  1.0 1.0]
+
+vone:   1.0, 1.0, 1.0
+vzero:  0.0, 0.0, 0.0
 axis-x: 1.0, 0.0, 0.0
 axis-y: 0.0, 1.0, 0.0
 axis-z: 0.0, 0.0, 1.0
-*/
 
 unit-matrix:
 #[1.0 0 0 0
