@@ -51,6 +51,7 @@ enum DPOpcode
     DP_UNIFORM_1I,          // loc val
     DP_UNIFORM_1F,          // loc val
     DP_UNIFORM_3F,          // loc f0 f1 f2
+    DP_PUSH_MODEL_UNIFORM,  // ctxN index loc
     DP_VIEW_UNIFORM,        // ctxN index loc
     DP_VIEW_UNIFORM_DIR,    // ctxN index loc
     DP_BIND_TEXTURE,        // texUnit gltex 
@@ -2000,8 +2001,9 @@ bad_quad:
                 }
                 break;
 
-            case DOP_VIEW_UNIFORM:      // view-uniform name vec3
-                                        // view-uniform/dir name vec3
+            case DOP_PUSH_MODEL:        // push-model name :matrix
+            case DOP_VIEW_UNIFORM:      // view-uniform name :vec3
+                                        // view-uniform/dir name :vec3
             {
                 const char* name;
                 GLint loc;
@@ -2025,8 +2027,13 @@ bad_quad:
                 INC_PC
                 if( ur_is(pc, UT_GETWORD) )
                 {
-                    emitWordOp( emit, pc, option ? DP_VIEW_UNIFORM_DIR
-                                                 : DP_VIEW_UNIFORM );
+                    int dop;
+                    if( opcode == DOP_PUSH_MODEL )
+                        dop = DP_PUSH_MODEL_UNIFORM;
+                    else
+                        dop = option ? DP_VIEW_UNIFORM_DIR : DP_VIEW_UNIFORM;
+
+                    emitWordOp( emit, pc, dop );
                     emitDPArg( emit, loc );
                 }
                 else
@@ -3059,8 +3066,29 @@ dispatch:
             pc += 4;
             break;
 
+        case DP_PUSH_MODEL_UNIFORM:
+            REPORT_1( "PUSH_MODEL_UNIFORM %d\n", pc[0] );
+            PC_WORD;
+            if( ur_is(val, UT_VECTOR) )
+            {
+                USeriesIter si;
+                ur_seriesSlice( ut, &si, val );
+                if( si.buf->form == UR_VEC_F32 )    // Assuming used == 16.
+                {
+                    const float* mat = si.buf->ptr.f + si.it;
+                    es_pushMultMatrix( mat );
+                    glUniformMatrix4fv( pc[0], 1, GL_FALSE, mat );
+
+                    // Only do ES_UPDATE_MATRIX on ULOC_TRANSFORM.
+                    es_matrixUsed &= 1;
+                }
+            }
+            ++pc;
+            break;
+
         case DP_VIEW_UNIFORM:
         case DP_VIEW_UNIFORM_DIR:
+            REPORT_1( "VIEW_UNIFORM(_DIR) %d\n", pc[0] );
             PC_WORD;
             if( ur_is(val, UT_VEC3) )
             {

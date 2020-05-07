@@ -3027,7 +3027,7 @@ static void _createDrawOpTable( UThread* ut )
         "uvs attrib points lines line-strip\n"
         "tris tri-strip tri-fan quads quad_strip\n"
         "tris-inst\n"
-        "sphere box quad camera view-uniform\n"
+        "sphere box quad camera push-model view-uniform\n"
         "push-mul push pop translate rotate\n"
         "scale font text shader uniform\n"
         "framebuffer framebuffer-tex\n"
