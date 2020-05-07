@@ -390,7 +390,28 @@ Point-Sprite
 Push
 ----
 
-Calls the equivalent of [glPushMatrix].
+Calls the equivalent of [glPushMatrix] on the modelview stack.
+
+
+Push-Model
+----------
+
+Push (and multiply) a matrix onto the modelview stack and also copy the
+original matrix into a shader uniform.
+
+Calls the equivalent of [glPushMatrix], [glMultMatrix] &
+[glUniformMatrix4fv][glUniform].
+
+    push-model uniform-name :matrix-variable
+
+
+Push-Mul
+--------
+
+Calls the equivalent of [glPushMatrix] followed by [glMultMatrix] on the
+modelview stack.
+
+    push-mul :matrix
 
 
 Rotate
@@ -514,6 +535,27 @@ Draw quadrangle primitives (each as two triangles).
 Uniform
 -------
 
+Set a shader uniform variable using [glUniform] or [glBindTexture] (for
+textures).
+
+    uniform
+		uniform-name  word!
+        value         logic!/int!/double!/vec3!/texture!
+
+
+View-Uniform
+------------
+
+Transform a point into view space and assign this to a uniform using
+[glUniform3fv][glUniform].
+
+    view-uniform
+		uniform-name  word!
+        point         get-word! that references a vec3!.
+        /dir          Treat point as a directional vector.
+
+Using the *dir* option will only transform the point by the upper 3x3 portion
+of the view matrix.
 
 
 [comment]: <> (include widgets.md)
@@ -522,6 +564,7 @@ Uniform
 [function reference]: http://urlan.sf.net/boron/doc/func_ref_gl.html
 [glBindBuffer]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glBindBuffer.xhtml
 [glBindFramebuffer]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glBindFramebuffer.xhtml
+[glBindTexture]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glBindTexture.xhtml
 [glBlendFunc]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glBlendFunc.xhtml
 [glClear]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glClear.xhtml
 [glColorMask]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glColorMask.xhtml
@@ -533,6 +576,7 @@ Uniform
 [glEnable]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glEnable.xhtml
 [glPopMatrix]: http://www.opengl.org/sdk/docs/man2/xhtml/glPopMatrix.xml
 [glPushMatrix]: http://www.opengl.org/sdk/docs/man2/xhtml/glPushMatrix.xml
+[glMultMatrix]: http://www.opengl.org/sdk/docs/man2/xhtml/glMultMatrix.xml
 [glUniform]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glUniform.xhtml
 [glUseProgram]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glUseProgram.xhtml
 [glVertexAttribPointer]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glVertexAttribPointer.xhtml
