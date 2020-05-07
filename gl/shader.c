@@ -607,6 +607,11 @@ sampler_uniform:
                 glBindTexture( GL_TEXTURE_3D, ur_texId(cval) );
                 goto sampler_uniform;
 
+            case GL_SAMPLER_CUBE:
+                glActiveTexture( GL_TEXTURE0 + texUnit );
+                glBindTexture( GL_TEXTURE_CUBE_MAP, ur_texId(cval) );
+                goto sampler_uniform;
+
             case GL_FLOAT_MAT4:
                 /*
                 fprintf( stderr, "sha %f,%f,%f\n    %f,%f,%f\n    %f,%f,%f\n",

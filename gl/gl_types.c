@@ -191,6 +191,7 @@ typedef struct
     uint16_t    height;
     uint16_t    depth;
     uint16_t    mipmap;
+    GLenum target;
     GLenum format;
     GLint  comp;    // internalFormat
     GLint  wrap;
@@ -336,6 +337,11 @@ static int _textureKeyword( UAtom name, TextureDef* def )
             }
             break;
 
+        case UR_ATOM_CUBEMAP:
+            def->target = GL_TEXTURE_CUBE_MAP;
+            def->wrap   = GL_CLAMP_TO_EDGE;
+            break;
+
         default:
             return 0;
     }
@@ -351,7 +357,7 @@ static int _textureKeyword( UAtom name, TextureDef* def )
     raster!/coord!/int!/binary!/vector!
     'mipmap 'nearest 'linear 'repeat 'clamp
     'gray 'rgb 'rgba 'f32
-    'depth
+    'depth 'cubemap
   ]
 */
 int texture_make( UThread* ut, const UCell* from, UCell* res )
@@ -359,9 +365,9 @@ int texture_make( UThread* ut, const UCell* from, UCell* res )
     TextureDef def;
     GLuint name;
     GLenum type = GL_UNSIGNED_BYTE;
-    GLenum target = GL_TEXTURE_2D;
 
 
+    def.target     = GL_TEXTURE_2D;
     def.depth      = 1;
     def.mipmap     = 0;
     def.comp       = 0;
@@ -452,17 +458,47 @@ valid_val:
 build:
 
     if( def.depth > 1 )
-        target = GL_TEXTURE_3D;
+        def.target = GL_TEXTURE_3D;
 
     name = glid_genTexture();
-    glBindTexture( target, name );
+    glBindTexture( def.target, name );
 
-    if( target == GL_TEXTURE_3D )
-        glTexImage3D( GL_TEXTURE_3D, 0, def.comp, def.width, def.height,
-                      def.depth, 0, def.format, type, def.pixels );
-    else
+    if( def.target == GL_TEXTURE_2D )
+    {
         glTexImage2D( GL_TEXTURE_2D, 0, def.comp, def.width, def.height,
                       0, def.format, type, def.pixels );
+    }
+    else if( def.target == GL_TEXTURE_3D )
+    {
+        glTexImage3D( GL_TEXTURE_3D, 0, def.comp, def.width, def.height,
+                      def.depth, 0, def.format, type, def.pixels );
+    }
+    else if( def.target == GL_TEXTURE_CUBE_MAP )
+    {
+        int i;
+        int faceBytes = def.width * def.width;
+
+        if( def.format == GL_RGB )
+            faceBytes *= 3;
+        else if( def.format == GL_RGBA )
+            faceBytes *= 4;
+
+        // Load all faces from a single image.  This assumes the pixels are
+        // NOT flipped for IMAGE_BOTTOM_AT_0 (or else the input has been
+        // vertically flipped).
+
+        // See OpenGL 3.8.10 Cube Map Texture Selection for s/t mapping.
+        // Y 1.0 is t=0.0 and Y -1.0 is t=1.0 (inverse of normal textures).
+        // Z also seems inverted (i.e. using left-handed coordinates) if using
+        // skybox images.
+
+        for( i = 0; i < 6; ++i )
+        {
+            glTexImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, def.comp,
+                          def.width, def.width, 0, def.format, type,
+                          def.pixels + i * faceBytes );
+        }
+    }
 
     {
         GLenum err = glGetError();
@@ -472,8 +508,8 @@ build:
 
     if( def.mipmap )
     {
-        //glEnable( target );   // Needed with ATI drivers?
-        glGenerateMipmap( target );
+        //glEnable( def.target );   // Needed with ATI drivers?
+        glGenerateMipmap( def.target );
     }
     else
     {
@@ -485,17 +521,17 @@ build:
     }
 
     // GL_CLAMP, GL_CLAMP_TO_EDGE, GL_REPEAT.
-    glTexParameteri( target, GL_TEXTURE_WRAP_S, def.wrap );
-    glTexParameteri( target, GL_TEXTURE_WRAP_T, def.wrap );
-    if( target == GL_TEXTURE_3D )
-        glTexParameteri( target, GL_TEXTURE_WRAP_R, def.wrap );
+    glTexParameteri( def.target, GL_TEXTURE_WRAP_S, def.wrap );
+    glTexParameteri( def.target, GL_TEXTURE_WRAP_T, def.wrap );
+    if( def.target == GL_TEXTURE_3D )
+        glTexParameteri( def.target, GL_TEXTURE_WRAP_R, def.wrap );
 
     // TODO: Support all GL_TEXTURE_MIN_FILTER types.
     // GL_NEAREST, GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST, etc.
-    glTexParameteri( target, GL_TEXTURE_MIN_FILTER, def.min_filter );
+    glTexParameteri( def.target, GL_TEXTURE_MIN_FILTER, def.min_filter );
 
     // GL_NEAREST, GL_LINEAR
-    glTexParameteri( target, GL_TEXTURE_MAG_FILTER, def.mag_filter );
+    glTexParameteri( def.target, GL_TEXTURE_MAG_FILTER, def.mag_filter );
 
     // NOTE: texture! make no longer sets ur_texRast as we don't want to
     // force the rasters to be kept in memory.
