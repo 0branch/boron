@@ -40,6 +40,18 @@ void dumpMatrix( const char* label, const float* mat )
 #endif
 
 
+GLfloat* es_modelView()
+{
+    return viewTop;
+}
+
+
+GLfloat* es_projection()
+{
+    return projection;
+}
+
+
 GLfloat* es_viewStack()
 {
     return viewStack;

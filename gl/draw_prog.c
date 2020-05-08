@@ -51,6 +51,7 @@ enum DPOpcode
     DP_UNIFORM_1I,          // loc val
     DP_UNIFORM_1F,          // loc val
     DP_UNIFORM_3F,          // loc f0 f1 f2
+    DP_UNIFORM_MATRIX,      // loc type
     DP_PUSH_MODEL_UNIFORM,  // ctxN index loc
     DP_VIEW_UNIFORM,        // ctxN index loc
     DP_VIEW_UNIFORM_DIR,    // ctxN index loc
@@ -73,7 +74,7 @@ enum DPOpcode
     DP_DRAW_TRIS,           // count
     DP_DRAW_TRI_STRIP,      // count
     DP_DRAW_TRI_FAN,        // count
-    DP_DRAW_QUADS,          // count
+    DP_DRAW_QUADS,          // vertCount
     DP_DRAW_POINTS_I,       // count offset
     DP_DRAW_LINES_I,        // count offset
     DP_DRAW_LINE_STRIP_I,   // count offset
@@ -2011,19 +2012,27 @@ bad_quad:
                 // Transform vec3 by inverse view matrix and store in uniform.
 
                 INC_PC
-                if( ! ur_is(pc, UT_WORD) )
+                if( ur_is(pc, UT_INT) )
                 {
-                    typeError( "uniform expected word! name" );
+                    loc = ur_int(pc);
                 }
-                name = ur_atomCStr(ut, ur_atom(pc));
-                loc = glGetUniformLocation( emit->shaderProg, name );
-                if( loc == -1 )
+                else if( ur_is(pc, UT_WORD) )
                 {
-                    ur_error( ut, UR_ERR_SCRIPT,
-                              "uniform \"%s\" not found in program %d",
-                              name, emit->shaderProg );
-                    goto error;
+                    name = ur_atomCStr(ut, ur_atom(pc));
+                    loc = glGetUniformLocation( emit->shaderProg, name );
+                    if( loc == -1 )
+                    {
+                        ur_error( ut, UR_ERR_SCRIPT,
+                                  "uniform \"%s\" not found in program %d",
+                                  name, emit->shaderProg );
+                        goto error;
+                    }
                 }
+                else
+                {
+                    typeError( "uniform expected int!/word! location" );
+                }
+
                 INC_PC
                 if( ur_is(pc, UT_GETWORD) )
                 {
@@ -2218,22 +2227,31 @@ bad_quad:
             }
                 break;
 
-            case DOP_UNIFORM:       // uniform name value
+            case DOP_UNIFORM:       // uniform location value
             {
-                GLint loc;
-                UAtom name;
+                GLint loc = -1;
+                UAtom name = 0;
 
                 INC_PC
-                if( ! ur_is(pc, UT_WORD) )
+                if( ur_is(pc, UT_INT) )
                 {
-                    typeError( "uniform expected word! name" );
+                    loc = ur_int(pc);
                 }
-                name = ur_atom(pc);
+                else if( ur_is(pc, UT_WORD) )
+                {
+                    name = ur_atom(pc);
+                }
+                else
+                {
+                    typeError( "uniform expected int!/word! location" );
+                }
+
                 INC_PC_VALUE(val)
                 if( ur_is(val, UT_TEXTURE) && emit->shaderProg )
                 {
                     Shader* sh = (Shader*) ur_buffer( emit->shaderResN )->ptr.v;
-                    loc = shaderTextureUnit( sh, name );
+                    if( name )
+                        loc = shaderTextureUnit( sh, name );
                     if( loc > -1 )
                     {
                         emitOp2( DP_BIND_TEXTURE, GL_TEXTURE0 + loc,
@@ -2242,17 +2260,32 @@ bad_quad:
                 }
                 else
                 {
-                    loc = glGetUniformLocation( emit->shaderProg,
-                                                ur_atomCStr(ut, name) );
-                    if( loc == -1 )
+                    if( name )
                     {
-                        ur_error( ut, UR_ERR_SCRIPT,
-                                  "uniform \"%s\" not found in program %d",
-                                  ur_atomCStr(ut, name), emit->shaderProg );
-                        goto error;
+                        loc = glGetUniformLocation( emit->shaderProg,
+                                                    ur_atomCStr(ut, name) );
+                        if( loc == -1 )
+                        {
+                            ur_error( ut, UR_ERR_SCRIPT,
+                                      "uniform \"%s\" not found in program %d",
+                                      ur_atomCStr(ut, name), emit->shaderProg );
+                            goto error;
+                        }
                     }
+
                     switch( ur_type(val) )
                     {
+                        case UT_LITWORD:
+                            name = ur_atom(val);
+                            if( name == UR_ATOM_PROJECTION ||
+                                name == UR_ATOM_MODELVIEW )
+                            {
+                                emitOp2( DP_UNIFORM_MATRIX, loc, name );
+                                break;
+                            }
+                            typeError( "uniform expected projection or "
+                                       "modelview lit-word!" );
+
                         case UT_LOGIC:
                             emitOp2( DP_UNIFORM_1I, loc, ur_logic(val) );
                             break;
@@ -2893,6 +2926,8 @@ void dop_shadow_end()
 /*--------------------------------------------------------------------------*/
 
 
+extern GLfloat* es_modelView();
+extern GLfloat* es_projection();
 extern GLfloat* es_viewStack();
 
 /*
@@ -3064,6 +3099,22 @@ dispatch:
             REPORT_2( "UNIFORM_3F %d %f ...\n", pc[0], *((GLfloat*) (pc+1)) );
             glUniform3fv( pc[0], 1, (GLfloat*) (pc+1) );
             pc += 4;
+            break;
+
+        case DP_UNIFORM_MATRIX:
+        {
+            const GLfloat* mat;
+            REPORT_2( "UNIFORM_MATRIX %d %d\n", pc[0], pc[1] );
+            if( pc[1] == UR_ATOM_PROJECTION )
+                mat = es_projection();
+            else
+                mat = es_modelView();
+            glUniformMatrix4fv( pc[0], 1, GL_FALSE, mat );
+            pc += 2;
+
+            // Suppress ES_UPDATE_MATRIX when matrix is manually loaded.
+            es_matrixUsed = 0;
+        }
             break;
 
         case DP_PUSH_MODEL_UNIFORM:

@@ -2945,7 +2945,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    83
+#define FA_COUNT    85
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -2954,7 +2954,7 @@ static void _createFixedAtoms( UThread* ut )
         "gui-style shader-cache value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
         "on-window-created on-window-destroyed on-save-instance\n"
-        "root parent child\n"
+        "root parent child projection modelview\n"
         "ambient diffuse specular pos shader vertex normal fragment\n"
         "default dynamic static stream\n"
         "left right center bottom top horiz vert\n"

@@ -539,8 +539,14 @@ Set a shader uniform variable using [glUniform] or [glBindTexture] (for
 textures).
 
     uniform
-		uniform-name  word!
-        value         logic!/int!/double!/vec3!/texture!
+        location    int!/word!
+        value       logic!/int!/double!/vec3!/texture!/lit-word!
+
+A word! location is converted to an integer (using glGetUniformLocation) during
+compilation.
+
+If value is 'projection or 'modelview then the respective internal matrix
+is copied to location.
 
 
 View-Uniform
@@ -550,9 +556,9 @@ Transform a point into view space and assign this to a uniform using
 [glUniform3fv][glUniform].
 
     view-uniform
-		uniform-name  word!
-        point         get-word! that references a vec3!.
-        /dir          Treat point as a directional vector.
+        location    int!/word!
+        point       get-word! that references a vec3!.
+        /dir        Treat point as a directional vector.
 
 Using the *dir* option will only transform the point by the upper 3x3 portion
 of the view matrix.
