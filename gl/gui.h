@@ -198,6 +198,7 @@ struct GWidget
 #define GUI_EVENT_IGNORE    0x1000
 #define gui_ignoreEvent(ev)     ((GLViewEvent*) ev)->type |= GUI_EVENT_IGNORE
 #define gui_acceptEvent(ev)     ((GLViewEvent*) ev)->type &= 0x0fff
+#define gui_value(ut)   ur_ctxCell(ur_threadContext(ut), glEnv.guiValueIndex)
 
 
 void gui_addWidgetClasses( GWidgetClass** classTable, int count );

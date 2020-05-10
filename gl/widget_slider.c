@@ -265,6 +265,8 @@ static void slider_updateDpTrans( UThread* ut, GSlider* ep )
 }
 
 
+static int slider_select( GWidget* wp, UAtom atom, UCell* res );
+
 static void slider_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
     EX_PTR;
@@ -376,7 +378,10 @@ trans:
     slider_updateDpTrans( ut, ep );
 activate:
     if( ep->actionN )
+    {
+        slider_select( wp, UR_ATOM_VALUE, gui_value(ut) );
         gui_doBlockN( ut, ep->actionN );
+    }
 }
 
 

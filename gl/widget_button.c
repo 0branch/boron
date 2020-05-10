@@ -224,8 +224,14 @@ activate:
 
     if( ep->actionN )
     {
+        UCell* val;
+
         ep->checked ^= 1;
         button_setState( ut, ep, ep->checked );
+
+        val = gui_value(ut);
+        ur_setId(val, UT_LOGIC);
+        ur_logic(val) = ep->checked;
 
         gui_doBlockN( ut, ep->actionN );
     }

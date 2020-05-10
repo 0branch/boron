@@ -376,7 +376,10 @@ static void ledit_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 activate:
 
     if( ep->codeN )
+    {
+        ur_initSeries(gui_value(ut), UT_STRING, ep->strN);
         gui_doBlockN( ut, ep->codeN );
+    }
 }
 
 

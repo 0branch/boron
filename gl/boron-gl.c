@@ -2715,7 +2715,7 @@ static char _initScript[] =
     "gui-cam: copy pixmap-camera\n"
     "_scene: scene-proto\n"
     "_scene-next: scene-dl: scene-ui: none\n"
-    "rclock-delta: rclock: none\n"
+    "rclock-delta: rclock: value: none\n"
     "go-scene: func [next /extern _scene-next][_scene-next: next]\n";
 
 /*
@@ -2725,6 +2725,7 @@ static char _initScript[] =
 void ur_initGLData( UThread* ut )
 {
     boron_evalUtf8( ut, _initScript, sizeof(_initScript) - 1 );
+    glEnv.guiValueIndex = ur_ctxLookup(ur_threadContext(ut), UR_ATOM_VALUE);
 }
 
 
@@ -3095,6 +3096,7 @@ UThread* boron_makeEnvGL( UEnvParameters* param )
     glEnv.view = 0;
     glEnv.guiUT = 0;
     glEnv.guiArgBlkN = UR_INVALID_BUF;
+    glEnv.guiValueIndex = 0;
     glEnv.prevMouseX = MOUSE_UNSET;
     glEnv.prevMouseY = MOUSE_UNSET;
     glEnv.guiThrow = 0;

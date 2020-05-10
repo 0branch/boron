@@ -135,6 +135,7 @@ static int listw_validRow( UThread* ut, GList* ep, unsigned int row )
 
 
 static void listw_layout( GWidget* );
+static int listw_select( GWidget*, UAtom, UCell* );
 
 /*
   Set new selRow value.
@@ -146,7 +147,10 @@ static void listw_selectRow( UThread* ut, GList* ep, UIndex index )
     ep->selRow = index;
     listw_layout( &ep->wid );
     if( ep->actionN )
+    {
+        listw_select( &ep->wid, UR_ATOM_VALUE, gui_value(ut) );
         gui_doBlockN( ut, ep->actionN );
+    }
 }
 
 

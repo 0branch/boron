@@ -139,7 +139,12 @@ static void choice_selectItem( UThread* ut, GChoice* ep, uint16_t index )
     ep->selItem = index;
     ep->wid.flags |= FLAG_UPDATE_LABEL;
     if( ep->actionN )
+    {
+        const UBuffer* blk = ur_buffer( ep->dataBlkN );
+        *gui_value(ut) = blk->ptr.cell[ ep->selItem ];
+
         gui_doBlockN( ut, ep->actionN );
+    }
 }
 
 
@@ -283,7 +288,7 @@ static int choice_select( GWidget* wp, UAtom atom, UCell* res )
         {
 #if 1
             UThread* ut = glEnv.guiUT;
-            UBuffer* blk = ur_buffer( ep->dataBlkN );
+            const UBuffer* blk = ur_buffer( ep->dataBlkN );
             *res = blk->ptr.cell[ ep->selItem ];
 #else
             UIndex i = ep->selItem;
