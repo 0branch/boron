@@ -329,12 +329,7 @@ static int _textureKeyword( UAtom name, TextureDef* def )
             break;
 
         case UR_ATOM_DEPTH:
-            // Treat as GL_TEXTURE_3D with all dimensions equal.
-            if( def->height )
-            {
-                def->depth  = def->height / def->width;
-                def->height = def->width;
-            }
+            def->target = GL_TEXTURE_3D;
             break;
 
         case UR_ATOM_CUBEMAP:
@@ -457,9 +452,6 @@ valid_val:
 
 build:
 
-    if( def.depth > 1 )
-        def.target = GL_TEXTURE_3D;
-
     name = glid_genTexture();
     glBindTexture( def.target, name );
 
@@ -470,6 +462,10 @@ build:
     }
     else if( def.target == GL_TEXTURE_3D )
     {
+        // Load all layers from a single image (assume width & height are equal).
+        def.depth  = def.height / def.width;
+        def.height = def.width;
+
         glTexImage3D( GL_TEXTURE_3D, 0, def.comp, def.width, def.height,
                       def.depth, 0, def.format, type, def.pixels );
     }
