@@ -57,7 +57,6 @@ enum DrawOperation
     DOP_COLOR_MASK,
     DOP_DEPTH_MASK,
     DOP_POINT_SIZE,
-    DOP_POINT_SPRITE,
     DOP_READ_PIXELS,
     DOP_COUNT
 };

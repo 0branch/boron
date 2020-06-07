@@ -97,8 +97,6 @@ enum DPOpcode
     DP_DEPTH_MASK_OFF,
     DP_POINT_SIZE_ON,
     DP_POINT_SIZE_OFF,
-    DP_POINT_SPRITE_ON,
-    DP_POINT_SPRITE_OFF,
     DP_COLOR3,              // color
     DP_COLOR4,              // color
     DP_COLOR_GREY,          // greyf
@@ -2507,12 +2505,6 @@ samples_err:
                         DP_POINT_SIZE_OFF : DP_POINT_SIZE_ON );
                 break;
 
-            case DOP_POINT_SPRITE:
-                INC_PC
-                emitOp( (ur_atom(pc) == UR_ATOM_OFF) ?
-                        DP_POINT_SPRITE_OFF : DP_POINT_SPRITE_ON );
-                break;
-
             case DOP_READ_PIXELS:
             {
                 const UCell* rect;
@@ -3454,23 +3446,21 @@ dispatch:
             REPORT("DEPTH_MASK_OFF\n");
             glDepthMask( GL_FALSE );
             break;
-#ifndef GL_ES_VERSION_2_0
+
+#if defined(USE_GLES) || defined(__ANDROID__)
         case DP_POINT_SIZE_ON:
-            glEnable( GL_VERTEX_PROGRAM_POINT_SIZE );
+        case DP_POINT_SIZE_OFF:
+            break;
+#else
+        case DP_POINT_SIZE_ON:
+            glEnable( GL_PROGRAM_POINT_SIZE );
             break;
 
         case DP_POINT_SIZE_OFF:
-            glDisable( GL_VERTEX_PROGRAM_POINT_SIZE );
-            break;
-
-        case DP_POINT_SPRITE_ON:
-            glEnable( GL_POINT_SPRITE );
-            break;
-
-        case DP_POINT_SPRITE_OFF:
-            glDisable( GL_POINT_SPRITE );
+            glDisable( GL_PROGRAM_POINT_SIZE );
             break;
 #endif
+
         case DP_COLOR3:
         {
             uint8_t* cp = (uint8_t*) pc++;

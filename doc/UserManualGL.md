@@ -378,13 +378,9 @@ Draw point primitives using [glDrawArrays] or [glDrawElements] with GL_POINTS.
 Point-Size
 ----------
 
+Enable or disable GL_PROGRAM_POINT_SIZE.
+
     point-size on/off
-
-
-Point-Sprite
-------------
-
-    point-sprite on/off
 
 
 Push

@@ -3013,7 +3013,7 @@ static void _createFixedAtoms( UThread* ut )
 
 static void _createDrawOpTable( UThread* ut )
 {
-#define DA_COUNT    57
+#define DA_COUNT    56
     UAtom atoms[ DA_COUNT ];
     UAtomEntry* ent;
     UBuffer* buf;
@@ -3034,7 +3034,7 @@ static void _createDrawOpTable( UThread* ut )
         "framebuffer framebuffer-tex\n"
         "shadow-begin shadow-end samples-query samples-begin\n"
         "buffer buffer-inst depth-test blend cull color-mask\n"
-        "depth-mask point-size point-sprite read-pixels",
+        "depth-mask point-size read-pixels",
         atoms );
 
     bufN = ur_makeBinary( ut, DA_COUNT * sizeof(UAtomEntry) );
