@@ -46,6 +46,28 @@ write-surf: func [surf] [
     */
 ]
 
+; Search for existing vertex and return vertex index.
+emit-vertex-search: func [buf stride] [
+    new-attrib: skip tail it: buf negate stride
+    ; FIXME: This loop is very slow.
+    while [ne? new-attrib slice it stride] [
+        it: skip it stride
+    ]
+
+    either same? it new-attrib [
+        print [' ' to-text new-attrib]
+    ][
+        clear new-attrib
+        ; print "; reused"
+    ]
+    div index? it stride
+]
+
+emit-vertex: func [buf stride] [
+    new-attrib: skip tail buf negate stride
+    print [' ' to-text new-attrib]
+    div index? new-attrib stride
+]
 
 write-geo: func [
     geo
@@ -61,7 +83,8 @@ write-geo: func [
     ]
 
     prev.k: prev.l: none
-    ic: 0
+    ; ic: 0
+    attrib: make vector! 'f32
 
     prim-end: does [
         print ']'
@@ -108,8 +131,12 @@ write-geo: func [
                 loop vcount [
                     a: skip geo/verts   mul 3 vi/1
                     ++ vi
-                    print [' ' first a second a third a]
-                    append indices ++ ic
+
+                    ; print [' ' first a second a third a]
+                    ; append indices ++ ic
+
+                    append attrib slice a 3
+                    append indices emit-vertex attrib 3
                 ]
             ]
             vn [
@@ -117,9 +144,14 @@ write-geo: func [
                     a: skip geo/verts   mul 3 vi/1
                     b: skip geo/normals mul 3 vi/2
                     vi: skip vi 2
-                    print [' ' first a second a third a
-                               first b second b third b]
-                    append indices ++ ic
+
+                    ; print [' ' first a second a third a
+                    ;            first b second b third b]
+                    ; append indices ++ ic
+
+                    append attrib slice a 3
+                    append attrib slice b 3
+                    append indices emit-vertex attrib 6
                 ]
             ]
             vtn [
@@ -128,8 +160,14 @@ write-geo: func [
                     b: skip geo/uvs     mul 2 vi/2
                     c: skip geo/normals mul 3 vi/3
                     vi: skip vi 3
-                    print [' ' a/1 a/2 a/3  b/1 /*sub 1.0*/ b/2  c/1 c/2 c/3]
-                    append indices ++ ic
+
+                    ; print [' ' a/1 a/2 a/3  b/1 /*sub 1.0*/ b/2  c/1 c/2 c/3]
+                    ; append indices ++ ic
+
+                    append attrib slice a 3
+                    append attrib slice b 2
+                    append attrib slice c 3
+                    append indices emit-vertex attrib 8
                 ]
             ]
         ]
@@ -252,7 +290,13 @@ geom-size: func [geo] [
 */
 
 
-forall args [convert first args]
+forall args [
+    either eq? first args "-s" [
+        emit-vertex: :emit-vertex-search
+    ][
+        convert first args
+    ]
+]
 
 
 ;eof
