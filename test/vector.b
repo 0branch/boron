@@ -63,3 +63,9 @@ probe a
 a: #[1.0 2 3]
 probe change a 7.0,6,5
 probe a
+
+
+print "---- to-text"
+print to-text #[-1.0 2.0]
+print to-text a: i16#[4 -32]
+print mold/contents a

@@ -3334,7 +3334,8 @@ CFUNC(cfunc_reduce)
 /*-cf-
     mold
         value
-        /contents   Omit the outer braces from block and context values.
+        /contents   Omit the outer braces from block, context, and vector
+                    values.
     return: string!
     group: data
     see: to-text

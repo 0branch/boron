@@ -248,16 +248,21 @@ int vector_compare( UThread* ut, const UCell* a, const UCell* b, int test )
 }
 
 
+/*
+  If depth is -1 then the braces will be omitted.
+*/
 void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     USeriesIter si;
-    (void) depth;
 
     ur_seriesSlice( ut, &si, cell );
 
-    if( (si.buf->form != UR_VEC_I32) && (si.buf->form != UR_VEC_F32) )
-        ur_strAppendCStr( str, ur_atomCStr( ut, si.buf->form ) );
-    ur_strAppendCStr( str, "#[" );
+    if( depth >= 0 )
+    {
+        if( (si.buf->form != UR_VEC_I32) && (si.buf->form != UR_VEC_F32) )
+            ur_strAppendCStr( str, ur_atomCStr( ut, si.buf->form ) );
+        ur_strAppendCStr( str, "#[" );
+    }
 
     switch( si.buf->form )
     {
@@ -305,16 +310,17 @@ void vector_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 
     if( ur_strChar( str, -1 ) == ' ' )
         --str->used;
-    ur_strAppendChar( str, ']' );
+
+    if( depth >= 0 )
+        ur_strAppendChar( str, ']' );
 }
 
 
-/*
 void vector_toText( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 {
     (void) depth;
+    vector_toString( ut, cell, str, -1 );
 }
-*/
 
 
 void vector_pick( const UBuffer* buf, UIndex n, UCell* res )
@@ -881,7 +887,7 @@ USeriesType dt_vector =
     "vector!",
     vector_make,            vector_convert,         vector_copy,
     vector_compare,         unset_operate,          vector_select,
-    vector_toString,        vector_toString,
+    vector_toString,        vector_toText,
     unset_recycle,          binary_mark,            ur_arrFree,
     unset_markBuf,          binary_toShared,        unset_bind
     },
