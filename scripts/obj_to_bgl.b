@@ -1,6 +1,7 @@
+#!/usr/bin/boron -sp
 /*
     Converts Wavefront OBJ files to Boron-GL buffers
-    Version: 1.1
+    Version: 1.2
 */
 
 
@@ -46,23 +47,23 @@ write-surf: func [surf] [
     */
 ]
 
-; Search for existing vertex and return vertex index.
-emit-vertex-search: func [buf stride] [
-    new-attrib: skip tail it: buf negate stride
-    ; FIXME: This loop is very slow.
-    while [ne? new-attrib slice it stride] [
-        it: skip it stride
-    ]
+vindex: []
 
-    either same? it new-attrib [
-        print [' ' to-text new-attrib]
-    ][
+; Search for a copy of the vertex at the end of buf and return its index.
+emit-vertex-similar: func [buf stride] [
+    new-attrib: skip tail buf negate stride
+    either pos: find vindex new-attrib [
+        ;print "; reused"
         clear new-attrib
-        ; print "; reused"
+    ][
+        pos: tail vindex
+        append vindex mark-sol slice new-attrib stride
+        print [' ' to-text new-attrib]
     ]
-    div index? it stride
+    sub index? pos 1
 ]
 
+; Print vertex at the end of buf and return its index.
 emit-vertex: func [buf stride] [
     new-attrib: skip tail buf negate stride
     print [' ' to-text new-attrib]
@@ -84,6 +85,7 @@ write-geo: func [
 
     prev.k: prev.l: none
     ; ic: 0
+    clear vindex
     attrib: make vector! 'f32
 
     prim-end: does [
@@ -132,9 +134,6 @@ write-geo: func [
                     a: skip geo/verts   mul 3 vi/1
                     ++ vi
 
-                    ; print [' ' first a second a third a]
-                    ; append indices ++ ic
-
                     append attrib slice a 3
                     append indices emit-vertex attrib 3
                 ]
@@ -144,10 +143,6 @@ write-geo: func [
                     a: skip geo/verts   mul 3 vi/1
                     b: skip geo/normals mul 3 vi/2
                     vi: skip vi 2
-
-                    ; print [' ' first a second a third a
-                    ;            first b second b third b]
-                    ; append indices ++ ic
 
                     append attrib slice a 3
                     append attrib slice b 3
@@ -160,9 +155,6 @@ write-geo: func [
                     b: skip geo/uvs     mul 2 vi/2
                     c: skip geo/normals mul 3 vi/3
                     vi: skip vi 3
-
-                    ; print [' ' a/1 a/2 a/3  b/1 /*sub 1.0*/ b/2  c/1 c/2 c/3]
-                    ; append indices ++ ic
 
                     append attrib slice a 3
                     append attrib slice b 2
@@ -290,12 +282,26 @@ geom-size: func [geo] [
 */
 
 
+files: []
 forall args [
-    either eq? first args "-s" [
-        emit-vertex: :emit-vertex-search
-    ][
-        convert first args
+    switch first args [
+        "-s" [emit-vertex: :emit-vertex-similar]
+        "-h" [
+            print {{
+                Usage: obj_to_bgl.b [-h] [-s] <obj-file> ...
+
+                Options:
+                  -h   Print this help and quit
+                  -s   Eliminate similar vertices
+            }}
+            quit
+        ]
+        [append files first args]
     ]
+]
+
+forall files [
+    convert first files
 ]
 
 
