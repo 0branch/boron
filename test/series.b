@@ -84,6 +84,13 @@ probe slice s none
 probe slice "some tiny example" 5,4
 
 
+print "---- slice to tail"
+t: "<tail>"
+s: slice t size? t
+append t "<more>"
+probe s
+
+
 print "---- skip"
 b: [1 2]
 probe skip b 4

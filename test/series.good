@@ -49,6 +49,8 @@ none
 "<test>"
 "<test>"
 "tiny"
+---- slice to tail
+"<tail>"
 ---- skip
 []
 [1 2]

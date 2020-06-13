@@ -2565,7 +2565,7 @@ set_end:
         else
         {
             res->series.end = res->series.it + end;
-            if( res->series.end >= buf->used )
+            if( res->series.end > buf->used )
                 res->series.end = -1;
         }
     }
