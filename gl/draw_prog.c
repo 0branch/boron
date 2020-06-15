@@ -118,7 +118,7 @@ enum DPOpcode
     DP_SCALE_1,             // float
     DP_FRAMEBUFFER,         // fbo
     DP_FRAMEBUFFER_TEX_WORD,// blkN index attach
-    DP_SHADOW_BEGIN,        // fbo
+    DP_SHADOW_BEGIN,        // fbo bufN
     DP_SHADOW_END,
     DP_SAMPLES_QUERY,
     DP_SAMPLES_BEGIN,
@@ -2353,17 +2353,24 @@ bad_quad:
             }
                 break;
 
-            case DOP_SHADOW_BEGIN:
+            case DOP_SHADOW_BEGIN:      // shadow-begin fbo! vector!
+            {
+                const UCell* matC;
+
                 INC_PC
                 PC_VALUE(val)
-                if( ur_is(val, UT_FBO) )
-                {
-                    emitOp1( DP_SHADOW_BEGIN, ur_fboId(val) );
-                }
-                else
+                if( ! ur_is(val, UT_FBO) )
                 {
                     typeError( "shadow-begin expected fbo!" );
                 }
+                INC_PC
+                PC_VALUE(matC)
+                if( ! ur_is(matC, UT_VECTOR) )
+                {
+                    typeError( "shadow-begin expected matrix vector!" );
+                }
+                emitOp2( DP_SHADOW_BEGIN, ur_fboId(val), matC->series.buf );
+            }
                 break;
 
             case DOP_SHADOW_END:
@@ -2838,89 +2845,59 @@ void dop_camera( UThread* ut, UIndex ctxValBlk )
 }
 
 
-#ifndef GL_ES_VERSION_2_0
-//#define SHADOW_BACK_FACES   1
-
-static GLfloat lightViewMatrix[ 16 ];
-static GLfloat lightProjMatrix[ 16 ];
-
-
-/*
-   Camera must be set up for light before calling shadow-begin.
-*/
-void dop_shadow_begin( GLuint fbo )
-{
-    // Save matrices for shadow-end.
-    glGetFloatv( GL_MODELVIEW_MATRIX, lightViewMatrix );
-    glGetFloatv( GL_PROJECTION_MATRIX, lightProjMatrix );
-
-
-    glDepthMask( GL_TRUE );
-    glEnable( GL_DEPTH_TEST );
-    glDisable( GL_BLEND );
-    glDisable( GL_LIGHTING );
-    //gr_disableTexture();
-
-
-    glBindFramebuffer( GL_FRAMEBUFFER, fbo );
-    glClear( GL_DEPTH_BUFFER_BIT );
-
-#ifdef SHADOW_BACK_FACES
-    glEnable( GL_CULL_FACE );
-    glCullFace( GL_FRONT );
-#else
-    glEnable( GL_POLYGON_OFFSET_FILL );
-    //glPolygonOffset( polygon_offset_scale, polygon_offset_bias );
-    //glPolygonOffset( 2.0f, 10.0f );
-    glPolygonOffset( 2.0f, 4.0f );
-#endif
-}
-
-
-// Transform from -1..1 to 0..1
+// Transform from -1..1 to 0..1 (eye space to texture coordintes).
 const GLfloat bias[] =
 {
-    0.5, 0.0, 0.0, 0.0, 
+    0.5, 0.0, 0.0, 0.0,
     0.0, 0.5, 0.0, 0.0,
     0.0, 0.0, 0.5, 0.0,
     0.5, 0.5, 0.5, 1.0
 };
 
 
+extern GLfloat* es_modelView();
+extern GLfloat* es_projection();
+extern GLfloat* es_viewStack();
+
+/*
+   Camera must be set up for light before calling shadow-begin.
+*/
+void dop_shadow_begin( UThread* ut, GLuint fbo, UIndex matN )
+{
+    // Save the current model-view-projection as the light matrix for use in
+    // the shader rendering with the shadowmap.
+    const UBuffer* arr = ur_buffer(matN);
+    if( (arr->form == UR_VEC_F32) && (arr->used == 16) )
+    {
+        float* mat = arr->ptr.f;
+        ur_matrixMult( bias, es_projection(), mat );
+        ur_matrixMult( mat, es_modelView(), mat );
+    }
+
+    glDepthMask( GL_TRUE );
+    glEnable( GL_DEPTH_TEST );
+    glDisable( GL_BLEND );
+    //glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+    glBindFramebuffer( GL_FRAMEBUFFER, fbo );
+    glClear( GL_DEPTH_BUFFER_BIT );
+
+    glEnable( GL_POLYGON_OFFSET_FILL );
+    //glPolygonOffset( 2.0f, 4.0f );
+    glPolygonOffset( 1.0f, 0.0f );
+}
+
+
 void dop_shadow_end()
 {
-#ifdef SHADOW_BACK_FACES
-    glCullFace( GL_BACK );
-#else
     glDisable( GL_POLYGON_OFFSET_FILL );
-#endif
     glBindFramebuffer( GL_FRAMEBUFFER, 0 );
-
-
-    glActiveTexture( GL_TEXTURE1 );
-    glMatrixMode( GL_TEXTURE );
-
-#if 1
-    glLoadMatrixf( bias );
-#else
-    glLoadIdentity();
-#endif
-    glMultMatrixf( lightProjMatrix );
-    glMultMatrixf( lightViewMatrix );
-    //glMultMatrixf( _cameraMatrix );
-
-    glMatrixMode( GL_MODELVIEW );
-    glActiveTexture( GL_TEXTURE0 );
+    //glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 }
-#endif
 
 
 /*--------------------------------------------------------------------------*/
 
-
-extern GLfloat* es_modelView();
-extern GLfloat* es_projection();
-extern GLfloat* es_viewStack();
 
 /*
   \param ds     Parent draw program state.  May be zero.
@@ -3695,15 +3672,16 @@ dispatch:
         }
             break;
 
-#ifndef GL_ES_VERSION_2_0
         case DP_SHADOW_BEGIN:
-            dop_shadow_begin( *pc++ );
+            dop_shadow_begin( ut, pc[0], pc[1] );
+            pc += 2;
             break;
 
         case DP_SHADOW_END:
             dop_shadow_end();
             break;
 
+#ifndef GL_ES_VERSION_2_0
         case DP_SAMPLES_QUERY:
             ds->samplesQueryId = 0;
             break;

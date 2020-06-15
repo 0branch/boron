@@ -2567,46 +2567,34 @@ CFUNC( cfunc_shadowmap )
     {
         GLuint fboName;
         GLuint texName;
-        GLint depthBits;
         const char* err;
 
 
-        glGetIntegerv( GL_DEPTH_BITS, &depthBits );
-        //printf( "KR depthBits %d\n", depthBits );
-
         texName = glid_genTexture();
         glBindTexture( GL_TEXTURE_2D, texName );
-        glTexImage2D( GL_TEXTURE_2D, 0,
-                      (depthBits == 16) ? GL_DEPTH_COMPONENT16 :
-                                          GL_DEPTH_COMPONENT24,
+        glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24,
                       a1->coord.n[0], a1->coord.n[1], 0,
                       GL_DEPTH_COMPONENT,
-                      //GL_UNSIGNED_INT,
-                      GL_UNSIGNED_BYTE,
+                      GL_UNSIGNED_INT,
                       NULL );
 
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-#ifndef GL_ES_VERSION_2_0
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE,
-                                        GL_COMPARE_R_TO_TEXTURE );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC,
-                                        GL_LEQUAL );
-#endif
-        //glTexParameteri( GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE,
-        //                 GL_INTENSITY );
+                                        GL_COMPARE_REF_TO_TEXTURE );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL );
 
 
         fboName = glid_genFramebuffer();
         glBindFramebuffer( GL_FRAMEBUFFER, fboName );
-        glFramebufferTexture2D( GL_FRAMEBUFFER,
-                 GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texName, 0 );
-#ifndef GL_ES_VERSION_2_0
+        glFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                GL_TEXTURE_2D, texName, 0 );
+#if ! (defined(USE_GLES) || defined(__ANDROID__))
         glDrawBuffer( GL_NONE );
-        glReadBuffer( GL_NONE );
 #endif
+        glReadBuffer( GL_NONE );
 
         if( (err = _framebufferStatus()) )
             return ur_error( ut, UR_ERR_INTERNAL, err );
@@ -2614,6 +2602,7 @@ CFUNC( cfunc_shadowmap )
         glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
         ur_setId(res, UT_FBO);
+        ur_setFlags(res, UR_FLAG_FBO_SHADOW);
         ur_fboId(res)    = fboName;
         ur_fboRenId(res) = 0;
         ur_fboTexId(res) = texName;

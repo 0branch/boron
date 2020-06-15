@@ -209,6 +209,7 @@ extern const char* gl_errorString( GLenum error );
 #define ur_texW(c)          ((UCellTexture*) (c))->width
 #define ur_texH(c)          ((UCellTexture*) (c))->height
 
+#define UR_FLAG_FBO_SHADOW  0x01
 #define ur_fboId(c)         ((UCellFramebuffer*) (c))->glFboId
 #define ur_fboRenId(c)      ((UCellFramebuffer*) (c))->glRenId
 #define ur_fboTexId(c)      ((UCellFramebuffer*) (c))->glTexId

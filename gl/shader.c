@@ -623,7 +623,12 @@ sampler_uniform:
                     es_matrixUsed |= 1;
                 else if( pi->location == 2 )    // 2 = ULOC_MODELVIEW
                     es_matrixUsed |= 2;
-                //glUniformMatrix4fv( pi->location, 1, GL_FALSE, matrixTop );
+                else if( ur_is(cval, UT_VECTOR) )
+                {
+                    // Assuming form == UR_VEC_F32 & used == 16.
+                    const float* mat = ur_bufferSer(cval)->ptr.f;
+                    glUniformMatrix4fv( pi->location, 1, GL_FALSE, mat );
+                }
                 break;
         }
         ++pi;

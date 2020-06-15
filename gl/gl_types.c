@@ -542,6 +542,15 @@ build:
 }
 
 
+static void textureSize( GLenum target, GLuint name, GLint* size )
+{
+    // glGetTexLevelParameteriv requires GLES 3.1
+    glBindTexture( target, name );
+    glGetTexLevelParameteriv( target, 0, GL_TEXTURE_WIDTH,  size );
+    glGetTexLevelParameteriv( target, 0, GL_TEXTURE_HEIGHT, size + 1 );
+}
+
+
 static void textureToRaster( UThread* ut, GLenum target, GLuint name,
                              UCell* res )
 {
@@ -553,10 +562,7 @@ static void textureToRaster( UThread* ut, GLenum target, GLuint name,
     const int rform = UR_RAST_RGB;
 #endif
 
-    // glGetTexLevelParameteriv requires GLES 3.1
-    glBindTexture( target, name );
-    glGetTexLevelParameteriv( target, 0, GL_TEXTURE_WIDTH,  dim );
-    glGetTexLevelParameteriv( target, 0, GL_TEXTURE_HEIGHT, dim + 1 );
+    textureSize( target, name, dim );
 
     bin = ur_makeRaster( ut, rform, dim[0], dim[1], res );
     if( bin->ptr.b )
@@ -976,8 +982,11 @@ const char* _framebufferStatus()
         case GL_FRAMEBUFFER_UNSUPPORTED:
             return "Unsupported framebuffer format";
 
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+            return "Framebuffer incomplete, bad attachment";
+
         case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-            return "Framebuffer incomplete, missing attachment";
+            return "Framebuffer incomplete, no image attached";
 
         case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
             return
@@ -1029,12 +1038,7 @@ int fbo_make( UThread* ut, const UCell* from, UCell* res )
             }
             else
             {
-                // glGetTexLevelParameteriv requires GLES 3.1
-                glBindTexture( GL_TEXTURE_2D, texName );
-                glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,
-                                          dim );
-                glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT,
-                                          dim + 1 );
+                textureSize( GL_TEXTURE_2D, texName, dim );
             }
         }
     }
@@ -1100,6 +1104,23 @@ int fbo_make( UThread* ut, const UCell* from, UCell* res )
 }
 
 
+static void rasterDepthToRgb( int w, int h, uint8_t* pixel )
+{
+    uint32_t* it = (uint32_t*) pixel;
+    uint32_t* end = it + (w * h);
+    uint32_t v;
+    while( it != end )
+    {
+        v = *it++;
+        v >>= 24;
+        *pixel++ = v;
+        *pixel++ = v;
+        *pixel++ = v;
+        *pixel++ = 255;
+    }
+}
+
+
 static const UCell*
 fbo_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
 {
@@ -1108,7 +1129,28 @@ fbo_select( UThread* ut, const UCell* cell, const UCell* sel, UCell* res )
         switch( ur_atom(sel) )
         {
         case UR_ATOM_RASTER:
-            textureToRaster( ut, GL_TEXTURE_2D, ur_fboTexId(cell), res );
+        {
+            const GLenum target = GL_TEXTURE_2D;
+            UBuffer* bin;
+            GLint dim[2];
+            int shadow = ur_flags(cell, UR_FLAG_FBO_SHADOW);
+
+            textureSize( target, ur_fboTexId(cell), dim );
+            bin = ur_makeRaster( ut, /*shadow ? UR_RAST_GRAY :*/ UR_RAST_RGBA,
+                                 dim[0], dim[1], res );
+            if( bin->ptr.b )
+            {
+                glBindFramebuffer( GL_FRAMEBUFFER, ur_fboId(cell) );
+                glReadPixels( 0, 0, dim[0], dim[1],
+                              shadow ? GL_DEPTH_COMPONENT : GL_RGBA,
+                              shadow ? GL_UNSIGNED_INT : GL_UNSIGNED_BYTE,
+                              ur_rastElem(bin) );
+                glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+
+                if( shadow )
+                    rasterDepthToRgb( dim[0], dim[1], ur_rastElem(bin) );
+            }
+        }
             return res;
 
         case UR_ATOM_TEXTURE:
