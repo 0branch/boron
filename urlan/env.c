@@ -97,8 +97,8 @@
 
 static void _nopThreadFunc( UThread* ut, enum UThreadMethod op )
 {
-    (void) ut;
-    (void) op;
+    if( op == UR_THREAD_FREEZE )
+        ut->stack.used = 0;
 }
 
 
@@ -108,13 +108,10 @@ static void _threadInitStore( UThread* ut )
     UIndex bufN[2];
 
     ur_arrInit( &ut->dataStore, sizeof(UBuffer), INIT_BUF_COUNT );
-    ur_arrInit( &ut->stack,     sizeof(UCell),   0 );
-    ur_arrInit( &ut->holds,     sizeof(UIndex),  16 );
-    ur_binInit( &ut->gcBits, INIT_BUF_COUNT / 8 );
+    ut->holds.used = 0;
     ut->sharedStoreBuf = ut->env->sharedStore.ptr.buf;
     ut->freeBufCount = 0;
     ut->freeBufList = FREE_TERM;
-    ut->wordCell = 0;
 
     // Buffer index zero denotes an invalid buffer (UR_INVALID_BUF),
     // so remove it from general use.
@@ -122,8 +119,6 @@ static void _threadInitStore( UThread* ut )
     ur_generate( ut, 2, bufN, _initType );
     ur_hold( bufN[0] );     // UR_INVALID_BUF
     ur_hold( bufN[1] );     // UR_MAIN_CONTEXT
-
-    ut->env->threadFunc( ut, UR_THREAD_INIT );
 }
 
 
@@ -137,7 +132,12 @@ static UThread* _threadMake( UEnv* env )
     ut->env   = env;
     ut->types = env->types;
 
+    ur_arrInit( &ut->stack, sizeof(UCell), 0 );
+    ur_arrInit( &ut->holds, sizeof(UIndex), 16 );
+    ur_binInit( &ut->gcBits, INIT_BUF_COUNT / 8 );
+
     _threadInitStore( ut );
+    env->threadFunc( ut, UR_THREAD_INIT );
 
     LOCK_GLOBAL
 
@@ -534,8 +534,8 @@ void ur_freeEnv( UThread* ut )
   before a second thread is created.
 
   The thread method UR_THREAD_FREEZE is called before any adjustments
-  are made.  After the store has been converted, the method UR_THREAD_INIT
-  will be called on a fresh thread dataStore.
+  are made.  After the store has been converted, all buffer holds are removed
+  and a fresh thread dataStore is created.
 
   \param ut     UThread created with ur_makeEnv().
 */
@@ -548,12 +548,11 @@ void ur_freezeEnv( UThread* ut )
 
     env->threadFunc( ut, UR_THREAD_FREEZE );
 
+    // NOTE: The FREEZE method may change ut->stack so we don't touch it here.
+
     ur_recycle( ut );
 
     env->sharedStore = ut->dataStore;
-    ur_arrFree( &ut->stack );
-    ur_arrFree( &ut->holds );
-    ur_binFree( &ut->gcBits );
 
 
     // Point all bindings & data store references to the shared environment.

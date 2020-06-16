@@ -198,6 +198,7 @@ static void boron_threadMethod( UThread* ut, enum UThreadMethod op )
             break;
 
         case UR_THREAD_FREEZE:
+            boron_reset( ut );
             break;
     }
 }
