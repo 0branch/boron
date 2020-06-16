@@ -551,6 +551,8 @@ void android_main( struct android_app* app )
     }
     ur_freezeEnv( ut );
 
+    ur_initGLData( ut );
+
 #ifdef LOCAL_RENDER
     updateN = ur_tokenize( ut, _update, _update + sizeof(_update) - 1, &res );
     ur_hold( updateN );
