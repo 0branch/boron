@@ -3002,7 +3002,7 @@ static void _createFixedAtoms( UThread* ut )
 
 static void _createDrawOpTable( UThread* ut )
 {
-#define DA_COUNT    56
+#define DA_COUNT    57
     UAtom atoms[ DA_COUNT ];
     UAtomEntry* ent;
     UBuffer* buf;
