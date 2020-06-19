@@ -2188,40 +2188,28 @@ bad_quad:
 
             case DOP_SHADER:
             {
+                const UBuffer* blk;
+                const Shader* sh;
+
                 INC_PC_VALUE(val)
-#if 0
-                // Don't allow old fixed functionality pipeline.
-                // This allows us to use 0 as the currentProgram "unset" state.
-                if( ur_is(val, UT_NONE) )
+                sh = shaderContext( ut, val, &blk );
+                if( ! sh )
                 {
-                    emitOp1( DP_SHADER, 0 );
-                    emit->shaderProg = 0;
+                    scriptError( "invalid shader" );
+                }
+                if( blk )
+                {
+                    emit->shaderResN = blk->ptr.cell[0].series.buf;
+                    refContext( val );
+                    emitOp2( DP_SHADER_CTX, sh->program, val->series.buf );
                 }
                 else
-#endif
                 {
-                    const UBuffer* blk;
-                    const Shader* sh;
-
-                    sh = shaderContext( ut, val, &blk );
-                    if( ! sh )
-                    {
-                        scriptError( "invalid shader" );
-                    }
-                    if( blk )
-                    {
-                        emit->shaderResN = blk->ptr.cell[0].series.buf;
-                        refContext( val );
-                        emitOp2( DP_SHADER_CTX, sh->program, val->series.buf );
-                    }
-                    else
-                    {
-                        emit->shaderResN = val->series.buf;
-                        refShader( val->series.buf );
-                        emitOp1( DP_SHADER, sh->program );
-                    }
-                    emit->shaderProg = sh->program;
+                    emit->shaderResN = val->series.buf;
+                    refShader( val->series.buf );
+                    emitOp1( DP_SHADER, sh->program );
                 }
+                emit->shaderProg = sh->program;
             }
                 break;
 
@@ -2536,6 +2524,30 @@ samples_err:
             default:
                 goto bad_inst;
             }
+        }
+        else if( ur_is(pc, UT_OPTION) )
+        {
+            if( ur_atom(pc) == UR_ATOM_SHADER )
+            {
+                // This option declares a shader to be used while compiling
+                // (e.g. for looking up variable locations) without emitting
+                // any instructions into the draw program.
+
+                const UBuffer* blk;
+                const Shader* sh;
+
+                INC_PC_VALUE(val)
+                sh = shaderContext( ut, val, &blk );
+                if( ! sh )
+                {
+                    scriptError( "invalid shader" );
+                }
+                emit->shaderResN = blk ? blk->ptr.cell[0].series.buf :
+                                         val->series.buf;
+                emit->shaderProg = sh->program;
+            }
+            else
+                goto bad_inst;
         }
         else if( ur_is(pc, UT_PATH) )
         {
