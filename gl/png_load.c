@@ -8,6 +8,7 @@
 #include <png.h>
 #include "boron-gl.h"
 #include "os.h"
+#include "mem_util.h"
 #ifdef __ANDROID__
 #include "glv_asset.h"
 #endif
@@ -219,29 +220,72 @@ static int load_png( UThread* ut, const void* fpBuf, unsigned int bufLen,
 }
 
 
+#include "stb_jpeg.c"
+
+static int load_jpeg( UThread* ut, FILE* fp, UCell* res )
+{
+    UBuffer* bin;
+    uint8_t* pixels;
+    int w, h, comp;
+
+#ifdef IMAGE_BOTTOM_AT_0
+    stbi_set_flip_vertically_on_load( 1 );
+#endif
+    pixels = stbi_load_from_file( fp, &w, &h, &comp, STBI_rgb );
+    if( ! pixels )
+        return ur_error( ut, UR_ERR_ACCESS, "JPEG load failed" );
+
+    if( comp != 3 )
+    {
+        stbi_image_free( pixels );
+        return ur_error( ut, UR_ERR_ACCESS, "JPEG load expected 3 channels" );
+    }
+
+    bin = ur_makeRaster( ut, UR_RAST_RGB, w, h, res );
+    if( bin->ptr.b )
+        memcpy( ur_rastElem(bin), pixels, w * h * comp );
+
+    stbi_image_free( pixels );
+    return UR_OK;
+}
+
+
 /*-cf-
-    load-png
+    load-image
         filename    string!/file!
     return: raster!
     group: io
 */
-CFUNC_PUB( cfunc_load_png )
+CFUNC_PUB( cfunc_load_image )
 {
     if( ur_is(a1, UT_FILE) || ur_is(a1, UT_STRING) )
     {
         int ok;
-        const char* file = boron_cstr( ut, a1, 0 );
+        UBuffer* tbin = boron_tempBinary(ut);
+        const char* file = ur_cstr( a1, tbin );
+
+        // Check for .jpeg or .jpg extension.
+        const uint8_t* ext = find_last_uint8_t( tbin->ptr.b,
+                                                tbin->ptr.b + tbin->used, '.' );
+        int jpgExt = ext && (ext[1] == 'j' || ext[1] == 'J');
+
 #ifdef __ANDROID__
         struct AssetFile af;
         if( ! glv_assetOpen( &af, file, "r" ) )
             return ur_error( ut, UR_ERR_ACCESS, "Could not open \"%s\"", file );
-        ok = load_png( ut, af.fp, 0, 0, res );
+        if( jpgExt )
+            ok = load_jpeg( ut, af.fp, res );
+        else
+            ok = load_png( ut, af.fp, 0, 0, res );
         glv_assetClose( &af );
 #else
         FILE* fp = fopen( file, "rb" );
         if( ! fp )
             return ur_error( ut, UR_ERR_ACCESS, "Could not open \"%s\"", file );
-        ok = load_png( ut, fp, 0, 0, res );
+        if( jpgExt )
+            ok = load_jpeg( ut, fp, res );
+        else
+            ok = load_png( ut, fp, 0, 0, res );
         fclose( fp );
 #endif
         return ok;

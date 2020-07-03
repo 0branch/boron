@@ -111,14 +111,14 @@ load: func [file string!] [
 load-shader: func [file] [make shader! load file]
 
 /*-hf- load-texture
-        file    PNG filename
+        file    PNG or JPEG filename
         /mipmap
         /clamp
     return: texture!
     group: io
 */
 load-texture: func [file /mipmap /clamp | spec] [
-    spec: file: load-png file
+    spec: file: load-image file
     if mipmap [spec: [file 'mipmap]]
     if clamp  [spec: [file 'linear 'clamp]]
     make texture! spec

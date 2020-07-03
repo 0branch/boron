@@ -1,4 +1,4 @@
-;p: load-png %/home/karl/src/primal/gui/icons/logo.png
+;p: load-image %/home/karl/src/primal/gui/icons/logo.png
 ;save-png %out p
 
 ;print gl-extensions
@@ -7,7 +7,7 @@
 fontA: make font!
     [%data/font/20thfont.ttf 22]
 ;   reduce [read %data/font/20thfont-22.rfont
-;           load-png %data/font/20thfont-22.png]
+;           load-image %data/font/20thfont-22.png]
  tex: fontA/texture
 ;tex: load-texture %/home/karl/src/primal/gui/icons/logo.png
 

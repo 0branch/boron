@@ -61,7 +61,7 @@
   "]\n"
   "load-shader: func [file] [make shader! load file]\n"
   "load-texture: func [file /mipmap /clamp | spec] [\n"
-  "    spec: file: load-png file\n"
+  "    spec: file: load-image file\n"
   "    if mipmap [spec: [file 'mipmap]]\n"
   "    if clamp [spec: [file 'linear 'clamp]]\n"
   "    make texture! spec\n"

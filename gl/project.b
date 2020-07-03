@@ -15,6 +15,7 @@ default [
         %../include
         %../urlan
         %../eval
+        %../support
     ]
     linux [include_from %/usr/include/GL]   ; For glv.h
     win32 [include_from %../../glv/win32]

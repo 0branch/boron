@@ -2923,7 +2923,7 @@ static char _bootScript[] =
 
 
 extern CFUNC_PUB( cfunc_buffer_audio );
-extern CFUNC_PUB( cfunc_load_png );
+extern CFUNC_PUB( cfunc_load_image );
 extern CFUNC_PUB( cfunc_save_png );
 //extern CFUNC_PUB( cfunc_particle_sim );
 

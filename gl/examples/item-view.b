@@ -8,23 +8,23 @@ ortho-cam: copy ortho-cam       ; Copy from shared storage.
 ; gui-style: do %data/style/oxif.b
 
 ;/*
-load-png0: :load-png
-load-png: func [file] [
+load-img0: :load-image
+load-image: func [file] [
     if find file %oxif-comp.png [
-        return blit load-png0 file
-                    load-png0 %data/image/color_numbers.png
+        return blit load-img0 file
+                    load-img0 %data/image/color_numbers.png
                     0,128,256,128
     ]
-    load-png0 file
+    load-img0 file
 ]
 gui-style: do %data/style/oxif.b
-load-png: :load-png0
+load-image: :load-img0
 ;*/
 
 
 /*
 s1: copy gui-style/widget-sh
-s1/cmap: load-png %data/image/color_numbers.png
+s1/cmap: load-image %data/image/color_numbers.png
 ortho-cam/viewport: 0,0,512,512
 f1: make fbo! gui-style/texture
 draw draw-list [
