@@ -260,6 +260,12 @@ char* boron_cpath( UThread* ut, const UCell* strC, UBuffer* bin )
 }
 
 
+UBuffer* boron_tempBinary( const UThread* ut )
+{
+    return &BT->tbin;
+}
+
+
 #if 0
 /*
   \param src        Valid UT_STRING cell.

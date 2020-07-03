@@ -145,6 +145,7 @@ UStatus  boron_throwWord( UThread*, UAtom atom, UIndex stackPos );
 int      boron_catchWord( UThread*, UAtom atom );
 char*    boron_cstr( UThread*, const UCell* strC, UBuffer* bin );
 char*    boron_cpath( UThread*, const UCell* strC, UBuffer* bin );
+UBuffer* boron_tempBinary( const UThread* );
 UStatus  boron_badArg( UThread*, UIndex atom, int argN );
 
 /* Deprecated functions */
