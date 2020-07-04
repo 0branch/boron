@@ -139,7 +139,7 @@ static void readMemStream( png_structp png, png_bytep data, png_size_t len )
         png_error( png, "End of input memory buffer reached" );
         return;
     }
-    memcpy( data, st->buf, len );
+    memCpy( data, st->buf, len );
     st->buf += len;
     st->len -= len;
 }
@@ -228,9 +228,6 @@ static int load_jpeg( UThread* ut, FILE* fp, UCell* res )
     uint8_t* pixels;
     int w, h, comp;
 
-#ifdef IMAGE_BOTTOM_AT_0
-    stbi_set_flip_vertically_on_load( 1 );
-#endif
     pixels = stbi_load_from_file( fp, &w, &h, &comp, STBI_rgb );
     if( ! pixels )
         return ur_error( ut, UR_ERR_ACCESS, "JPEG load failed" );
@@ -243,7 +240,22 @@ static int load_jpeg( UThread* ut, FILE* fp, UCell* res )
 
     bin = ur_makeRaster( ut, UR_RAST_RGB, w, h, res );
     if( bin->ptr.b )
-        memcpy( ur_rastElem(bin), pixels, w * h * comp );
+    {
+#ifdef IMAGE_BOTTOM_AT_0
+        uint8_t* dest = ur_rastElem(bin);
+        int bpl = w * comp;
+        int y;
+
+        for( y = h; y; )
+        {
+            --y;
+            memCpy( dest, pixels + y * bpl, bpl );
+            dest += bpl;
+        }
+#else
+        memCpy( ur_rastElem(bin), pixels, w * h * comp );
+#endif
+    }
 
     stbi_image_free( pixels );
     return UR_OK;
