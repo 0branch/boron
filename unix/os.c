@@ -222,7 +222,7 @@ int ur_readDir( UThread* ut, const char* filename, UCell* res )
     else
     {
         ur_setId(res, UT_LOGIC);
-        ur_int(res) = 0;
+        //ur_logic(res) = 0;
     }
     return UR_OK;
 }
@@ -659,7 +659,7 @@ CFUNC_PUB( cfunc_execute )
     if( ! ur_is(a1, UT_STRING) )
     {
         ur_setId(res, UT_LOGIC);
-        ur_int(res) = 0;
+        //ur_logic(res) = 0;
         return UR_OK;
     }
 
@@ -799,7 +799,7 @@ CFUNC_PUB( cfunc_with_flock )
     else
     {
         ur_setId(res, UT_LOGIC);
-        ur_int(res) = 0;
+        //ur_logic(res) = 0;
     }
     close( fd );
 
