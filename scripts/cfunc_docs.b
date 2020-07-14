@@ -61,6 +61,9 @@ hfuncs: to-obj hfuncs
 
 doc:  make string! 1024
 emit: func [txt] [append doc txt]
+emit-esc: func [txt] [
+    append doc construct txt ['&' "&amp;"  '<' "&lt;"  '>' "&gt;"]
+]
 
 
 argument-names: func [args /local a] [
@@ -212,9 +215,9 @@ context [
         state: none
         parse txt [some[
             tok:
-            4 ' ' thru nl :tok  (transit 'code emit skip tok 4)
+            4 ' ' thru nl :tok  (transit 'code emit-esc skip tok 4)
           | nl                  (transit none)
-          | thru nl :tok        (transit 'para emit tok)
+          | thru nl :tok        (transit 'para emit-esc tok)
         ]]
         transit none
     ]

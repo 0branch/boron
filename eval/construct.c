@@ -281,6 +281,20 @@ match:
     group: data
 
     Make or append values with a detailed specification.
+
+    The string! spec. is simply pairs of search & replace values applied
+    to a copy of an existing string.  Both the search pattern and replacement
+    value types must be char! or string!.
+
+        construct "$NAME travels > $CITY" [
+            '>'     "to"
+            "$NAME" "Joseph"
+            "$CITY" "Paris"
+        ]
+        == "Joseph travels to Paris"
+
+    It is much more efficient to replace text using construct than calling the
+    replace function multiple times.  In the future more rules may be added.
 */
 CFUNC(cfunc_construct)
 {

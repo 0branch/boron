@@ -585,6 +585,7 @@ static const char setupScript[] =
         /all    Replace all occurances of the pattern, not just the first.
     return: Modified series at original position.
     group: series
+    see: change, construct
 */
 /*-hf- split-path
         path file!/string!
