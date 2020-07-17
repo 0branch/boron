@@ -661,18 +661,18 @@ Block Parse
 Rule-Statement    Operation
 ----------------  -------------------------------------------
 \|                Start an alternate rule.
-any <val>         Match the value zero or more times.
+any \<val\>       Match the value zero or more times.
 break             Stop the current sub-rule as a successful match.
-into <rules>      Parse block at current input position with a new set of rules.
-opt <val>         Match the value zero or one time.
-place <ser>       Set the current input position to the given series position.
-set <word>        Set the specified word to the current input value.
+into \<rules\>    Parse block at current input position with a new set of rules.
+opt \<val\>       Match the value zero or one time.
+place \<ser\>     Set the current input position to the given series position.
+set \<word\>      Set the specified word to the current input value.
 skip              Skip a single value.
-some <val>        Match the value one or more times.
-thru <val>        Skip input until the value is found, then continue through it.
-to <val>          Skip input until the value is found.
-int! <val>        Match a value an exact number of times.
-int! int! <val>   Match a value a variable number of times.
+some \<val\>      Match the value one or more times.
+thru \<val\>      Skip input until the value is found, then continue through it.
+to \<val\>        Skip input until the value is found.
+int! \<val\>      Match a value an exact number of times.
+int! int! \<val\> Match a value a variable number of times.
 int! skip         Skip a number of values.
 block!            Sub-rules.
 datatype!         Match a single value of the given type.
@@ -689,22 +689,21 @@ String Parse
 Rule-Statement    Operation
 ----------------  -------------------------------------------
 \|                Start an alternate rule.
-any <val>         Match the value zero or more times.
+any \<val\>       Match the value zero or more times.
 break             Stop the current sub-rule as a successful match.
-opt <val>         Match the value zero or one time.
-place <ser>       Set the current input position to the given series position.
+opt \<val\>       Match the value zero or one time.
+place \<ser\>     Set the current input position to the given series position.
 skip              Skip a single character.
-some <val>        Match the value one or more times.
-thru <val>        Skip input until the value is found, then continue through it.
-to <val>          Skip input until the value is found.
-int! <val>        Match a value an exact number of times.
-int! int! <val>   Match a value a variable number of times.
+some \<val\>      Match the value one or more times.
+thru \<val\>      Skip input until the value is found, then continue through it.
+to \<val\>        Skip input until the value is found.
+int! \<val\>      Match a value an exact number of times.
+int! int! \<val\> Match a value a variable number of times.
 int! skip         Skip a number of characters.
 paren!            Evaluate Boron code.
 set-word!         Set word to the current input position.
 get-word!         Set slice end to the current input position.
 ----------------  -------------------------------------------
-
 
 Value
 ---------  -------------------------------------------
@@ -714,6 +713,51 @@ char!      Match a single character.
 string!    Match a string.
 word!      Match value of word.
 ---------  -------------------------------------------
+
+
+Binary Parse
+------------
+
+When parse is used with the */binary* option the following rules are used
+to extract fields of various bit lengths and *binary!* chunks of data.
+
+Rule-Statement        Operation
+--------------------  -------------------------------------------
+\|                    Start an alternate rule.
+big-endian            Interpret following unsigned integers as big endian.
+little-endian         Interpret following unsigned integers as little endian.
+u8                    Unsigned 8-bit integer.
+u16                   Unsigned 16-bit integer.
+u32                   Unsigned 32-bit integer.
+u64                   Unsigned 64-bit integer.
+copy \<dst\> \<len\>  Set dst word to a binary! copy of the next len bytes.
+skip                  Skip a single byte.
+thru \<val\>          Skip input until the value is found, then continue through it.
+to \<val\>            Skip input until the value is found.
+int!                  Integer bit field of 1 to 64 bits.
+block!                Sub-rules.
+paren!                Evaluate Boron code.
+set-word!             Set word to the next integer or bit field.
+char!                 Match a character or fail.
+string!               Match a series of characters or fail.
+--------------------  -------------------------------------------
+
+The default endianness is *little-endian*.
+
+The *to* & *thru* value type must be *binary!/string!* or a word set to one of
+those types.
+
+The following example parses the 10-byte GZIP header and places the
+individual file flag bits into separate words:
+
+    parse/binary read %some.gz [
+        '^(1f)' '^(8b)'
+        method: u8
+        3 fcomment:1 fname:1 fextra:1 fcrc:1 ftext:1
+        timestamp: u32
+        cflags: u8
+        os: u8
+    ]
 
 
 [function reference]: http://urlan.sf.net/boron/doc/func_ref.html
