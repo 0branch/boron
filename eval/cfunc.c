@@ -3625,6 +3625,10 @@ static int _makeDirParents( UThread* ut, char* path, char* end )
         /all    Make any missing parent directories.
     return: unset!
     group: os
+
+    If the directory already exists then the function returns normally.
+    If the specified path points to an existing file or fails for another
+    reason then an error is thrown.
 */
 CFUNC(cfunc_make_dir)
 {

@@ -246,13 +246,14 @@ int ur_makeDir( UThread* ut, const char* path )
 {
     if( ! CreateDirectory( path, NULL ) )
     {
-        DWORD err;
-        err = GetLastError();
-        if( (err != ERROR_FILE_EXISTS) || (_isDir(path) != 1) )
+        DWORD err = GetLastError();
+        if( err == ERROR_ALREADY_EXISTS || err == ERROR_FILE_EXISTS )
         {
-            ur_error( ut, UR_ERR_ACCESS, "CreateDirectory error (%d)", err );
-            return UR_THROW;
+            if( _isDir(path) == 1 )
+                return UR_OK;
         }
+        ur_error( ut, UR_ERR_ACCESS, "CreateDirectory error (%d)", err );
+        return UR_THROW;
     }
     return UR_OK;
 }
