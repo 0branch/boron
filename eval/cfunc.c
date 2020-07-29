@@ -3440,6 +3440,12 @@ CFUNC(cfunc_print)
     if( cfunc_prin( ut, a1, res ) )
     {
         putc( '\n', stdout );
+#ifdef _WIN32
+        // Unix line buffers stdout if attached to a terminal (see setvbuf)
+        // but Windows does not.  A manual flush is required or else the
+        // user may not see any feedback until the program exits.
+        fflush( stdout );
+#endif
         return UR_OK;
     }
     return UR_THROW;
