@@ -17,12 +17,21 @@ TAR      = tar -cf
 ZIP      = gzip -9f
 }
     case [
-        not system-qt
-            {MOC      = $(QTDIR)/bin/moc^/QTINC    = $(QTDIR)/include^/}
-        eq? qt-version 5
-            {MOC      = moc-qt5^/QTINC    = /usr/include/qt5^/}
-        true
-            {MOC      = moc-qt4^/QTINC    = /usr/include^/}
+        not system-qt {{
+            MOC      = $(QTDIR)/bin/moc
+            RCC      = $(QTDIR)/bin/rcc
+            QTINC    = $(QTDIR)/include
+        }}
+        eq? qt-version 5 {{
+            MOC      = moc-qt5
+            RCC      = rcc-qt5
+            QTINC    = /usr/include/qt5
+        }}
+        true {{
+            MOC      = moc-qt4
+            RCC      = rcc-qt4
+            QTINC    = /usr/include
+        }}
     ]
 ]
 

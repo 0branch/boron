@@ -19,6 +19,7 @@ CC       = cl.exe
 CXX      = cl.exe
 LINK     = link.exe
 MOC      = $(QTDIR)\bin\moc.exe
+RCC      = $(QTDIR)\bin\rcc.exe
 MT       = mt.exe
 TAR      = tar.exe -cf
 ZIP      = zip.exe -r -9

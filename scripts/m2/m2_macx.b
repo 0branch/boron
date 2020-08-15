@@ -14,6 +14,7 @@ CXX      = g++  # c++
 LINK     = gcc  # cc
 LINK_CXX = g++  # c++
 MOC      = $(QTDIR)/bin/moc
+RCC      = $(QTDIR)/bin/rcc
 TAR      = tar -cf
 ZIP      = gzip -9f
 }
