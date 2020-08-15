@@ -2,7 +2,7 @@
 /*
 	M2 - A meta-make tool
 	Copyright 2001-2015,2019 Karl Robillard
-	Version 2.0.0
+	Version 2.0.1
 
 	TODO:
 		* Remove files outside the build directory from dist rule.
@@ -373,7 +373,9 @@ m2: context
 		str: make string! 64
 
 		obj: new-block
-		foreach t targets [append obj t/objdir]
+		foreach t targets [
+			if dir: t/objdir [append obj dir]
+		]
 		obj: intersect obj obj   ; Removes duplicates.
 		append str obj
 
