@@ -625,6 +625,8 @@ static uint8_t firstCharOp[ 127 ] =
 };
 
 
+extern UAtom ur_internAtomUnlocked( UThread*, const char*, const char* );
+
 /**
   \ingroup urlan_core
 
@@ -646,6 +648,7 @@ UStatus ur_tokenizeB( UThread* ut, UIndex blkN, int inputEncoding,
     UBuffer stack;
     UBuffer* blk;
     UCell* cell;
+    UAtom (*intern)( UThread*, const char*, const char* );
     const char* errorMsg;
     const uint8_t* token;
     const uint8_t* it = start;
@@ -667,6 +670,7 @@ UStatus ur_tokenizeB( UThread* ut, UIndex blkN, int inputEncoding,
     errorMsg = msg; \
     goto error_token
 
+    intern = (ut == ut->nextThread) ? ur_internAtomUnlocked : ur_internAtom;
 
     ur_arrInit( &stack, sizeof(UIndex), 32 );
     ur_arrAppendInt32( &stack, blkN );
@@ -845,7 +849,7 @@ push_word:
                 mode = UT_WORD;
             blk = BLOCK;
             cell = ur_blkAppendNew( blk, mode );
-            ur_setWordUnbound(cell, ur_internAtom(ut, CCP token, CCP TOK_END));
+            ur_setWordUnbound(cell, intern(ut, CCP token, CCP TOK_END));
             if( ch == ':' )
                 ch = CS_NEXT;
             else if( ch == '/' )
@@ -884,8 +888,7 @@ path_seg:
                 while( (ch = CS_NEXT) > 0 && IS_WORD(ch) )
                     ;
                 cell = ur_blkAppendNew( blk, wt );
-                ur_setWordUnbound( cell, ur_internAtom(ut, CCP token,
-                                                           CCP TOK_END) );
+                ur_setWordUnbound( cell, intern(ut, CCP token, CCP TOK_END) );
             }
             if( ch == '/' )
                 goto path_seg;

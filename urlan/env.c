@@ -648,6 +648,17 @@ UAtom ur_internAtom( UThread* ut, const char* it, const char* end )
 }
 
 
+/*
+  This is an internal function used to optimize tokenize.
+*/
+UAtom ur_internAtomUnlocked( UThread* ut, const char* it, const char* end )
+{
+    UEnv* env = ut->env;
+    return _internAtom( ut, &env->atomTable, &env->atomNames,
+                        (uint8_t*) it, (uint8_t*) end );
+}
+
+
 /**
   Add atoms to the shared environment.
 
