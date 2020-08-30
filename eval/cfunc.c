@@ -4550,7 +4550,7 @@ CFUNC(cfunc_typeQ)
 
 /*-cf-
     swap
-        data    binary!
+        data    binary!/block!
         /group  Specify number of elements to reverse
             size    int!
     return: Modified data.
@@ -4569,30 +4569,45 @@ CFUNC(cfunc_swap)
 
     if( CFUNC_OPTIONS & OPT_SWAP_GROUP )
     {
-        uint8_t* bp;
         int group = ur_int(CFUNC_OPT_ARG(1));
         if( group < 2 || group > (si.end - si.it) )
             return ur_error( ut, UR_ERR_SCRIPT,
                              "swap group size (%d) is invalid", group );
-        bp = si.buf->ptr.b + si.it;
-        si.it += group;
-        for( ; si.it <= si.end; si.it += group, bp += group )
-            reverse_uint8_t( bp, bp + group );
+        if( ur_is(a1, UT_BINARY) )
+        {
+            uint8_t* bp = si.buf->ptr.b + si.it;
+            si.it += group;
+            for( ; si.it <= si.end; si.it += group, bp += group )
+                reverse_uint8_t( bp, bp + group );
+        }
     }
     else
     {
-        uint8_t* bp;
-        uint8_t* bend;
-        int tmp;
         if( (si.end - si.it) & 1 )
             --si.end;
-        bp = si.buf->ptr.b + si.it;
-        bend = si.buf->ptr.b + si.end;
-        for( ; bp != bend; bp += 2 )
+        if( ur_is(a1, UT_BINARY) )
         {
-            tmp = bp[0];
-            bp[0] = bp[1];
-            bp[1] = tmp;
+            uint8_t* bp   = si.buf->ptr.b + si.it;
+            uint8_t* bend = si.buf->ptr.b + si.end;
+            int tmp;
+            for( ; bp != bend; bp += 2 )
+            {
+                tmp = bp[0];
+                bp[0] = bp[1];
+                bp[1] = tmp;
+            }
+        }
+        else
+        {
+            UCell* cp   = si.buf->ptr.cell + si.it;
+            UCell* cend = si.buf->ptr.cell + si.end;
+            UCell tmp;
+            for( ; cp != cend; cp += 2 )
+            {
+                tmp = cp[0];
+                cp[0] = cp[1];
+                cp[1] = tmp;
+            }
         }
     }
 
