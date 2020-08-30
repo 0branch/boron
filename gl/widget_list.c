@@ -264,9 +264,8 @@ static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 }
 
 
-static void listw_calcMetrics( UThread* ut, GList* ep )
+static void listw_calcMetrics( UThread* ut, GList* ep, int autoExpandCol )
 {
-    const int MIN_COLW = 120;
     static const char* wstr = "w";
     TexFont* tf = ur_texFontV( ut, glEnv.guiStyle + CI_STYLE_LIST_FONT );
     if( tf )
@@ -275,8 +274,11 @@ static void listw_calcMetrics( UThread* ut, GList* ep )
         ep->itemHeight = txf_lineSpacing( tf ) + 2;
         ep->charWidth  = txf_width( tf, str, str+1 );
     }
-    ep->colWidth = ep->sizeCW ? (ep->sizeCW * ep->charWidth) / ep->colCount
-                              : MIN_COLW;
+
+    if( ep->sizeCW )
+        ep->colWidth = (ep->sizeCW * ep->charWidth) / ep->colCount;
+    else
+        ep->colWidth = autoExpandCol ? ep->wid.area.w / ep->colCount : 120;
 }
 
 
@@ -288,7 +290,7 @@ static void listw_sizeHint( GWidget* wp, GSizeHint* size )
 
 
     if( ! ep->itemHeight )
-        listw_calcMetrics( ut, ep );
+        listw_calcMetrics( ut, ep, 0 );
 
     if( ep->headerBlkN != UR_INVALID_BUF )
         ++rowCount;
@@ -340,7 +342,7 @@ static void listw_layout( GWidget* wp )
     if( ep->dataBlkN <= 0 )
         return;
 
-    listw_calcMetrics( ut, ep );
+    listw_calcMetrics( ut, ep, 1 );
 
     itemY = wp->area.y + wp->area.h - ep->itemHeight;
 
