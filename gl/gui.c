@@ -1622,7 +1622,15 @@ static void hbox_sizeHint( GWidget* wp, GSizeHint* size )
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->sizeHint( it, &cs );
         if( ! (it->flags & GW_NO_SPACE) )   // cs.minW != 0
+        {
             ++count;
+
+            // Adopt expanding policy of child widgets.
+            if( cs.policyX == GW_POL_EXPANDING )
+                size->policyX = GW_POL_EXPANDING;
+            if( cs.policyY == GW_POL_EXPANDING )
+                size->policyY = GW_POL_EXPANDING;
+        }
         size->minW += cs.minW;
 
         cs.minH += marginH;
@@ -1865,7 +1873,15 @@ static void vbox_sizeHint( GWidget* wp, GSizeHint* size )
     EACH_SHOWN_CHILD( wp, it )
         it->wclass->sizeHint( it, &cs );
         if( ! (it->flags & GW_NO_SPACE) )   // cs.minH != 0
+        {
             ++count;
+
+            // Adopt expanding policy of child widgets.
+            if( cs.policyX == GW_POL_EXPANDING )
+                size->policyX = GW_POL_EXPANDING;
+            if( cs.policyY == GW_POL_EXPANDING )
+                size->policyY = GW_POL_EXPANDING;
+        }
         size->minH += cs.minH;
 
         cs.minW += marginW;
