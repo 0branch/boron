@@ -339,9 +339,6 @@ static void listw_layout( GWidget* wp )
     DPCompiler dpc;
 
 
-    if( ep->dataBlkN <= 0 )
-        return;
-
     listw_calcMetrics( ut, ep, 1 );
 
     itemY = wp->area.y + wp->area.h - ep->itemHeight;
@@ -394,47 +391,50 @@ static void listw_layout( GWidget* wp )
 
     // Items
 
-    blk = ur_buffer( ep->dataBlkN );
-    it  = blk->ptr.cell;
-    rowCount = blk->used / colCount;
-
-    for( row = 0; row < rowCount; ++row )
+    if( ep->dataBlkN != UR_INVALID_BUF )
     {
-        for( col = 0; col < colCount; ++col, ++it )
+        blk = ur_buffer( ep->dataBlkN );
+        it  = blk->ptr.cell;
+        rowCount = blk->used / colCount;
+
+        for( row = 0; row < rowCount; ++row )
         {
-            rc = style + CI_STYLE_LABEL;
-            if( ur_is(it, UT_STRING) )
+            for( col = 0; col < colCount; ++col, ++it )
             {
-                *rc = *it;
+                rc = style + CI_STYLE_LABEL;
+                if( ur_is(it, UT_STRING) )
+                {
+                    *rc = *it;
+                }
+                else
+                {
+                    UBuffer* str;
+
+                    if( ! strN )
+                        strN = ur_makeString( ut, UR_ENC_LATIN1, 32 );
+
+                    ur_initSeries( rc, UT_STRING, strN );
+
+                    str = ur_buffer( strN );
+                    str->used = 0;
+                    ur_toStr( ut, it, str, 0 );
+                }
+
+                rc = style + CI_STYLE_AREA;
+                ur_initCoord(rc, 4);
+                rc->coord.n[0] = wp->area.x + (col * ep->colWidth);
+                rc->coord.n[1] = itemY;
+                rc->coord.n[2] = ep->colWidth;
+                rc->coord.n[3] = ep->itemHeight;
+
+                rc = style + ((row == ep->selRow) ?
+                                    CI_STYLE_LIST_ITEM_SELECTED :
+                                    CI_STYLE_LIST_ITEM);
+                if( ur_is(rc, UT_BLOCK) )
+                    ur_compileDP( ut, rc, 1 );
             }
-            else
-            {
-                UBuffer* str;
-
-                if( ! strN )
-                    strN = ur_makeString( ut, UR_ENC_LATIN1, 32 );
-
-                ur_initSeries( rc, UT_STRING, strN );
-
-                str = ur_buffer( strN );
-                str->used = 0;
-                ur_toStr( ut, it, str, 0 );
-            }
-
-            rc = style + CI_STYLE_AREA;
-            ur_initCoord(rc, 4);
-            rc->coord.n[0] = wp->area.x + (col * ep->colWidth);
-            rc->coord.n[1] = itemY;
-            rc->coord.n[2] = ep->colWidth;
-            rc->coord.n[3] = ep->itemHeight;
-
-            rc = style + ((row == ep->selRow) ?
-                                CI_STYLE_LIST_ITEM_SELECTED :
-                                CI_STYLE_LIST_ITEM);
-            if( ur_is(rc, UT_BLOCK) )
-                ur_compileDP( ut, rc, 1 );
+            itemY -= ep->itemHeight;
         }
-        itemY -= ep->itemHeight;
     }
 
     ur_endDP( ut, ur_buffer(ep->dp[0]), save );
@@ -472,12 +472,37 @@ static int listw_select( GWidget* wp, UAtom atom, UCell* res )
 }
 
 
+static UStatus listw_set( UThread* ut, GWidget* wp, const UCell* val )
+{
+    EX_PTR;
+
+    if( ur_is(val, UT_BLOCK) )
+    {
+        const UBuffer* buf = ur_bufferSer(val);
+        int i = val->series.it;
+        if( i < 0 )
+            i = 0;
+        else if( i >= buf->used )
+            i = buf->used - 1;
+        ep->dataBlkN = val->series.buf;
+        listw_selectRow( ut, ep, i );
+    }
+    else if( ur_is(val, UT_NONE) )
+    {
+        ep->dataBlkN = UR_INVALID_BUF;
+        ep->selRow = -1;
+        listw_layout( &ep->wid );
+    }
+    return UR_OK;
+}
+
+
 GWidgetClass wclass_list =
 {
     "list",
     listw_make,         widget_free,        listw_mark,
     listw_dispatch,     listw_sizeHint,     listw_layout,
-    listw_render,       listw_select,       widget_setNul,
+    listw_render,       listw_select,       listw_set,
     0, 0
 };
 
