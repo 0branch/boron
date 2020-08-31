@@ -212,13 +212,13 @@ static void listw_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                 listw_selectRow( ut, ep, row );
             gui_setKeyFocus( wp );
             //printf( "KR row %d\n", row );
+
+            if( ev->code == GLV_BUTTON_RIGHT && wp->user32 )
+                gui_showMenu( wp, ev->x, ev->y, wp->user32, GUI_ITEM_UNSET );
         }
             break;
 /*
         case GLV_EVENT_BUTTON_UP:
-            ur_initType(val, UT_INT);
-            ur_int(val) = mapButton( ev->code );
-            cell = CCELL( CI_TWIDGETPROTO_MOUSE_UP );
             break;
 
         case GLV_EVENT_MOTION:
@@ -503,7 +503,7 @@ GWidgetClass wclass_list =
     listw_make,         widget_free,        listw_mark,
     listw_dispatch,     listw_sizeHint,     listw_layout,
     listw_render,       listw_select,       listw_set,
-    0, 0
+    0, GW_CONTEXT_MENU
 };
 
 

@@ -169,8 +169,12 @@ static void choice_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
     switch( ev->type )
     {
         case GLV_EVENT_BUTTON_DOWN:
-            gui_showMenu( wp, ep->dataBlkN, ep->selItem );
-            //gui_setKeyFocus( wp );
+            if( ev->code == GLV_BUTTON_LEFT )
+            {
+                gui_showMenu( wp, wp->area.x, wp->area.y, ep->dataBlkN,
+                              ep->selItem );
+                //gui_setKeyFocus( wp );
+            }
             break;
 
         case GLV_EVENT_WHEEL:
@@ -204,8 +208,7 @@ static void choice_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 }
 
 
-extern void button_textSizeHint( UThread* ut, GSizeHint*, const UBuffer* str,
-                                 const UCell* styleFont );
+extern int menu_textWidth( UThread*, const TexFont*, const UCell* );
 
 static void choice_sizeHint( GWidget* wp, GSizeHint* size )
 {
@@ -235,8 +238,20 @@ static void choice_sizeHint( GWidget* wp, GSizeHint* size )
     size->policyX = GW_POL_WEIGHTED;
     size->policyY = GW_POL_FIXED;
 
-    button_textSizeHint( ut, size, ur_buffer(ep->labelN),
-                         style + CI_STYLE_LIST_FONT );
+    {
+    UBlockIt bi;
+    const TexFont* tf = ur_texFontV( ut, style + CI_STYLE_LIST_FONT );
+    ur_blockItN( ut, &bi, ep->dataBlkN );
+    ur_foreach( bi )
+    {
+        int iw = menu_textWidth(ut, tf, bi.it) + 16;
+        if( size->minW < iw )
+            size->minW = iw;
+    }
+    }
+
+    if( size->maxW < size->minW )
+        size->maxW = size->minW;
 }
 
 

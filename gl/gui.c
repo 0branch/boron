@@ -941,6 +941,7 @@ static UStatus _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
                 {
                     if( ++bi->it == bi->end )
                     {
+fatal_end:
                         return ur_error( ut, UR_ERR_SCRIPT,
                                          "unexpected end of widget block" );
                     }
@@ -953,6 +954,22 @@ static UStatus _makeChildren( UThread* ut, UBlockIter* bi, GWidget* parent,
                     }
                     ++bi->it;
                     continue;
+                }
+                else if( atom == UR_ATOM_CONTEXT_MENU )
+                {
+                    if( wp )
+                    {
+                        if( ! (wp->flags & GW_CONTEXT_MENU) )
+                            return ur_error(ut, UR_ERR_SCRIPT,
+                                        "No widget support for context-menu");
+                        if( ++bi->it == bi->end )
+                            goto fatal_end;
+
+                        if( ur_is(bi->it, UT_BLOCK) )
+                            wp->user32 = bi->it->series.buf;
+                        ++bi->it;
+                        continue;
+                    }
                 }
                 else
                 {
@@ -1201,9 +1218,11 @@ int gui_hasFocus( GWidget* wp )
 
 
 extern GWidgetClass wclass_menu;
-extern void menu_present( GWidget* wp, GWidget* owner );
+extern void menu_setData( GWidget* wp, UIndex blkN );
+extern void menu_present( GWidget* wp, GWidget* owner, int, int, uint16_t );
 
-void gui_showMenu( GWidget* wp, UIndex dataBlkN, uint16_t selItem )
+void gui_showMenu( GWidget* wp, int px, int py, UIndex dataBlkN,
+                   uint16_t selItem )
 {
     GWidget* menu;
     GUIRoot* ui = gui_rootGui( wp );
@@ -1220,7 +1239,8 @@ void gui_showMenu( GWidget* wp, UIndex dataBlkN, uint16_t selItem )
             ur_setWordUnbound( arg, UT_WIDGET /*UR_ATOM_MENU*/ );
 
             ur_setId( arg+1, UT_BLOCK );
-            ur_setSeries( arg+1, dataBlkN, selItem );
+            ur_setSeries( arg+1, dataBlkN,
+                          (selItem == GUI_ITEM_UNSET) ? 0 : selItem );
 
             bi.buf = NULL;
             bi.it  = arg;
@@ -1233,9 +1253,11 @@ void gui_showMenu( GWidget* wp, UIndex dataBlkN, uint16_t selItem )
         {
             // NOTE: menu_hide calls gui_unlink to remove itself from parent.
             gui_appendChild( &ui->wid, menu );
+
+            menu_setData( menu, dataBlkN );
         }
 
-        menu_present( menu, wp );
+        menu_present( menu, wp, px, py, selItem );
 
         // gui_grabMouse( menu, 1 );
         ui->mouseFocus = menu;

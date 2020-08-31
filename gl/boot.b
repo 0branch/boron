@@ -47,6 +47,8 @@ gui-style-proto: context [
     choice-size:
     choice:
     choice-item:
+    cmenu-bg:
+    cmenu-item-selected:
     menu-margin:
     menu-bg:
     menu-item-selected:

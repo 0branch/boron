@@ -79,6 +79,15 @@ extern UPortDevice port_joystick;
 struct GLEnv glEnv;
 
 
+const UBuffer* ur_blockItN( UThread* ut, UBlockIt* bi, UIndex blkN )
+{
+    const UBuffer* blk = ur_bufferE( blkN );
+    bi->it  = blk->ptr.cell;
+    bi->end = blk->ptr.cell + blk->used;
+    return blk;
+}
+
+
 UCell* ur_ctxValueOfType( const UBuffer* ctx, UAtom name, int type )
 {
     int n = ur_ctxLookup( ctx, name );
@@ -2935,7 +2944,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    85
+#define FA_COUNT    86
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -2944,7 +2953,7 @@ static void _createFixedAtoms( UThread* ut )
         "gui-style shader-cache value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
         "on-window-created on-window-destroyed on-save-instance\n"
-        "root parent child projection modelview\n"
+        "root context-menu parent child projection modelview\n"
         "ambient diffuse specular pos shader vertex normal fragment\n"
         "default dynamic static stream\n"
         "left right center bottom top horiz vert\n"

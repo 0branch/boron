@@ -1,6 +1,6 @@
 /*
   Boron OpenGL GUI
-  Copyright 2019 Karl Robillard
+  Copyright 2019,2020 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -44,8 +44,12 @@ typedef struct
 GMenu;
 
 #define EX_PTR  GMenu* ep = (GMenu*) wp
-#define ITEM_UNSET  0xffff
 #define DEFAULT_ITEM_HEIGHT  12
+#define DO_UNSET        GW_FLAG_USER1
+#define WAS_SELECTED    GW_FLAG_USER2
+#define hasAction   user16
+#define POS_X(wp)   ((int16_t*) &wp->user32)[0]
+#define POS_Y(wp)   ((int16_t*) &wp->user32)[1]
 
 
 /*-wid-
@@ -71,7 +75,7 @@ static GWidget* menu_make( UThread* ut, UBlockIter* bi,
     ep = (GMenu*) gui_allocWidget( sizeof(GMenu), wclass, parent );
     ep->dataBlkN = arg[0]->series.buf;
     ep->selItem  = arg[0]->series.it;
-    ep->selRendered = ITEM_UNSET;
+    ep->selRendered = GUI_ITEM_UNSET;
 
     str = ur_genBuffers( ut, 3, &ep->labelN );  // Sets labelN, bgDraw, selDraw.
     ur_strInit( str, UR_ENC_UTF8, 0 );
@@ -82,13 +86,35 @@ static GWidget* menu_make( UThread* ut, UBlockIter* bi,
 }
 
 
-void menu_present( GWidget* wp, GWidget* owner )
+void menu_setData( GWidget* wp, UIndex blkN )
 {
     EX_PTR;
 
+    // menu_sizeHint() will reset hasAction & selMax.
+    wp->flags |= GW_UPDATE_LAYOUT;
+
+    ep->dataBlkN = blkN;
+    ep->selItem = GUI_ITEM_UNSET;
+    ep->selMax = 0;
+    ep->selRendered = GUI_ITEM_UNSET;
+}
+
+
+void menu_present( GWidget* wp, GWidget* owner, int px, int py, uint16_t sel )
+{
+    EX_PTR;
+    int f;
+
     ep->owner = owner;
-    ep->selRendered = ITEM_UNSET;
-    wp->flags = (wp->flags & ~GW_HIDDEN) | GW_UPDATE_LAYOUT;
+    ep->selItem = sel;
+    ep->selRendered = GUI_ITEM_UNSET;
+    POS_X(wp) = px;
+    POS_Y(wp) = py;
+
+    f = wp->flags & ~(GW_HIDDEN | DO_UNSET | WAS_SELECTED);
+    if( sel == GUI_ITEM_UNSET )
+        f |= DO_UNSET;
+    wp->flags = f | GW_UPDATE_LAYOUT;
 }
 
 
@@ -117,19 +143,38 @@ static void menu_mark( UThread* ut, GWidget* wp )
 }
 
 
+static const UCell* menu_selectedCell( UThread* ut, const GMenu* ep )
+{
+    if( ep->wid.hasAction )
+    {
+        UBlockIt bi;
+        int n = -1;
+
+        ur_blockItN( ut, &bi, ep->dataBlkN );
+        ur_foreach( bi )
+        {
+            if( ur_is(bi.it, UT_BLOCK) )
+                continue;
+            if( ++n == ep->selItem )
+                return bi.it;
+        }
+        return NULL;
+    }
+    return ur_bufferE(ep->dataBlkN)->ptr.cell + ep->selItem;
+}
+
+
 static void menu_updateSelection( UThread* ut, GMenu* ep )
 {
     UCell* rc;
     UCell* style = glEnv.guiStyle;
-    const UBuffer* blk;
     UBuffer* str;
     DPCompiler* save;
     DPCompiler dpc;
 
-    blk = ur_buffer( ep->dataBlkN );
     str = ur_buffer( ep->labelN );
     str->used = 0;
-    ur_toText( ut, blk->ptr.cell + ep->selItem, str );
+    ur_toText( ut, menu_selectedCell(ut, ep), str );
 
     rc = style + CI_STYLE_LABEL;
     ur_initSeries( rc, UT_STRING, ep->labelN );
@@ -142,7 +187,8 @@ static void menu_updateSelection( UThread* ut, GMenu* ep )
     rc->coord.n[ 2 ] = ep->wid.area.w - ep->marginX * 2;
     rc->coord.n[ 3 ] = ep->itemHeight;
 
-    rc = style + CI_STYLE_MENU_ITEM_SELECTED;
+    rc = style + (ep->wid.flags & DO_UNSET ? CI_STYLE_MENU_ITEM_SELECTED
+                                           : CI_STYLE_CMENU_ITEM_SELECTED);
     if( ur_is(rc, UT_BLOCK) )
     {
         save = ur_beginDP( &dpc );
@@ -155,14 +201,22 @@ static void menu_updateSelection( UThread* ut, GMenu* ep )
 static void menu_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
 {
     EX_PTR;
+    int n;
     (void) ut;
 
     switch( ev->type )
     {
+        case GLV_EVENT_BUTTON_DOWN:
+            if( ! gui_widgetContains( wp, ev->x, ev->y ) )
+                menu_hide( wp );
+            break;
+
         case GLV_EVENT_BUTTON_UP:
-            if( ev->code == GLV_BUTTON_LEFT )
+            if( ev->code == GLV_BUTTON_LEFT ||
+                ev->code == GLV_BUTTON_RIGHT )
             {
-                if( ep->selItem != ITEM_UNSET )
+activate:
+                if( ep->selItem != GUI_ITEM_UNSET )
                 {
                     GLViewEvent sel;
 
@@ -172,45 +226,82 @@ static void menu_dispatch( UThread* ut, GWidget* wp, const GLViewEvent* ev )
                     sel.y    = ev->y;
 
                     ep->owner->wclass->dispatch( ut, ep->owner, &sel );
+
+                    if( wp->hasAction )
+                    {
+                        const UCell* cell = menu_selectedCell(ut, ep);
+                        if( cell && ur_is(cell+1, UT_BLOCK) )
+                            gui_doBlockN( ut, cell[1].series.buf );
+                    }
                 }
-                menu_hide( wp );
+                if( wp->flags & WAS_SELECTED )
+                    menu_hide( wp );
             }
             break;
 
         case GLV_EVENT_MOTION:
             if( gui_widgetContains( wp, ev->x, ev->y ) )
             {
-                int n = ((int) (wp->area.y + wp->area.h) - ev->y) /
-                        ep->itemHeight;
+                n = ((int) (wp->area.y + wp->area.h) - ev->y) / ep->itemHeight;
                 if( n >= 0 && n < ep->selMax )
+                {
                     ep->selItem = n;
+                    wp->flags |= WAS_SELECTED;
+                }
             }
-            break;
-#if 0
-        case GLV_EVENT_WHEEL:
-            if( ev->y < 0 )
-                choice_selectNextItem( ut, ep );
-            else
-                choice_selectPrevItem( ut, ep );
+            else if( wp->flags & DO_UNSET )
+            {
+                ep->selItem = GUI_ITEM_UNSET;
+            }
             break;
 
         case GLV_EVENT_KEY_DOWN:
             switch( ev->code )
             {
                 case KEY_Up:
-                    choice_selectPrevItem( ut, ep );
-                    return;
-                case KEY_Down:
-                    choice_selectNextItem( ut, ep );
-                    return;
-            }
-            // Fall through...
+                    n = ep->selItem;
+                    if( n == GUI_ITEM_UNSET || n == 0 )
+                        n = ep->selMax;
+                    ep->selItem = n - 1;
+                    wp->flags |= WAS_SELECTED;
+                    break;
 
-        case GLV_EVENT_KEY_UP:
-            gui_ignoreEvent( ev );
+                case KEY_Down:
+                    n = ep->selItem;
+                    if( n == GUI_ITEM_UNSET || n == (ep->selMax - 1) )
+                        ep->selItem = 0;
+                    else
+                        ep->selItem = n + 1;
+                    wp->flags |= WAS_SELECTED;
+                    break;
+
+                case KEY_Return:
+                    goto activate;
+
+                case KEY_Escape:
+                    menu_hide( wp );
+                    break;
+            }
             break;
-#endif
     }
+}
+
+
+// Return approximate pixel width of word or string value.
+int menu_textWidth( UThread* ut, const TexFont* tf, const UCell* cell )
+{
+    TexFontGlyph* glyph = txf_glyph( tf, 'M' );
+    int gw = glyph ? glyph->width : 9;
+
+    if( ur_is(cell, UT_WORD) )
+        return strlen( ur_wordCStr(cell) ) * gw;
+    if( ur_isStringType( ur_type(cell) ) )
+    {
+        USeriesIter si;
+        ur_seriesSlice( ut, &si, cell );
+        return (si.end - si.it) * gw;
+    }
+    return 0;
 }
 
 
@@ -219,10 +310,11 @@ static void menu_sizeHint( GWidget* wp, GSizeHint* size )
     EX_PTR;
     UThread* ut = glEnv.guiUT;
     UCell* style = glEnv.guiStyle;
-    const GRect* orect = &ep->owner->area;
     const TexFont* tf;
     int itemCount;
+    int width = (wp->flags & DO_UNSET) ? 0 : ep->owner->area.w;
     UCell* rc;
+    UBlockIt bi;
 
 
     rc = style + CI_STYLE_MENU_MARGIN;
@@ -240,10 +332,30 @@ static void menu_sizeHint( GWidget* wp, GSizeHint* size )
     tf = ur_texFontV( ut, style + CI_STYLE_LIST_FONT );
     ep->itemHeight = tf ? txf_lineSpacing( tf ) + 2 : DEFAULT_ITEM_HEIGHT;
 
-    itemCount = ur_buffer( ep->dataBlkN )->used;
+    itemCount = 0;
+    wp->hasAction = 0;
+    ur_blockItN( ut, &bi, ep->dataBlkN );
+    ur_foreach( bi )
+    {
+        if( ur_is(bi.it, UT_BLOCK) )
+        {
+            wp->hasAction = 1;
+        }
+        else
+        {
+            ++itemCount;
+            if( wp->flags & DO_UNSET )
+            {
+                int iw = menu_textWidth(ut, tf, bi.it);
+                if( width < iw )
+                    width = iw;
+            }
+        }
+    }
+    ep->selMax = itemCount;
 
     size->minW    =
-    size->maxW    = orect->w + ep->marginX * 2;
+    size->maxW    = width + ep->marginX * 2;
     size->minH    =
     size->maxH    = ep->itemHeight * itemCount + ep->marginY * 2;
     size->weightX =
@@ -261,15 +373,14 @@ static void menu_layout( GWidget* wp )
     DPCompiler* save;
     DPCompiler dpc;
     UThread* ut = glEnv.guiUT;
+    const TexFont* tf;
 
     {
     GSizeHint hint;
-    const GRect* orect = &ep->owner->area;
-
     menu_sizeHint( wp, &hint );
 
-    wp->area.x = orect->x - ep->marginX;
-    wp->area.y = orect->y - hint.minH;
+    wp->area.x = POS_X(wp) - ep->marginX;
+    wp->area.y = POS_Y(wp) - hint.minH;
     wp->area.w = hint.minW;
     wp->area.h = hint.minH;
     }
@@ -287,27 +398,28 @@ static void menu_layout( GWidget* wp )
 
     // Compile draw lists.
 
-    rc = style + CI_STYLE_MENU_BG;
+    rc = style + (wp->flags & DO_UNSET ? CI_STYLE_MENU_BG : CI_STYLE_CMENU_BG);
     if( ur_is(rc, UT_BLOCK) )
         ur_compileDP( ut, rc, 1 );
 
-    {
-    UBlockIt bi;
-    UBuffer str;
-    int px;
-    const UBuffer* blk = ur_bufferE( ep->dataBlkN );
-    const TexFont* tf  = ur_texFontV( ut, style + CI_STYLE_LIST_FONT );
+    tf = ur_texFontV( ut, style + CI_STYLE_LIST_FONT );
     if( tf )
     {
+        UBuffer str;
+        UBlockIt bi;
+        int px;
+
         px = wp->area.x + 12;
         dpc.penY = wp->area.y + wp->area.h;
 
         ur_strInit( &str, UR_ENC_UTF8, 0 );
 
-        bi.it  = blk->ptr.cell;
-        bi.end = bi.it + blk->used;
+        ur_blockItN( ut, &bi, ep->dataBlkN );
         ur_foreach( bi )
         {
+            if( ur_is(bi.it, UT_BLOCK) )
+                continue;
+
             dpc.penX = px;
             dpc.penY -= ep->itemHeight;
 
@@ -317,8 +429,6 @@ static void menu_layout( GWidget* wp )
         }
 
         ur_strFree( &str );
-    }
-    ep->selMax = blk->used;
     }
 
     ur_endDP( ut, ur_buffer(ep->bgDraw), save );
@@ -340,7 +450,7 @@ static void menu_render( GWidget* wp )
 
     ur_runDrawProg( glEnv.guiUT, ep->bgDraw );
 
-    if( ep->selItem != ITEM_UNSET )
+    if( ep->selItem != GUI_ITEM_UNSET )
     {
         if( ep->selRendered != ep->selItem )
         {

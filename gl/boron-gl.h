@@ -181,6 +181,7 @@ int      ur_rasterElementSize( const RasterHead* );
 void     ur_rasterBlit( const RasterHead* src,  uint16_t* srcRect,
                         RasterHead* dest, uint16_t* destRect );
 
+const UBuffer* ur_blockItN( UThread*, UBlockIt*, UIndex blkN );
 UCell*   ur_ctxValueOfType( const UBuffer* ctx, UAtom name, int type );
 TexFont* ur_texFontV( UThread*, const UCell* );
 GLuint   ur_shaderProgram( UThread*, const UCell* );

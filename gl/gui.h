@@ -63,6 +63,8 @@ enum ContextIndexStyle
     CI_STYLE_CHOICE_SIZE,   // coord! (minW, minH, init-maxW)
     CI_STYLE_CHOICE,        // Draw list
     CI_STYLE_CHOICE_ITEM,   // Draw list
+    CI_STYLE_CMENU_BG,      // Draw list
+    CI_STYLE_CMENU_ITEM_SELECTED, // Draw list
     CI_STYLE_MENU_MARGIN,   // coord!
     CI_STYLE_MENU_BG,       // Draw list
     CI_STYLE_MENU_ITEM_SELECTED, // Draw list
@@ -174,6 +176,7 @@ struct GWidgetClass
 #define GW_FLAG_USER1    0x0100
 #define GW_FLAG_USER2    0x0200
 #define GW_FLAG_USER3    0x0400
+#define GW_CONTEXT_MENU  0x4000
 #define GW_CONSTRUCT     0x8000
 
 
@@ -200,6 +203,8 @@ struct GWidget
 #define gui_acceptEvent(ev)     ((GLViewEvent*) ev)->type &= 0x0fff
 #define gui_value(ut)   ur_ctxCell(ur_threadContext(ut), glEnv.guiValueIndex)
 
+// gui_showMenu selItem
+#define GUI_ITEM_UNSET  0xffff
 
 void gui_addWidgetClasses( GWidgetClass** classTable, int count );
 GWidgetClass* gui_widgetClass( UAtom name );
@@ -236,7 +241,8 @@ void     gui_grabMouse( GWidget*, int keyFocus );
 void     gui_ungrabMouse( GWidget* );
 void     gui_signalWindowCreated( int w, int h );
 int      gui_hasFocus( GWidget* );
-void     gui_showMenu( GWidget*, UIndex dataBlkN, uint16_t selItem );
+void     gui_showMenu( GWidget*, int px, int py, UIndex dataBlkN,
+                       uint16_t selItem );
 UIndex   gui_parentDrawProg( GWidget* );
 const int16_t* gui_parentTranslation( GWidget* );
 int      gui_limitX( int x, const GRect* );

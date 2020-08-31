@@ -35,6 +35,8 @@
   "    choice-size:\n"
   "    choice:\n"
   "    choice-item:\n"
+  "    cmenu-bg:\n"
+  "    cmenu-item-selected:\n"
   "    menu-margin:\n"
   "    menu-bg:\n"
   "    menu-item-selected:\n"
