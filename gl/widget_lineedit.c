@@ -604,12 +604,25 @@ static int ledit_select( GWidget* wp, UAtom atom, UCell* res )
 }
 
 
+static UStatus ledit_set( UThread* ut, GWidget* wp, const UCell* val )
+{
+    EX_PTR;
+    UBuffer* str = ur_buffer( ep->strN );
+    str->used = 0;
+    ur_toText( ut, val, str );
+    if( str->used > ep->maxChars )
+        str->used = ep->maxChars;
+    setFlag( CHANGED );
+    return UR_OK;
+}
+
+
 GWidgetClass wclass_lineedit =
 {
     "line-edit",
     ledit_make,         widget_free,        ledit_mark,
     ledit_dispatch,     ledit_sizeHint,     ledit_layout,
-    ledit_render,       ledit_select,       widget_setNul,
+    ledit_render,       ledit_select,       ledit_set,
     0, 0
 };
 
