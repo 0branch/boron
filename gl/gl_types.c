@@ -1193,9 +1193,12 @@ static void fbo_mark( UThread* ut, UCell* cell )
 
 
 /**
+  Usage is the glBufferData usage (e.g. GL_STATIC_DRAW) and used for both
+  the attributes and indicies buffers.
+
   \return UBuffer index.
 */
-UIndex ur_makeVbo( UThread* ut, GLenum attrUsage, int acount, float* attr,
+UIndex ur_makeVbo( UThread* ut, GLenum usage, int acount, float* attr,
                    int icount, uint16_t* indices )
 {
     GLuint* gbuf;
@@ -1220,7 +1223,7 @@ UIndex ur_makeVbo( UThread* ut, GLenum attrUsage, int acount, float* attr,
     {
         glBindBuffer( GL_ARRAY_BUFFER, *gbuf++ );
         glBufferData( GL_ARRAY_BUFFER, sizeof(float) * acount,
-                      attr, attrUsage );
+                      attr, usage );
         //glBindBuffer( GL_ARRAY_BUFFER, 0 );
     }
 
@@ -1228,7 +1231,7 @@ UIndex ur_makeVbo( UThread* ut, GLenum attrUsage, int acount, float* attr,
     {
         glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, *gbuf );
         glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof(uint16_t) * icount,
-                      indices, GL_STATIC_DRAW );
+                      indices, usage );
         //glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
     }
 

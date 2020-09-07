@@ -572,11 +572,6 @@ static void ledit_render( GWidget* wp )
 
         glUniform4f( ULOC_COLOR, 0.0, 0.0, 0.0, 1.0 );  // glColor4f
 
-        /* GL_DEBUG message at this glDrawElements:
-             "0x20072 Buffer performance warning: Buffer object 2 (bound to
-              GL_ELEMENT_ARRAY_BUFFER_ARB, usage hint is GL_STATIC_DRAW) is
-              being copied/moved from VIDEO memory to HOST memory."
-        */
         glDrawElements( GL_TRIANGLES, ep->drawn, GL_UNSIGNED_SHORT, NULL + 4 );
         if( gui_hasFocus( wp ) & GW_FOCUS_KEY )
             glDrawElements( GL_LINES, 2, GL_UNSIGNED_SHORT, 0 );
