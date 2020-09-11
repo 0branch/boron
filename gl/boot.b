@@ -62,10 +62,14 @@ gui-style-proto: context [
     list-item-selected:
     slider-size:
     slider:
+    vslider:
     slider-groove:
+    vslider-groove:
     scroll-size:
     scroll-bar:
+    vscroll-bar:
     scroll-knob:
+    vscroll-knob:
         none
 ]
 

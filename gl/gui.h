@@ -78,10 +78,14 @@ enum ContextIndexStyle
     CI_STYLE_LIST_ITEM_SELECTED, // Draw list
     CI_STYLE_SLIDER_SIZE,   // coord!
     CI_STYLE_SLIDER,        // Draw list
+    CI_STYLE_VSLIDER,       // Draw list
     CI_STYLE_SLIDER_GROOVE, // Draw list
+    CI_STYLE_VSLIDER_GROOVE, // Draw list
     CI_STYLE_SCROLL_SIZE,   // coord!
     CI_STYLE_SCROLL_BAR,    // Draw list
-    CI_STYLE_SCROLL_KNOB    // Draw list
+    CI_STYLE_VSCROLL_BAR,   // Draw list
+    CI_STYLE_SCROLL_KNOB,   // Draw list
+    CI_STYLE_VSCROLL_KNOB   // Draw list
 };
 
 

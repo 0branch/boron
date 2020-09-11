@@ -389,26 +389,27 @@ static void slider_sizeHint( GWidget* wp, GSizeHint* size )
 {
     UCell* rc;
     EX_PTR;
+    int major, minor;
     int isSlider = (wp->wclass != &wclass_scrollbar);
 
     rc = glEnv.guiStyle + (isSlider ? CI_STYLE_SLIDER_SIZE
                                     : CI_STYLE_SCROLL_SIZE);
     if( ur_is(rc, UT_COORD) )
     {
-        size->minW = rc->coord.n[0];
-        size->minH = rc->coord.n[1];
+        major = rc->coord.n[0];
+        minor = rc->coord.n[1];
     }
     else
     {
-        size->minW = 20;
-        size->minH = 20;
+        major = minor = 20;
     }
 
     if( ep->orient == HORIZONTAL )
     {
-        size->minW = 100;
+        size->minW = major;
+        size->minH = minor;
         size->maxW = GW_MAX_DIM;
-        size->maxH = size->minH;
+        size->maxH = minor;
         size->weightX = GW_WEIGHT_STD;
         size->weightY = GW_WEIGHT_FIXED;
         size->policyX = GW_POL_EXPANDING;
@@ -416,8 +417,9 @@ static void slider_sizeHint( GWidget* wp, GSizeHint* size )
     }
     else
     {
-        size->minH = 100;
-        size->maxW = size->minW;
+        size->minW = minor;
+        size->minH = major;
+        size->maxW = minor;
         size->maxH = GW_MAX_DIM;
         size->weightX = GW_WEIGHT_FIXED;
         size->weightY = GW_WEIGHT_STD;
@@ -467,12 +469,19 @@ static void slider_layout( GWidget* wp )
 
     // Compile draw lists.
 
-    rc = style + (isSlider ? CI_STYLE_SLIDER_GROOVE : CI_STYLE_SCROLL_BAR);
+    rc = style;
+    if( isSlider )
+        rc += horiz ? CI_STYLE_SLIDER_GROOVE : CI_STYLE_VSLIDER_GROOVE;
+    else
+        rc += horiz ? CI_STYLE_SCROLL_BAR : CI_STYLE_VSCROLL_BAR;
     if( ur_is(rc, UT_BLOCK) )
         ur_compileDP( ut, rc, 1 );
 
-    rc = style + (isSlider ? CI_STYLE_SLIDER : CI_STYLE_SCROLL_KNOB);
-        //(horiz ? CI_STYLE_SLIDER_H : CI_STYLE_SLIDER_V);
+    rc = style;
+    if( isSlider )
+        rc += horiz ? CI_STYLE_SLIDER : CI_STYLE_VSLIDER;
+    else
+        rc += horiz ? CI_STYLE_SCROLL_KNOB : CI_STYLE_VSCROLL_KNOB;
     if( ur_is(rc, UT_BLOCK) )
     {
         float tx, ty;
