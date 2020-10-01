@@ -470,7 +470,7 @@ UThread* ur_makeEnv( const UEnvParameters* par )
                     "latin1 utf8 ucs2 url\n"
                     "+ - / * = < > <= >=\n"
                     "x y z r g b a\n"
-                    "| opt some any skip set copy to thru into place mark\n"
+                    "| opt some any skip set copy to thru into place bits\n"
                     "big-endian little-endian",
                     atoms );
     assert( atoms[0] == UT_MAX );

@@ -37,16 +37,27 @@ enum StringParseException
 };
 
 
+#define PIPE_BITS   64
+
+typedef struct
+{
+    uint64_t pipe;
+    uint32_t bitsFree;
+}
+BitPipe;
+
+
 typedef struct
 {
     UStatus (*eval)( UThread*, const UCell* );
     UBuffer* str;
     UIndex   inputBuf;
     UIndex   inputEnd;
-    int      sliced;
-    int      exception;
-    int      matchCase;
-    int      ucs2;
+    uint8_t  sliced;
+    uint8_t  exception;
+    uint8_t  matchCase;
+    uint8_t  ucs2;
+    uint8_t  bigEndian;
 }
 StringParser;
 
@@ -131,6 +142,174 @@ static int _scanToBitset_ ## T( const UThread* ut, \
 
 SCAN_BITSET(uint8_t)
 SCAN_BITSET(uint16_t)
+
+
+/*
+  bitCount must be 1 to PIPE_BITS-8.
+  Returns zero if end of input reached.
+*/
+static const uint8_t* _pullBits( BitPipe* bp, uint32_t bitCount,
+                                 const uint8_t* in, const uint8_t* inEnd,
+                                 uint64_t* field )
+{
+    while( (PIPE_BITS - bp->bitsFree) < bitCount )
+    {
+        if( in == inEnd )
+            return 0;
+        bp->bitsFree -= 8;
+        bp->pipe |= ((uint64_t) *in++) << bp->bitsFree;
+        //++bp->byteCount;
+    }
+    *field = bp->pipe >> (PIPE_BITS - bitCount);
+    bp->pipe <<= bitCount;
+    bp->bitsFree += bitCount;
+    return in;
+}
+
+
+static uint64_t _uintValue( const uint8_t* in, int bits, int bigEndian )
+{
+    uint64_t n = 0;
+    if( bigEndian )
+    {
+        do
+        {
+            bits -= 8;
+            n |= ((uint64_t) (*in++)) << bits;
+        }
+        while( bits );
+    }
+    else
+    {
+        int shift = 0;
+        do
+        {
+            n |= ((uint64_t) (*in++)) << shift;
+            shift += 8;
+        }
+        while( shift < bits );
+    }
+    return n;
+}
+
+
+static UIndex _parseBits( UThread* ut, StringParser* pe, UIndex pos,
+                          const UCell* specC )
+{
+    UBlockIt bi;
+    BitPipe bp;
+    uint64_t field;
+    uint32_t count;
+    const UCell* setWord = 0;
+    const uint8_t* in = pe->str->ptr.b;
+    const uint8_t* inEnd = in + pe->inputEnd;
+
+    in += pos;
+
+    bp.pipe = 0;
+    bp.bitsFree = PIPE_BITS;
+
+    ur_blockIt( ut, &bi, specC );
+
+match:
+
+    ur_foreach( bi )
+    {
+        switch( ur_type(bi.it) )
+        {
+            case UT_INT:
+                count = ur_int(bi.it);      // Bit count.
+                if( count < 1 || count > PIPE_BITS )
+                {
+                    ur_error( PARSE_ERR, "bit-field size must be 1 to 64" );
+                    goto failed;
+                }
+                if( count > (PIPE_BITS - 8) )
+                {
+                    const uint32_t halfPipe = PIPE_BITS / 2;
+                    uint64_t high;
+                    in = _pullBits( &bp, count - halfPipe, in, inEnd, &high );
+                    if( ! in )
+                        goto failed;
+                    in = _pullBits( &bp, halfPipe, in, inEnd, &field );
+                    if( ! in )
+                        goto failed;
+                    field |= high << halfPipe;
+                }
+                else
+                {
+                    in = _pullBits( &bp, count, in, inEnd, &field );
+                    if( ! in )
+                        goto failed;
+                }
+                goto set_field;
+
+            case UT_WORD:
+                switch( ur_atom(bi.it) )
+                {
+                case UR_ATOM_U8:
+                    if( in == inEnd )
+                        goto failed;
+                    field = *in++;
+                    goto set_field;
+
+                case UR_ATOM_U16:
+                    count = 2;
+uint_count:         // Count is number of bytes.
+                    if( (inEnd - in) < count )
+                        goto failed;
+                    field = _uintValue( in, count * 8, pe->bigEndian );
+                    in += count;
+                    goto set_field;
+
+                case UR_ATOM_U32:
+                    count = 4;
+                    goto uint_count;
+
+                case UR_ATOM_U64:
+                    count = 8;
+                    goto uint_count;
+
+                case UR_ATOM_BIG_ENDIAN:
+                    pe->bigEndian = 1;
+                    break;
+
+                case UR_ATOM_LITTLE_ENDIAN:
+                    pe->bigEndian = 0;
+                    break;
+                }
+                break;
+
+            case UT_SETWORD:
+                if( ! setWord )
+                    setWord = bi.it;
+                break;
+        }
+    }
+    return in - pe->str->ptr.b;
+
+set_field:
+
+    if( setWord )
+    {
+        UCell* val;
+        while( setWord != bi.it )
+        {
+            val = ur_wordCellM( ut, setWord++ );
+            if( ! val )
+                goto failed;
+            ur_setId(val, UT_INT);
+            ur_int(val) = field;
+        }
+        setWord = 0;
+    }
+    ++bi.it;
+    goto match;
+
+failed:
+
+    return 0;
+}
 
 
 #define CHECK_WORD(cell) \
@@ -280,27 +459,47 @@ skip:
                     ur_error( PARSE_ERR, "place expected series word" );
                     goto parse_err;
 
+                case UR_ATOM_BITS:
+                    if( pe->ucs2 )
+                    {
+                        ur_error( PARSE_ERR, "bits does not support UCS2" );
+                        goto parse_err;
+                    }
+
+                    ++rit;
+                    if( (rit != rend) && ur_is(rit, UT_BLOCK) )
+                    {
+                        pos = _parseBits( ut, pe, pos, rit++ );
+                        if( ! pos )
+                            goto parse_err;
+                        break;
+                    }
+                    ur_error( PARSE_ERR, "bits expected block!" );
+                    goto parse_err;
+
                 //case UR_ATOM_COPY:
 
                 default:
                     tval = ur_wordCell( ut, rit );
                     CHECK_WORD(tval);
 
-                    if( ur_is(tval, UT_CHAR) )
-                        goto match_char;
-                    else if( ur_is(tval, UT_STRING) )
-                        goto match_string;
-                    else if( ur_is(tval, UT_BLOCK) )
-                        goto match_block;
-                    else if( ur_is(tval, UT_BITSET) )
-                        goto match_bitset;
-                    else
+                    switch( ur_type(tval) )
                     {
-                        ur_error( PARSE_ERR,
-                              "parse expected char!/block!/bitset!/string!" );
-                        goto parse_err;
+                        case UT_CHAR:
+                            goto match_char;
+                        case UT_INT:
+                            repMin = ur_int(tval);
+                            goto set_repeat;
+                        case UT_STRING:
+                            goto match_string;
+                        case UT_BLOCK:
+                            goto match_block;
+                        case UT_BITSET:
+                            goto match_bitset;
                     }
-                    break;
+                    ur_error( PARSE_ERR,
+                              "parse expected char!/block!/bitset!/string!" );
+                    goto parse_err;
                 }
                 break;
 
@@ -326,7 +525,7 @@ skip:
 
             case UT_INT:
                 repMin = ur_int(rit);
-
+set_repeat:
                 ++rit;
                 if( rit == rend )
                     return 0;
@@ -640,6 +839,7 @@ UStatus ur_parseString( UThread* ut, UBuffer* str, UIndex start, UIndex end,
     p.exception = PARSE_EX_NONE;
     p.matchCase = matchCase ? UR_FIND_CASE : 0;
     p.ucs2      = (str->type == UT_STRING) && ur_strIsUcs2(str);
+    p.bigEndian = 0;
 
     *parsePos = start;
     _parseStr( ut, &p, ruleBlk->ptr.cell,

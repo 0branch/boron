@@ -21,3 +21,5 @@ true
 ---- string UCS2
 "Plasma"
 "Plasma"
+---- bits
+ method:8 fcomment:0 fname:1 fextra:0 fcrc:0 ftext:0 timestamp:1127685362 cflags:0 os:3

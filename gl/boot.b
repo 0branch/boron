@@ -134,29 +134,24 @@ load-texture: func [file /mipmap /clamp | spec] [
 ;-----------------------------------------------------------------------------
 
 
-audio-sample: context [
-    sample-format:
-    rate:
-    data: none
-]
-
 /*-hf- load-wav
         file
     return: Audio-sample context.
     group: audio, io
 */
-load-wav: func [file /local sdata] [
-    parse/binary read file [
-        little-endian
-        "RIFF" u32 "WAVEfmt "
-        csize:    u32
-        format:   u16
-        channels: u16
-        srate:    u32 u32 u16
-        bps:      u16
+load-wav: func [file] [
+    parse read file [
+        "RIFF" 4 skip "WAVEfmt "
+        bits [
+            u32
+            format:   u16
+            channels: u16
+            srate:    u32 u32 u16
+            bps:      u16
+        ]
         thru "data"
-        csize:    u32
-        copy sdata csize
+        bits [csize: u32]
+        sdata:
     ]
     case [
         none? bps    [error "WAVE header is malformed"]
@@ -165,10 +160,11 @@ load-wav: func [file /local sdata] [
     ]
 
     format: make coord! [bps channels 0]
-    make audio-sample copy [
+    ; Matches AudioSampleContext in audio.c.
+    context copy [
         sample-format: format
         rate: srate
-        data: sdata
+        data: copy slice sdata csize
     ]
 ]
 

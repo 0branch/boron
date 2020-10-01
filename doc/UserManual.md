@@ -690,6 +690,7 @@ Rule-Statement    Operation
 ----------------  -------------------------------------------
 \|                Start an alternate rule.
 any \<val\>       Match the value zero or more times.
+bits block!       Parse bit fields.
 break             Stop the current sub-rule as a successful match.
 opt \<val\>       Match the value zero or one time.
 place \<ser\>     Set the current input position to the given series position.
@@ -714,49 +715,35 @@ string!    Match a string.
 word!      Match value of word.
 ---------  -------------------------------------------
 
+The *bits* specification uses the following rules to extract fields of various
+bit lengths and endianess:
 
-Binary Parse
-------------
-
-When parse is used with the */binary* option the following rules are used
-to extract fields of various bit lengths and *binary!* chunks of data.
-
-Rule-Statement        Operation
---------------------  -------------------------------------------
-\|                    Start an alternate rule.
-big-endian            Interpret following unsigned integers as big endian.
-little-endian         Interpret following unsigned integers as little endian.
-u8                    Unsigned 8-bit integer.
-u16                   Unsigned 16-bit integer.
-u32                   Unsigned 32-bit integer.
-u64                   Unsigned 64-bit integer.
-copy \<dst\> \<len\>  Set dst word to a binary! copy of the next len bytes.
-skip                  Skip a single byte.
-thru \<val\>          Skip input until the value is found, then continue through it.
-to \<val\>            Skip input until the value is found.
-int!                  Integer bit field of 1 to 64 bits.
-block!                Sub-rules.
-paren!                Evaluate Boron code.
-set-word!             Set word to the next integer or bit field.
-char!                 Match a character or fail.
-string!               Match a series of characters or fail.
---------------------  -------------------------------------------
+Rule-Statement    Operation
+----------------  -------------------------------------------
+big-endian        Interpret following unsigned integers as big endian.
+little-endian     Interpret following unsigned integers as little endian.
+u8                Unsigned 8-bit integer.
+u16               Unsigned 16-bit integer.
+u32               Unsigned 32-bit integer.
+u64               Unsigned 64-bit integer.
+int!              Integer bit field of 1 to 64 bits.
+set-word!         Set word to the next integer or bit field.
+----------------  -------------------------------------------
 
 The default endianness is *little-endian*.
-
-The *to* & *thru* value type must be *binary!/string!* or a word set to one of
-those types.
 
 The following example parses the 10-byte GZIP header and places the
 individual file flag bits into separate words:
 
-    parse/binary read %some.gz [
+    parse read %some.gz [
         '^(1f)' '^(8b)'
-        method: u8
-        3 fcomment:1 fname:1 fextra:1 fcrc:1 ftext:1
-        timestamp: u32
-        cflags: u8
-        os: u8
+        bits [
+            method: u8
+            3 fcomment:1 fname:1 fextra:1 fcrc:1 ftext:1
+            timestamp: u32
+            cflags: u8
+            os: u8
+        ]
     ]
 
 

@@ -4345,10 +4345,6 @@ CFUNC(cfunc_save)
 }
 
 
-extern UStatus ur_parseBinary( UThread* ut, UBuffer*, UIndex start, UIndex end,
-                               UIndex* parsePos, const UBuffer* ruleBlk,
-                               UStatus (*eval)( UThread*, const UCell* ) );
-
 extern UStatus ur_parseBlock( UThread* ut, UBuffer*, UIndex start, UIndex end,
                               UIndex* parsePos, const UBuffer* ruleBlk,
                               UStatus (*eval)( UThread*, const UCell* ) );
@@ -4362,14 +4358,12 @@ extern UStatus ur_parseString( UThread* ut, UBuffer*, UIndex start, UIndex end,
         input   string!/binary!/block!
         rules   block!
         /case   Character case must match when comparing strings.
-        /binary Parse binary! using binary structure language.
     return:  True if end of input reached.
     group: data
 */
 CFUNC(cfunc_parse)
 {
 #define OPT_PARSE_CASE      0x01
-#define OPT_PARSE_BINARY    0x02
     uint32_t opt = CFUNC_OPTIONS;
     USeriesIterM si;
     const UBuffer* rules;
@@ -4379,20 +4373,11 @@ CFUNC(cfunc_parse)
     if( ! ur_seriesSliceM( ut, &si, a1 ) )
         return UR_THROW;
 
-    if( ! (rules = ur_bufferSer(a2)) )
-        return UR_THROW;
+    rules = ur_bufferSer(a2);
 
     switch( ur_type(a1) )
     {
         case UT_BINARY:
-            if( opt & OPT_PARSE_BINARY )
-            {
-                ok = ur_parseBinary( ut, si.buf, si.it, si.end, &pos, rules,
-                                     boron_doVoid );
-                break;
-            }
-            // Fall through...
-
         case UT_STRING:
             ok = ur_parseString( ut, si.buf, si.it, si.end, &pos, rules,
                                  boron_doVoid, opt & OPT_PARSE_CASE );

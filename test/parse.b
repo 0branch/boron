@@ -58,3 +58,22 @@ parse str [thru "стол" some white a: to ',' :a]
 probe a
 parse str [to "Plasma" b: to #{2C20} :b]
 probe b
+
+
+print "---- bits"
+gz: #{1f8b 0808 f21c 3743 0003 6f63 6f72 6500}
+parse gz [
+    '^(1f)' '^(8b)' bits [
+        method: u8
+        3 fcomment:1 fname:1 fextra:1 fcrc:1 ftext:1
+        timestamp: u32
+        cflags: u8
+        os: u8
+    ]
+]
+foreach it [
+    method fcomment fname fextra fcrc ftext timestamp cflags os
+][
+    prin rejoin [' ' it ':' get it]
+]
+prin '^/'

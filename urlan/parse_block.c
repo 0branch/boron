@@ -309,6 +309,11 @@ skip:
                         {
                             goto match_block;
                         }
+                        else if( ur_is(tval, UT_INT) )
+                        {
+                            repMin = ur_int(tval);
+                            goto set_repeat;
+                        }
                         else
                         {
                             BLK_RULE_ERROR( "parse expected block" );
@@ -357,7 +362,7 @@ skip:
 
             case UT_INT:
                 repMin = ur_int(rit);
-
+set_repeat:
                 ++rit;
                 if( rit == rend )
                     return 0;

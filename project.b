@@ -112,7 +112,6 @@ lib-spec: [
         %tokenize.c
         %vector.c
 
-        %parse_binary.c
         %parse_block.c
         %parse_string.c
     ]

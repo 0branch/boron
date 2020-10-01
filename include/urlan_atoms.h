@@ -64,7 +64,7 @@ enum UrlanFixedAtoms
     UR_ATOM_THRU,
     UR_ATOM_INTO,
     UR_ATOM_PLACE,
-    UR_ATOM_MARK,
+    UR_ATOM_BITS,
 
     UR_ATOM_BIG_ENDIAN,
     UR_ATOM_LITTLE_ENDIAN
