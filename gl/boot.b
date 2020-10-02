@@ -164,7 +164,7 @@ load-wav: func [file] [
     context copy [
         sample-format: format
         rate: srate
-        data: copy slice sdata csize
+        data: slice sdata csize
     ]
 ]
 

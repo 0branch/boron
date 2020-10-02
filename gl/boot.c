@@ -95,7 +95,7 @@
   "    context copy [\n"
   "        sample-format: format\n"
   "        rate: srate\n"
-  "        data: copy slice sdata csize\n"
+  "        data: slice sdata csize\n"
   "    ]\n"
   "]\n"
   "scene-proto: context [\n"

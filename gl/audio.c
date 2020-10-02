@@ -441,6 +441,7 @@ CFUNC_PUB( cfunc_buffer_audio )
     };
     const UBuffer* buf;
     const UCell* cell;
+    UBinaryIter data;
     ALuint alBuffer;
     ALenum alFormat;
     ALenum err;
@@ -466,14 +467,14 @@ CFUNC_PUB( cfunc_buffer_audio )
     cell = ur_ctxCell(buf, CI_DATA);
     if( ! ur_is(cell, UT_BINARY) )
         goto bad_ctx;
-    buf = ur_bufferSer(cell);
+    ur_binSlice(ut, &data, cell);
 
     if( _audioUp )
     {
         alGenBuffers( 1, &alBuffer );
 
         alGetError();
-        alBufferData( alBuffer, alFormat, buf->ptr.b, buf->used, freq );
+        alBufferData( alBuffer, alFormat, data.it, data.end - data.it, freq );
         if( (err = alGetError()) != AL_NO_ERROR )
             return ur_error( ut, UR_ERR_INTERNAL, "alBufferData %d", err );
 
