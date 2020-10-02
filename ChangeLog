@@ -1,6 +1,16 @@
 			Boron Change Log
 
 
+V2.0.4 - 16 Nov 2020
+
+  * Replace parse /binary option with 'bits command.
+  * Implement swap for block!.
+  * Add split function.
+  * Add boron_tempBinary() function & ur_stackTop() macro.
+  * Fix small memory leak in ur_freezeEnv().
+  * Some bugfixes.
+
+
 V2.0.2 - 7 Mar 2020
 
   * Update Boron-GL to use OpenGL 3.3 & ES 3.1 and support Android.
