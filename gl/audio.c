@@ -454,7 +454,8 @@ CFUNC_PUB( cfunc_buffer_audio )
         goto bad_ctx;
     alFormat = ((cell->coord.n[0] - 8) / 4) + (cell->coord.n[1] - 1);
     if( alFormat < 0 || alFormat > 3 )
-        return ur_error( ut, UR_ERR_TYPE, "Invalid audio-sample format" );
+        return ur_error( ut, UR_ERR_TYPE, "Invalid audio-sample format (%d,%d)",
+                         cell->coord.n[0], cell->coord.n[1] );
     alFormat = formats[ alFormat ];
 
     cell = ur_ctxCell(buf, CI_RATE);
