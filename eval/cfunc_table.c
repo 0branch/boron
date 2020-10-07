@@ -113,6 +113,7 @@ DEF_CF( cfunc_delete,     "delete file string!/file!\n" )
 DEF_CF( cfunc_rename,     "rename a string!/file! b string!/file!\n" )
 DEF_CF( cfunc_load,       "load from\n" )
 DEF_CF( cfunc_save,       "save to data\n" )
+DEF_CF( cfunc_split,      "split a b\n" )
 DEF_CF( cfunc_parse,      "parse input binary!/string!/block!"
                             " rules block! /case\n" )
 DEF_CF( cfunc_sameQ,      "same? a b\n" )

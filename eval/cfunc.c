@@ -4345,6 +4345,55 @@ CFUNC(cfunc_save)
 }
 
 
+/*-cf-
+    split
+        input   Series to split.
+        delim   Delimiter value.
+    return: Block of slices from input.
+    group: data
+    see: parse
+*/
+CFUNC(cfunc_split)
+{
+    USeriesIter si;
+    UCell tmp;
+    UBuffer* out;
+    const USeriesType* dt;
+    const UCell* delim = a2;
+    int type = ur_type(a1);
+    int n;
+
+    if( ! ur_isSeriesType( type ) )
+        return boron_badArg( ut, type, 0 );
+
+    dt = SERIES_DT( type );
+    out = ur_makeBlockCell( ut, UT_BLOCK, 0, res );
+    tmp = *a1;
+
+    ur_seriesSlice( ut, &si, a1 );
+    while( (n = dt->find( ut, &si, delim, 0 )) >= 0 )
+    {
+        if( n > si.it )
+        {
+            tmp.series.it  = si.it;
+            tmp.series.end = n;
+            ur_blkPush( out, &tmp );
+        }
+        si.it = n + 1;
+    }
+
+    if( out->used )
+    {
+        if( si.it >= si.end )
+            return UR_OK;
+        tmp.series.it  = si.it;
+        tmp.series.end = a1->series.end;
+    }
+    ur_blkPush( out, &tmp );
+    return UR_OK;
+}
+
+
 extern UStatus ur_parseBlock( UThread* ut, UBuffer*, UIndex start, UIndex end,
                               UIndex* parsePos, const UBuffer* ruleBlk,
                               UStatus (*eval)( UThread*, const UCell* ) );
@@ -4360,6 +4409,7 @@ extern UStatus ur_parseString( UThread* ut, UBuffer*, UIndex start, UIndex end,
         /case   Character case must match when comparing strings.
     return:  True if end of input reached.
     group: data
+    see: split
 */
 CFUNC(cfunc_parse)
 {

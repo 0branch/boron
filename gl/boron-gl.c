@@ -2948,7 +2948,7 @@ static void _createFixedAtoms( UThread* ut )
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
-        "add size loop repeat text binary wait close context\n"
+        "add size loop repeat text wait close context binary\n"
         "width height area rect raster texture\n"
         "gui-style shader-cache value elem focus resize key-down key-up\n"
         "mouse-move mouse-up mouse-down mouse-wheel\n"
@@ -3000,10 +3000,10 @@ static void _createFixedAtoms( UThread* ut )
     assert( atoms[2] == UR_ATOM_LOOP );
     assert( atoms[3] == UR_ATOM_REPEAT );
     assert( atoms[4] == UR_ATOM_TEXT );
-    assert( atoms[5] == UR_ATOM_BINARY );
-    assert( atoms[6] == UR_ATOM_WAIT );
-    assert( atoms[7] == UR_ATOM_CLOSE );
-    assert( atoms[8] == UR_ATOM_CONTEXT );
+    assert( atoms[5] == UR_ATOM_WAIT );
+    assert( atoms[6] == UR_ATOM_CLOSE );
+    assert( atoms[7] == UR_ATOM_CONTEXT );
+    assert( atoms[8] == UR_ATOM_BINARY );
     assert( atoms[9] == UR_ATOM_WIDTH );
     assert( atoms[FA_COUNT - 1] == UR_ATOM_FACE );
 }
