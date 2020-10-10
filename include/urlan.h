@@ -728,6 +728,7 @@ void     ur_arrAppendFloat( UBuffer*, float );
     (c)->series.it = sit; \
     (c)->series.end = send
 
+#define ur_stackTop(ut)     (ut->stack.ptr.cell + ut->stack.used - 1)
 #define ur_exception(ut)    ut->stack.ptr.cell
 #define ur_pop(ut)          --(ut)->stack.used
 #define ur_hold(n)          ur_holdBuffer(ut,n)

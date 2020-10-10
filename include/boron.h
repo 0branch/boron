@@ -148,9 +148,6 @@ char*    boron_cpath( UThread*, const UCell* strC, UBuffer* bin );
 UBuffer* boron_tempBinary( const UThread* );
 UStatus  boron_badArg( UThread*, UIndex atom, int argN );
 
-/* Deprecated functions */
-void     boron_addCFunc( UThread*, BoronCFunc func, const char* sig );
-
 #ifdef __cplusplus
 }
 #endif

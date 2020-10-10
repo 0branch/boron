@@ -172,6 +172,7 @@ extern struct GLEnv glEnv;
 extern UThread* boron_makeEnvGL( UEnvParameters* );
 extern void boron_freeEnvGL( UThread* );
 extern void boron_releaseGL( UThread* );
+extern void ur_initGLData( UThread* );
 
 void ur_markBlkN( UThread* ut, UIndex blkN );
 #define ur_markCtxN(ut,n)   ur_markBlkN(ut, n)

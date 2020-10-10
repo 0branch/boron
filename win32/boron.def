@@ -190,4 +190,5 @@ EXPORTS
    ur_fileInfo               @188
    ur_now                    @189
    checksum_crc32            @190
-;   ur_stringToTimeCode       @191
+   ur_parseBlockI            @191
+;   ur_stringToTimeCode       @192
