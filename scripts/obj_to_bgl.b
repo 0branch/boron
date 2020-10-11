@@ -101,12 +101,7 @@ write-geo: func [
     foreach [key vi] geo/faces [
         ;print [key vi]
 
-        vcount: size? vi
-        switch key [
-            'vn  [vcount: div vcount 2]
-            'vt  [vcount: div vcount 2]
-            'vtn [vcount: div vcount 3]
-        ]
+        vcount: div size? vi select ['vn 2 'vt 2 'vtn 3 'v 1] key
 
         new: false
 
@@ -118,14 +113,14 @@ write-geo: func [
 
             append clear indices vcount
 
-            prin "^/buffer "
-            prin select [
-                'vn  "[vertex normal]"
-                'vt  "[vertex texture 2]"
-                'vtn "[vertex texture 2 normal]"
-                'v   "[vertex]"
-            ] key
-            print " #["
+            print [
+                "^/buffer" select [
+                    'vn  "[vertex normal]"
+                    'vt  "[vertex texture 2]"
+                    'vtn "[vertex texture 2 normal]"
+                    'v   "[vertex]"
+                ] key "#["
+            ]
         ]
 
         switch key [
@@ -170,29 +165,21 @@ write-geo: func [
 ]
 
 
-white:       charset " ^-^D"
-index-chars: charset "0123456789/"
-digits:      charset "0123456789"
+white:  charset " ^-^D"
+digits: charset "0123456789"
 
 convert-face: func [line geo] [
-    len: 0
-    parse line [some[
-        some white | some index-chars (++ len)
-    ]]
-
     ; Determine key.
     parse t: n: line [some white some digits '/' t: any digits '/' n:]
 
-    key: either find digits t/1 [
-        either find digits n/1 ['vtn]['vt]
-    ][
-        either find digits n/1 ['vn]['v]
-    ]
+    key: ['v 'vn 'vt 'vtn]
+    if find digits t/1 [key: skip key 2]
+    if find digits n/1 [++ key]
 
     verts: to-block replace/all line '/' ' '
     map it verts [sub it 1]
 
-    append geo/faces reduce [key verts]
+    append geo/faces reduce [first key verts]
 ]
 
 
@@ -232,9 +219,9 @@ load-mtl: func [file] [
 
 
 convert: func [file string!/file!] [
-    prin rejoin [
+    print rejoin [
         "; Boron-GL Draw List^/; File: " file
-         "^/; Date: " now/date "^/^/"
+         "^/; Date: " now/date '^/'
     ]
 
     main: make wf-geom []
