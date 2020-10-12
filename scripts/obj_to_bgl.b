@@ -1,9 +1,11 @@
 #!/usr/bin/boron -sp
 /*
     Converts Wavefront OBJ files to Boron-GL buffers
-    Version: 1.2
+    Version: 1.3
 */
 
+
+material-attr: none
 
 wf-surf: context [
     name: none
@@ -19,7 +21,7 @@ wf-geom: context [
     verts: []
     normals: []
     uvs: []
-    surfs: none
+    surfs: none     ; Tracks current wf-surf, but only the last is used.
     faces: []
 ]
 
@@ -70,6 +72,13 @@ emit-vertex: func [buf stride] [
     div index? new-attrib stride
 ]
 
+buf-key: context [
+    v:   "[vertex]"
+    vn:  "[vertex normal]"
+    vt:  "[vertex texture 2]"
+    vtn: "[vertex texture 2 normal]"
+]
+
 write-geo: func [
     geo
     /local key vi
@@ -98,8 +107,8 @@ write-geo: func [
         print to-string next indices
     ]
 
-    foreach [key vi] geo/faces [
-        ;print [key vi]
+    foreach [key mat vi] geo/faces [
+        ;print [key mat vi]
 
         vcount: div size? vi select ['vn 2 'vt 2 'vtn 3 'v 1] key
 
@@ -113,14 +122,7 @@ write-geo: func [
 
             append clear indices vcount
 
-            print [
-                "^/buffer" select [
-                    'vn  "[vertex normal]"
-                    'vt  "[vertex texture 2]"
-                    'vtn "[vertex texture 2 normal]"
-                    'v   "[vertex]"
-                ] key "#["
-            ]
+            print ["^/buffer" get in buf-key key "#["]
         ]
 
         switch key [
@@ -144,6 +146,7 @@ write-geo: func [
                     append indices emit-vertex attrib 6
                 ]
             ]
+            ; vt ignored for now
             vtn [
                 loop vcount [
                     a: skip geo/verts   mul 3 vi/1
@@ -153,8 +156,14 @@ write-geo: func [
 
                     append attrib slice a 3
                     append attrib slice b 2
-                    append attrib slice c 3
-                    append indices emit-vertex attrib 8
+                    either material-attr [
+                        append attrib mat       ; Store in texture.z
+                        append attrib slice c 3
+                        append indices emit-vertex attrib 9
+                    ][
+                        append attrib slice c 3
+                        append indices emit-vertex attrib 8
+                    ]
                 ]
             ]
         ]
@@ -168,7 +177,7 @@ write-geo: func [
 white:  charset " ^-^D"
 digits: charset "0123456789"
 
-convert-face: func [line geo] [
+record-face: func [line geo] [
     ; Determine key.
     parse t: n: line [some white some digits '/' t: any digits '/' n:]
 
@@ -179,7 +188,7 @@ convert-face: func [line geo] [
     verts: to-block replace/all line '/' ' '
     map it verts [sub it 1]
 
-    append geo/faces reduce [first key verts]
+    append geo/faces reduce [first key matid verts]
 ]
 
 
@@ -218,7 +227,7 @@ load-mtl: func [file] [
 ]
 
 
-convert: func [file string!/file!] [
+convert: func [file string!/file! /extern matid] [
     print rejoin [
         "; Boron-GL Draw List^/; File: " file
          "^/; Date: " now/date '^/'
@@ -236,18 +245,25 @@ convert: func [file string!/file!] [
         ]
     ]
 
+    matid: 0.0
     parse read/text file [some[
           '#' thru eol
         | "mtllib" cl (mtllib: load-mtl trim data)
-        | "usemtl" cl (if mtllib [geo/surfs: select mtllib trim data])
+        | "usemtl" cl (
+            if mtllib [
+                geo/surfs: select mtllib trim data
+            ]
+            if material-attr [
+                it: find material-attr to-word trim data
+                matid: either it [to-double index? it] 0.0
+            ]
+          )
         | "g"  cl (ifn geo [make-geo])
         | "o"  cl (if geo [write-geo geo] make-geo)
         | "vt" cl (append main/uvs     to-block data)
         | "vn" cl (append main/normals to-block data)
         | "v"  cl (append main/verts   to-block data)
-        | "f"  cl (convert-face data geo)
-        ;| "f"  data: to end :data (print "<END>"
-        ;                           convert-face data geo)
+        | "f"  cl (record-face data geo)
         | eol skip
         | cl (print [";" data])
     ]]
@@ -273,13 +289,18 @@ files: []
 forall args [
     switch first args [
         "-s" [emit-vertex: :emit-vertex-similar]
+        "-m" [
+            material-attr: collect set-word! load second ++ args
+            buf-key/vtn: "[vertex texture normal]"
+        ]
         "-h" [
             print {{
                 Usage: obj_to_bgl.b [-h] [-s] <obj-file> ...
 
                 Options:
-                  -h   Print this help and quit
-                  -s   Eliminate similar vertices
+                  -h        Print this help and quit
+                  -m <file> Set material index as texture z attribute
+                  -s        Eliminate similar vertices
             }}
             quit
         ]
