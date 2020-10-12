@@ -223,6 +223,7 @@
 
 #define DT(dt)          (ut->types[ dt ])
 #define SERIES_DT(dt)   ((const USeriesType*) (ut->types[ dt ]))
+#define bitIsSet(mem,n) (mem[(n)>>3] & 1<<((n)&7))
 
 #define block_destroy   ur_arrFree
 #define string_destroy  ur_arrFree
@@ -1716,6 +1717,25 @@ UDatatype dt_vec3 =
 // UT_WORD
 
 
+extern uint8_t charset_word[32];
+
+// Return UR_INVALID_ATOM if string is invalid.
+static UAtom word_intern( UThread* ut, const char* str, const char* end )
+{
+    const char* it = str;
+    int ch;
+    while( it != end )
+    {
+        ch = *it++;
+        if( bitIsSet(charset_word, ch) )
+            continue;
+        ur_error( ut, UR_ERR_SCRIPT, "make word! found invalid chars" );
+        return UR_INVALID_ATOM;
+    }
+    return ur_internAtom( ut, str, end );
+}
+
+
 int word_makeType( UThread* ut, const UCell* from, UCell* res, int ntype )
 {
     UAtom atom;
@@ -1734,15 +1754,15 @@ int word_makeType( UThread* ut, const UCell* from, UCell* res, int ntype )
         ur_seriesSlice( ut, &si, from );
         if( si.buf->form == UR_ENC_LATIN1 )
         {
-            atom = ur_internAtom( ut, si.buf->ptr.c + si.it,
-                                      si.buf->ptr.c + si.end );
+            atom = word_intern( ut, si.buf->ptr.c + si.it,
+                                    si.buf->ptr.c + si.end );
         }
         else
         {
             UBuffer tmp;
             ur_strInit( &tmp, UR_ENC_LATIN1, 0 );
             ur_strAppend( &tmp, si.buf, si.it, si.end );
-            atom = ur_intern( ut, tmp.ptr.c, tmp.used );
+            atom = word_intern( ut, tmp.ptr.c, tmp.ptr.c + tmp.used );
             ur_strFree( &tmp );
         }
         if( atom == UR_INVALID_ATOM )
@@ -2465,7 +2485,6 @@ UBuffer* ur_makeBitsetCell( UThread* ut, int bitCount, UCell* res )
 
 #define setBit(mem,n)       (mem[(n)>>3] |= 1<<((n)&7))
 #define clrBit(mem,n)       (mem[(n)>>3] &= ~(1<<((n)&7)))
-#define bitIsSet(mem,n)     (mem[(n)>>3] & 1<<((n)&7))
 
 int bitset_make( UThread* ut, const UCell* from, UCell* res )
 {
