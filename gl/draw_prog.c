@@ -63,7 +63,6 @@ enum DPOpcode
     DP_VERTEX_OFFSET_4,     // stride-offset
     DP_NORMAL_OFFSET,       // stride-offset
     DP_COLOR_OFFSET,        // stride-offset
-    DP_COLOR_OFFSET_4,      // stride-offset
     DP_UV_OFFSET,           // stride-offset
     DP_ATTR_OFFSET,         // location-size stride-offset
     DP_ATTR_DIVISOR,        // location-attrCount
@@ -518,8 +517,11 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk,
 
             case UR_ATOM_COLOR:
                 //glColorPointer( 3, GL_FLOAT, stride, offset );
-                emitOp1( (size == 4) ? DP_COLOR_OFFSET_4 : DP_COLOR_OFFSET,
-                         B_STRIDE_OFFSET );
+                if( size == 3 )
+                    emitOp1( DP_COLOR_OFFSET, B_STRIDE_OFFSET );
+                else
+                    emitOp2( DP_ATTR_OFFSET, (ALOC_COLOR << 8) | size,
+                             B_STRIDE_OFFSET );
                 break;
 
             case UR_ATOM_NORMAL:
@@ -529,7 +531,11 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk,
 
             case UR_ATOM_TEXTURE:
                 //glTexCoordPointer( 2, GL_FLOAT, stride, offset );
-                emitOp1( DP_UV_OFFSET, B_STRIDE_OFFSET );
+                if( size == 2 )
+                    emitOp1( DP_UV_OFFSET, B_STRIDE_OFFSET );
+                else
+                    emitOp2( DP_ATTR_OFFSET, (ALOC_TEXTURE << 8) | size,
+                             B_STRIDE_OFFSET );
                 break;
 
             case UR_ATOM_VERTEX:
@@ -3199,17 +3205,6 @@ dispatch:
             glEnableVertexAttribArray( ALOC_COLOR );
             CLIENT_ATTRIB( ALOC_COLOR );
             glVertexAttribPointer( ALOC_COLOR, 3, GL_FLOAT, GL_FALSE,
-                                   stof & 0xff, NULL + (stof >> 8) );
-        }
-            break;
-
-        case DP_COLOR_OFFSET_4:
-        {
-            uint32_t stof = *pc++;
-            REPORT_1( " COLOR_OFFSET_4 %08x\n", stof );
-            glEnableVertexAttribArray( ALOC_COLOR );
-            CLIENT_ATTRIB( ALOC_COLOR );
-            glVertexAttribPointer( ALOC_COLOR, 4, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
         }
             break;
