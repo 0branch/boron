@@ -80,7 +80,7 @@ enum DPOpcode
     DP_DRAW_TRIS_I,         // count offset
     DP_DRAW_TRI_STRIP_I,    // count offset
     DP_DRAW_TRI_FAN_I,      // count offset
-    DP_DRAW_INST_TRIS_WORD, // blkN index vertCount
+    DP_DRAW_INST_TRIS_WORD, // blkN index count offset
     DP_DEPTH_ON,
     DP_DEPTH_OFF,
     DP_BLEND_ON,
@@ -816,6 +816,37 @@ static void genIndices( UThread* ut, DPCompiler* emit )
             free( dst );
         }
     }
+}
+
+
+/*
+  Flush all vertex buffers and create an indices buffer from ivec.
+  This was added to bypass the normal buffer accumulation (finishing with
+  genIndices) of the normal draw program compilation.
+*/
+static UStatus emitElementsNow( UThread* ut, DPCompiler* emit,
+                                const UBuffer* ivec, GLenum usage )
+{
+    GLuint buf[ DP_MAX_VBUF + 1 ];
+    int i;
+
+#if 1
+    i = genVertexBuffers( ut, emit, buf, emit->vbufCount + 1 );
+    if( i < 0 )
+        return UR_THROW;
+#else
+    glGenBuffers( 1, &buf );
+    dp_addRef( emit, RES_GL_BUFFERS, 1, &buf );
+#endif
+
+    emitOp1( DP_BIND_ELEMENTS, buf[i] );
+    //dp_recordPrim( emit, UT_VECTOR, DP_DRAW_TRIS,
+    //               ivec->series.buf );
+
+    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buf[i] );
+    glBufferData( GL_ELEMENT_ARRAY_BUFFER,
+                  ivec->used * sizeof(uint16_t), ivec->ptr.v, usage );
+    return UR_OK;
 }
 
 
@@ -1867,51 +1898,67 @@ bad_prim:
             }
                 break;
 
-            case DOP_TRIS_INST:             // tris-inst vertCount instCount
+        /*-dc-
+            tris-inst
+                indices         vector!/int!  Array data or part count.
+                instanceCount   get-word!
+                /part
+                    offset      int!  Starting index in buffer.
+
+            The /part option specifies a range into a previously bound element
+            buffer (i.e. using buffer 'indices).  In this case indices must be
+            an int!.
+        */
+            case DOP_TRIS_INST:
             {
                 uint32_t vertCount;
+                uint32_t offset = 0;
 
                 INC_PC
                 PC_VALUE(val)
                 if( ur_is(val, UT_VECTOR) )
                 {
-                    GLuint buf[ DP_MAX_VBUF + 1 ];
-                    int i;
                     const UBuffer* vec = ur_bufferSer(val);
-
                     if( /*vec->form != UR_VEC_I32 &&*/ vec->form != UR_VEC_U16 )
                         goto bad_prim;
-                    vertCount = vec->used;
-#if 1
-                    i = genVertexBuffers( ut, emit, buf, emit->vbufCount + 1 );
-                    if( i < 0 )
+                    if( ! emitElementsNow( ut, emit, vec, GL_STATIC_DRAW ) )
                         goto error;
-#else
-                    glGenBuffers( 1, &buf );
-                    dp_addRef( emit, RES_GL_BUFFERS, 1, &buf );
-#endif
-                    emitOp1( DP_BIND_ELEMENTS, buf[i] );
-                    //dp_recordPrim( emit, UT_VECTOR, DP_DRAW_TRIS,
-                    //               vec->series.buf );
-                    glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buf[i] );
-                    glBufferData( GL_ELEMENT_ARRAY_BUFFER,
-                                  vec->used * sizeof(uint16_t),
-                                  vec->ptr.v,
-                                  GL_STATIC_DRAW );
+                    vertCount = vec->used;
                 }
-
-                INC_PC
-                if( ur_is(pc, UT_GETWORD) )
+                else if( ur_is(val, UT_INT) )
                 {
-                    emitWordOp( emit, pc, DP_DRAW_INST_TRIS_WORD );
-                    emitDPArg( emit, vertCount );
+                    vertCount = ur_int(val);
                 }
                 else
                 {
-                    ur_error( ut, UR_ERR_SCRIPT,
-                              "tris-inst expected get-word! instance count" );
+bad_tinst_arg:
+                    ur_error( ut, UR_ERR_TYPE,
+                              "tris-inst %s argument is invalid",
+                              ur_atomCStr(ut, ur_type(val)) );
                     goto error;
                 }
+
+                INC_PC
+                if( ! ur_is(pc, UT_GETWORD) )
+                {
+                    val = pc;
+                    goto bad_tinst_arg;
+                }
+                emitWordOp( emit, pc, DP_DRAW_INST_TRIS_WORD );
+                emitDPArg( emit, vertCount );
+
+                if( option /*== UR_ATOM_PART*/ )
+                {
+                    INC_PC
+                    if( ! ur_is(pc, UT_INT) )
+                    {
+                        val = pc;
+                        goto bad_tinst_arg;
+                    }
+                    offset = ur_int(pc) * sizeof(uint16_t);
+                }
+
+                emitDPArg( emit, offset );
             }
                 break;
 
@@ -2395,24 +2442,59 @@ samples_err:
                 emitOp( DP_SAMPLES_BEGIN );
                 break;
 
-            case DOP_BUFFER:        // buffer attr-block vector!/vbo!
+        /*-dc-
+            buffer
+                attr-key    lit-word!/block!    'indices
+                array       vector!/vbo!
+                /stream     Set usage to GL_STREAM_DRAW (vector! only).
+                /dynamic    Set usage to GL_DYNAMIC_DRAW (vector! only).
+        */
+            case DOP_BUFFER:
             case DOP_BUFFER_INST:
             {
                 DPBuffer* vbuf;
                 UIndex keyN;
+                GLenum usage;
 
                 INC_PC
                 PC_VALUE(val)
-                if( ! ur_is(val, UT_BLOCK) )
+                if( ur_is(val, UT_BLOCK) )
+                    keyN = val->series.buf;
+                else if( ur_is(val, UT_LITWORD) )
+                    keyN = 0;       // Assuming ur_atom(val) is 'indices.
+                else
                 {
-                    typeError( "buffer expected attribute block!" );
+                    typeError( "buffer expected attribute block! or 'indices" );
                 }
-                keyN = val->series.buf;
 
                 INC_PC
                 PC_VALUE(val)
                 if( ur_is(val, UT_VECTOR) )
                 {
+                    if( option == UR_ATOM_STREAM )
+                        usage = GL_STREAM_DRAW;
+                    else if( option == UR_ATOM_DYNAMIC )
+                        usage = GL_DYNAMIC_DRAW;
+                    else
+                        usage = GL_STATIC_DRAW;
+
+                    if( ! keyN )
+                    {
+                        GLuint buf;
+                        const UBuffer* vec = ur_bufferSer(val);
+                        assert( vec->form == UR_VEC_U16 );
+
+                        glGenBuffers( 1, &buf );
+                        dp_addRef( emit, RES_GL_BUFFERS, 1, &buf );
+                        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buf );
+                        glBufferData( GL_ELEMENT_ARRAY_BUFFER,
+                                      vec->used * sizeof(uint16_t), vec->ptr.v,
+                                      usage );
+
+                        emitOp1( DP_BIND_ELEMENTS, buf );
+                        break;
+                    }
+
                     if( emit->vbufCount == DP_MAX_VBUF )
                     {
                         scriptError( "Vertex buffer limit exceeded" );
@@ -2420,28 +2502,26 @@ samples_err:
                     vbuf = emit->vbuf + emit->vbufCount;
                     ++emit->vbufCount;
 
-                    switch( option )
-                    {
-                        case UR_ATOM_STREAM:
-                            vbuf->usage = GL_STREAM_DRAW;
-                            break;
-                        case UR_ATOM_DYNAMIC:
-                            vbuf->usage = GL_DYNAMIC_DRAW;
-                            break;
-                        default:
-                            vbuf->usage = GL_STATIC_DRAW;
-                            break;
-                    }
+                    vbuf->usage = usage;
                     vbuf->keyN = keyN;
                     vbuf->vecN = val->series.buf;
                 }
                 else if( ur_is(val, UT_VBO) )
                 {
+                    // TODO: Handle keyN == 0.
                     UBuffer* res = ur_buffer( ur_vboResN(val) );
                     GLuint* buf = vbo_bufIds(res);
                     int isInstanced = (opcode == DOP_BUFFER_INST) ? 1 : 0;
                     if( vbo_count(res) )
                     {
+                        if( isInstanced && emit->vbufCount )
+                        {
+                            // Flush any vertex buffers to emit DP_BIND_ARRAY.
+                            GLuint tbuf[ DP_MAX_VBUF ];
+                            if( genVertexBuffers( ut, emit, tbuf,
+                                                  emit->vbufCount ) < 0 )
+                                goto error;
+                        }
                         refVBO( ur_vboResN(val) );
                         emitOp1( isInstanced ? DP_BIND_ARRAY_CONTINUE
                                              : DP_BIND_ARRAY, buf[0] );
@@ -2452,7 +2532,7 @@ samples_err:
                 }
                 else
                 {
-                    typeError( "buffer expected vector!/vbo!" );
+                    typeError( "buffer expected array vector!/vbo!" );
                 }
             }
                 break;
@@ -3350,11 +3430,12 @@ dispatch:
 
             PC_WORD;
             icount = ur_int(val);
-            REPORT_2( "DRAW_TRIS_INST_WORD %d %d\n", pc[0], icount );
+            REPORT( "DRAW_TRIS_INST_WORD %d %d %d\n", pc[0], pc[1], icount );
             if( es_matrixUsed && es_matrixMod )
                 es_updateUniformMatrixView();
-            glDrawElementsInstanced( GL_TRIANGLES, *pc++, GL_UNSIGNED_SHORT,
-                                     NULL, icount );
+            glDrawElementsInstanced( GL_TRIANGLES, pc[0], GL_UNSIGNED_SHORT,
+                                     NULL + pc[1], icount );
+            pc += 2;
         }
             break;
 
