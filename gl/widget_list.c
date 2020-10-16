@@ -20,6 +20,7 @@
 
 
 #include <glv_keys.h>
+#include "glh.h"
 #include "boron-gl.h"
 #include "draw_prog.h"
 #include "os.h"
@@ -46,6 +47,7 @@ typedef struct
 GList;
 
 #define EX_PTR  GList* ep = (GList*) wp
+#define FLAG_UPDATE_DPROG   GW_FLAG_USER1
 
 
 /*-wid-
@@ -325,6 +327,14 @@ static void listw_sizeHint( GWidget* wp, GSizeHint* size )
 
 static void listw_layout( GWidget* wp )
 {
+    EX_PTR;
+    listw_calcMetrics( glEnv.guiUT, ep, 1 );
+    wp->flags |= FLAG_UPDATE_DPROG;
+}
+
+
+static void listw_updateList( UThread* ut, GList* ep )
+{
     UCell* rc;
     UCell* it;
     const UBuffer* blk;
@@ -332,16 +342,12 @@ static void listw_layout( GWidget* wp )
     int col, colCount;
     int itemY;
     UCell* style = glEnv.guiStyle;
-    UThread* ut  = glEnv.guiUT;
     UIndex strN = 0;
-    EX_PTR;
     DPCompiler* save;
     DPCompiler dpc;
 
 
-    listw_calcMetrics( ut, ep, 1 );
-
-    itemY = wp->area.y + wp->area.h - ep->itemHeight;
+    itemY = ep->wid.area.y + ep->wid.area.h - ep->itemHeight;
 
 
     // Compile draw list for visible items.
@@ -354,7 +360,7 @@ static void listw_layout( GWidget* wp )
     rc = style + CI_STYLE_LIST_BG;
     if( ur_is(rc, UT_BLOCK) )
     {
-        gui_initRectCoord( style + CI_STYLE_AREA, wp, UR_ATOM_RECT );
+        gui_initRectCoord( style + CI_STYLE_AREA, &ep->wid, UR_ATOM_RECT );
         ur_compileDP( ut, rc, 1 );
     }
 
@@ -376,7 +382,7 @@ static void listw_layout( GWidget* wp )
 
             rc = style + CI_STYLE_AREA;
             ur_initCoord(rc, 4);
-            rc->coord.n[0] = wp->area.x + (col * ep->colWidth);
+            rc->coord.n[0] = ep->wid.area.x + (col * ep->colWidth);
             rc->coord.n[1] = itemY;
             rc->coord.n[2] = ep->colWidth;
             rc->coord.n[3] = ep->itemHeight;
@@ -422,7 +428,7 @@ static void listw_layout( GWidget* wp )
 
                 rc = style + CI_STYLE_AREA;
                 ur_initCoord(rc, 4);
-                rc->coord.n[0] = wp->area.x + (col * ep->colWidth);
+                rc->coord.n[0] = ep->wid.area.x + (col * ep->colWidth);
                 rc->coord.n[1] = itemY;
                 rc->coord.n[2] = ep->colWidth;
                 rc->coord.n[3] = ep->itemHeight;
@@ -443,9 +449,21 @@ static void listw_layout( GWidget* wp )
 
 static void listw_render( GWidget* wp )
 {
+    GLint saveVao;
     EX_PTR;
 
+    glGetIntegerv( GL_VERTEX_ARRAY_BINDING, &saveVao );
+
+    if( wp->flags & FLAG_UPDATE_DPROG )
+    {
+        wp->flags &= ~FLAG_UPDATE_DPROG;
+
+        assert( 0 == gDPC );
+        listw_updateList( glEnv.guiUT, ep );
+    }
+
     ur_runDrawProg( glEnv.guiUT, ep->dp[0] );
+    glBindVertexArray( saveVao );
 }
 
 
@@ -503,7 +521,7 @@ GWidgetClass wclass_list =
     listw_make,         widget_free,        listw_mark,
     listw_dispatch,     listw_sizeHint,     listw_layout,
     listw_render,       listw_select,       listw_set,
-    0, GW_CONTEXT_MENU
+    0, GW_CONTEXT_MENU | FLAG_UPDATE_DPROG
 };
 
 

@@ -71,7 +71,6 @@
 #define CREATE_VERSION  0x301
 #else
 #define CREATE_VERSION  0x303
-#define USE_VAO
 #endif
 
 
@@ -576,10 +575,6 @@ CFUNC( uc_handle_events )
             gView = glv_create( CREATE_ATTRIB, CREATE_VERSION );
 #ifdef DEBUG_GL
             enableGLDebug();
-#endif
-#ifdef USE_VAO
-            glGenVertexArrays( 1, &glEnv.globalVAO );
-            glBindVertexArray( glEnv.globalVAO );
 #endif
             gView->user = &glEnv;
             glv_resize( gView, w, h );
@@ -3166,12 +3161,6 @@ cleanup:
     enableGLDebug();
 #endif
 
-#ifdef USE_VAO
-    // Core profile requires use of VAO.
-    glGenVertexArrays( 1, &glEnv.globalVAO );
-    glBindVertexArray( glEnv.globalVAO );
-#endif
-
 #if 0
     {
     GLint nf;
@@ -3260,10 +3249,6 @@ void boron_releaseGL( UThread* ut )
     }
 
     glid_release();
-
-#ifdef USE_VAO
-    glDeleteVertexArrays( 1, &glEnv.globalVAO );
-#endif
 }
 
 

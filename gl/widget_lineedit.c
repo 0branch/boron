@@ -40,6 +40,7 @@ typedef struct
     UIndex   codeN;
     UIndex   filterN;
     UIndex   vboN;          // Text & cursor
+    GLuint   vao;
     uint16_t maxChars;
     uint16_t drawn;
     uint16_t dpSwitch;
@@ -72,30 +73,40 @@ LineEdit;
 #define CURSOR_MOVED    GW_FLAG_USER3
 
 
-static UIndex ledit_vbo( UThread* ut, int maxChars )
+static void ledit_vbo( UThread* ut, LineEdit* ep )
 {
     UBuffer* buf;
     GLuint* gbuf;
     uint16_t* dst;
-    UIndex resN;
+    int maxChars = ep->maxChars;
     int indexCount = 6 * (maxChars + 1);
 
-    resN = ur_makeVbo( ut, GL_DYNAMIC_DRAW,
-                       LEDIT_VERT_IN_BUF(maxChars), NULL,
-                       indexCount, NULL );
-    buf = ur_buffer( resN );
+    glGenVertexArrays( 1, &ep->vao );
+    glBindVertexArray( ep->vao );
+
+    ep->vboN = ur_makeVbo( ut, GL_DYNAMIC_DRAW,
+                           LEDIT_VERT_IN_BUF(maxChars), NULL,
+                           indexCount, NULL );
+    buf = ur_buffer( ep->vboN );
     gbuf = vbo_bufIds(buf);
+
+    glBindBuffer( GL_ARRAY_BUFFER, gbuf[0] );
+    glEnableVertexAttribArray( ALOC_VERTEX );
+    glEnableVertexAttribArray( ALOC_TEXTURE );
+    glVertexAttribPointer( ALOC_VERTEX, 3, GL_FLOAT, GL_FALSE,
+                           LEDIT_ATTR_SIZE, NULL + 8 );
+    glVertexAttribPointer( ALOC_TEXTURE, 2, GL_FLOAT, GL_FALSE,
+                           LEDIT_ATTR_SIZE, NULL + 0 );
+
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, gbuf[1] );
-    dst = (uint16_t*)
-    glMapBufferRange( GL_ELEMENT_ARRAY_BUFFER, 0,
-                      sizeof(uint16_t) * indexCount,
-                      GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
+    dst = (uint16_t*) glMapBufferRange( GL_ELEMENT_ARRAY_BUFFER, 0,
+                          sizeof(uint16_t) * indexCount,
+                          GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
     if( dst )
     {
         vbo_initTextIndices( dst, 0, maxChars + 1 );
         glUnmapBuffer( GL_ELEMENT_ARRAY_BUFFER );
     }
-    return resN;
 }
 
 
@@ -138,9 +149,16 @@ static GWidget* ledit_make( UThread* ut, UBlockIter* bi,
     //ep->state = LEDIT_STATE_DISPLAY;
     ep->strN     = arg[0]->series.buf;
     ep->maxChars = maxChars;
-    ep->vboN     = ledit_vbo( ut, maxChars );       // gc!
+    ledit_vbo( ut, ep );            // gc!
 
     return (GWidget*) ep;
+}
+
+
+void ledit_free( GWidget* wp )
+{
+    EX_PTR;
+    glDeleteVertexArrays( 1, &ep->vao );
 }
 
 
@@ -392,11 +410,12 @@ key_erase:
 
         case GUI_EVENT_WINDOW_CREATED:
             setFlag( CHANGED | NEW_CURSORX );
-            ep->vboN = ledit_vbo( ut, ep->maxChars );
+            ledit_vbo( ut, ep );
             break;
 
         case GUI_EVENT_WINDOW_DESTROYED:
             ep->vboN = 0;
+            ep->vao = 0;
             break;
     }
     return;
@@ -573,12 +592,12 @@ extern void gr_drawText( TexFont* tf, const char* it, const char* end );
 static void ledit_render( GWidget* wp )
 {
     DrawTextState ds;
-    GLuint* buf;
     GLfloat* fdata;
     UBuffer* str;
     TexFont* tf;
     UCell* style = glEnv.guiStyle;
     UThread* ut  = glEnv.guiUT;
+    GLint saveVao;
     int pos;
     EX_PTR;
 
@@ -589,7 +608,6 @@ static void ledit_render( GWidget* wp )
     if( tf )
     {
         str = ur_buffer( ep->strN );
-        buf = vbo_bufIds( ur_buffer(ep->vboN) );
 
         if( flagged( NEW_CURSORX ) )
         {
@@ -619,12 +637,17 @@ static void ledit_render( GWidget* wp )
             }
         }
 
-        glBindBuffer( GL_ARRAY_BUFFER, buf[0] );
+        glGetIntegerv( GL_VERTEX_ARRAY_BINDING, &saveVao );
+        glBindVertexArray( ep->vao );
 
         if( flagged( CHANGED ) )
         {
+            GLuint* gbuf = vbo_bufIds( ur_buffer(ep->vboN) );
+            glBindBuffer( GL_ARRAY_BUFFER, gbuf[0] );
+
             //printf( "KR pos %d,%d\n", ep->editPos, ep->editEnd );
             clrFlag( CHANGED );
+
             fdata = (float*) glMapBufferRange( GL_ARRAY_BUFFER, 0,
                             sizeof(float) * LEDIT_VERT_IN_BUF(ep->maxChars),
                             GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT );
@@ -643,16 +666,8 @@ static void ledit_render( GWidget* wp )
             }
         }
 
-        glEnableVertexAttribArray( ALOC_TEXTURE );
-
-        glVertexAttribPointer( ALOC_TEXTURE, 2, GL_FLOAT, GL_FALSE,
-                               LEDIT_ATTR_SIZE, NULL + 0 );
-        glVertexAttribPointer( ALOC_VERTEX, 3, GL_FLOAT, GL_FALSE,
-                               LEDIT_ATTR_SIZE, NULL + 8 );
-        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buf[1] );
-
         // Set red -2.0 for shader CLUT mode.
-        glUniform4f( ULOC_COLOR, -2.0, 0.0, 0.0, 1.0 ); // glColor4f
+        glUniform4f( ULOC_COLOR, -2.0, 0.0, 0.0, 1.0 );
 
         {
         char* indices = NULL;
@@ -664,7 +679,7 @@ static void ledit_render( GWidget* wp )
         glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_SHORT, indices );
         }
 
-        glDisableVertexAttribArray( ALOC_TEXTURE );
+        glBindVertexArray( saveVao );
     }
 }
 
@@ -703,7 +718,7 @@ static UStatus ledit_set( UThread* ut, GWidget* wp, const UCell* val )
 GWidgetClass wclass_lineedit =
 {
     "line-edit",
-    ledit_make,         widget_free,        ledit_mark,
+    ledit_make,         ledit_free,         ledit_mark,
     ledit_dispatch,     ledit_sizeHint,     ledit_layout,
     ledit_render,       ledit_select,       ledit_set,
     0, 0

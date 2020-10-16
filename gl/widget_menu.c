@@ -20,6 +20,7 @@
 
 
 #include <glv_keys.h>
+#include "glh.h"
 #include "boron-gl.h"
 #include "draw_prog.h"
 #include "os.h"
@@ -437,10 +438,13 @@ static void menu_layout( GWidget* wp )
 
 static void menu_render( GWidget* wp )
 {
+    GLint saveVao;
     EX_PTR;
 
     if( ! (glEnv.guiStyle = gui_style( glEnv.guiUT )) )
         return;
+
+    glGetIntegerv( GL_VERTEX_ARRAY_BINDING, &saveVao );
 
     if( wp->flags & GW_UPDATE_LAYOUT )
     {
@@ -459,6 +463,8 @@ static void menu_render( GWidget* wp )
         }
         ur_runDrawProg( glEnv.guiUT, ep->selDraw );
     }
+
+    glBindVertexArray( saveVao );
 }
 
 

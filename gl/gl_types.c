@@ -1193,8 +1193,12 @@ static void fbo_mark( UThread* ut, UCell* cell )
 
 
 /**
-  Usage is the glBufferData usage (e.g. GL_STATIC_DRAW) and used for both
-  the attributes and indicies buffers.
+  Create a vbo! UBuffer with vertices and/or indicies in the currently bound
+  vertex array object.  Use glBindVertexArray(0) prior to this if no specific
+  VAO is desired.
+
+  \param usage  The glBufferData usage (e.g. GL_STATIC_DRAW) and used for
+                both the attributes and indicies buffers.
 
   \return UBuffer index.
 */
@@ -1282,6 +1286,8 @@ int vbo_make( UThread* ut, const UCell* from, UCell* res )
             }
         }
     }
+
+    glBindVertexArray( 0 );
 
     if( ur_is(from, UT_INT) )
     {

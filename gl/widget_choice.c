@@ -20,6 +20,7 @@
 
 
 #include <glv_keys.h>
+#include "glh.h"
 #include "boron-gl.h"
 #include "draw_prog.h"
 #include "os.h"
@@ -270,7 +271,6 @@ static void choice_layout( GWidget* wp )
 
 
     // Compile draw lists.
-
     rc = style + CI_STYLE_CHOICE;
     if( ur_is(rc, UT_BLOCK) )
         ur_compileDP( glEnv.guiUT, rc, 1 );
@@ -281,15 +281,23 @@ static void choice_layout( GWidget* wp )
 
 static void choice_render( GWidget* wp )
 {
+    GLint saveVao;
     EX_PTR;
+
+    // Here we compile & run an isolated draw-prog for the label.
+
+    glGetIntegerv( GL_VERTEX_ARRAY_BINDING, &saveVao );
 
     if( wp->flags & FLAG_UPDATE_LABEL )
     {
         wp->flags &= ~FLAG_UPDATE_LABEL;
+
+        assert( 0 == gDPC );
         choice_updateLabel( glEnv.guiUT, ep );
     }
 
     ur_runDrawProg( glEnv.guiUT, ep->labelDraw );
+    glBindVertexArray( saveVao );
 }
 
 

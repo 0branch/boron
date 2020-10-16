@@ -1,6 +1,6 @@
 /*
   Boron OpenGL Draw Program
-  Copyright 2008-2011 Karl Robillard
+  Copyright 2008-2020 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -56,16 +56,10 @@ enum DPOpcode
     DP_VIEW_UNIFORM,        // ctxN index loc
     DP_VIEW_UNIFORM_DIR,    // ctxN index loc
     DP_BIND_TEXTURE,        // texUnit gltex 
+    DP_BIND_VAO,            // vao-name
     DP_BIND_ARRAY,          // glbuffer
-    DP_BIND_ARRAY_CONTINUE, // glbuffer
     DP_BIND_ELEMENTS,       // glbuffer
-    DP_VERTEX_OFFSET,       // stride-offset
-    DP_VERTEX_OFFSET_4,     // stride-offset
-    DP_NORMAL_OFFSET,       // stride-offset
-    DP_COLOR_OFFSET,        // stride-offset
-    DP_UV_OFFSET,           // stride-offset
     DP_ATTR_OFFSET,         // location-size stride-offset
-    DP_ATTR_DIVISOR,        // location-attrCount
     DP_DRAW_ARR_POINTS,     // count
     DP_DRAW_POINTS,         // count
     DP_DRAW_LINES,          // count
@@ -133,6 +127,7 @@ enum DPOpcode
 enum DPResourceType
 {
     RES_GL_BUFFERS,
+    RES_VAO,
     RES_BINARY,
     RES_BLOCK,
   //RES_TEXTURE,
@@ -246,6 +241,9 @@ void ur_markDrawProg( UThread* ut, UIndex n )
             switch( it->type )
             {
                 case RES_GL_BUFFERS:
+                case RES_VAO:
+                    // These are private to the draw program and are removed
+                    // in dprog_destroy().
                     break;
 
                 case RES_BINARY:
@@ -295,6 +293,10 @@ void dprog_destroy( UBuffer* buf )
                 case RES_GL_BUFFERS:
                     //printf( "KR glDeleteBuffers\n" );
                     glDeleteBuffers( it->count, (GLuint*) (it + 1) );
+                    break;
+
+                case RES_VAO:
+                    glDeleteVertexArrays( it->count, (GLuint*) (it + 1) );
                     break;
             }
             it += it->count;
@@ -444,29 +446,29 @@ static void dp_addRef( DPCompiler* emit, int type, int count,
 }
 
 
-#define STRIDE_OFFSET(str,off)  ((off << 8) | str)
-
 /*
-  Set offsets for interleaved array.
+  Set offsets for interleaved array of vertex attributes.
+  glBindVertexArray() & glBindBuffer() must be called prior to invoking this.
 
-  blk rules:
+  keyBlk rules:
      word!         <- size 3
-     word! int!    <- size 1 to 4 (or 16)
+     word! int!    <- size 1 to 4 (or 16 for matrix)
 
   Returns zero (and throws error) if fails.
 */
-static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk,
-                              int instanced )
+static int setBufferFormat( UThread* ut, DPCompiler* emit, UBuffer* keyBlk,
+                            int instanced )
 {
     UCell* it;
     UCell* end;
+    GLuint sloc;
     GLsizei stride = 0;
     int size;
     int offset = 0;
     UAtom atom;
 
-    it  = blk->ptr.cell;
-    end = it + blk->used;
+    it  = keyBlk->ptr.cell;
+    end = it + keyBlk->used;
     while( it != end )
     {
         if( ur_is(it, UT_WORD) )
@@ -492,9 +494,7 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk,
     }
     stride *= sizeof(GL_FLOAT);
 
-#define B_STRIDE_OFFSET  STRIDE_OFFSET(stride, offset)
-
-    it = blk->ptr.cell;
+    it = keyBlk->ptr.cell;
     while( it != end )
     {
         if( ur_is(it, UT_WORD) )
@@ -516,40 +516,31 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk,
                 break;
 
             case UR_ATOM_COLOR:
-                //glColorPointer( 3, GL_FLOAT, stride, offset );
-                if( size == 3 )
-                    emitOp1( DP_COLOR_OFFSET, B_STRIDE_OFFSET );
-                else
-                    emitOp2( DP_ATTR_OFFSET, (ALOC_COLOR << 8) | size,
-                             B_STRIDE_OFFSET );
+                sloc = ALOC_COLOR;
+set_attrib:
+                glEnableVertexAttribArray( sloc );
+                glVertexAttribPointer( sloc, size, GL_FLOAT, GL_FALSE,
+                                       stride, NULL + offset );
                 break;
 
             case UR_ATOM_NORMAL:
-                //glNormalPointer( GL_FLOAT, stride, offset );
-                emitOp1( DP_NORMAL_OFFSET, B_STRIDE_OFFSET );
-                break;
+                sloc = ALOC_NORMAL;
+                goto set_attrib;
 
             case UR_ATOM_TEXTURE:
-                //glTexCoordPointer( 2, GL_FLOAT, stride, offset );
-                if( size == 2 )
-                    emitOp1( DP_UV_OFFSET, B_STRIDE_OFFSET );
-                else
-                    emitOp2( DP_ATTR_OFFSET, (ALOC_TEXTURE << 8) | size,
-                             B_STRIDE_OFFSET );
-                break;
+                sloc = ALOC_TEXTURE;
+                goto set_attrib;
 
             case UR_ATOM_VERTEX:
-                //glVertexPointer( 3, GL_FLOAT, stride, offset );
-                emitOp1( (size == 4) ? DP_VERTEX_OFFSET_4 : DP_VERTEX_OFFSET,
-                         B_STRIDE_OFFSET );
-                break;
+                sloc = ALOC_VERTEX;
+                goto set_attrib;
 
             default:
             {
                 // NOTE: There is no guarantee that the case of the attribute
                 // name will match that of the atom name.
                 const char* name = ur_atomCStr(ut, atom);
-                int loc = glGetAttribLocation( emit->shaderProg, name );
+                int loc = glGetAttribLocation( emit->ccon->shaderProg, name );
                 if( loc == -1 )
                 {
                     return ur_error( ut, UR_ERR_SCRIPT,
@@ -559,22 +550,25 @@ static int emitBufferOffsets( UThread* ut, DPCompiler* emit, UBuffer* blk,
                 if( size == 16 )
                 {
                     int i;
-                    int aloc = loc;
-                    int aoff = offset;
-                    for( i = 0; i < 4; ++i, ++aloc, aoff += 16 )
+                    int arrLoc = loc;
+                    int arrOff = offset;
+                    for( i = 0; i < 4; ++i, ++arrLoc, arrOff += 16 )
                     {
-                        emitOp2( DP_ATTR_OFFSET, (aloc << 8) | 4,
-                                 STRIDE_OFFSET(stride, aoff) );
+                        glEnableVertexAttribArray( arrLoc );
+                        glVertexAttribPointer( arrLoc, 4, GL_FLOAT, GL_FALSE,
+                                               stride, NULL + arrOff );
+                        if( instanced )
+                            glVertexAttribDivisor( arrLoc, 1 );
                     }
                 }
                 else
                 {
-                    emitOp2( DP_ATTR_OFFSET, (loc << 8) | size,
-                             B_STRIDE_OFFSET );
+                    glEnableVertexAttribArray( loc );
+                    glVertexAttribPointer( loc, size, GL_FLOAT, GL_FALSE,
+                                           stride, NULL + offset );
+                    if( instanced )
+                        glVertexAttribDivisor( loc, 1 );
                 }
-
-                if( instanced )
-                    emitOp1( DP_ATTR_DIVISOR, (loc << 3) | ((size + 3) / 4) );
             }
                 break;
             }
@@ -608,6 +602,28 @@ static void dp_recordPrim( DPCompiler* emit, int dt, int opcode, UIndex n )
 }
 
 
+// Each draw-prog which includes buffer commands will have one
+// VAO to track all buffers.  Create it if it doesn't exist.
+static int dp_obtainVAO( DPCompiler* emit, GLuint* pva )
+{
+    int created = 0;
+    if( ! *pva )
+    {
+        glGenVertexArrays( 1, pva );
+        dp_addRef( emit, RES_VAO, 1, pva );
+        created = 1;
+    }
+
+    if( emit->ccon->currentVAO != *pva )
+    {
+        emit->ccon->currentVAO = *pva;
+        glBindVertexArray( *pva );
+        emitOp1( DP_BIND_VAO, *pva );
+    }
+    return created;
+}
+
+
 /*
   Create and fill a GL_ARRAY_BUFFER for each DPCompiler::vbuf and then reset
   DPCompiler::vbufCount to zero.
@@ -634,7 +650,7 @@ static int genVertexBuffers( UThread* ut, DPCompiler* emit, GLuint* buf,
                       arr->ptr.f, vbuf->usage );
 
         emitOp1( DP_BIND_ARRAY, buf[i] );
-        if( ! emitBufferOffsets( ut, emit, ur_buffer( vbuf->keyN ), 0 ) )
+        if( ! setBufferFormat( ut, emit, ur_buffer(vbuf->keyN), 0 ) )
             return -1;
     }
     emit->vbufCount = 0;
@@ -879,29 +895,40 @@ static int emitWordOp( DPCompiler* emit, const UCell* cell, int opcode )
 /*--------------------------------------------------------------------------*/
 
 
+static void setAttrib( GLuint loc, GLint size, GLsizei stride, int offset )
+{
+    glEnableVertexAttribArray( loc );
+    glVertexAttribPointer( loc, size, GL_FLOAT, GL_FALSE,
+                           stride, NULL + offset * sizeof(GL_FLOAT) );
+}
+
+
 static void emitGeoBind( const Geometry* geo, DPCompiler* emit )
 {
     int stride = geo->attrSize * sizeof(GL_FLOAT);
+    GLuint* pao;
 
-    dp_addRef( emit, RES_GL_BUFFERS, 2, geo->buf );
+    pao = (geo->normOff > -1) ? &emit->ccon->shapeVAO : &emit->ccon->guiVAO;
+    if( dp_obtainVAO( emit, pao ) )
+    {
+        // Transfer ownership of buffers to draw-prog.
+        dp_addRef( emit, RES_GL_BUFFERS, 2, geo->buf );
 
-    emitOp1( DP_BIND_ARRAY, geo->buf[0] );
+        glBindBuffer( GL_ARRAY_BUFFER, geo->buf[0] );
+        if( geo->colorOff > -1 )
+            setAttrib( ALOC_COLOR, 3, stride, geo->colorOff );
 
-#define G_STRIDE_OFFSET(off)    STRIDE_OFFSET(stride,off*sizeof(GL_FLOAT))
+        if( geo->normOff > -1 )
+            setAttrib( ALOC_NORMAL, 3, stride, geo->normOff );
 
-    if( geo->colorOff > -1 )
-        emitOp1( DP_COLOR_OFFSET, G_STRIDE_OFFSET(geo->colorOff) );
+        if( geo->uvOff > -1 )
+            setAttrib( ALOC_TEXTURE, 2, stride, geo->uvOff );
 
-    if( geo->normOff > -1 )
-        emitOp1( DP_NORMAL_OFFSET, G_STRIDE_OFFSET(geo->normOff) );
+        if( geo->vertOff > -1 )
+            setAttrib( ALOC_VERTEX, 3, stride, geo->vertOff );
 
-    if( geo->uvOff > -1 )
-        emitOp1( DP_UV_OFFSET, G_STRIDE_OFFSET(geo->uvOff) );
-
-    if( geo->vertOff > -1 )
-        emitOp1( DP_VERTEX_OFFSET, G_STRIDE_OFFSET(geo->vertOff) );
-
-    emitOp1( DP_BIND_ELEMENTS, geo->buf[1] );
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, geo->buf[1] );
+    }
 }
 
 
@@ -1470,6 +1497,7 @@ void ur_setTransXY( UThread* ut, UIndex resN, DPSwitch sid, float x, float y )
 static void dp_init( DPCompiler* gpc )
 {
     memSet( gpc, 0, sizeof(DPCompiler) );
+    gpc->ccon = &gpc->ccStorage;
 
     ur_binInit( &gpc->ref, 8 );
     ur_arrInit( &gpc->inst,    sizeof(uint32_t),    32 );
@@ -1817,52 +1845,7 @@ image_geo:
                     emitOp1( cop, color );
                 }
                 break;
-#if 0
-            case DOP_COLORS:
-                INC_PC
-                PC_VALUE(val)
-                if( ur_is(val, UT_VECTOR) )
-                {
-                    emit->cbufN = val->series.buf;
-                  //emit->attrMod |= SA_COLOR;
-                }
-                break;
 
-            case DOP_VERTS:
-                INC_PC
-                PC_VALUE(val)
-                if( ur_is(val, UT_VECTOR) )
-                {
-                    emit->vbufN = val->series.buf;
-                  //emit->attrMod |= SA_VERT;
-                    emit->attrN = 0;
-                }
-                break;
-
-            case DOP_NORMALS:
-                INC_PC
-                PC_VALUE(val)
-                if( ur_is(val, UT_VECTOR) )
-                {
-                    emit->nbufN = val->series.buf;
-                  //emit->attrMod |= SA_NORM;
-                }
-                break;
-
-            case DOP_UVS:
-                INC_PC
-                PC_VALUE(val)
-                if( ur_is(val, UT_VECTOR) )
-                {
-                    emit->ubufN = val->series.buf;
-                  //emit->attrMod |= SA_UV;
-                }
-                break;
-#endif
-/*
-            case DOP_ATTRIB:
-                break;
-*/
             case DOP_POINTS:            // prim vector!/int!
             case DOP_LINES:
             case DOP_LINE_STRIP:
@@ -2070,12 +2053,12 @@ bad_quad:
                 else if( ur_is(pc, UT_WORD) )
                 {
                     name = ur_atomCStr(ut, ur_atom(pc));
-                    loc = glGetUniformLocation( emit->shaderProg, name );
+                    loc = glGetUniformLocation( emit->ccon->shaderProg, name );
                     if( loc == -1 )
                     {
                         ur_error( ut, UR_ERR_SCRIPT,
                                   "uniform \"%s\" not found in program %d",
-                                  name, emit->shaderProg );
+                                  name, emit->ccon->shaderProg );
                         goto error;
                     }
                 }
@@ -2262,7 +2245,7 @@ bad_quad:
                     refShader( val->series.buf );
                     emitOp1( DP_SHADER, sh->program );
                 }
-                emit->shaderProg = sh->program;
+                emit->ccon->shaderProg = sh->program;
             }
                 break;
 
@@ -2286,7 +2269,7 @@ bad_quad:
                 }
 
                 INC_PC_VALUE(val)
-                if( ur_is(val, UT_TEXTURE) && emit->shaderProg )
+                if( ur_is(val, UT_TEXTURE) && emit->ccon->shaderProg )
                 {
                     Shader* sh = (Shader*) ur_buffer( emit->shaderResN )->ptr.v;
                     if( name )
@@ -2301,13 +2284,14 @@ bad_quad:
                 {
                     if( name )
                     {
-                        loc = glGetUniformLocation( emit->shaderProg,
+                        loc = glGetUniformLocation( emit->ccon->shaderProg,
                                                     ur_atomCStr(ut, name) );
                         if( loc == -1 )
                         {
                             ur_error( ut, UR_ERR_SCRIPT,
                                       "uniform \"%s\" not found in program %d",
-                                      ur_atomCStr(ut, name), emit->shaderProg );
+                                      ur_atomCStr(ut, name),
+                                      emit->ccon->shaderProg );
                             goto error;
                         }
                     }
@@ -2444,7 +2428,7 @@ samples_err:
 
         /*-dc-
             buffer
-                attr-key    lit-word!/block!    'indices
+                attr-key    lit-word!/block!    Attribute format or 'indices
                 array       vector!/vbo!
                 /stream     Set usage to GL_STREAM_DRAW (vector! only).
                 /dynamic    Set usage to GL_DYNAMIC_DRAW (vector! only).
@@ -2452,9 +2436,8 @@ samples_err:
             case DOP_BUFFER:
             case DOP_BUFFER_INST:
             {
-                DPBuffer* vbuf;
                 UIndex keyN;
-                GLenum usage;
+                int isInstanced = (opcode == DOP_BUFFER_INST) ? 1 : 0;
 
                 INC_PC
                 PC_VALUE(val)
@@ -2467,10 +2450,16 @@ samples_err:
                     typeError( "buffer expected attribute block! or 'indices" );
                 }
 
+                dp_obtainVAO( emit, &emit->ccon->userVAO );
+
                 INC_PC
                 PC_VALUE(val)
                 if( ur_is(val, UT_VECTOR) )
                 {
+                    const UBuffer* vec = ur_bufferSer(val);
+                    GLuint buf;
+                    GLenum usage;
+
                     if( option == UR_ATOM_STREAM )
                         usage = GL_STREAM_DRAW;
                     else if( option == UR_ATOM_DYNAMIC )
@@ -2478,55 +2467,51 @@ samples_err:
                     else
                         usage = GL_STATIC_DRAW;
 
-                    if( ! keyN )
+                    glGenBuffers( 1, &buf );
+                    dp_addRef( emit, RES_GL_BUFFERS, 1, &buf );
+
+                    if( keyN )
                     {
-                        GLuint buf;
-                        const UBuffer* vec = ur_bufferSer(val);
+                        assert( vec->form == UR_VEC_F32 );
+
+                        glBindBuffer( GL_ARRAY_BUFFER, buf );       // VAO
+                        glBufferData( GL_ARRAY_BUFFER,
+                                      vec->used * sizeof(float), vec->ptr.v,
+                                      usage );
+
+                        if( ! setBufferFormat( ut, emit, ur_buffer(keyN),
+                                               isInstanced ) )
+                            goto error;
+                    }
+                    else
+                    {
                         assert( vec->form == UR_VEC_U16 );
 
-                        glGenBuffers( 1, &buf );
-                        dp_addRef( emit, RES_GL_BUFFERS, 1, &buf );
-                        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buf );
+                        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buf ); // VAO
                         glBufferData( GL_ELEMENT_ARRAY_BUFFER,
                                       vec->used * sizeof(uint16_t), vec->ptr.v,
                                       usage );
-
-                        emitOp1( DP_BIND_ELEMENTS, buf );
-                        break;
                     }
-
-                    if( emit->vbufCount == DP_MAX_VBUF )
-                    {
-                        scriptError( "Vertex buffer limit exceeded" );
-                    }
-                    vbuf = emit->vbuf + emit->vbufCount;
+#if 0
+                    DPBuffer* vbuf = emit->vbuf + emit->vbufCount;
                     ++emit->vbufCount;
 
                     vbuf->usage = usage;
                     vbuf->keyN = keyN;
                     vbuf->vecN = val->series.buf;
+#endif
                 }
                 else if( ur_is(val, UT_VBO) )
                 {
                     // TODO: Handle keyN == 0.
                     UBuffer* res = ur_buffer( ur_vboResN(val) );
                     GLuint* buf = vbo_bufIds(res);
-                    int isInstanced = (opcode == DOP_BUFFER_INST) ? 1 : 0;
                     if( vbo_count(res) )
                     {
-                        if( isInstanced && emit->vbufCount )
-                        {
-                            // Flush any vertex buffers to emit DP_BIND_ARRAY.
-                            GLuint tbuf[ DP_MAX_VBUF ];
-                            if( genVertexBuffers( ut, emit, tbuf,
-                                                  emit->vbufCount ) < 0 )
-                                goto error;
-                        }
                         refVBO( ur_vboResN(val) );
-                        emitOp1( isInstanced ? DP_BIND_ARRAY_CONTINUE
-                                             : DP_BIND_ARRAY, buf[0] );
-                        if( ! emitBufferOffsets( ut, emit, ur_buffer(keyN),
-                                                 isInstanced ) )
+                        glBindBuffer( GL_ARRAY_BUFFER, buf[0] );    // VAO
+                        if( ! setBufferFormat( ut, emit, ur_buffer(keyN),
+                                               isInstanced ) )
                             goto error;
                     }
                 }
@@ -2630,7 +2615,7 @@ samples_err:
                 }
                 emit->shaderResN = blk ? blk->ptr.cell[0].series.buf :
                                          val->series.buf;
-                emit->shaderProg = sh->program;
+                emit->ccon->shaderProg = sh->program;
             }
             else
                 goto bad_inst;
@@ -2740,7 +2725,7 @@ DPCompiler* ur_beginDP( DPCompiler* dpc )
     dp_init( dpc );
     dpc->uid = serial++;
     if( save )
-        dpc->shaderProg = save->shaderProg;
+        dpc->ccon = save->ccon;
     gDPC = dpc;
 
     return save;
@@ -2805,21 +2790,6 @@ void ur_setDPSwitch( UThread* ut, UIndex resN, DPSwitch sid, int n )
 
 
 
-// Disable all enabled vertex attributes except ALOC_VERTEX.
-static void disableVertexAttrib( struct ClientState* cs )
-{
-    int f;
-
-    for( f = 0; f < cs->attrCount; ++f )
-        glDisableVertexAttribArray( cs->attr[ f ] );
-    cs->attrCount = 0;
-
-    for( f = 0; f < cs->divisorCount; ++f )
-        glVertexAttribDivisor( cs->divisor[ f ], 0 );
-    cs->divisorCount = 0;
-}
-
-
 #if 0
 #define REPORT(...)             printf(__VA_ARGS__)
 #define REPORT_1(str,v1)        printf(str,v1)
@@ -2840,9 +2810,6 @@ static void disableVertexAttrib( struct ClientState* cs )
 
 void ur_initDrawState( DPState* state )
 {
-    state->client.attrCount = 0;
-    state->client.divisorCount = 0;
-
     state->samplesQueryId = 0;
     state->currentProgram = 0;
     state->font = 0;
@@ -3014,10 +2981,6 @@ UStatus ur_runDrawProg2( UThread* ut, DPState* ds, UIndex n )
 #define PC_WORD \
     blk = ur_buffer( *pc++ ); \
     val = blk->ptr.cell + *pc++
-
-#define CLIENT_ATTRIB(loc) \
-    assert( ds->client.attrCount <= CS_MAX_ATTR ); \
-    ds->client.attr[ ds->client.attrCount++ ] = loc
 
     blk = ur_buffer( n );
     if( blk->flags )    // UR_DRAWPROG_HIDDEN
@@ -3232,72 +3195,19 @@ dispatch:
             pc += 2;
             break;
 
-        case DP_BIND_ARRAY:
-            REPORT_1( "BIND_ARRAY %d\n", *pc );
-            if( ds->client.attrCount )
-                disableVertexAttrib( &ds->client );
-            glBindBuffer( GL_ARRAY_BUFFER, *pc++ );
+        case DP_BIND_VAO:
+            REPORT_1( "BIND_VAO %d\n", *pc );
+            glBindVertexArray( *pc++ );
             break;
 
-        case DP_BIND_ARRAY_CONTINUE:    // Bind array without attribute reset.
-            REPORT_1( "BIND_ARRAY_CONTINUE %d\n", *pc );
+        case DP_BIND_ARRAY:
+            REPORT_1( "BIND_ARRAY %d\n", *pc );
             glBindBuffer( GL_ARRAY_BUFFER, *pc++ );
             break;
 
         case DP_BIND_ELEMENTS:
             REPORT_1( "BIND_ELEMENTS %d\n", *pc );
             glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, *pc++ );
-            break;
-
-        case DP_VERTEX_OFFSET:
-        {
-            uint32_t stof = *pc++;
-            REPORT_1( " VERTEX_OFFSET %08x\n", stof );
-            glVertexAttribPointer( ALOC_VERTEX, 3, GL_FLOAT, GL_FALSE,
-                                   stof & 0xff, NULL + (stof >> 8) );
-        }
-            break;
-
-        case DP_VERTEX_OFFSET_4:
-        {
-            uint32_t stof = *pc++;
-            REPORT_1( " VERTEX_OFFSET_4 %08x\n", stof );
-            glVertexAttribPointer( ALOC_VERTEX, 4, GL_FLOAT, GL_FALSE,
-                                   stof & 0xff, NULL + (stof >> 8) );
-        }
-            break;
-
-        case DP_NORMAL_OFFSET:
-        {
-            uint32_t stof = *pc++;
-            REPORT_1( " NORMAL_OFFSET %08x\n", stof );
-            glEnableVertexAttribArray( ALOC_NORMAL );
-            CLIENT_ATTRIB( ALOC_NORMAL );
-            glVertexAttribPointer( ALOC_NORMAL, 3, GL_FLOAT, GL_FALSE,
-                                   stof & 0xff, NULL + (stof >> 8) );
-        }
-            break;
-
-        case DP_COLOR_OFFSET:
-        {
-            uint32_t stof = *pc++;
-            REPORT_1( " COLOR_OFFSET %08x\n", stof );
-            glEnableVertexAttribArray( ALOC_COLOR );
-            CLIENT_ATTRIB( ALOC_COLOR );
-            glVertexAttribPointer( ALOC_COLOR, 3, GL_FLOAT, GL_FALSE,
-                                   stof & 0xff, NULL + (stof >> 8) );
-        }
-            break;
-
-        case DP_UV_OFFSET:
-        {
-            uint32_t stof = *pc++;
-            REPORT_1( " UV_OFFSET %08x\n", stof );
-            glEnableVertexAttribArray( ALOC_TEXTURE );
-            CLIENT_ATTRIB( ALOC_TEXTURE );
-            glVertexAttribPointer( ALOC_TEXTURE, 2, GL_FLOAT, GL_FALSE,
-                                   stof & 0xff, NULL + (stof >> 8) );
-        }
             break;
 
         case DP_ATTR_OFFSET:
@@ -3311,26 +3221,8 @@ dispatch:
             REPORT( " ATTR_OFFSET loc:%d size:%d stof:0x%04x\n",
                       loc, size, stof );
             glEnableVertexAttribArray( loc );
-            CLIENT_ATTRIB( loc );
             glVertexAttribPointer( loc, size, GL_FLOAT, GL_FALSE,
                                    stof & 0xff, NULL + (stof >> 8) );
-        }
-            break;
-
-        case DP_ATTR_DIVISOR:
-        {
-            uint32_t loc  = *pc++;
-            int attrCount = loc & 7;
-            loc >>= 3;
-
-            REPORT( " ATTR_DIVISOR loc:%d count:%d\n", loc, attrCount );
-            do
-            {
-                assert( ds->client.divisorCount <= CS_MAX_DIVISOR );
-                ds->client.divisor[ ds->client.divisorCount++ ] = loc;
-                glVertexAttribDivisor( loc++, 1 );
-            }
-            while( --attrCount );
         }
             break;
 
@@ -3430,7 +3322,7 @@ dispatch:
 
             PC_WORD;
             icount = ur_int(val);
-            REPORT( "DRAW_TRIS_INST_WORD %d %d %d\n", pc[0], pc[1], icount );
+            REPORT( "DRAW_INST_TRIS_WORD %d %d %d\n", pc[0], pc[1], icount );
             if( es_matrixUsed && es_matrixMod )
                 es_updateUniformMatrixView();
             glDrawElementsInstanced( GL_TRIANGLES, pc[0], GL_UNSIGNED_SHORT,
@@ -3926,19 +3818,8 @@ dispatch:
 UStatus ur_runDrawProg( UThread* ut, UIndex n )
 {
     DPState state;
-    UStatus ok;
-
     ur_initDrawState( &state );
-
-    // NOTE: glDrawElements has been seen to segfault if non-existant
-    //       client arrays are enabled (when glEnableClientState was used).
-
-    glEnableVertexAttribArray( ALOC_VERTEX );
-
-    ok = ur_runDrawProg2( ut, &state, n );
-    if( state.client.attrCount )
-        disableVertexAttrib( &state.client );
-    return ok;
+    return ur_runDrawProg2( ut, &state, n );
 }
 
 

@@ -2,7 +2,7 @@
 #define DRAW_PROG_H
 /*
   Boron OpenGL Draw Program
-  Copyright 2008-2010 Karl Robillard
+  Copyright 2008-2020 Karl Robillard
 
   This file is part of the Boron programming language.
 
@@ -38,6 +38,19 @@ DPBuffer;
 
 typedef struct
 {
+    GLuint  shaderProg;
+    GLuint  currentVAO;
+    GLuint  guiVAO;
+    GLuint  shapeVAO;
+    GLuint  userVAO;
+}
+DPCompileContext;
+
+
+typedef struct
+{
+    DPCompileContext* ccon;
+    DPCompileContext ccStorage;
     UBuffer  ref;
     UBuffer  inst;
     UBuffer  blocks;
@@ -55,7 +68,6 @@ typedef struct
     UIndex   fontN;       // TexFont binary
     uint32_t indexCount;
     GLuint   indexBuf;
-    GLuint   shaderProg;
     UIndex   shaderResN;
     GLfloat  penX;
     GLfloat  penY;
@@ -82,21 +94,8 @@ struct DrawTextState
 typedef uint16_t    DPSwitch;
 
 
-#define CS_MAX_ATTR     8
-#define CS_MAX_DIVISOR  8
-
-struct ClientState
-{
-    uint16_t attrCount;
-    uint16_t divisorCount;
-    GLuint attr[ CS_MAX_ATTR ];
-    GLuint divisor[ CS_MAX_DIVISOR ];
-};
-
-
 typedef struct
 {
-    struct ClientState client;
     GLuint samplesQueryId;
     GLuint currentProgram;
     TexFont* font;
