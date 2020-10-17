@@ -481,6 +481,9 @@ static void ledit_layout( GWidget* wp )
     EX_PTR;
 
 
+    if( ! gDPC )
+        return;
+
     // Set draw list variables.
 
     rc = style + CI_STYLE_LABEL;
@@ -492,9 +495,6 @@ static void ledit_layout( GWidget* wp )
 
     // Compile draw lists.
 
-    if( ! gDPC )
-        return;
-
     // Make sure the tgeo vertex buffers are bound before the switch.
     // Otherwise only the first case would emit the code to do it. 
     // NOTE: This assumes the button draw programs actually use tgeo.
@@ -504,12 +504,12 @@ static void ledit_layout( GWidget* wp )
 
     rc = style + CI_STYLE_EDITOR;
     if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
     dp_endCase( gDPC, ep->dpSwitch );
 
     rc = style + CI_STYLE_EDITOR_ACTIVE;
     if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
     dp_endCase( gDPC, ep->dpSwitch );
 
     dp_endSwitch( gDPC, ep->dpSwitch, ep->state );
@@ -524,7 +524,7 @@ static void ledit_layout( GWidget* wp )
         DPCompiler* save;
 
         save = gx_beginDP( &dc );
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
         gx_endDP( ur_buffer( ep->textResN ), save );
 
         //dp_compile( &dc, ut, rc->series.n );

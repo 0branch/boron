@@ -361,7 +361,7 @@ static void listw_updateList( UThread* ut, GList* ep )
     if( ur_is(rc, UT_BLOCK) )
     {
         gui_initRectCoord( style + CI_STYLE_AREA, &ep->wid, UR_ATOM_RECT );
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
     }
 
 
@@ -389,7 +389,7 @@ static void listw_updateList( UThread* ut, GList* ep )
 
             rc = style + CI_STYLE_LIST_HEADER;
             if( ur_is(rc, UT_BLOCK) )
-                ur_compileDP( ut, rc, 1 );
+                ur_compileDP( ut, rc );
         }
         itemY -= ep->itemHeight;
     }
@@ -437,7 +437,7 @@ static void listw_updateList( UThread* ut, GList* ep )
                                     CI_STYLE_LIST_ITEM_SELECTED :
                                     CI_STYLE_LIST_ITEM);
                 if( ur_is(rc, UT_BLOCK) )
-                    ur_compileDP( ut, rc, 1 );
+                    ur_compileDP( ut, rc );
             }
             itemY -= ep->itemHeight;
         }

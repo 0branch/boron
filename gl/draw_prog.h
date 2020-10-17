@@ -131,9 +131,11 @@ void    dprog_destroy( UBuffer* );
 void    ur_initDrawState( DPState* );
 UStatus ur_runDrawProg( UThread*, UIndex progN );
 
+void*   ur_compileDrawProg( UThread*, const UCell* blkCell,
+                            UIndex replaceBufN );
 DPCompiler* ur_beginDP( DPCompiler* );
-int  ur_compileDP( UThread*, const UCell* blkCell, int handleError );
-void ur_endDP( UThread*, UBuffer*, DPCompiler* prev );
+UStatus ur_compileDP( UThread*, const UCell* blkCell );
+void    ur_endDP( UThread*, UBuffer*, DPCompiler* prev );
 void ur_setDPSwitch( UThread*, UIndex resN, DPSwitch sid, int n );
 void ur_setTransXY( UThread*, UIndex resN, DPSwitch sid, float x, float y );
 

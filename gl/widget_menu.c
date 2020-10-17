@@ -170,8 +170,6 @@ static void menu_updateSelection( UThread* ut, GMenu* ep )
     UCell* rc;
     UCell* style = glEnv.guiStyle;
     UBuffer* str;
-    DPCompiler* save;
-    DPCompiler dpc;
 
     str = ur_buffer( ep->labelN );
     str->used = 0;
@@ -192,9 +190,7 @@ static void menu_updateSelection( UThread* ut, GMenu* ep )
                                            : CI_STYLE_CMENU_ITEM_SELECTED);
     if( ur_is(rc, UT_BLOCK) )
     {
-        save = ur_beginDP( &dpc );
-        ur_compileDP( ut, rc, 1 );
-        ur_endDP( ut, ur_buffer( ep->selDraw ), save );
+        ur_compileDrawProg( ut, rc, ep->selDraw );
     }
 }
 
@@ -401,7 +397,7 @@ static void menu_layout( GWidget* wp )
 
     rc = style + (wp->flags & DO_UNSET ? CI_STYLE_MENU_BG : CI_STYLE_CMENU_BG);
     if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
 
     tf = ur_texFontV( ut, style + CI_STYLE_LIST_FONT );
     if( tf )

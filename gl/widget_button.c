@@ -330,12 +330,12 @@ static void button_layout2( GWidget* wp, int styleUpN, int styleDownN )
 
     rc = style + styleUpN;
     if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
     dp_endCase( gDPC, ep->dpSwitch );
 
     rc = style + styleDownN;
     if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
     dp_endCase( gDPC, ep->dpSwitch );
 
     dp_endSwitch( gDPC, ep->dpSwitch, ep->state );

@@ -39,19 +39,19 @@ int dprog_make( UThread* ut, const UCell* from, UCell* res )
 {
     if( ur_is(from, UT_BLOCK) )
     {
-        DPCompiler dpc;
-        DPCompiler* save;
         UIndex n;
-        int ok;
+        void* bc;
 
-        save = ur_beginDP( &dpc );
-        ok = ur_compileDP( ut, from, 0 );
-        n = ur_makeDrawProg( ut );
-        ur_endDP( ut, ur_buffer( n ), save );
+        bc = ur_compileDrawProg( ut, from, 0 );     // gc!
+        if( ! bc )
+            return UR_THROW;
+
+        n = ur_makeDrawProg( ut );      // gc!
+        ur_buffer(n)->ptr.v = bc;
 
         // Set result last since compile may evaluate parens.
         ur_initSeries(res, UT_DRAWPROG, n );
-        return ok;
+        return UR_OK;
     }
     return ur_error( ut, UR_ERR_TYPE, "draw-prog! make expected block!" );
 }

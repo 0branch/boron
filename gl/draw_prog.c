@@ -201,7 +201,7 @@ void dprog_init( UBuffer* buf )
 }
 
 
-UIndex ur_makeDrawProg( UThread* ut /*, UBuffer** bp*/ )
+UIndex ur_makeDrawProg( UThread* ut )
 {
     UIndex bufN;
     dprog_init( ur_genBuffers( ut, 1, &bufN ) );
@@ -281,6 +281,7 @@ void ur_markDrawProg( UThread* ut, UIndex n )
 void dprog_destroy( UBuffer* buf )
 {
     DPHeader* ph = (DPHeader*) buf->ptr.v;
+    assert( buf->type == UT_DRAWPROG );
     if( ph )
     {
         DPResEntry* it = (DPResEntry*) (ph + 1);
@@ -1666,7 +1667,7 @@ static const UCell* dp_value( UThread* ut, const UCell* cell )
 /*
   \return UR_OK/UR_THROW.
 */
-int dp_compile( DPCompiler* emit, UThread* ut, UIndex blkN )
+UStatus dp_compile( DPCompiler* emit, UThread* ut, UIndex blkN )
 {
     const UCell* val;
     const UCell* pc;
@@ -2658,7 +2659,8 @@ error:
 
 
 /*
-  Return compiled draw program in a single buffer.
+  Return compiled draw program in a single buffer (which the caller must
+  free()).
 */
 DPHeader* dp_finish( UThread* ut, DPCompiler* emit )
 {
@@ -2706,6 +2708,39 @@ DPHeader* dp_finish( UThread* ut, DPCompiler* emit )
 /*--------------------------------------------------------------------------*/
 
 
+/*
+  Compile draw program from block!.
+
+  \param blkCell        Program to compile.
+  \param replaceBufN    If not zero then replace the existing draw-prog! in
+                        this buffer.
+
+  \return Pointer to program byte code which the caller must free(), or
+          NULL if an error was thrown.
+*/
+void* ur_compileDrawProg( UThread* ut, const UCell* blkCell,
+                          UIndex replaceBufN )
+{
+    DPCompiler dpc;
+    void* byteCode = NULL;
+
+    // Release any GPU resources prior to compiling so they can potentially be
+    // reused in the new program.
+    if( replaceBufN )
+        dprog_destroy( ur_buffer(replaceBufN) );
+
+    dp_init( &dpc );
+    if( dp_compile( &dpc, ut, blkCell->series.buf ) )   // gc!
+        byteCode = dp_finish( ut, &dpc );
+    dp_free( &dpc );
+
+    if( replaceBufN )
+        ur_buffer(replaceBufN)->ptr.v = byteCode;
+
+    return byteCode;
+}
+
+
 DPCompiler* gDPC = 0;
 
 
@@ -2733,14 +2768,22 @@ DPCompiler* ur_beginDP( DPCompiler* dpc )
 
 
 /*
+  Compile a code fragment with the compiler created by most recent
+  ur_beginDP() call.
+
+  This is intended to be used in code which may not be able to return the
+  UStatus of any compilation error.
+
   \return UR_OK/UR_THROW
 */
-int ur_compileDP( UThread* ut, const UCell* blkCell, int handleError )
+UStatus ur_compileDP( UThread* ut, const UCell* blkCell )
 {
-    int ok;
+    UStatus ok;
     assert( gDPC );
     ok = dp_compile( gDPC, ut, blkCell->series.buf );
-    if( (ok == UR_THROW) && handleError )
+
+    // Print exception to stderr in case caller does not handle it.
+    if( ok == UR_THROW )
     {
         UBuffer str;
         const UCell* ex = ur_exception( ut );

@@ -2489,7 +2489,7 @@ static void window_layout( GWidget* wp )
 
     rc = style + CI_STYLE_WINDOW;
     if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
 
     if( wp->flags & WINDOW_HBOX )
         hbox_layout( wp );

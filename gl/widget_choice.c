@@ -124,7 +124,7 @@ static void choice_updateLabel( UThread* ut, GChoice* ep )
     if( ur_is(rc, UT_BLOCK) )
     {
         save = ur_beginDP( &dpc );
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
         ur_endDP( ut, ur_buffer( ep->labelDraw ), save );
     }
 }
@@ -273,7 +273,7 @@ static void choice_layout( GWidget* wp )
     // Compile draw lists.
     rc = style + CI_STYLE_CHOICE;
     if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( glEnv.guiUT, rc, 1 );
+        ur_compileDP( glEnv.guiUT, rc );
 
     wp->flags |= FLAG_UPDATE_LABEL;
 }

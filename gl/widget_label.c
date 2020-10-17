@@ -127,7 +127,7 @@ static void label_layout( GWidget* wp )
 
     rc = style + CI_STYLE_LABEL_DL;
     if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
 }
 
 

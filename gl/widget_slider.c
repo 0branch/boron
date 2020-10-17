@@ -475,7 +475,7 @@ static void slider_layout( GWidget* wp )
     else
         rc += horiz ? CI_STYLE_SCROLL_BAR : CI_STYLE_VSCROLL_BAR;
     if( ur_is(rc, UT_BLOCK) )
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
 
     rc = style;
     if( isSlider )
@@ -503,7 +503,7 @@ static void slider_layout( GWidget* wp )
         }
 
         ep->dpTrans = dp_beginTransXY( gDPC, tx, ty );
-        ur_compileDP( ut, rc, 1 );
+        ur_compileDP( ut, rc );
         dp_endTransXY( gDPC );
     }
 }
