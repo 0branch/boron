@@ -1872,6 +1872,31 @@ image_geo:
                     if( ! genPrimitives( ut, emit, dpOp, ur_int(val), 0 ) )
                         goto error;
                 }
+                else if( ur_is(val, UT_VBO) )
+                {
+                    if( dpOp == DP_DRAW_QUADS )
+                    {
+                        ur_error( ut, UR_ERR_SCRIPT,
+                                  "Cannot draw quads from vbo!" );
+                        goto error;
+                    }
+
+                    {
+                    const UBuffer* res = ur_buffer( ur_vboResN(val) );
+                    GLuint* gbuf = vbo_bufIds(res);
+                    int count = vbo_count(res);
+                    GLint size;
+
+                    if( count == 1 )
+                    {
+                        refVBO( ur_vboResN(val) );
+                        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, gbuf[0] );
+                        glGetBufferParameteriv( GL_ELEMENT_ARRAY_BUFFER,
+                                                GL_BUFFER_SIZE, &size );
+                        emitOp1( dpOp, size / sizeof(uint16_t) );
+                    }
+                    }
+                }
                 else
                 {
 bad_prim:

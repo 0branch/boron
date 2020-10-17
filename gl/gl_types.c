@@ -1308,6 +1308,11 @@ int vbo_make( UThread* ut, const UCell* from, UCell* res )
             n = ur_makeVbo( ut, usage, buf->used, buf->ptr.f, 0, NULL );
             goto build;
         }
+        else if( buf->form == UR_VEC_U16 )
+        {
+            n = ur_makeVbo( ut, usage, 0, NULL, buf->used, buf->ptr.u16 );
+            goto build;
+        }
     }
     return ur_error( ut, UR_ERR_TYPE,
                      "make vbo! make expected int!/coord!/vector!" );
