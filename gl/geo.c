@@ -487,55 +487,55 @@ void geo_box( Geometry* geo, const float* minv, const float* maxv, int inside )
     int maxMask;
     uint8_t* maskPtr = boxMax;
 
-    geo_reserve( geo, 4 * 6, 4 * 6, 6 );
+    geo_reserve( geo, 4 * 6, 6 * 6, 1 );
 
+    geo_primBegin( geo, GL_TRIANGLES );
     for( i = 0; i < 6; ++i )
     {
-        geo_primBegin( geo, GL_TRIANGLE_FAN );
+        idx  = geo_vertCount( geo );
+        vert = geo_addVerts( geo, 4 );
 
-            idx  = geo_vertCount( geo );
-            vert = geo_addVerts( geo, 4 );
+        ntv[0] = boxNormal[ i ];
+        ntv[1] = boxNormal[ i + 1 ];
+        ntv[2] = boxNormal[ i + 2 ];
 
-            ntv[0] = boxNormal[ i ];
-            ntv[1] = boxNormal[ i + 1 ];
-            ntv[2] = boxNormal[ i + 2 ];
+        if( inside )
+            negateVec3( ntv );
 
-            if( inside )
-                negateVec3( ntv );
+        uv = 0x78;      // uvs = 0,0 1,0 1,1 0,1 (binary mask 01111000)
+        for( j = 0; j < 4; ++j )
+        {
+            ntv[3] = (uv & 2) ? 1.0f : 0.0f;
+            ntv[4] = (uv & 1) ? 1.0f : 0.0f;
+            uv >>= 2;
 
-            uv = 0x78;      // uvs = 0,0 1,0 1,1 0,1 (binary mask 01111000)
-            for( j = 0; j < 4; ++j )
-            {
-                ntv[3] = (uv & 2) ? 1.0f : 0.0f;
-                ntv[4] = (uv & 1) ? 1.0f : 0.0f;
-                uv >>= 2;
+            maxMask = *maskPtr++;
+            ntv[5] = (maxMask & 4) ? maxv[0] : minv[0];
+            ntv[6] = (maxMask & 2) ? maxv[1] : minv[1];
+            ntv[7] = (maxMask & 1) ? maxv[2] : minv[2];
+            vert = geo_attrNTV( geo, vert, ntv );
+        }
 
-                maxMask = *maskPtr++;
-                ntv[5] = (maxMask & 4) ? maxv[0] : minv[0];
-                ntv[6] = (maxMask & 2) ? maxv[1] : minv[1];
-                ntv[7] = (maxMask & 1) ? maxv[2] : minv[2];
-                vert = geo_attrNTV( geo, vert, ntv );
-            }
+        ip = geo_addIndices( geo, 6 );
 
-            ip = geo_addIndices( geo, 4 );
-
-            if( inside )
-            {
-                *ip++ = idx + 3;
-                *ip++ = idx + 2;
-                *ip++ = idx + 1;
-                *ip   = idx;
-            }
-            else
-            {
-                *ip++ = idx;
-                *ip++ = idx + 1;
-                *ip++ = idx + 2;
-                *ip   = idx + 3;
-            }
-
-        geo_primEnd( geo );
+        *ip++ = idx;
+        if( inside )
+        {
+            *ip++ = idx + 3;
+            *ip++ = idx + 2;
+            *ip++ = idx + 2;
+            *ip++ = idx + 1;
+        }
+        else
+        {
+            *ip++ = idx + 1;
+            *ip++ = idx + 2;
+            *ip++ = idx + 2;
+            *ip++ = idx + 3;
+        }
+        *ip = idx;
     }
+    geo_primEnd( geo );
 }
 
 
@@ -622,6 +622,8 @@ void geo_sphere( Geometry* geo, float radius, int slices, int stacks,
         int istart = astart + 2;
 
         it = geo->idx.ptr.u16 + geo->idx.used;
+
+        // TODO: Optimize this to generate a single draw call.
 
         for( s = 0; s < slices; ++s )
         {
