@@ -192,6 +192,7 @@ void anim_free( AnimList* list, uint32_t id )
 static Anim* anim_pointer( AnimList* list, uint32_t id )
 {
     UBuffer* buf = list->buf + ID_FTYPE(id);
+    assert( ID_INDEX(id) < (uint32_t) buf->used );
     return ur_ptr(Anim, buf) + ID_INDEX(id);
 }
 
@@ -584,7 +585,7 @@ store_3f:
 
 
 /*
-anim-id: animate dest-matrix [
+anim-id: vary-r dest-matrix [
     2.0 ; seconds
     ; target could move so update each cycle?  (-> static, >> moving)
     vec3 deck-top >> hand-target 12
@@ -598,10 +599,7 @@ anim-id: animate dest-matrix [
 */
 
 
-// Two animation banks for interface (0) and simulation (1).
-#define ANIM_BANK_UI    0
-#define ANIM_BANK_SIM   1
-
+// Two animation banks for interface and simulation.
 AnimList _animUI;
 AnimList _animSim;
 
@@ -644,7 +642,7 @@ static void anim_recycleList( UThread* ut, AnimList* list )
 void anim_recycle( UThread* ut )
 {
     anim_recycleList( ut, &_animUI );
-    //anim_recycleList( ut, &_animSim );
+    anim_recycleList( ut, &_animSim );
 }
 
 
@@ -925,24 +923,21 @@ curve:
 
 typedef struct
 {
+    AnimList* bank;
     UIndex  buf;
     UIndex  bufIndex;
     uint8_t outType;
     uint8_t funcType;
-    uint8_t bank;
 }
 AnimInit;
 
 
-static void animInit_init( AnimInit* init, UIndex buf, UIndex bufIndex,
-                           int outType )
-{
-    init->buf      = buf;
-    init->bufIndex = bufIndex;
-    init->outType  = outType;
-    init->funcType = AFT_HERMITE;
-    init->bank     = ANIM_BANK_UI;
-}
+#define animInit_init(BANK,BUF,BUFI,OUT) \
+    init.bank     = BANK; \
+    init.buf      = BUF; \
+    init.bufIndex = BUFI; \
+    init.outType  = OUT; \
+    init.funcType = AFT_HERMITE
 
 
 static float _hermiteLinear[8] = { 0.5, 0.5, 0.1, 0.1, 0.0, 0.0, 1.0, 1.0 };
@@ -987,8 +982,7 @@ static UStatus anim_parseSpec( UThread* ut, AnimInit* init, const UCell* blkC,
         }
     }
 
-    sp.anim = anim_alloc( init->bank ? &_animSim : &_animUI,
-                          init->funcType, idP );
+    sp.anim = anim_alloc( init->bank, init->funcType, idP );
     anim_init( sp.anim, init->buf, init->bufIndex, init->outType );
 
     if( ! ur_parseBlockI( &sp.bp, sp.bp.rules, sp.bp.it ) )
@@ -998,22 +992,43 @@ static UStatus anim_parseSpec( UThread* ut, AnimInit* init, const UCell* blkC,
 
 
 /*-cf-
-    animatef
-        value int!/double!/word!/vector!  Value to animate or bank time delta.
-        spec        Animation specification or bank id (int!).
-    return: int! Animation id (for new animation) or count (for update).
+    vary-r
+        value int!/word!/vector!  Value to modulate.
+        spec        Change specification or double! time increment (with 'tick).
+    return: int! Animation id (for new animation) or count (for 'tick).
+    see: scene-loop
 
-    Starts a new animation if value is a word!, restarts an existing animation
-    if it's an int!, or update a bank of running animations if value is a
-    double!.
+    Modify a value over time.  There are two time domains, real-time and
+    simulation-time, which are controlled by the vary-r and vary-s functions
+    respectively.  Real-time is normally used for GUI updates, while
+    simulation-time would be appropriate for entities in a game world.
 
-    There are two animation banks, 0 and 1, for real-time (e.g. GUI) updates
-    and simulation updates respectively.
+    A new change is started when value is a word! (other than 'tick) or a
+    vector!.  This returns an int! variance identifer which may be used to
+    control the change later.
+
+    A change can be restarted or paused if value is the int! identifier.
+
+    When value is 'tick all variances in the time domain are updated by the
+    spec (a time increment given as a double!).
+    Note that the scene-loop function updates the real-time domain
+    automatically.
 */
-CFUNC_PUB( cfunc_animatef )
+/*-cf-
+    vary-s
+        value
+        spec
+    return: See vary-r.
+    see: vary-r
+
+    This is the vary function for the simulation-time domain.
+    See vary-r for details.
+*/
+CFUNC_PUB( cfunc_varyf )
 {
     UCell* cell;
     const UCell* a2 = a1+1;
+    AnimList* list = ur_int(a1+2) ? &_animSim : &_animUI;
     uint32_t id;
 
     if( ur_is(a1, UT_INT) )
@@ -1021,17 +1036,16 @@ CFUNC_PUB( cfunc_animatef )
         Anim* anim;
 
         id = ur_int(a1);
-        // TODO: Handle both animation banks.
-        anim = anim_pointer( &_animUI, id );
+        anim = anim_pointer( list, id );
         if( anim->allocState == ANIM_FREE )
             return ur_error( ut, UR_ERR_SCRIPT,
-                             "Animation 0x%X has been freed", id );
+                             "Vary id 0x%X has been freed", id );
 
         switch( ur_type(a2) )
         {
             /*
             case UT_NONE:
-                anim_free( &_animUI, id );
+                anim_free( list, id );
                 ur_setId(res, UT_UNSET);
                 return UR_OK;
             */
@@ -1086,34 +1100,47 @@ restart_anim:
     }
     else if( ur_is(a1, UT_WORD) )
     {
-        int type;
-
-        if( ! ur_is(a2, UT_BLOCK) )
-            goto bad_arg2;
-
-        cell = ur_wordCellM(ut, a1);
-        if( ! cell )
-            return UR_THROW;
-
-        type = ur_type(cell);
-        if( type == UT_VEC3 || type == UT_DOUBLE )
+        if( ur_atom(a1) == UR_ATOM_TICK )
         {
-            AnimInit init;
-            animInit_init( &init, a1->word.ctx, a1->word.index,
-                           (type == UT_VEC3) ? ANIM_OUT_CELL_VEC3
-                                             : ANIM_OUT_CELL_DOUBLE );
-            if( ! anim_parseSpec( ut, &init, a2, &id ) )
+            uint32_t kcount;
+
+            if( ! anim_processHermite( ut, list, ur_double(a2), &id ) )
                 return UR_THROW;
+            if( ! anim_processLinearKey( ut, list, ur_double(a2), &kcount ) )
+                return UR_THROW;
+            id += kcount;
         }
         else
-            return boron_badArg( ut, type, 1 );
+        {
+            int type;
+
+            if( ! ur_is(a2, UT_BLOCK) )
+                goto bad_arg2;
+
+            cell = ur_wordCellM(ut, a1);
+            if( ! cell )
+                return UR_THROW;
+
+            type = ur_type(cell);
+            if( type == UT_VEC3 || type == UT_DOUBLE )
+            {
+                AnimInit init;
+                animInit_init( list, a1->word.ctx, a1->word.index,
+                               (type == UT_VEC3) ? ANIM_OUT_CELL_VEC3
+                                                 : ANIM_OUT_CELL_DOUBLE );
+                if( ! anim_parseSpec( ut, &init, a2, &id ) )
+                    return UR_THROW;
+            }
+            else
+                return boron_badArg( ut, type, 1 );
+        }
     }
     else if( ur_is(a1, UT_VECTOR) )
     {
         if( ur_is(a2, UT_BLOCK) )
         {
             AnimInit init;
-            animInit_init( &init, a1->series.buf, a1->series.it,
+            animInit_init( list, a1->series.buf, a1->series.it,
                            ANIM_OUT_VECTOR_3 );
             if( ! anim_parseSpec( ut, &init, a2, &id ) )
                 return UR_THROW;
@@ -1121,16 +1148,9 @@ restart_anim:
         else
             goto bad_arg2;
     }
-    else // if( ur_is(a1, UT_DOUBLE) )
+    else
     {
-        AnimList* list = ur_int(a2) ? &_animSim : &_animUI;
-        uint32_t kcount;
-
-        if( ! anim_processHermite( ut, list, ur_double(a1), &id ) )
-            return UR_THROW;
-        if( ! anim_processLinearKey( ut, list, ur_double(a1), &kcount ) )
-            return UR_THROW;
-        id += kcount;
+        return boron_badArg( ut, ur_type(a1), 1 );
     }
     ur_setId(res, UT_INT);
     ur_int(res) = id;

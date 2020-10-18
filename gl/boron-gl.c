@@ -2723,7 +2723,7 @@ void ur_initGLData( UThread* ut )
 
 
 extern CFUNC_PUB( cfunc_sleep );
-extern CFUNC_PUB( cfunc_animatef );
+extern CFUNC_PUB( cfunc_varyf );
 extern double ur_now();
 
 /*-cf-
@@ -2731,6 +2731,11 @@ extern double ur_now();
         fps int!/decimal!
     return: unset!
     group: control
+    see: vary-r
+
+    Update scenes until an exception is thrown.
+    It handles scene transitions, adjusts the rclock & rclock-delta variables,
+    and calls (vary-r 'tick rclock-delta) between each scene 'update.
 */
 CFUNC( uc_scene_loop )
 {
@@ -2838,13 +2843,20 @@ CFUNC( uc_scene_loop )
                 ctx = ur_threadContext(ut);
             }
 
-            // animatef rclock-delta 0
+            // vary-r 'tick rclock-delta 0
 
-            ur_pushCell(ut, ur_ctxCell(ctx, index[5]));
-            cell = ur_push(ut, UT_INT);
+            cell = ut->stack.ptr.cell + ut->stack.used;
+            ur_setId(cell, UT_WORD);
+            ur_setWordUnbound(cell, UR_ATOM_TICK);
+            ++cell;
+            *cell = *ur_ctxCell(ctx, index[5]);
+            ++cell;
+            ur_setId(cell, UT_INT);
             ur_int(cell) = 0;
-            ok = cfunc_animatef(ut, cell - 1, res);
-            ut->stack.used -= 2;
+
+            ut->stack.used += 3;
+            ok = cfunc_varyf(ut, cell - 2, res);
+            ut->stack.used -= 3;
             if( ! ok )
                 return UR_THROW;
 
@@ -2939,7 +2951,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    86
+#define FA_COUNT    87
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -2955,7 +2967,7 @@ static void _createFixedAtoms( UThread* ut )
         "rgb rgba depth clamp nearest linear\n"
         "min mag mipmap cubemap gray\n"
         "burn color trans sprite\n"
-        "update finish frames -> >> single-use ping-pong pong\n"
+        "update finish frames -> >> single-use ping-pong pong tick\n"
         "collide fall integrate attach anchor action as face",
         atoms );
 
