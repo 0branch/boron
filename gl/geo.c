@@ -590,6 +590,7 @@ void geo_sphere( Geometry* geo, float radius, int slices, int stacks,
     float latInc = M_PI / stacks;
     float lonInc = (2.0 * M_PI) / slices;
     int n, s;
+    int astart;
 
 
     n = slices * stacks;
@@ -597,6 +598,7 @@ void geo_sphere( Geometry* geo, float radius, int slices, int stacks,
     if( inside )
         geo->flags |= GEOM_INSIDE;
 
+    astart = geo_vertCount( geo );
     sphereVertex( geo,  0.0, M_PI, 0.0, 0.0,  radius );
     sphereVertex( geo, M_PI, M_PI, 0.0, 0.0, -radius );
 
@@ -617,9 +619,9 @@ void geo_sphere( Geometry* geo, float radius, int slices, int stacks,
     {
         uint16_t* it;
         int ia, ib;
-        int istart = 2;
+        int istart = astart + 2;
 
-        it = geo->idx.ptr.u16;
+        it = geo->idx.ptr.u16 + geo->idx.used;
 
         for( s = 0; s < slices; ++s )
         {
@@ -629,7 +631,7 @@ void geo_sphere( Geometry* geo, float radius, int slices, int stacks,
           //ib = (s == (slices - 1)) ? 2 : ia + 1;
             ib = ia + 1;
 
-            *it++ = 0;
+            *it++ = astart;
             for( n = 1; n < stacks; ++n )
             {
                 *it++ = ia;
@@ -637,7 +639,7 @@ void geo_sphere( Geometry* geo, float radius, int slices, int stacks,
                 ia += slices + 1;
                 ib += slices + 1;
             }
-            *it++ = 1;
+            *it++ = astart + 1;
 
             geo->idx.used += stacks * 2;
 

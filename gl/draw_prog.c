@@ -973,7 +973,7 @@ static void emitGeoPrim( const Primitives* it, DPCompiler* emit )
 }
 
 
-static void emitGeoPrims( const Geometry* geo, DPCompiler* emit )
+static void dp_geoFlushPrims( DPCompiler* emit, Geometry* geo )
 {
     Primitives* it  = (Primitives*) geo->prim.ptr.v;
     Primitives* end = it + geo->prim.used;
@@ -982,14 +982,7 @@ static void emitGeoPrims( const Geometry* geo, DPCompiler* emit )
         emitGeoPrim( it, emit );
         ++it;
     }
-}
-
-
-static void compileGeo( const Geometry* geo, DPCompiler* emit )
-{
-    geo_bufferData( geo );
-    emitGeoBind( geo, emit );
-    emitGeoPrims( geo, emit );
+    geo->prim.used = 0;
 }
 
 
@@ -1326,30 +1319,6 @@ void dp_drawTextCell( DPCompiler* emit, UThread* ut, const UCell* cell,
 }
 
 
-static void _sphere( DPCompiler* emit, float radius, int slices, int stacks,
-                     const char* attrib, int inside )
-{
-    Geometry geo;
-
-    geo_init( &geo, attrib, 0, 0, 0 );
-    geo_sphere( &geo, radius, slices, stacks, inside );
-    compileGeo( &geo, emit );
-    geo_free( &geo );
-}
-
-
-static void _box( DPCompiler* emit, const float* minv, const float* maxv,
-                  const char* attrib, int inside )
-{
-    Geometry geo;
-
-    geo_init( &geo, attrib, 0, 0, 0 );
-    geo_box( &geo, minv, maxv, inside );
-    compileGeo( &geo, emit );
-    geo_free( &geo );
-}
-
-
 /*--------------------------------------------------------------------------*/
 
 
@@ -1515,23 +1484,29 @@ static void dp_free( DPCompiler* gpc )
     ur_arrFree( &gpc->primRec );
 
     geo_free( &gpc->tgeo );
+    geo_free( &gpc->sgeo );
 }
 
 
 void dp_tgeoInit( DPCompiler* emit )
 {
-    UBuffer* attr = &emit->tgeo.attr;
+    Geometry* geo = &emit->tgeo;
+    UBuffer* attr = &geo->attr;
     if( ur_testAvail(attr) )
         return;
-    geo_init( &emit->tgeo, "tv", 32, 32, 8 );
-    emitGeoBind( &emit->tgeo, emit );
+    geo_init( geo, "tv", 32, 32, 8 );
+    emitGeoBind( geo, emit );
 }
 
 
-static void dp_tgeoFlushPrims( DPCompiler* emit )
+void dp_sgeoInit( DPCompiler* emit )
 {
-    emitGeoPrims( &emit->tgeo, emit );
-    emit->tgeo.prim.used = 0;
+    Geometry* geo = &emit->sgeo;
+    UBuffer* attr = &geo->attr;
+    if( ur_testAvail(attr) )
+        return;
+    geo_init( geo, "ntv", 32, 32, 8 );
+    emitGeoBind( geo, emit );
 }
 
 
@@ -1793,7 +1768,7 @@ image_next:
 image_geo:
                     dp_tgeoInit( emit );
                     geo_image( &emit->tgeo, x, y, x + w, y + h );
-                    dp_tgeoFlushPrims( emit );
+                    dp_geoFlushPrims( emit, &emit->tgeo );
                 }
                 else
                 {
@@ -1996,7 +1971,10 @@ bad_tinst_arg:
 bad_sphere:
                     scriptError( "sphere expected radius slices,stacks" );
                 }
-                _sphere( emit, radius, slices, stacks, "ntv", 0 );
+
+                dp_sgeoInit( emit );
+                geo_sphere( &emit->sgeo, radius, slices, stacks, 0 );
+                dp_geoFlushPrims( emit, &emit->sgeo );
             }
                 break;
 
@@ -2009,7 +1987,9 @@ bad_sphere:
                 INC_PC
                 cellToVec3( pc, box + 3 );
 
-                _box( emit, box, box + 3, "ntv", option );
+                dp_sgeoInit( emit );
+                geo_box( &emit->sgeo, box, box + 3, option );
+                dp_geoFlushPrims( emit, &emit->sgeo );
             }
                 break;
 
@@ -2040,7 +2020,7 @@ bad_quad:
                 dp_tgeoInit( emit );
                 geo_quadSkin( &emit->tgeo, val->coord.n,
                               ts->coord.n, tc->coord.n, skin );
-                dp_tgeoFlushPrims( emit );
+                dp_geoFlushPrims( emit, &emit->tgeo );
             }
                 break;
 
@@ -2702,9 +2682,11 @@ DPHeader* dp_finish( UThread* ut, DPCompiler* emit )
                    (GLuint*) emit->blocks.ptr.i );
     }
 
+    // Transfer accumulated geometry to GPU.
+    glBindVertexArray(0);
     genIndices( ut, emit );
-
     geo_bufferData( &emit->tgeo );
+    geo_bufferData( &emit->sgeo );
 
     // Put header, resource entries, and program bytecode into a single
     // UBuffer.

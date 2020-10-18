@@ -72,6 +72,7 @@ typedef struct
     GLfloat  penX;
     GLfloat  penY;
     Geometry tgeo;      // Textured geometry.
+    Geometry sgeo;      // Shape geometry with uvs & normals.
 }
 DPCompiler;
 
