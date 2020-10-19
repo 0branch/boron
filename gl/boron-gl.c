@@ -3018,7 +3018,7 @@ static void _createFixedAtoms( UThread* ut )
 
 static void _createDrawOpTable( UThread* ut )
 {
-#define DA_COUNT    57
+#define DA_COUNT    58
     UAtom atoms[ DA_COUNT ];
     UAtomEntry* ent;
     UBuffer* buf;
@@ -3032,7 +3032,7 @@ static void _createDrawOpTable( UThread* ut )
         "particle color colors verts normals\n"
         "uvs attrib points lines line-strip\n"
         "tris tri-strip tri-fan quads quad_strip\n"
-        "tris-inst\n"
+        "tris-inst instanced-parts\n"
         "sphere box quad camera push-model view-uniform\n"
         "push-mul push pop translate rotate\n"
         "scale font text shader uniform\n"

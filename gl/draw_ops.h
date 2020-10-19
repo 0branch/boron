@@ -27,6 +27,7 @@ enum DrawOperation
     DOP_QUADS,
     DOP_QUAD_STRIP,
     DOP_TRIS_INST,
+    DOP_INSTANCED_PARTS,
     DOP_SPHERE,
     DOP_BOX,
     DOP_QUAD,

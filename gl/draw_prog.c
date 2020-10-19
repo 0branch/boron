@@ -75,6 +75,7 @@ enum DPOpcode
     DP_DRAW_TRI_STRIP_I,    // count offset
     DP_DRAW_TRI_FAN_I,      // count offset
     DP_DRAW_INST_TRIS_WORD, // blkN index count offset
+    DP_INSTANCED_PARTS,     // glbuffer vecN stride,N attr1 ... attrN
     DP_DEPTH_ON,
     DP_DEPTH_OFF,
     DP_BLEND_ON,
@@ -119,8 +120,7 @@ enum DPOpcode
     DP_READ_PIXELS,         // blkN index pos dim
     DP_FONT,                // blkN
     DP_TEXT_WORD,           // blkN index aoff x y (then DP_DRAW_TRIS_I)
-    DP_89,
-    DP_90
+    DP_OPCODE_COUNT         // 85 < 255
 };
 
 
@@ -166,6 +166,7 @@ typedef union
     float f;
     uint32_t i;
     uint8_t b[4];
+    uint16_t u16[2];
 }
 Number;
 
@@ -455,19 +456,25 @@ static void dp_addRef( DPCompiler* emit, int type, int count,
      word!         <- size 3
      word! int!    <- size 1 to 4 (or 16 for matrix)
 
-  Returns zero (and throws error) if fails.
+  If alist is not NULL, then a compact representation of the key is stored
+  there.
+
+  Returns UR_THROW (and throws error) if fails.
 */
-static int setBufferFormat( UThread* ut, DPCompiler* emit, UBuffer* keyBlk,
-                            int instanced )
+static UStatus setBufferFormat( UThread* ut, DPCompiler* emit, UIndex keyBlkN,
+                                int instanced, Number* alist )
 {
+    const UBuffer* keyBlk;
     UCell* it;
     UCell* end;
-    GLuint sloc;
     GLsizei stride = 0;
+    int loc;
+    int acount = 0;
     int size;
     int offset = 0;
     UAtom atom;
 
+    keyBlk = ur_buffer(keyBlkN);
     it  = keyBlk->ptr.cell;
     end = it + keyBlk->used;
     while( it != end )
@@ -486,6 +493,7 @@ static int setBufferFormat( UThread* ut, DPCompiler* emit, UBuffer* keyBlk,
             }
             else
                 stride += 3;
+            ++acount;
         }
         else
         {
@@ -494,6 +502,13 @@ static int setBufferFormat( UThread* ut, DPCompiler* emit, UBuffer* keyBlk,
         }
     }
     stride *= sizeof(GL_FLOAT);
+
+    if( alist )
+    {
+        alist->u16[0] = stride;
+        alist->u16[1] = acount;
+        ++alist;
+    }
 
     it = keyBlk->ptr.cell;
     while( it != end )
@@ -517,23 +532,31 @@ static int setBufferFormat( UThread* ut, DPCompiler* emit, UBuffer* keyBlk,
                 break;
 
             case UR_ATOM_COLOR:
-                sloc = ALOC_COLOR;
+                loc = ALOC_COLOR;
 set_attrib:
-                glEnableVertexAttribArray( sloc );
-                glVertexAttribPointer( sloc, size, GL_FLOAT, GL_FALSE,
+                glEnableVertexAttribArray( loc );
+                glVertexAttribPointer( loc, size, GL_FLOAT, GL_FALSE,
                                        stride, NULL + offset );
+list_attrib:
+                if( alist )
+                {
+                    alist->b[0]   = loc;
+                    alist->b[1]   = size;
+                    alist->u16[1] = offset;
+                    ++alist;
+                }
                 break;
 
             case UR_ATOM_NORMAL:
-                sloc = ALOC_NORMAL;
+                loc = ALOC_NORMAL;
                 goto set_attrib;
 
             case UR_ATOM_TEXTURE:
-                sloc = ALOC_TEXTURE;
+                loc = ALOC_TEXTURE;
                 goto set_attrib;
 
             case UR_ATOM_VERTEX:
-                sloc = ALOC_VERTEX;
+                loc = ALOC_VERTEX;
                 goto set_attrib;
 
             default:
@@ -541,7 +564,7 @@ set_attrib:
                 // NOTE: There is no guarantee that the case of the attribute
                 // name will match that of the atom name.
                 const char* name = ur_atomCStr(ut, atom);
-                int loc = glGetAttribLocation( emit->ccon->shaderProg, name );
+                loc = glGetAttribLocation( emit->ccon->shaderProg, name );
                 if( loc == -1 )
                 {
                     return ur_error( ut, UR_ERR_SCRIPT,
@@ -571,13 +594,13 @@ set_attrib:
                         glVertexAttribDivisor( loc, 1 );
                 }
             }
-                break;
+                goto list_attrib;
             }
 
             offset += size * sizeof(GL_FLOAT);
         }
     }
-    return 1;
+    return UR_OK;
 }
 
 
@@ -651,7 +674,7 @@ static int genVertexBuffers( UThread* ut, DPCompiler* emit, GLuint* buf,
                       arr->ptr.f, vbuf->usage );
 
         emitOp1( DP_BIND_ARRAY, buf[i] );
-        if( ! setBufferFormat( ut, emit, ur_buffer(vbuf->keyN), 0 ) )
+        if( ! setBufferFormat( ut, emit, vbuf->keyN, 0, NULL ) )
             return -1;
     }
     emit->vbufCount = 0;
@@ -1946,6 +1969,74 @@ bad_tinst_arg:
             }
                 break;
 
+        /*-dc-
+            instanced-parts
+                attr-key    block!     Instanced attributes format.
+                attr        vbo!       Instanced attributes buffer.
+                parts       vector!    u32 offsets and counts for each part.
+
+            This draws multiple instanced triangle groups from shared vertex
+            and indices buffers.  Non-instanced vertex attributes and the
+            indices buffer must be declared separately prior to this command.
+
+            Each group to be drawn has four entries in the parts vector!:
+               1. Instance count for this part.
+               2. Vertex offset into the attr buffer.
+               3. Number of indices (elements) to draw.
+               4. Offset into indices buffer.
+        */
+            case DOP_INSTANCED_PARTS:
+            {
+                Number attrib[8];
+                const UBuffer* res;
+                GLuint* gbuf;
+                UIndex keyN;
+                int count, i;
+
+                INC_PC
+                PC_VALUE(val)
+                if( ! ur_is(val, UT_BLOCK) )
+                {
+bad_iparts:
+                    ur_error( ut, UR_ERR_TYPE,
+                              "Invalid instanced-parts %s argument",
+                              ur_atomCStr(ut, ur_type(val)) );
+                    goto error;
+                }
+                keyN = val->series.buf;
+
+                INC_PC
+                PC_VALUE(val)
+                if( ! ur_is(val, UT_VBO) )
+                    goto bad_iparts;
+
+                res = ur_buffer( ur_vboResN(val) );
+                gbuf = vbo_bufIds(res);
+                if( vbo_count(res) )
+                {
+                    refVBO( ur_vboResN(val) );
+                    glBindBuffer( GL_ARRAY_BUFFER, gbuf[0] );   // VAO
+                    if( ! setBufferFormat( ut, emit, keyN, 1, attrib ) )
+                        goto error;
+                    assert( attrib[0].u16[1] < 8 );
+                }
+
+                INC_PC
+                PC_VALUE(val)
+                if( ! ur_is(val, UT_VECTOR) )
+                    goto bad_iparts;
+                res = ur_bufferSer(val);
+                if( res->form != UR_VEC_I32 &&
+                    res->form != UR_VEC_U32 )
+                    goto bad_iparts;
+                //refVector( emit, val->series.buf );
+
+                emitOp2( DP_INSTANCED_PARTS, gbuf[0], val->series.buf );
+                for( i = 0, count = attrib[0].u16[1] + 1; i != count; ++i )
+                    emitDPArg( emit, attrib[i].i );
+            }
+                break;
+
             case DOP_SPHERE:                 // sphere radius silces,stacks
             {
                 float radius; 
@@ -2485,8 +2576,8 @@ samples_err:
                                       vec->used * sizeof(float), vec->ptr.v,
                                       usage );
 
-                        if( ! setBufferFormat( ut, emit, ur_buffer(keyN),
-                                               isInstanced ) )
+                        if( ! setBufferFormat( ut, emit, keyN,
+                                               isInstanced, NULL ) )
                             goto error;
                     }
                     else
@@ -2516,8 +2607,8 @@ samples_err:
                     {
                         refVBO( ur_vboResN(val) );
                         glBindBuffer( GL_ARRAY_BUFFER, buf[0] );    // VAO
-                        if( ! setBufferFormat( ut, emit, ur_buffer(keyN),
-                                               isInstanced ) )
+                        if( ! setBufferFormat( ut, emit, keyN,
+                                               isInstanced, NULL ) )
                             goto error;
                     }
                 }
@@ -3378,6 +3469,50 @@ dispatch:
             glDrawElementsInstanced( GL_TRIANGLES, pc[0], GL_UNSIGNED_SHORT,
                                      NULL + pc[1], icount );
             pc += 2;
+        }
+            break;
+
+        case DP_INSTANCED_PARTS:
+        {
+            const UBuffer* partsTable;
+            const Number* num;
+            const Number* ait;
+            const Number* aend;
+            const uint32_t* pi;
+            const uint32_t* pend;
+            int stride, count;
+            const int partLen = 4;
+
+            REPORT( "INSTANCED_PARTS abuf:%d vecN:%d 0x%08x\n",
+                    pc[0], pc[1], pc[2] );
+            ES_UPDATE_MATRIX
+
+            glBindBuffer( GL_ARRAY_BUFFER, pc[0] );
+
+            partsTable = ur_buffer(pc[1]);
+            pi   = partsTable->ptr.u32;
+            pend = pi + ((partsTable->used / partLen) * partLen);
+
+            num = (const Number*) pc + 2;
+            stride = num->u16[0];
+            count  = num->u16[1];
+            ++num;
+            aend = num + count;
+
+            for( ; pi != pend; pi += partLen )
+            {
+                // Part data: inst-count vtx-offset ind-count ind-offset
+                for( ait = num; ait < aend; ++ait )
+                {
+                    // Attribute data: location:8 size:8 offset:16
+                    glVertexAttribPointer( ait->b[0], ait->b[1],
+                                       GL_FLOAT, GL_FALSE, stride,
+                                       NULL + (pi[1] * stride + ait->u16[1]) );
+                }
+                glDrawElementsInstanced( GL_TRIANGLES, pi[2], GL_UNSIGNED_SHORT,
+                                     NULL + (pi[3] * sizeof(uint16_t)), pi[0] );
+            }
+            pc += 3 + count;
         }
             break;
 
