@@ -239,7 +239,7 @@ static int loadCachedProgram( UThread* ut, GLuint program, const char* vert,
         }
         else
         {
-            fprintf(stderr, "glProgramBinary link failed; compiling instead\n");
+            fprintf(stderr, "Cached shader link failed; compiling instead\n");
 
             // Fallback to compiling from source code. The binary link can
             // fail if the GL driver was updated or if the GL stack is buggy
