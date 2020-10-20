@@ -255,7 +255,7 @@ convert: func [file string!/file! /extern matid] [
             ]
             if material-attr [
                 it: find material-attr to-word trim data
-                matid: either it [to-double index? it] 0.0
+                matid: either it [to-double sub index? it 1] 0.0
             ]
           )
         | "g"  cl (ifn geo [make-geo])
