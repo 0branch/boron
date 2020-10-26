@@ -2,8 +2,7 @@ About Boron
 ===========
 
 Boron is an interpreted, prototype-based, scripting language similar to Rebol.
-The interpreter and datatype system is a C library useful for building domain
-specific languages embedded in C/C++ applications.
+The interpreter and datatype system is a C library useful for building domain-specific languages (DSL) embedded in C/C++ applications.
 
 It is a smaller language than Rebol with fewer built-in data types, no infix
 operators, and no built-in internet protocols.  It does add the capability to
@@ -16,7 +15,7 @@ the LICENSE file.
 How to compile
 ==============
 
-These commands can be used to build the shared libarary and interpreter program
+These commands can be used to build the shared library and interpreter program
 on Linux and Mac OS:
 
     ./configure
@@ -27,7 +26,7 @@ To see the configure options run:
     ./configure -h
 
 To install on Linux and Mac OS use the INSTALL makefile.  If the DESTDIR is
-not provided then the files will be placed under /usr/local.
+not provided then the files will be placed under `/usr/local`.
 
     make -f INSTALL DESTDIR=/usr
 
