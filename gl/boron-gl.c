@@ -3018,7 +3018,7 @@ static void _createFixedAtoms( UThread* ut )
 
 static void _createDrawOpTable( UThread* ut )
 {
-#define DA_COUNT    58
+#define DA_COUNT    51
     UAtom atoms[ DA_COUNT ];
     UAtomEntry* ent;
     UBuffer* buf;
@@ -3028,18 +3028,16 @@ static void _createDrawOpTable( UThread* ut )
     // Matches order in draw_ops.h.
     ur_internAtoms( ut,
         "nop end clear enable disable\n"
-        "call solid model decal image\n"
-        "particle color colors verts normals\n"
-        "uvs attrib points lines line-strip\n"
-        "tris tri-strip tri-fan quads quad_strip\n"
-        "tris-inst instanced-parts\n"
-        "sphere box quad camera push-model view-uniform\n"
-        "push-mul push pop translate rotate\n"
-        "scale font text shader uniform\n"
-        "framebuffer framebuffer-tex\n"
-        "shadow-begin shadow-end samples-query samples-begin\n"
-        "buffer buffer-inst depth-test blend cull color-mask\n"
-        "depth-mask point-size read-pixels",
+        "call image particle color vertex-array\n"
+        "points lines line-strip tris tri-strip\n"
+        "tri-fan quads quad_strip tris-inst instanced-parts\n"
+        "sphere box quad camera push-model\n"
+        "view-uniform push-mul push pop translate\n"
+        "rotate scale font text shader\n"
+        "uniform framebuffer framebuffer-tex shadow-begin shadow-end\n"
+        "samples-query samples-begin buffer buffer-inst depth-test\n"
+        "blend cull color-mask depth-mask point-size\n"
+        "read-pixels",
         atoms );
 
     bufN = ur_makeBinary( ut, DA_COUNT * sizeof(UAtomEntry) );

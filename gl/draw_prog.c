@@ -1845,7 +1845,13 @@ image_geo:
                 }
                 break;
 
-            case DOP_POINTS:            // prim vector!/int!
+            case DOP_VERTEX_ARRAY:
+                // Abandon any existing userVAO and create an new one.
+                emit->ccon->userVAO = 0;
+                dp_obtainVAO( emit, &emit->ccon->userVAO );
+                break;
+
+            case DOP_POINTS:            // prim vector!/int!/vbo!
             case DOP_LINES:
             case DOP_LINE_STRIP:
             case DOP_TRIS:
@@ -2606,10 +2612,17 @@ samples_err:
                     if( vbo_count(res) )
                     {
                         refVBO( ur_vboResN(val) );
-                        glBindBuffer( GL_ARRAY_BUFFER, buf[0] );    // VAO
-                        if( ! setBufferFormat( ut, emit, keyN,
-                                               isInstanced, NULL ) )
-                            goto error;
+                        if( keyN )
+                        {
+                            glBindBuffer( GL_ARRAY_BUFFER, buf[0] );    // VAO
+                            if( ! setBufferFormat( ut, emit, keyN,
+                                                   isInstanced, NULL ) )
+                                goto error;
+                        }
+                        else
+                        {
+                            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buf[0] );
+                        }
                     }
                 }
                 else

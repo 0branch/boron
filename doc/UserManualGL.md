@@ -14,7 +14,7 @@ Features include:
 
   * Garbage collected GL datatypes.
   * Texture-based fonts loaded from TrueType files.
-  * Loading PNG images.
+  * Loading JPEG & PNG images.
   * Plays audio from WAV and OGG formats.
   * GUI system with automatic layout and styling.
   * Animation system.
@@ -220,8 +220,14 @@ Buffer
 
 Calls [glBindBuffer] and sets pointer offsets using [glVertexAttribPointer].
 
-Currently only a single *buffer* command can be used between one or more
-primitive draw commands ([tris], [points], etc.).
+    buffer
+        attr-key    lit-word!/block!    Attribute format or 'indices
+        array       vector!/vbo!
+        /stream     Set usage to GL_STREAM_DRAW (vector! only).
+        /dynamic    Set usage to GL_DYNAMIC_DRAW (vector! only).
+
+If more than one set of buffers is defined in the program then the
+[vertex-array] command must be used.
 
 
 Buffer-inst
@@ -545,6 +551,15 @@ If value is 'projection or 'modelview then the respective internal matrix
 is copied to location.
 
 
+Vertex-Array
+------------
+
+Create a new Vertex Array Object ([VAO]) to be used for following [buffer]
+commands.  Note that one VAO will be provided automatically for each draw
+program, so this is only needed if more than one array setup is used in the
+program.
+
+
 View-Uniform
 ------------
 
@@ -584,3 +599,4 @@ of the view matrix.
 [glVertexAttribPointer]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glVertexAttribPointer.xhtml
 [glVertexAttribDivisor]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glVertexAttribDivisor.xhtml
 [glViewport]: https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glViewport.xhtml
+[VAO]: https://www.khronos.org/opengl/wiki/Vertex_Specification#Vertex_Array_Object
