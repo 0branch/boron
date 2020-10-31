@@ -1,7 +1,7 @@
 #!/usr/bin/boron -sp
 /*
     Converts Wavefront OBJ files to Boron-GL buffers
-    Version: 1.3
+    Version: 1.3.1
 */
 
 
@@ -233,7 +233,7 @@ convert: func [file string!/file! /extern matid] [
          "^/; Date: " now/date '^/'
     ]
 
-    main: make wf-geom []
+    geo: main: make wf-geom []
     cl: [data: to eol :data skip]
     ;sl: [thru eol]
     make-geo: does [
@@ -247,7 +247,12 @@ convert: func [file string!/file! /extern matid] [
 
     matid: 0.0
     parse read/text file [some[
-          '#' thru eol
+          'f'  cl (record-face data geo)
+        | "vt" cl (append main/uvs     to-block data)
+        | "vn" cl (append main/normals to-block data)
+      ; | "vp" thru eol
+        | 'v'  cl (append main/verts   to-block data)
+        | '#' thru eol
         | "mtllib" cl (mtllib: load-mtl trim data)
         | "usemtl" cl (
             if mtllib [
@@ -258,14 +263,10 @@ convert: func [file string!/file! /extern matid] [
                 matid: either it [to-double sub index? it 1] 0.0
             ]
           )
-        | "g"  cl (ifn geo [make-geo])
-        | "o"  cl (if geo [write-geo geo] make-geo)
-        | "vt" cl (append main/uvs     to-block data)
-        | "vn" cl (append main/normals to-block data)
-        | "v"  cl (append main/verts   to-block data)
-        | "f"  cl (record-face data geo)
-        | eol skip
-        | cl (print [";" data])
+      ; | 'g'  cl (ifn geo [make-geo])
+        | 'o'  cl (ifn empty? geo/faces [write-geo geo] make-geo)
+        | eol
+        | cl (print [';' data])
     ]]
 
     write-geo geo
