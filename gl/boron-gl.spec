@@ -1,6 +1,6 @@
 Summary: Boron with OpenGL extensions
 Name: boron-gl
-Version: 2.0.2
+Version: 2.0.4
 Release: 1
 License: LGPLv3+
 # Vendor:

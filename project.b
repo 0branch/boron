@@ -147,7 +147,7 @@ either static [
         libs: func [l] [append exe-libs l]
     ]
 ][
-    shlib [%boron 2,0,3] lib-spec
+    shlib [%boron 2,0,4] lib-spec
 ]
 
 exe %boron [
