@@ -4,7 +4,7 @@
 OS := $(shell uname)
 DESTDIR ?= /usr/local
 
-VER=2.0.0
+VER=2.0.4
 BDIR=.
 BIN_DIR=$(DESTDIR)/bin
 LIB_DIR=$(DESTDIR)/lib
