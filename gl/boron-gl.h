@@ -151,6 +151,7 @@ struct GLEnv
     UCell*   guiStyle;          // For GWidget layout & render.
     UIndex   guiArgBlkN;        // For gui_parseArgs() path! results.
     UIndex   guiValueIndex;     // Index of value word in main thread.
+    UIndex   joystickMapIndex;  // Index for joystick block in main thread.
     UBuffer tmpBin;
     UBuffer tmpStr;
     UBuffer widgetClasses;

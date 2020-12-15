@@ -39,6 +39,14 @@
 #include "glv_activity.h"
 #endif
 
+#if defined(__linux__) && ! defined(__ANDROID__)
+#define USE_JOYSTICK
+extern UStatus joy_makePort( UThread*, int number, UCell* res );
+extern UStatus joy_makeMap( UThread*, const UCell* spec, UCell* res );
+extern UStatus joy_dispatch( UThread*, const UCell* portC, const UCell* mapC );
+static const char _joyStr[] = "_joystick-maps";
+#endif
+
 #if 0
 #include <time.h>
 #define PERF_CLOCK  1
@@ -46,9 +54,8 @@
 
 
 #define gView           glEnv.view
-
+#define DT(dt)          (ut->types[ dt ])
 #define colorU8ToF(n)   (((GLfloat) n) / 255.0f)
-
 #define MOUSE_UNSET     -9999
 
 #if defined(DEBUG) && defined(GL_DEBUG_OUTPUT)
@@ -598,6 +605,23 @@ CFUNC( uc_handle_events )
         return UR_THROW;
     }
 
+#ifdef USE_JOYSTICK
+    if( glEnv.joystickMapIndex )
+    {
+        const UBuffer* blk = ur_buffer(glEnv.joystickMapIndex);
+        const UCell* it  = blk->ptr.cell;
+        const UCell* end = it + blk->used;
+        for( ; it != end; it += 2 )
+        {
+            if( ur_is(it, UT_PORT) )
+            {
+                if( ! joy_dispatch( ut, it, it+1 ) )
+                    return UR_THROW;
+            }
+        }
+    }
+#endif
+
     ur_setId(res, UT_UNSET);
     return UR_OK;
 }
@@ -950,6 +974,98 @@ CFUNC_PUB( cfunc_key_code )
     ur_setId(res, UT_INT);
     ur_int(res) = code;
     return UR_OK;
+}
+
+
+/*-cf-
+    joystick-map
+        unit  int!    0 or 1.
+        spec  none!/block!  Spec may be a previously returned map.
+    return: Block with the map for processing input.
+
+    Specify a set of blocks to be evaluated when joystick inputs change.
+
+    Example:
+        map: joystick-map 0 [
+            axis 0   [print ["Axis0:" value]]
+            axis 1   [print ["Axis1:" value]]
+            press 0  [print ["Button0:" value]]
+            release 0 /same
+        ]
+        joystick-map 1 map      ; Use same map on second joytick.
+*/
+// Example return block: [#{0102000000 0303000...00} [] [] []]
+CFUNC_PUB( uc_joystick_map )
+{
+#ifdef USE_JOYSTICK
+    UBuffer* blk;
+    UCell* cell;
+    const UCell* a2 = a1 + 1;
+    int n = (((int) ur_int(a1)) & 1) * 2;   // Limit: Two joystick devices.
+
+    if( ! glEnv.joystickMapIndex )
+    {
+        const UBuffer* ctx = ur_threadContext(ut);
+        int i = ur_ctxLookup(ctx, ur_intern(ut, _joyStr, 14));
+        cell = ur_ctxCell(ctx, i);
+        assert( ur_is(cell, UT_BLOCK) );
+        glEnv.joystickMapIndex = cell->series.buf;
+        assert( glEnv.joystickMapIndex > 0 );
+    }
+
+    blk = ur_buffer(glEnv.joystickMapIndex);
+
+    if( ur_is(a2, UT_BLOCK) )
+    {
+        // Add joystick port! & map block! to _joystick-maps.
+        UIndex need = n + 2;
+
+        if( blk->used < need )
+        {
+            UCell* end;
+            ur_arrReserve( blk, need );
+            cell = blk->ptr.cell + blk->used;
+            end  = blk->ptr.cell + need;
+            blk->used = need;
+            while( cell != end )
+            {
+                ur_setId(cell, UT_NONE);
+                ++cell;
+            }
+        }
+
+        cell = blk->ptr.cell + n;
+        if( ! ur_is(cell, UT_PORT) )
+            joy_makePort( ut, n / 2, cell );
+
+        if( joy_makeMap( ut, a2, cell+1 ) != UR_OK )
+            return UR_THROW;
+        *res = cell[1];
+        return UR_OK;
+    }
+    else if( ur_is(a2, UT_NONE) )
+    {
+        if( blk->used > n )
+        {
+            UIndex last = blk->used - 2;
+            cell = blk->ptr.cell + n;
+            if( ur_is(cell, UT_PORT) )
+                DT( UT_PORT )->destroy( ur_buffer(cell->series.buf) );
+            ur_setId(cell, UT_NONE);
+
+            // Shrink block if closed port is at the end.
+            if( n == last )
+                blk->used = last;
+            // Could set glEnv.joystickMapIndex = 0 if block empty.
+        }
+        ur_setId(res, UT_UNSET);
+        return UR_OK;
+    }
+    return boron_badArg( ut, ur_type(a2), 1 );
+#else
+    ur_setId(res, UT_UNSET);
+    return UR_OK;
+#endif
 }
 
 
@@ -2706,6 +2822,7 @@ enum SceneValues
 
 static char _initScript[] =
     "gui-cam: copy pixmap-camera\n"
+    "_joystick-maps: []\n"
     "_scene: scene-proto\n"
     "_scene-next: scene-dl: scene-ui: none\n"
     "rclock-delta: rclock: value: none\n"
@@ -2951,7 +3068,7 @@ extern CFUNC_PUB( cfunc_save_png );
 // Intern commonly used atoms.
 static void _createFixedAtoms( UThread* ut )
 {
-#define FA_COUNT    87
+#define FA_COUNT    90
     UAtom atoms[ FA_COUNT ];
 
     ur_internAtoms( ut,
@@ -2968,6 +3085,7 @@ static void _createFixedAtoms( UThread* ut )
         "min mag mipmap cubemap gray\n"
         "burn color trans sprite\n"
         "update finish frames -> >> single-use ping-pong pong tick\n"
+        "axis press release\n"
         "collide fall integrate attach anchor action as face",
         atoms );
 
@@ -3078,9 +3196,6 @@ extern void anim_system(int);
 
 UThread* boron_makeEnvGL( UEnvParameters* param )
 {
-#if defined(__linux__) && ! defined(__ANDROID__)
-    static char joyStr[] = "joystick";
-#endif
     UThread* ut;
     GLint version[2];
 
@@ -3100,6 +3215,7 @@ UThread* boron_makeEnvGL( UEnvParameters* param )
     glEnv.guiUT = 0;
     glEnv.guiArgBlkN = UR_INVALID_BUF;
     glEnv.guiValueIndex = 0;
+    glEnv.joystickMapIndex = 0;
     glEnv.prevMouseX = MOUSE_UNSET;
     glEnv.prevMouseY = MOUSE_UNSET;
     glEnv.guiThrow = 0;
@@ -3130,8 +3246,8 @@ UThread* boron_makeEnvGL( UEnvParameters* param )
     if( ! boron_evalUtf8( ut, _bootScript, sizeof(_bootScript) - 1 ) )
         return NULL;
 
-#if defined(__linux__) && ! defined(__ANDROID__)
-    boron_addPortDevice( ut, &port_joystick, ur_intern(ut, joyStr, 8) );
+#ifdef USE_JOYSTICK
+    boron_addPortDevice( ut, &port_joystick, ur_intern(ut, _joyStr+1, 8) );
 #endif
 
 #ifndef NO_AUDIO
