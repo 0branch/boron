@@ -1,0 +1,38 @@
+.\" Manpage for boron.
+.TH BORON 1 "25 Nov 2020" "Version 2.0.4" "boron 2.0.4"
+.SH NAME
+boron \- The Boron language interpreter
+.SH SYNOPSIS
+.B boron
+[OPTIONS] [SCRIPT [ARGUMENTS]]
+.SH DESCRIPTION
+Boron is an interpreted, prototype-based, scripting language similar to Rebol.
+.PP
+If no script filename or \fB\-e\fR argument is given then an interactive
+command prompt is shown.
+.SH OPTIONS
+.TP
+\fB\-e\fR exp
+Evaluate an expression.
+.TP
+.B \-h
+Show help and exit.
+.TP
+.B \-p
+Disable the command prompt and exit when an exception is thrown.
+.TP
+.B \-s
+Disable security checks and allow full system access to scripts.
+By default the program will prompt the user when scripts write to files or
+open network sockets.
+.SH SEE ALSO
+User Guide
+.RS
+http://urlan.sourceforge.net/boron/doc/UserManual.html
+.RE
+Function Reference
+.RS
+http://urlan.sourceforge.net/boron/doc/func_ref.html
+.RE
+.SH AUTHOR
+Karl Robillard <wickedsmoke@users.sf.net>
