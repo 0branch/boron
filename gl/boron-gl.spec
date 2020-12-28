@@ -5,8 +5,7 @@ Release: 1%{?dist}
 License: LGPLv3+
 URL: http://urlan.sf.net/boron
 Group: Development/Languages
-# wget -O boron-2.0.4.tar.gz https://sf.net/projects/urlan/files/Boron/boron-2.0.4.tar.gz/download
-Source: boron-%{version}.tar.gz
+Source: https://sourceforge.net/projects/urlan/files/Boron/boron-%{version}.tar.gz
 Requires: boron = %{version}
 BuildRoot: %{_tmppath}/boron-%{version}-build
 %if 0%{?fedora_version} || 0%{?rhel_version} || 0%{?centos_version}
