@@ -1,16 +1,16 @@
 Summary: Boron with OpenGL extensions
 Name: boron-gl
 Version: 2.0.4
-Release: 1
+Release: 1%{?dist}
 License: LGPLv3+
-# Vendor:
 URL: http://urlan.sf.net/boron
-Packager: <wickedsmoke@users.sf.net>
 Group: Development/Languages
+# wget -O boron-2.0.4.tar.gz https://sf.net/projects/urlan/files/Boron/boron-2.0.4.tar.gz/download
 Source: boron-%{version}.tar.gz
+Requires: boron = %{version}
 BuildRoot: %{_tmppath}/boron-%{version}-build
 %if 0%{?fedora_version} || 0%{?rhel_version} || 0%{?centos_version}
-BuildRequires: libglv0 boron mesa-libGL-devel mesa-libGLU-devel freetype-devel openal-devel libvorbis-devel libpng-devel libXxf86vm-devel
+BuildRequires: gcc make libglv0 boron = %{version} mesa-libGL-devel mesa-libGLU-devel freetype-devel openal-devel libvorbis-devel libpng-devel libXxf86vm-devel
 %endif
 %if 0%{?mandriva_version}
 BuildRequires: libglv0 boron libmesagl1-devel libmesaglu1-devel freetype2-devel libopenal0-devel libvorbis-devel libpng-devel libbzip2_1-devel
@@ -23,8 +23,8 @@ BuildRequires: libglv0 boron Mesa-devel freetype2-devel openal-devel libvorbis-d
 
 %description
 Boron is an interpreted, prototype-based, scripting language similar to Rebol.
-Boron-gl expands Boron with datatypes, functions and dialects for using OpenGL
-and OpenAL.
+Boron-gl expands Boron with data types, functions and dialects for using
+OpenGL and OpenAL.
 
 %prep
 %setup -q -n boron-%{version}
@@ -66,5 +66,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/boron/TexFont.h
 
 %changelog
+* Sun Dec 27 2020 Karl Robillard <wickedsmoke@users.sf.net> 2.0.4-1
+  - Update to 2.0.4
 * Sat Oct 20 2012 Karl Robillard <wickedsmoke@users.sf.net>
   - Initial package release.

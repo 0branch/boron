@@ -1,20 +1,14 @@
 Summary: Scripting language and C library useful for building DSLs
 Name: boron
 Version: 2.0.4
-Release: 1
+Release: 1%{?dist}
 License: LGPLv3+
-# Vendor:
 URL: http://urlan.sf.net/boron
-Packager: <wickedsmoke@users.sf.net>
 Group: Development/Languages
+# wget -O boron-2.0.4.tar.gz https://sf.net/projects/urlan/files/Boron/boron-2.0.4.tar.gz/download
 Source: boron-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-build
-%if 0%{?mandriva_version} 
-#BuildRequires: libbzip2_1-devel
-BuildRequires: zlib1-devel
-%else
-BuildRequires: zlib-devel
-%endif
+BuildRequires: gcc, make, zlib-devel
 
 %global debug_package %{nil}
 
@@ -29,6 +23,8 @@ domain specific languages embedded in C/C++ applications.
 %build
 ./configure --thread
 make
+
+%check
 export LD_LIBRARY_PATH=$(pwd)
 make -C test
 
@@ -50,7 +46,8 @@ ln -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron.so.2
 rm -rf $RPM_BUILD_ROOT
 
 %files
-%doc ChangeLog LICENSE
+%doc ChangeLog
+%license LICENSE
 %defattr(-,root,root)
 %dir %{_includedir}/boron
 %{_bindir}/boron
@@ -62,11 +59,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/boron/urlan_atoms.h
 
 %changelog
+* Sun Dec 27 2020 Karl Robillard <wickedsmoke@users.sf.net> 2.0.4-1
+  - Update to 2.0.4
+  - Fix rpmlint warnings, meet Fedora guidelines, remove mandriva lines.
 * Fri Feb  1 2019 Karl Robillard <wickedsmoke@users.sf.net>
   - Update to 2.0.0
-
 * Fri Mar 16 2012 Karl Robillard <wickedsmoke@users.sf.net>
   - No longer using cmake.
-
 * Fri Dec  4 2009 Karl Robillard <wickedsmoke@users.sf.net>
   - Initial package release.
