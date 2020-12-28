@@ -42,6 +42,7 @@ mkdir -p $RPM_BUILD_ROOT%{_bindir}
 mkdir -p $RPM_BUILD_ROOT%{_includedir}/boron
 mkdir -p $RPM_BUILD_ROOT%{_libdir}
 install -s -m 755 boron $RPM_BUILD_ROOT%{_bindir}
+install -m 644 doc/boron.troff $RPM_BUILD_ROOT%{_mandir}/man1/boron.1
 sed -e 's~"urlan.h"~<boron/urlan.h>~' include/boron.h >boron.x
 install -m 644 -T boron.x           $RPM_BUILD_ROOT%{_includedir}/boron/boron.h
 install -m 644 include/urlan.h        $RPM_BUILD_ROOT%{_includedir}/boron
@@ -58,6 +59,7 @@ rm -rf $RPM_BUILD_ROOT
 %license LICENSE
 %defattr(-,root,root)
 %{_bindir}/boron
+%{_mandir}/man1/boron.1*
 %{_libdir}/libboron.so.2
 %{_libdir}/libboron.so.%{version}
 
