@@ -10,13 +10,13 @@ Source: boron-%{version}.tar.gz
 Requires: boron = %{version}
 BuildRoot: %{_tmppath}/boron-%{version}-build
 %if 0%{?fedora_version} || 0%{?rhel_version} || 0%{?centos_version}
-BuildRequires: gcc make libglv0 boron = %{version} mesa-libGL-devel mesa-libGLU-devel freetype-devel openal-devel libvorbis-devel libpng-devel libXxf86vm-devel
+BuildRequires: gcc make libglv0 boron-devel = %{version} mesa-libGL-devel mesa-libGLU-devel freetype-devel openal-devel libvorbis-devel libpng-devel libXxf86vm-devel
 %endif
 %if 0%{?mandriva_version}
-BuildRequires: libglv0 boron libmesagl1-devel libmesaglu1-devel freetype2-devel libopenal0-devel libvorbis-devel libpng-devel libbzip2_1-devel
+BuildRequires: libglv0 boron-devel = %{version} libmesagl1-devel libmesaglu1-devel freetype2-devel libopenal0-devel libvorbis-devel libpng-devel libbzip2_1-devel
 %endif
 %if 0%{?suse_version}
-BuildRequires: libglv0 boron Mesa-devel freetype2-devel openal-devel libvorbis-devel libpng-devel
+BuildRequires: libglv0 boron-devel = %{version} Mesa-devel freetype2-devel openal-devel libvorbis-devel libpng-devel
 %endif
 
 %global debug_package %{nil}
@@ -25,6 +25,14 @@ BuildRequires: libglv0 boron Mesa-devel freetype2-devel openal-devel libvorbis-d
 Boron is an interpreted, prototype-based, scripting language similar to Rebol.
 Boron-gl expands Boron with data types, functions and dialects for using
 OpenGL and OpenAL.
+
+%package devel
+Summary: Development files for Boron-GL
+Requires: %{name}%{?_isa} = %{version}-%{release}
+
+%description devel
+This package contains the header files and libraries needed to build
+C/C++ programs that use Boron-GL.
 
 %prep
 %setup -q -n boron-%{version}
@@ -57,9 +65,12 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 %{_bindir}/boron-gl
-%{_libdir}/libboron-gl.so
 %{_libdir}/libboron-gl.so.2
 %{_libdir}/libboron-gl.so.%{version}
+
+%files devel
+%defattr(-,root,root)
+%{_libdir}/libboron-gl.so
 %{_includedir}/boron/boron-gl.h
 %{_includedir}/boron/gl_atoms.h
 %{_includedir}/boron/gui.h

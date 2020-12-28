@@ -17,6 +17,14 @@ Boron is an interpreted, prototype-based, scripting language similar to Rebol.
 The interpreter and datatype system is a C library useful for building
 domain specific languages embedded in C/C++ applications.
 
+%package devel
+Summary: Development files for Boron
+Requires: %{name}%{?_isa} = %{version}-%{release}
+
+%description devel
+This package contains the header files and libraries needed to build
+C/C++ programs that use the Boron interpreter.
+
 %prep
 %setup -q -n %{name}-%{version}
 
@@ -49,11 +57,14 @@ rm -rf $RPM_BUILD_ROOT
 %doc ChangeLog
 %license LICENSE
 %defattr(-,root,root)
-%dir %{_includedir}/boron
 %{_bindir}/boron
-%{_libdir}/libboron.so
 %{_libdir}/libboron.so.2
 %{_libdir}/libboron.so.%{version}
+
+%files devel
+%defattr(-,root,root)
+%dir %{_includedir}/boron
+%{_libdir}/libboron.so
 %{_includedir}/boron/boron.h
 %{_includedir}/boron/urlan.h
 %{_includedir}/boron/urlan_atoms.h
