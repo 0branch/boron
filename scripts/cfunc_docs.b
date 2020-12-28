@@ -1,12 +1,24 @@
 /*
    Extract cfunc! documentation from C source files.
+   Version 1.1
 */
 
-ifn args [
-    print "Please specify input C files."
-    quit
+title: "Boron Function Reference"
+version: construct to-string environs/version [',' '.']
+files: []
+
+forall args [
+    switch a1: first args [
+        "-t" [title: second ++ args]
+        "-v" [version: second ++ args]
+        [append files a1]
+    ]
 ]
 
+if empty? files [
+    print "Please specify input C files."
+    quit/return 64  ; EX_USAGE
+]
 
 func-info: context [
     name:   none
@@ -40,8 +52,8 @@ parse-doc: func [txt] [
 cfuncs: make block! 100
 hfuncs: make block! 40
 
-forall args [
-    f: read/text first args
+forall files [
+    f: read/text first files
     parse f [some[
         thru "-cf-" in: thru "*/" :in (append cfuncs trim/indent slice in -2)
     ]]
@@ -171,11 +183,16 @@ emit-groups: func [] [
         if f/group [
             parse f/group [some [
                 tok: some non-list-term :tok (
-                    grp: select groups to-word tok
+                    grp: select groups name: to-word tok
                     either grp [
                         append grp f
                     ][
-                        print ["Unknown group" f/group]
+                        ; Create previously unknown group.
+                        append groups reduce [
+                            name
+                            reduce [f]
+                            join uppercase first tok next tok
+                        ]
                     ]
                 )
               | skip
@@ -244,6 +261,7 @@ emit-funcs: func [funcs /local f] [
             {</p>^/</div>^/}
         ]
 
+        ifn f/about [error join "Invalid documentation format for " f/name]
         markup-lines f/about
 
         ifn empty? f/see [
@@ -264,21 +282,20 @@ emit-funcs: func [funcs /local f] [
 ]
 
 
-current-date: func [] [
-    cd: to-string now/date
-    rejoin [
-        pick [Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec]
-            to-int slice cd 5,2
-        ' ' slice cd 8,2
-        ' ' slice cd 4
-    ]
+cd: to-string now/date
+current-date: rejoin [
+    pick [Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec]
+        to-int slice cd 5,2
+    ' ' slice cd 8,2
+    ' ' slice cd 4
 ]
 
 
-rhead: read/text %doc/func_ref_head.html
-change find/last rhead "0.2.2" replace/all to-string environs/version ',' '.'
-change find/last rhead "Nov 20 2011" current-date
-emit rhead
+emit construct read/text %doc/func_ref_head.html [
+    "$TITLE"   title
+    "$VERSION" version
+    "$DATE"    current-date
+]
 
 emit {<div class="contents topic" id="contents">
 <p class="topic-title first">Contents</p>
