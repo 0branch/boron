@@ -52,16 +52,22 @@ void  ur_transform3x3( const float* pnt, const float* mat, float* result );
 void  ur_reflect( const float* a, const float* b, float* result );
 void  ur_lineToPoint( const float* a, const float* b, const float* pnt,
                       float* vec );
-void  ur_normalize( float* vec );
+float ur_normalize( float* vec );
 
-#define ur_dot(a,b)  ((a[0] * b[0]) + (a[1] * b[1]) + (a[2] * b[2]))
+#define ur_dot(A,B)     (A[0]*B[0] + A[1]*B[1] + A[2]*B[2])
+#define ur_lengthSq(A)  (A[0]*A[0] + A[1]*A[1] + A[2]*A[2])
 
 #define ur_cross(a,b,res) \
     res[0] = (a[1] * b[2]) - (a[2] * b[1]); \
     res[1] = (a[2] * b[0]) - (a[0] * b[2]); \
     res[2] = (a[0] * b[1]) - (a[1] * b[0])
 
-#define ur_lengthSq(a)  ((a[0] * a[0]) + (a[1] * a[1]) + (a[2] * a[2]))
+#define ur_vset(R,X,Y,Z) R[0] = X; R[1] = Y; R[2] = Z
+
+#define ur_vsub(R,A,B) \
+    R[0] = A[0] - B[0]; \
+    R[1] = A[1] - B[1]; \
+    R[2] = A[2] - B[2]
 
 
 #ifdef __cplusplus

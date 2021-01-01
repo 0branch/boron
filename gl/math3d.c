@@ -370,23 +370,17 @@ void ur_lineToPoint( const float* a, const float* b, const float* pnt,
 }
 
 
-void ur_normalize( float* vec )
+float ur_normalize( float* vec )
 {
-    float x, y, z;
-    float len;
-
-    x = vec[0];
-    y = vec[1];
-    z = vec[2];
-
-    len = mathSqrtF( x * x + y * y + z * z );
-    if( len )
+    float len = mathSqrtF( ur_lengthSq(vec) );
+    if( len > 0.0f )
     {
-        len = 1.0f / len;
-        vec[0] = x * len;
-        vec[1] = y * len;
-        vec[2] = z * len;
+        float inv = 1.0f / len;
+        vec[0] *= inv;
+        vec[1] *= inv;
+        vec[2] *= inv;
     }
+    return len;
 }
 
 
