@@ -21,11 +21,13 @@ endif
 install:
 	mkdir -p $(BIN_DIR) $(INC_DIR) $(LIB_DIR)
 	install -s -m 755 $(BDIR)/boron-gl $(BIN_DIR)
-	sed -e 's~"boron.h"~<boron/boron.h>~' -e 's~"gui.h"~<boron/gui.h>~' -e 's~"TexFont.h"~<boron/TexFont.h>~' $(BDIR)/boron-gl.h >temp.h
-	install -m 644 temp.h            $(INC_DIR)/boron-gl.h
-	install -m 644 $(BDIR)/gui.h     $(INC_DIR)
-	install -m 644 $(BDIR)/math3d.h  $(INC_DIR)
-	install -m 644 $(BDIR)/TexFont.h $(INC_DIR)
+	sed -e 's~"boron.h"~<boron/boron.h>~' -e 's~"gui.h"~<boron/gui.h>~' -e 's~"TexFont.h"~<boron/TexFont.h>~' $(BDIR)/boron-gl.h >boron-gl.tmp
+	sed -e 's~"urlan.h"~<boron/urlan.h>~' $(BDIR)/gui.h >gui.tmp
+	install -m 644 boron-gl.tmp       $(INC_DIR)/boron-gl.h
+	install -m 644 gui.tmp            $(INC_DIR)/gui.h
+	install -m 644 $(BDIR)/gl_atoms.h $(INC_DIR)
+	install -m 644 $(BDIR)/math3d.h   $(INC_DIR)
+	install -m 644 $(BDIR)/TexFont.h  $(INC_DIR)
 	install -m 755 -s $(BDIR)/libboron-gl.so.$(VER) $(LIB_DIR)
 	ln -s libboron-gl.so.$(VER) $(LIB_DIR)/libboron-gl.so
 	ln -s libboron-gl.so.$(VER) $(LIB_DIR)/libboron-gl.so.2
@@ -33,5 +35,5 @@ install:
 uninstall:
 	rm $(BIN_DIR)/boron-gl
 	rm $(LIB_DIR)/libboron-gl.so $(LIB_DIR)/libboron-gl.so.2 $(LIB_DIR)/libboron-gl.so.$(VER)
-	rm $(INC_DIR)/boron-gl.h $(INC_DIR)/gui.h $(INC_DIR)/math3d.h $(INC_DIR)/TexFont.h
+	rm $(INC_DIR)/boron-gl.h $(INC_DIR)/gui.h $(INC_DIR)/gl_atoms.h $(INC_DIR)/math3d.h $(INC_DIR)/TexFont.h
 	rmdir $(INC_DIR)

@@ -47,12 +47,13 @@ mkdir -p $RPM_BUILD_ROOT%{_bindir}
 mkdir -p $RPM_BUILD_ROOT%{_includedir}/boron
 mkdir -p $RPM_BUILD_ROOT%{_libdir}
 install -s -m 755 gl/boron-gl $RPM_BUILD_ROOT/%{_bindir}
-sed -e "s~\"urlan.h\"~<boron/urlan.h>~" gl/gui.h >include/gui.h
-sed -e "s~\"boron.h\"~<boron/boron.h>~" -e "s~\"gui.h\"~<boron/gui.h>~" -e "s~\"TexFont.h\"~<boron/TexFont.h>~" gl/boron-gl.h >include/boron-gl.h
-install -m 644 include/boron-gl.h  $RPM_BUILD_ROOT%{_includedir}/boron
-install -m 644 include/gui.h $RPM_BUILD_ROOT%{_includedir}/boron
-install -m 644 gl/gl_atoms.h $RPM_BUILD_ROOT%{_includedir}/boron
-install -m 644 gl/TexFont.h  $RPM_BUILD_ROOT%{_includedir}/boron
+sed -e "s~\"boron.h\"~<boron/boron.h>~" -e "s~\"gui.h\"~<boron/gui.h>~" -e "s~\"TexFont.h\"~<boron/TexFont.h>~" gl/boron-gl.h >gl/boron-gl.tmp
+sed -e "s~\"urlan.h\"~<boron/urlan.h>~" gl/gui.h >gl/gui.tmp
+install -m 644 gl/boron-gl.tmp $RPM_BUILD_ROOT%{_includedir}/boron/boron-gl.h
+install -m 644 gl/gui.tmp      $RPM_BUILD_ROOT%{_includedir}/boron/gui.h
+install -m 644 gl/gl_atoms.h   $RPM_BUILD_ROOT%{_includedir}/boron
+install -m 644 gl/math3d.h     $RPM_BUILD_ROOT%{_includedir}/boron
+install -m 644 gl/TexFont.h    $RPM_BUILD_ROOT%{_includedir}/boron
 install -m 755 -s gl/libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}
 ln -s libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron-gl.so
 ln -s libboron-gl.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron-gl.so.2
@@ -71,8 +72,9 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %{_libdir}/libboron-gl.so
 %{_includedir}/boron/boron-gl.h
-%{_includedir}/boron/gl_atoms.h
 %{_includedir}/boron/gui.h
+%{_includedir}/boron/gl_atoms.h
+%{_includedir}/boron/math3d.h
 %{_includedir}/boron/TexFont.h
 
 %changelog
