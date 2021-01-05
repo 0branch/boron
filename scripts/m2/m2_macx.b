@@ -1,4 +1,4 @@
-; m2 Mac OS X template
+; m2 2.0.2 Mac OS X target
 
 
 macx: func [blk] [do blk]
@@ -108,7 +108,6 @@ exe_target: make target_env
 
         if cfg/opengl [
             lflags {-framework OpenGL}
-            ;libs {GL GLU}
         ]
 
         if cfg/qt [
@@ -181,25 +180,26 @@ exe_target: make target_env
         rejoin [" $(" uc_name "_SOURCES)"]
     ]
 
-    rule_text: func [| bdir] [
-        emit [
-            eol output_file ": " obj_macro local_libs link_libs
-            sub-project-libs link_libs
-            {^/^-$(}
-                either link_cxx ["LINK_CXX"]["LINK"]
-                {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
-            { $(} uc_name {_LIBS)} eol
-        ]
+    rule_text: [
+        output_file ": " obj_macro local_libs link_libs
+        sub-project-libs link_libs
+        {^/^-$(}
+            either link_cxx ["LINK_CXX"]["LINK"]
+            {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
+        { $(} uc_name {_LIBS)} eol
 
-        if cfg_bundle [
-            bdir: to-file join name %.app/Contents/
-            ifn exists? bdir [
-                make-dir/all join bdir %MacOs
-                write join bdir %PkgInfo #{4150504c 3f3f3f3f 0a}
-                write join bdir %Info.plist rejoin bind info.plist 'name
+        either cfg_bundle [
+            init-bundle name rejoin bind info.plist 'name
+            ""
+        ] ""
+    ]
 
-                ;emit {^/# bundle}
-            ]
+    init-bundle: func [app-name plist string!] [
+        bdir: to-file join app-name %.app/Contents/
+        ifn exists? bdir [
+            make-dir/all join bdir %MacOs
+            write join bdir %PkgInfo #{4150504c 3f3f3f3f 0a}
+            write join bdir %Info.plist plist
         ]
     ]
 ]
@@ -211,12 +211,10 @@ lib_target: make exe_target [
         do config
     ]
 
-    rule_text: does [
-        emit [
-            eol output_file ": " obj_macro sub-project-libs link_libs
-            "^/^-libtool -static -o $@ $^^ $(" uc_name "_LIBS)"
-            "^/^-ranlib $@^/"
-        ]
+    rule_text: [
+        output_file ": " obj_macro sub-project-libs link_libs
+        "^/^-libtool -static -o $@ $^^ $(" uc_name "_LIBS)"
+        "^/^-ranlib $@^/"
     ]
 ]
 
@@ -229,13 +227,12 @@ shlib_target: make exe_target [
         lflags join "-install_name @rpath/" output_file
     ]
 
-    rule_text: does [
-        emit [ eol output_file ": " obj_macro sub-project-libs link_libs
+    rule_text: [
+        output_file ": " obj_macro sub-project-libs link_libs
             {^/^-$(} either link_cxx ["LINK_CXX"]["LINK"]
                 {) -dynamiclib -o $@ } obj_macro
             { $(} uc_name {_LFLAGS) }
             { $(} uc_name {_LIBS)} eol
-        ]
     ]
 ]
 

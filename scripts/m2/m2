@@ -1,8 +1,8 @@
 #!/usr/bin/boron -sp
 /*
 	M2 - A meta-make tool
-	Copyright 2001-2015,2019 Karl Robillard
-	Version 2.0.1
+	Copyright 2001-2015,2019,2020 Karl Robillard
+	Version 2.0.2
 
 	TODO:
 		* Remove files outside the build directory from dist rule.
@@ -357,7 +357,8 @@ m2: context
 				exec-rule d t/make_obj_rule
 
 				clear output_buf
-				exec-rule d t/rule_text
+				rtext: t/rule_text
+				exec-rule d either block? rtext [rejoin rtext] rtext
 			]
 		]
 		generate_makefile
@@ -367,7 +368,9 @@ m2: context
 	; Used in template file.
 
 	eol: '^/'
-	emit: func [data] [append output_buf reduce data]
+	emit: func [data] [
+		append output_buf either block? data [rejoin data] data
+	]
 
 	dist_files: func [] [
 		str: make string! 64
@@ -410,7 +413,7 @@ m2: context
 	emit-sub-project-clean: func [/local sub] [
 		cmd: pick [
 			["^-cd " sub/path " & nmake clean^/"]
-			["^-make -C " sub/path " clean^/"]
+			["^-$(MAKE) -C " sub/path " clean^/"]
 		] windows?
 		foreach sub sub-projects [emit cmd]
 	]
@@ -419,7 +422,7 @@ m2: context
 		foreach sub sub-projects [
 			either windows?
 				[sep: '\' qt: ""  m2-make: "& boron -s c:\bin\m2& nmake"]
-				[sep: '/' qt: '"' m2-make: "; m2; make"]
+				[sep: '/' qt: '"' m2-make: "; m2; $(MAKE)"]
 
 			emit [eol sub/path sep sub/target ':' eol]
 			if sub/config [
@@ -465,7 +468,7 @@ m2: context
 		emit eol
 
 		emit-sub-projects
-		foreach t targets [emit ' ' t/rule_text]
+		foreach t targets [emit '^/' emit t/rule_text]
 
 		emit [
 			"^/^/" makefile ": " project_file {
@@ -684,11 +687,11 @@ clean:
 			clean: rejoin [
 				either windows? ["^--@del "] ["^--rm -f "] output_file eol
 			]
-			dist: rejoin [' ' to-text dep]
-			; Trim twice to remove any newline from last command.
-			rule_commands: replace/all trim trim/indent commands '^/' "^/^-"
-			rule_text: does [
-				emit [eol output_file ':' dist {^/^-} rule_commands eol]
+			dist: either dep [join ' ' to-text dep] ""
+			rule_text: rejoin [
+				output_file ':' dist "^/^-"
+				; Trim twice to remove any newline from last command.
+				replace/all trim trim/indent commands '^/' "^/^-" eol
 			]
 		]
 	]
@@ -929,7 +932,7 @@ validate-qt: func [blk] [
 
 
 show-help: func [] [
-	usage: {m2 version 1.5.0
+	usage: {m2 version 2.0.2
 
 M2 Options:
   -t <file>       Specify template file   (default is M2_TEMPLATE env.)

@@ -1,4 +1,4 @@
-; m2 Linux-g++ template
+; m2 2.0.2 Linux-g++ target
 
 
 system-qt: true
@@ -116,9 +116,7 @@ exe_target: make target_env
         ]
 
         if cfg/opengl [
-            libs {GL GLU}
-            ;libs_from %/usr/X11R6/lib {glut Xi}
-            ;libs {glut Xi Xmu}
+            libs "GL"
         ]
 
         if cfg/qt [
@@ -190,15 +188,12 @@ exe_target: make target_env
         rejoin [" $(" uc_name "_SOURCES)"]
     ]
 
-    rule_text: does [
-        emit [
-            eol output_file ": " obj_macro local_libs link_libs
+    rule_text: [
+        output_file ": " obj_macro local_libs link_libs
             sub-project-libs link_libs
-            {^/^-$(}
-                either link_cxx ["LINK_CXX"]["LINK"]
-                {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
-            { $(} uc_name {_LIBS)} eol
-        ]
+        {^/^-$(} either link_cxx ["LINK_CXX"]["LINK"]
+            {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
+        { $(} uc_name {_LIBS)} eol
     ]
 ]
 
@@ -209,27 +204,26 @@ lib_target: make exe_target [
         do config
     ]
 
-    rule_text: does [
-        emit [eol output_file ": " obj_macro sub-project-libs link_libs]
-        emit either empty? link_libs [[
+    rule_text: [
+        output_file ": " obj_macro sub-project-libs link_libs
+        rejoin pick [[
             "^/^-ar rc $@ " obj_macro " $(" uc_name "_LFLAGS)"
-        ]] [[
+        ][
             ; Concatenate other libraries.
             "^/^-ld -Ur -o " objdir name "lib.o $^^ $(" uc_name
                 "_LIBS) $(" uc_name "_LFLAGS)"
             "^/^-ar rc $@ " objdir name "lib.o"
         ]]
-        emit "^/^-ranlib $@^/"
-        if cfg/release [
-            emit "^-strip -d $@^/"
-        ]
+            empty? link_libs
+        "^/^-ranlib $@^/"
+        either cfg/release "^-strip -d $@^/" ""
     ]
 ]
 
 
 shlib_target: make exe_target [
     version: lib_full: lib_m: lib_base: none
-    _exe_rule: _exe_clean: none
+    _exe_clean: none
 
     configure: does [
         lib_full: rejoin ["lib" name ".so"]
@@ -248,11 +242,9 @@ shlib_target: make exe_target [
         if version [
             lflags join {-Wl,-soname,} lib_m
 
-            _exe_rule: :rule_text
-            rule_text: does [
-                _exe_rule
-                emit rejoin ["^-ln -sf " lib_full ' ' lib_m    '^/'
-                             "^-ln -sf " lib_full ' ' lib_base '^/']
+            rule_text: join rule_text [
+                "^-ln -sf " lib_full ' ' lib_m    '^/'
+                "^-ln -sf " lib_full ' ' lib_base '^/'
             ]
             _exe_clean: :clean
             clean: does [

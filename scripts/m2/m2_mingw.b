@@ -1,4 +1,4 @@
-; m2 Mingw-w64 template
+; m2 2.0.2 Mingw-w64 target
 
 
 system-qt: true
@@ -192,15 +192,13 @@ exe_target: make target_env
         rejoin [" $(" uc_name "_SOURCES)"]
     ]
 
-    rule_text: does [
-        emit [
-            eol output_file ": " obj_macro local_libs link_libs
+    rule_text: [
+        output_file ": " obj_macro local_libs link_libs
             sub-project-libs link_libs
-            {^/^-$(}
-                either link_cxx ["LINK_CXX"]["LINK"]
-                {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
-            { $(} uc_name {_LIBS)} eol
-        ]
+        {^/^-$(}
+            either link_cxx ["LINK_CXX"]["LINK"]
+            {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
+        { $(} uc_name {_LIBS)} eol
     ]
 ]
 
@@ -211,20 +209,19 @@ lib_target: make exe_target [
         do config
     ]
 
-    rule_text: does [
-        emit [eol output_file ": " obj_macro sub-project-libs link_libs]
-        emit either empty? link_libs [[
+    rule_text: [
+        output_file ": " obj_macro sub-project-libs link_libs
+        rejoin pick [[
             "^/^-x86_64-w64-mingw32-ar rc $@ " obj_macro " $(" uc_name "_LFLAGS)"
-        ]] [[
+        ][
             ; Concatenate other libraries.
             "^/^-x86_64-w64-mingw32-ld -Ur -o " objdir name
                 "lib.o $^^ $(" uc_name "_LIBS) $(" uc_name "_LFLAGS)"
             "^/^-x86_64-w64-mingw32-ar rc $@ " objdir name "lib.o"
         ]]
-        emit "^/^-x86_64-w64-mingw32-ranlib $@^/"
-        if cfg/release [
-            emit "^-x86_64-w64-mingw32-strip -d $@^/"
-        ]
+            empty? link_libs
+        "^/^-x86_64-w64-mingw32-ranlib $@^/"
+        either cfg/release "^-x86_64-w64-mingw32-strip -d $@^/" ""
     ]
 ]
 

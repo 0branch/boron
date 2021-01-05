@@ -1,4 +1,4 @@
-; m2 Solaris-g++ template
+; m2 2.0.2 Solaris-g++ target
 
 
 sun:  func [blk] [do blk]
@@ -160,15 +160,12 @@ exe_target: make target_env
         rejoin [" $(" uc_name "_SOURCES)"]
     ]
 
-    rule_text: does
-    [
-        emit [ eol output_file ": " obj_macro local_libs link_libs
+    rule_text: [
+        output_file ": " obj_macro local_libs link_libs
                sub-project-libs link_libs
-            {^/^-$(}
-                either link_cxx ["LINK_CXX"]["LINK"]
-                {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
-            { $(} uc_name {_LIBS)} eol
-        ]
+        {^/^-$(} either link_cxx ["LINK_CXX"]["LINK"]
+            {) -o $@ $(} uc_name {_LFLAGS) } obj_macro
+        { $(} uc_name {_LIBS)} eol
     ]
 ]
 
@@ -179,12 +176,10 @@ lib_target: make exe_target [
         do config
     ]
 
-    rule_text: does
-    [
-        emit [eol output_file ": " obj_macro sub-project-libs link_libs
-            "^/^-ar rc $@ " obj_macro " $(" uppercase name "_LFLAGS)"
-            "^/^-ranlib $@^/"
-        ]
+    rule_text: [
+        output_file ": " obj_macro sub-project-libs link_libs
+        "^/^-ar rc $@ " obj_macro " $(" uppercase name "_LFLAGS)"
+        "^/^-ranlib $@^/"
     ]
 ]
 

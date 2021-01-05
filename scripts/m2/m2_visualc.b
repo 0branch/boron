@@ -1,4 +1,4 @@
-; m2 Visual-C++ template
+; m2 2.0.2 Visual-C++ NMake target
 
 
 embed-manifest: false
@@ -219,20 +219,17 @@ exe_target: make target_env
         rejoin [" $(" uc_name "_SOURCES) $(" uc_name "_HEADERS)"]
     ]
 
-    rule_text: does [
-        emit [
-            eol output_file ": " obj_macro local_libs link_libs
+    rule_text: [
+        output_file ": " obj_macro local_libs link_libs
             sub-project-libs link_libs
-            {^/^-$(LINK) /machine:} vc-mach { /out:$@ $(} uc_name {_LFLAGS) }
+        {^/^-$(LINK) /machine:} vc-mach { /out:$@ $(} uc_name {_LFLAGS) }
             obj_macro { $(} uc_name {_LIBS)} eol
-        ]
-        if embed-manifest [
-            emit [
-                {^-$(MT) -manifest } output_file
+
+        either embed-manifest [rejoin [
+            {^-$(MT) -manifest } output_file
                 {.manifest -outputresource:} output_file
                 ';' pick [2 1] to-logic find output_file ".dll" eol
-            ]
-        ]
+        ]] ""
     ]
 
     rule_makeobj: func [cc flags obj src] [
@@ -252,12 +249,10 @@ lib_target: make exe_target [
         do config
     ]
 
-    rule_text: does [
-        emit [
-            eol output_file ": " obj_macro sub-project-libs link_libs
-            "^/^-lib /nologo /out:$@ " obj_macro " $(" uc_name
+    rule_text: [
+        output_file ": " obj_macro sub-project-libs link_libs
+        "^/^-lib /nologo /out:$@ " obj_macro " $(" uc_name
             "_LIBS) $(" uc_name "_LFLAGS)^/"
-        ]
     ]
 ]
 
