@@ -386,6 +386,7 @@ uint32_t ur_hashCell( UThread* ut, const UCell* val )
             goto hash_mem;
 
         case UT_STRING:
+        case UT_FILE:
         {
             USeriesIter si;
             ur_seriesSlice( ut, &si, val );

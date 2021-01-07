@@ -24,3 +24,20 @@ remove/key m "new-key"
 remove/key m "key"
 print [pick m "new-key" pick m "key"]
 probe values-of m
+
+print "---- similar keys"
+s: make hash-map! [
+    "game"  0
+    "GAME"  1
+    %game   2
+    game    3
+    'game   4
+]
+print [
+    pick s "game"
+    pick s "GAME"
+    pick s %game
+    pick s 'game
+    pick s to-lit-word 'game
+    pick s to-get-word 'game
+]
