@@ -133,13 +133,28 @@ CFUNC(cfunc_return)
     return: NA
     group: control
 
-    Exit from loop, while, foreach, or forall.
+    Exit from loop, while, foreach, forall, forever, or map.
 */
 CFUNC(cfunc_break)
 {
     (void) a1;
     (void) res;
     return boron_throwWord( ut, UR_ATOM_BREAK, 0 );
+}
+
+
+/*-cf-
+    continue
+    return: NA
+    group: control
+
+    Start next iteration of loop, while, foreach, forall, forever, or map.
+*/
+CFUNC(cfunc_continue)
+{
+    (void) a1;
+    (void) res;
+    return boron_throwWord( ut, UR_ATOM_CONTINUE, 0 );
 }
 
 
@@ -1215,6 +1230,17 @@ CFUNC(cfunc_either)
 }
 
 
+// boron_catchWord of both break & continue.
+#define CATCH_BREAK_CONTINUE(cell) \
+    cell = ur_exception(ut); \
+    if( ur_is(cell, UT_WORD) ) { \
+        if( ur_atom(cell) == UR_ATOM_BREAK ) \
+            break; \
+        if( ur_atom(cell) == UR_ATOM_CONTINUE ) \
+            continue; \
+    }
+
+
 /*-cf-
     while
         exp     block! Test condition.
@@ -1228,6 +1254,7 @@ CFUNC(cfunc_either)
 CFUNC(cfunc_while)
 {
     UCell* body = a2;
+    UCell* cell;
     while( 1 )
     {
         if( ! boron_doBlock( ut, a1, res ) )
@@ -1236,8 +1263,7 @@ CFUNC(cfunc_while)
             break;
         if( ! boron_doBlock( ut, body, res ) )
         {
-            if( boron_catchWord( ut, UR_ATOM_BREAK ) )
-                break;
+            CATCH_BREAK_CONTINUE(cell)
             return UR_THROW;
         }
     }
@@ -1256,12 +1282,12 @@ CFUNC(cfunc_while)
 */
 CFUNC(cfunc_forever)
 {
+    UCell* cell;
     while( 1 )
     {
         if( ! boron_doBlock( ut, a1, res ) )
         {
-            if( boron_catchWord( ut, UR_ATOM_BREAK ) )
-                break;
+            CATCH_BREAK_CONTINUE(cell)
             return UR_THROW;
         }
     }
@@ -1282,6 +1308,7 @@ CFUNC(cfunc_forever)
 CFUNC(cfunc_loop)
 {
     UCell* body = a2;
+    UCell* cell;
 
     if( ur_is(a1, UT_INT) )
     {
@@ -1290,8 +1317,7 @@ CFUNC(cfunc_loop)
         {
             if( ! boron_doBlock( ut, body, res ) )
             {
-                if( boron_catchWord( ut, UR_ATOM_BREAK ) )
-                    break;
+                CATCH_BREAK_CONTINUE(cell)
                 return UR_THROW;
             }
         }
@@ -1343,8 +1369,7 @@ CFUNC(cfunc_loop)
             }
             if( ! boron_doBlock( ut, body, res ) )
             {
-                if( boron_catchWord( ut, UR_ATOM_BREAK ) )
-                    break;
+                CATCH_BREAK_CONTINUE(cell)
                 return UR_THROW;
             }
         }
@@ -3120,6 +3145,7 @@ loop:
     {
         ur_seriesSlice( ut, &si, sarg );
     }
+
     while( si.it < si.end )
     {
         wi.it = words;
@@ -3131,8 +3157,20 @@ loop:
         }
         if( ! boron_doBlock( ut, body, res ) )
         {
-            if( boron_catchWord( ut, UR_ATOM_BREAK ) )
-                break;
+            // Similar to CATCH_BREAK_CONTINUE(cell) but with setting si.
+            cell = ur_exception(ut);
+            if( ur_is(cell, UT_WORD) )
+            {
+                if( ur_atom(cell) == UR_ATOM_BREAK )
+                    break;
+                if( ur_atom(cell) == UR_ATOM_CONTINUE )
+                {
+                    // Re-aquire buf & end.
+                    si.buf = ur_bufferSer( sarg );
+                    si.end = _sliceEnd( si.buf, sarg );
+                    continue;
+                }
+            }
             return UR_THROW;
         }
         // Re-aquire buf & end.
@@ -3193,10 +3231,18 @@ CFUNC(cfunc_forall)
     {
         if( ! boron_doBlock( ut, body, res ) )
         {
-            if( boron_catchWord( ut, UR_ATOM_BREAK ) )
-                break;
+            // Similar to CATCH_BREAK_CONTINUE(sarg) but with goto.
+            sarg = ur_exception(ut);
+            if( ur_is(sarg, UT_WORD) )
+            {
+                if( ur_atom(sarg) == UR_ATOM_BREAK )
+                    break;
+                if( ur_atom(sarg) == UR_ATOM_CONTINUE )
+                    goto cont;
+            }
             return UR_THROW;
         }
+cont:
         if( ! (sarg = ur_wordCellM(ut, a1)) )
             return UR_THROW;
         if( ur_type(sarg) != type )     // Checks if word cell changed.
@@ -3243,8 +3289,7 @@ CFUNC(cfunc_map)
         dt->pick( ur_bufferSer(sarg), si.it, cell ); 
         if( ! boron_doBlock( ut, body, res ) )
         {
-            if( boron_catchWord( ut, UR_ATOM_BREAK ) )
-                break;
+            CATCH_BREAK_CONTINUE(cell);
             return UR_THROW;
         }
         dt->poke( ur_bufferSerM(sarg), si.it, res ); 

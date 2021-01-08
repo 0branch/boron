@@ -26,6 +26,7 @@ enum UrlanFixedAtoms
     UR_ATOM_HALT,
     UR_ATOM_RETURN,
     UR_ATOM_BREAK,
+    UR_ATOM_CONTINUE,
     UR_ATOM_EXTERN,
     UR_ATOM_LOCAL,
     UR_ATOM_SELF,

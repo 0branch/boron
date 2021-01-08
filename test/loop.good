@@ -17,3 +17,12 @@ loopB 7
 -3
 ---- forever
 11
+---- continue
+loop-continue 1
+loop-continue 3
+foreach-continue 1
+foreach-continue 3
+forall-continue 1
+forall-continue 3
+while-continue 1
+while-continue 3

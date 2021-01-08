@@ -462,11 +462,11 @@ UThread* ur_makeEnv( const UEnvParameters* par )
 
     // Intern commonly used atoms.
     {
-    UAtom atoms[ 58 ];
+    UAtom atoms[ 59 ];
     ur_internAtoms( ut,
                     "i8 u8 i16 u16 i32 u32 f32 f64 i64 u64\n"
                     "none true false on off yes no\n"
-                    "quit halt return break extern local self\n"
+                    "quit halt return break continue extern local self\n"
                     "latin1 utf8 ucs2 url\n"
                     "+ - / * = < > <= >=\n"
                     "x y z r g b a\n"
