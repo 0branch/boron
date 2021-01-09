@@ -1,23 +1,49 @@
 #!/usr/bin/boron -s
-; Bump Boron version.
+; Bump Version v1.0
 
-old: 2,0,4
-new: 2,0,5
+usage: {{
+Usage: bump-version [OPTIONS]
 
-files: [
-    %INSTALL                ["VER=$v"]
-    %boron.spec             ["Version: $v"]
-    %project.b              ["%boron $c"]
-    %eval/boot.b            ["version: $c"]
-    %doc/UserManual.md      ["Version $v, "]
-    %doc/boron.troff        ["Version $v" "boron $v"]
-    %include/boron.h [
-        {BORON_VERSION_STR  "$v"}
-        {BORON_VERSION      0x0$m0$i0$r}
+Options:
+  -b            Use built-in specification.
+  -f <file>     Use version specification file.  (default: ./version-up.b)
+  -h            Print this help and quit.
+}}
+
+spec-file: %version-up.b
+finish: none
+
+forall args [
+    switch first args [
+        "-b" [spec-file: none]
+        "-f" [spec-file: second ++ args]
+        "-h" [print usage quit]
     ]
-    %include/urlan.h [
-        {UR_VERSION_STR  "$v"}
-        {UR_VERSION      0x0$m0$i0$r}
+]
+
+either spec-file [
+    do spec-file
+][
+    old: 2,0,4
+    new: 2,0,5
+    files: [
+        %INSTALL                ["VER=$v"]
+        %boron.spec             ["Version: $v"]
+        %project.b              ["%boron $c"]
+        %eval/boot.b            ["version: $c"]
+        %doc/UserManual.md      ["Version $v, "]
+        %doc/boron.troff        ["Version $v" "boron $v"]
+        %include/boron.h [
+            {BORON_VERSION_STR  "$v"}
+            {BORON_VERSION      0x0$m0$i0$r}
+        ]
+        %include/urlan.h [
+            {UR_VERSION_STR  "$v"}
+            {UR_VERSION      0x0$m0$i0$r}
+        ]
+    ]
+    finish: [
+        print "Now run eval/mkboot, adjust manual dates, and make docs."
     ]
 ]
 
@@ -52,4 +78,4 @@ foreach [f mod] files [
    ;probe crule mod
     write f construct read/text f crule mod
 ]
-print "Now run eval/mkboot, adjust manual dates, and make docs."
+do finish
