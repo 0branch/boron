@@ -1,6 +1,17 @@
 			Boron Change Log
 
 
+V2.0.6 - 17 Feb 2021
+
+  * Add continue, ge?, and le? functions.
+  * Bitset! pick changed to return logic!.  Poking 0 or 0.0 will clear bits.
+  * Charset interprets dash as a range indicator.
+  * Fix hash-map! to accept file! keys.
+  * Fix info? timestamps on Windows.
+  * Automatically join threads when a thread port! is closed.
+  * Some bugfixes.
+
+
 V2.0.4 - 16 Nov 2020
 
   * Replace parse /binary option with 'bits command.
