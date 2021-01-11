@@ -4881,7 +4881,7 @@ CFUNC(cfunc_terminate)
         if( CFUNC_OPTIONS & OPT_TERMINATE_DIR )
         {
             if( ur_is(res, UT_CHAR) &&
-                (ur_int(res) == '/' || ur_int(res) == '\\') )
+                (ur_char(res) == '/' || ur_char(res) == '\\') )
                 goto done;
         }
     }
