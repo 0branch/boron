@@ -35,11 +35,25 @@ extern void boron_installThreadPort( UThread*, const UCell*, UThread* );
 
 /*-cf-
     thread
-        body    block!
-        /port   Create thread port
+        routine string!/block!
+        /port   Create thread port.
     return: Thread port or unset!
 
-    Create a new thread.
+    Create a new thread to run a routine.
+
+    A string! routine argument is preferred as a block! will be converted to
+    a string! before it can be passed to the thread.
+
+    If the /port option is used the new thread will have a port! bound to the
+    'thread-port word that is connected to the one returned from the function.
+    This can be used for bi-directional communication.
+
+    Each thread has it's own data store, so series values passed through the
+    port will become empty on write as ownership is transferred.
+    Only one series can be sent through the port on each write, so writing a
+    block! that contains series values will throw an error.
+    Words not bound to the shared environment will become unbound in the
+    reading thread.
 */
 CFUNC( cfunc_thread )
 {

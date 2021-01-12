@@ -102,6 +102,7 @@ CFUNC(cfunc_halt)
     exit
     return: NA
     group: control
+    see: return
 
     Exit from function with result unset.
 */
@@ -118,6 +119,7 @@ CFUNC(cfunc_exit)
         result
     return: NA
     group: control
+    see: exit
 
     Exit from function with result.
 */
@@ -132,6 +134,7 @@ CFUNC(cfunc_return)
     break
     return: NA
     group: control
+    see: continue
 
     Exit from loop, while, foreach, forall, forever, or map.
 */
@@ -147,6 +150,7 @@ CFUNC(cfunc_break)
     continue
     return: NA
     group: control
+    see: break
 
     Start next iteration of loop, while, foreach, forall, forever, or map.
 */
@@ -747,6 +751,7 @@ CFUNC(name) { \
         b   int!/double!/vec3!/block!
     return: Sum of two numbers.
     group: math
+    see: sub, mul, div
 
     The second argument may be a block:
         add 0 [4 1 3]
@@ -758,6 +763,11 @@ CFUNC(name) { \
         b   int!/double!/vec3!/block!
     return: Difference of two numbers.
     group: math
+    see: add, mul, div
+
+    The second argument may be a block:
+        sub 4 [3 1 3]
+        == -3
 */
 /*-cf-
     mul
@@ -765,6 +775,11 @@ CFUNC(name) { \
         b   int!/double!/vec3!/block!
     return: Product of two numbers.
     group: math
+    see: add, sub, div
+
+    The second argument may be a block:
+        mul 3.3 [2 0.4]
+        == 2.64
 */
 /*-cf-
     div
@@ -772,7 +787,7 @@ CFUNC(name) { \
         b   int!/double!/vec3!
     return: Quotient of a divided by b.
     group: math
-    see: mod
+    see: add, sub, mul, mod
 */
 /*-cf-
     mod
