@@ -1,5 +1,5 @@
 #!/usr/bin/boron -s
-; Bump Version v1.0.1
+; Bump Version v1.1
 
 usage: {{
 Usage: bump-version [OPTIONS]
@@ -8,16 +8,19 @@ Options:
   -b            Use built-in specification.
   -f <file>     Use version specification file.  (default: ./version-up.b)
   -h            Print this help and quit.
+  -r            Revert to old version; reverse mapping of old to new.
 }}
 
 spec-file: %version-up.b
 finish: none
+vorder: [old new]
 
 forall args [
     switch first args [
         "-b" [spec-file: none]
         "-f" [spec-file: to-file second ++ args]
         "-h" [print usage quit]
+        "-r" [swap vorder]
     ]
 ]
 
@@ -62,8 +65,9 @@ mrule: func [version coord!] [
     blk
 ]
 
-old-rules: mrule old
-new-rules: mrule new
+
+old-rules: mrule get first  vorder
+new-rules: mrule get second vorder
 
 crule: func [spec] [
     blk: make block! 4
