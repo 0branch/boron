@@ -1,5 +1,5 @@
 #!/usr/bin/boron -s
-; Bump Version v1.0
+; Bump Version v1.0.1
 
 usage: {{
 Usage: bump-version [OPTIONS]
@@ -16,7 +16,7 @@ finish: none
 forall args [
     switch first args [
         "-b" [spec-file: none]
-        "-f" [spec-file: second ++ args]
+        "-f" [spec-file: to-file second ++ args]
         "-h" [print usage quit]
     ]
 ]
