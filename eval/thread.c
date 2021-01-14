@@ -32,6 +32,7 @@ static void* threadRoutine( void* arg )
 
 
 extern void boron_installThreadPort( UThread*, const UCell*, UThread* );
+extern void boron_setJoinThread( UThread*, const UCell*, OSThread );
 
 /*-cf-
     thread
@@ -114,9 +115,17 @@ CFUNC( cfunc_thread )
         return ur_error( ut, UR_ERR_INTERNAL, "Could not create thread" );
     }
 
+    if( CFUNC_OPTIONS & OPT_THREAD_PORT )
+    {
+        // Will pthread_join() when port closed.
+        boron_setJoinThread( ut, res, osThr );
+    }
 #ifndef _WIN32
-    // Detach to automatically release thread memory when it exits.
-    pthread_detach( osThr );
+    else
+    {
+        // Detach to automatically release thread memory when it exits.
+        pthread_detach( osThr );
+    }
 #endif
 
     return UR_OK;

@@ -29,6 +29,8 @@
 #endif
 
 
+#define JOIN_ON_CLOSE
+
 #define SIDE_A      0
 #define SIDE_B      1
 #define SIDE        elemSize    // Port UBuffer
@@ -52,9 +54,13 @@ typedef struct
 ThreadQueue;
 
 
+// A single ThreadExt struct is pointed to by UBuffer::ptr.v in both threads.
 typedef struct
 {
     const UPortDevice* dev;
+#ifdef JOIN_ON_CLOSE
+    OSThread thread;    // The SIDE_B child thread.
+#endif
     ThreadQueue A;      // SIDE_A writes here.
     ThreadQueue B;      // SIDE_B writes here.
 }
@@ -82,6 +88,20 @@ void boron_installThreadPort( UThread* ut, const UCell* portC, UThread* utB )
     cell = ur_ctxAddWord( ctx, ur_intern(ut, portStr, 11) );
     buf = boron_makePort( utB, ext->dev, ext, cell );
     buf->SIDE = SIDE_B;
+}
+
+
+// Private function for cfunc_thread.
+void boron_setJoinThread( UThread* ut, const UCell* portC, OSThread thr )
+{
+#ifdef JOIN_ON_CLOSE
+    const UBuffer* port = ur_bufferSer( portC );
+    ((ThreadExt*) port->ptr.v)->thread = thr;
+#else
+    (void) ut;
+    (void) portC;
+    (void) thr;
+#endif
 }
 
 
@@ -176,16 +196,45 @@ fail:
 }
 
 
+#ifdef JOIN_ON_CLOSE
+static void thread_writeQuit( ThreadQueue* queue );
+#endif
+
 static void thread_close( UBuffer* port )
 {
     ThreadExt* ext = (ThreadExt*) port->ptr.v;
     ThreadQueue* queue;
     uint8_t endOpen;
 
+#ifdef JOIN_ON_CLOSE
+    if( port->SIDE == SIDE_A )
+    {
+        queue = &ext->A;
+        mutexLock( queue->mutex );
+        endOpen = queue->END_OPEN;
+        if( endOpen )
+            thread_writeQuit( queue );      // Core of thread_write.
+        mutexUnlock( queue->mutex );
+
+#ifdef _WIN32
+        WaitForSingleObject( ext->thread, INFINITE );
+#else
+        pthread_join( ext->thread, NULL );
+#endif
+    }
+    else
+    {
+        queue = &ext->B;
+        mutexLock( queue->mutex );
+        endOpen = queue->END_OPEN;
+        mutexUnlock( queue->mutex );
+    }
+#else
     queue = (port->SIDE == SIDE_A) ? &ext->A : &ext->B;
     mutexLock( queue->mutex );
     endOpen = queue->END_OPEN;
     mutexUnlock( queue->mutex );
+#endif
 
     if( endOpen )
     {
@@ -377,6 +426,23 @@ static int thread_write( UThread* ut, UBuffer* port, const UCell* data )
 
     return UR_OK;
 }
+
+
+#ifdef JOIN_ON_CLOSE
+#include "urlan_atoms.h"
+
+static void thread_writeQuit( ThreadQueue* queue )
+{
+    UCell tmp;
+    UCell* cell = &tmp;
+    ur_setId(cell, UT_WORD);
+    ur_setWordUnbound( cell, UR_ATOM_QUIT );
+
+    thread_queue( &queue->buf, cell, NULL );
+    condSignal( queue->cond );
+    writeEvent( queue );
+}
+#endif
 
 
 static int thread_seek( UThread* ut, UBuffer* port, UCell* pos, int where )

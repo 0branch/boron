@@ -317,7 +317,6 @@ struct UThread
     UIndex      freeBufList;
     UBuffer*    sharedStoreBuf;
     UEnv*       env;
-    UThread*    nextThread;
     const UDatatype** types;
     const UCell* (*wordCell)( UThread*, const UCell* );
     UCell* (*wordCellM)( UThread*, const UCell* );

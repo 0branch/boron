@@ -32,13 +32,13 @@ struct UEnv
 {
     OSMutex     mutex;
     UBuffer     sharedStore;
-    UBuffer     atomNames;
-    UBuffer     atomTable;
+    UBuffer     atomNames;      // Protected by mutex.
+    UBuffer     atomTable;      // Protected by mutex.
     uint16_t    typeCount;
-    uint16_t    _pad0;
+    uint16_t    threadCount;    // Protected by mutex.
     uint32_t    threadSize;
     void (*threadFunc)( UThread*, enum UThreadMethod );
-    UThread*    threads;    // Protected by mutex.
+    UThread*    initialThread;
     const UDatatype* types[ UT_MAX ];
 };
 

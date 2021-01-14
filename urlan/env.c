@@ -139,23 +139,29 @@ static UThread* _threadMake( UEnv* env )
     _threadInitStore( ut );
     env->threadFunc( ut, UR_THREAD_INIT );
 
-    LOCK_GLOBAL
-
-    if( env->threads )
-    {
-        // NOTE: env->threads (original created by ur_makeEnv) is not changed.
-        UThread* link = env->threads;
-        ut->nextThread = link->nextThread;
-        link->nextThread = ut;
-    }
-    else
-    {
-        env->threads = ut->nextThread = ut;
-    }
-
-    UNLOCK_GLOBAL
-
     return ut;
+}
+
+
+/**
+  Create a new thread.
+
+  \param ut     Existing thread.
+
+  \return Pointer to new thread in the same environment as ut, or
+          NULL if memory could not be allocated.
+*/
+UThread* ur_makeThread( const UThread* ut )
+{
+    UEnv* env = ut->env;
+    UThread* newt = _threadMake( env );
+    if( newt )
+    {
+        LOCK_GLOBAL
+        ++env->threadCount;
+        UNLOCK_GLOBAL
+    }
+    return newt;
 }
 
 
@@ -178,9 +184,6 @@ static void _destroyDataStore( UEnv* env, UBuffer* store )
 
 /*
    Free memory used by UThread.
-
-   This does NOT remove the thread from the environment thread list.
-   ur_destroyThread() must be used for that.
 */
 static void _threadFree( UThread* ut )
 {
@@ -194,55 +197,29 @@ static void _threadFree( UThread* ut )
 
 
 /**
-  Create new thread.
+  Free memory used by UThread.
 
-  \param ut   Existing thread.
+  To destroy a thread created with ur_makeEnv(), use ur_freeEnv().
 
-  \return Pointer to new thread in the same environment as ut.
-*/
-UThread* ur_makeThread( const UThread* ut )
-{
-    return _threadMake( ut->env );
-}
+  \param ut     Thread created with ur_makeThread()
 
-
-/**
-  Remove UThread from environment thread list and free memory.
-  If there are no other threads in the environment, then ur_freeEnv() is
-  called.
-
-  \param ut Thread created with ur_makeThread()
-
-  \return Non-zero if ur_freeEnv() is called.
+  \return Non-zero if thread is not NULL and not an initial thread.
 */
 int ur_destroyThread( UThread* ut )
 {
-    if( ! ut )
-        return 0;
-    if( ut == ut->nextThread )
-    {
-        ur_freeEnv( ut );
-        return 1;
-    }
-    else
-    {
-        UThread* it;
-        UEnv* env = ut->env;
+    UEnv* env = ut->env;
 
+    if( ut && (ut != env->initialThread) )
+    {
+        assert( env->threadCount );
         LOCK_GLOBAL
-
-        it = env->threads;
-        if( it == ut )
-            env->threads = (UThread*) ut->nextThread;
-        while( it->nextThread != ut )
-            it = it->nextThread;
-        it->nextThread = ut->nextThread;
-
+        --env->threadCount;
         UNLOCK_GLOBAL
 
         _threadFree( ut );
-        return 0;
+        return 1;
     }
+    return 0;
 }
 
 
@@ -376,8 +353,6 @@ UThread* ur_makeEnv( const UEnvParameters* par )
     env->threadSize = par->threadSize;
     env->threadFunc = par->threadMethod;
 
-    env->threads = 0;
-
     if( mutexInitF( env->mutex ) )
     {
 #ifdef _WIN32
@@ -458,6 +433,8 @@ UThread* ur_makeEnv( const UEnvParameters* par )
         memFree( env );
         return 0;
     }
+    env->threadCount = 0;       // Does not include initial thread.
+    env->initialThread = ut;
 
 
     // Intern commonly used atoms.
@@ -483,44 +460,34 @@ UThread* ur_makeEnv( const UEnvParameters* par )
 
 
 /**
-  Free environment and all threads.
-  Caller must make sure no other threads are running.
+  Free environment and the initial thread.
+
+  The caller must make sure no other threads created with ur_makeThread()
+  are running.
 
   \param ut     UThread created with ur_makeEnv().  It is safe to pass zero.
 */
 void ur_freeEnv( UThread* ut )
 {
     UEnv* env;
-    UThread* thr;
-    UThread* next;
 
-
-    if( ! ut || ! ut->env )
+    if( ! ut )
         return;
     env = ut->env;
-    if( ut != env->threads )
+    if( ut != env->initialThread )
         return;                     // Not the original thread.
 
-    // Locking here doesn't really do anything.  Caller must make
-    // sure no other threads are running.
+    _threadFree( ut );
 
-    //LOCK_GLOBAL
-
-    thr = env->threads;
-    do
-    {
-        next = thr->nextThread;
-        _threadFree( thr );
-        thr = next;
-    }
-    while( thr != env->threads );
-
-    //UNLOCK_GLOBAL
-    mutexFree( env->mutex );
-
+#ifdef DEBUG
+    if( env->threadCount )
+        fprintf( stderr, "ur_freeEnv: %d threads have not been freed\n",
+                 env->threadCount );
+#endif
 
     _destroyDataStore( env, &env->sharedStore );
 
+    mutexFree( env->mutex );
     ur_binFree( &env->atomNames );
     ur_arrFree( &env->atomTable );
 

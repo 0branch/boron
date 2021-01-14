@@ -22,6 +22,7 @@
 #include "urlan.h"
 #include "urlan_atoms.h"
 #include "mem_util.h"
+#include "env.h"
 #include "os.h"
 
 #ifdef _MSC_VER
@@ -670,7 +671,7 @@ UStatus ur_tokenizeB( UThread* ut, UIndex blkN, int inputEncoding,
     errorMsg = msg; \
     goto error_token
 
-    intern = (ut == ut->nextThread) ? ur_internAtomUnlocked : ur_internAtom;
+    intern = ut->env->threadCount ? ur_internAtom : ur_internAtomUnlocked;
 
     ur_arrInit( &stack, sizeof(UIndex), 32 );
     ur_arrAppendInt32( &stack, blkN );
