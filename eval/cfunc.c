@@ -1880,6 +1880,8 @@ CFUNC(cfunc_pick)
     if( type == UT_HASHMAP )
     {
         const UCell* cell = hashmap_select( ut, a1, c2, res );
+        if( ! cell )
+            return UR_THROW;
         if( cell != res )
             *res = *cell;
         return UR_OK;

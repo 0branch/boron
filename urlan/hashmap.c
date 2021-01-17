@@ -307,7 +307,9 @@ int ur_mapRemove( UBuffer* map, uint32_t hashKey )
 #define ur_hashMapBuf(c)    (c)->series.buf
 #define ur_hashValBuf(c)    (c)->series.it
 
-#define hashmap_badKeyError ur_error(ut,UR_ERR_TYPE,"Invalid hash-map! key")
+#define hashmap_badKeyError(cell) \
+    ur_error(ut,UR_ERR_TYPE,"Invalid hash-map! key (%s)", \
+             ur_atomCStr(ut,ur_type(cell)))
 
 
 #define HASH_DATA(func,DT) \
@@ -440,8 +442,8 @@ static UBuffer* _makeHashMap( UThread* ut, int size, UCell* res )
 }
 
 
-int hashmap_insert( UThread* ut, const UCell* mapC, const UCell* keyC,
-                    const UCell* valueC )
+UStatus hashmap_insert( UThread* ut, const UCell* mapC, const UCell* keyC,
+                        const UCell* valueC )
 {
     UBuffer* map;
     UBuffer* blk;
@@ -455,7 +457,7 @@ int hashmap_insert( UThread* ut, const UCell* mapC, const UCell* keyC,
 
     key = ur_hashCell( ut, keyC );
     if( ! key )
-        return hashmap_badKeyError;
+        return hashmap_badKeyError(keyC);
 
     blk = ur_buffer( ur_hashValBuf(mapC) );
     i = ur_mapLookup( map, key );
@@ -515,7 +517,7 @@ static int hashmap_make( UThread* ut, const UCell* from, UCell* res )
         {
             key = ur_hashCell( ut, bi.it );
             if( ! key )
-                return hashmap_badKeyError;
+                return hashmap_badKeyError(bi.it);
 
             ur_mapInsert( map, key, index++ );
             ur_blkPush( blk, bi.it++ );
@@ -579,7 +581,7 @@ const UCell* hashmap_select( UThread* ut, const UCell* cell, const UCell* sel,
         key = ur_hashCell( ut, sel );
         if( ! key )
         {
-            hashmap_badKeyError;
+            hashmap_badKeyError(sel);
             return 0;
         }
         idx = ur_mapLookup( map, key );
@@ -621,7 +623,7 @@ void hashmap_toShared( UCell* cell )
 }
 
 
-int hashmap_remove( UThread* ut, const UCell* mapC, const UCell* keyC )
+UStatus hashmap_remove( UThread* ut, const UCell* mapC, const UCell* keyC )
 {
     UBuffer* map;
     UBuffer* blk;
@@ -635,7 +637,7 @@ int hashmap_remove( UThread* ut, const UCell* mapC, const UCell* keyC )
 
     key = ur_hashCell( ut, keyC );
     if( ! key )
-        return hashmap_badKeyError;
+        return hashmap_badKeyError(keyC);
 
     i = ur_mapRemove( map, key );
     if( i > -1 )
