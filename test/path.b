@@ -37,6 +37,7 @@ blk: [a 1 b [x 11 y (aa bb cc)]]
 probe blk/b/y/3
 blk/b/y/3: 44
 probe blk
+probe blk/nod
 
 
 print "---- integer"

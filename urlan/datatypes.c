@@ -3845,6 +3845,7 @@ none:
                 return wi.it;
             }
         }
+        goto none;
     }
     ur_error( ut, UR_ERR_SCRIPT, "block select expected int!/word!" );
     return 0;

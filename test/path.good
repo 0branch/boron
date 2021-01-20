@@ -15,6 +15,7 @@ path! a/'b word! lit-word!
 33 44
 cc
 [a 1 b [x 11 y (aa bb 44)]]
+none
 ---- integer
 foo word!
 -900 int!
