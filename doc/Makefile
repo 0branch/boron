@@ -1,4 +1,4 @@
-STYLE = lsr.css
+STYLE = css/lsr-doc.css
 PDOPT = -s -N -f markdown
 
 
