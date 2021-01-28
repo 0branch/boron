@@ -1,6 +1,6 @@
 #!/usr/bin/boron -sp
 /*
-	Copr - Compile Program v0.2.0
+	Copr - Compile Program v0.2.1
 	Copyright 2021 Karl Robillard
 	Documentation is at http://urlan.sourceforge.net/copr.html
 */
@@ -44,11 +44,14 @@ benv: context [
 	asm: "as"
 	cc:  "cc -c -pipe -Wall -W -Wdeclaration-after-statement"
 	c++: "c++ -c -pipe -Wall -W"
-	link_c: "cc"
-	link_c++: "c++"
+	link_c: "cc -o "
+	link_c++: "c++ -o "
+	link_lib: "ar rc "
+	obj_opt: " -o "
 	obj_suffix: %.o
 	lib_prefix: %lib
 	lib_suffix: %.a
+	libpath_opt: " -L"
 	shlib_suffix: %.so
 	debug: "-g -DDEBUG"
 	debug-link: ""
@@ -62,6 +65,8 @@ benv: context [
 	moc: "moc-qt5"
 	qrc: "rcc-qt5"
 ]
+
+append-pair: func [series a b] [append append series a b]
 
 compile-rules: [
 	ext-map: [
@@ -164,7 +169,7 @@ compile-rules: [
 			cc ' ' src-file ' ' either debug_mode debug release
 			inc-args opt_compile
 			ne-string select custom_flags src-file
-			" -o " out-file
+			obj_opt out-file
 		]
 		none
 	]
@@ -177,7 +182,7 @@ compile-rules: [
 			c++ ' ' src-file ' ' either debug_mode debug release
 			inc-args opt_compile opt_compile_cxx
 			ne-string select custom_flags src-file
-			" -o " out-file
+			obj_opt out-file
 		]
 		none
 	]
@@ -244,7 +249,7 @@ forall args [
 ; Show help after parsing args to get any project_file.
 if show_help [
 	context [
-		usage: {copr version 0.2.0
+		usage: {copr version 0.2.1
 
 Copr Options:
   -a              Archive source files.
@@ -332,8 +337,9 @@ if benv-target: select [
 		asm: "x86_64-w64-mingw32-as"
 		cc:  "x86_64-w64-mingw32-gcc -c -pipe -Wall -W -Wdeclaration-after-statement"
 		c++: "x86_64-w64-mingw32-g++ -c -pipe -Wall -W"
-		link_c: "x86_64-w64-mingw32-gcc"
-		link_c++: "x86_64-w64-mingw32-g++"
+		link_c: "x86_64-w64-mingw32-gcc -o "
+		link_c++: "x86_64-w64-mingw32-g++ -o "
+		link_lib: "x86_64-w64-mingw32-ar rc "
 		opengl-link: "-lopengl32"
 		sys_windows: " -mwindows"
 		qt_inc: %/usr/x86_64-w64-mingw32/sys-root/mingw/include/qt5
@@ -343,11 +349,16 @@ if benv-target: select [
 	]
 	win32 [
 		asm: "ml64.exe"
-		cc:  "cl.exe /nologo -W3 -D_CRT_SECURE_NO_WARNINGS"
+		cc:  "cl.exe /c /nologo -W3 -D_CRT_SECURE_NO_WARNINGS"
 		c++: join cc " /EHsc"
-		link_c: link_c++: "link.exe /nologo"
+		link_c:
+		link_c++: "link.exe /nologo /out:"
+		link_lib: "lib.exe /nologo /out:"
+		obj_opt: " /Fo"
+		obj_suffix: %.obj
 		lib_prefix: ""
 		lib_suffix: %.lib
+		libpath_opt: " /libpath:"
 		shlib_suffix: %.dll
 		debug:		"/MDd -Zi -DDEBUG"
 		debug-link: "/DEBUG"
@@ -421,7 +432,6 @@ context [
 	]
 ]
 
-append-pair: func [series a b] [append append series a b]
 new-block: does [make block! 0]
 
 ; Read into an established buffer to avoid mallocs.
@@ -577,9 +587,12 @@ compile-data: context [
 			mark-sol rejoin com
 	]
 
-	stringify: func [blk str-out flag /local it] [
+	stringify: func [blk str-out flag /suffix /local it] [
 		if blk [
-			foreach it blk [append-pair str-out flag it]
+			foreach it blk pick [
+				[append append-pair str-out ' ' it flag]
+				[append-pair str-out flag it]
+			] suffix
 		]
 	]
 
@@ -599,8 +612,12 @@ compile-data: context [
 			output_file: tfile
 
 			stringify include_paths inc-args " -I"
-			stringify link_paths    lib-args " -L"
-			stringify link_libs     lib-args " -l"
+			stringify link_paths    lib-args benv/libpath_opt
+			either :win32 [
+				stringify/suffix link_libs lib-args ".lib"
+			][
+				stringify link_libs lib-args " -l"
+			]
 
 			foreach f source_files [
 				compile-rules/emit none f
@@ -663,18 +680,24 @@ set 'default func [blk] [
 exe-link: bind [
 	push-command ["Link " output_file] [
 		either has-c++ link_c++ link_c
-		either cfg_console sys_console sys_windows
+		output_file
 		either debug_mode debug-link ""
-		opt_link obj-args lib-args " -o " output_file
+		opt_link obj-args lib-args
 	]
 	finish-job 'exe-job output_file
 ] benv
 
 ; Build commands for an executable binary.
 set 'exe func [basename spec] [
-	outf: basename
-	if any [:win32 :mingw] [outf: join basename %.exe]
-	compile-target basename outf spec exe-link
+	either any [:win32 :mingw] [
+		lcmd: copy/deep exe-link
+		append third lcmd [
+			either cfg_console benv/sys_console benv/sys_windows
+		]
+		compile-target basename join basename %.exe spec lcmd
+	][
+		compile-target basename basename spec exe-link
+	]
 ]
 
 ; Build commands for a static library.
@@ -684,7 +707,7 @@ set 'lib func [basename spec] [
 		; TODO: Support win32, etc.
 		either empty? link_libs [
 			push-command ["Archive " output_file] [
-				"ar rc " output_file opt_link obj-args
+				benv/link_lib output_file opt_link obj-args
 			]
 		][
 			; Concatenate other libraries.
@@ -693,12 +716,14 @@ set 'lib func [basename spec] [
 				" -o " ne-string obj_dir name %lib.o
 			]
 			push-command ["Archive " output_file] [
-				"ar rc " output_file ' ' ne-string obj_dir name %lib.o
+				benv/link_lib output_file ' ' ne-string obj_dir name %lib.o
 			]
 		]
-		push-command none ["ranlib " output_file]
-		ifn debug_mode [
-			push-command none ["strip -d " output_file]
+		unix [
+			push-command none ["ranlib " output_file]
+			ifn debug_mode [
+				push-command none ["strip -d " output_file]
+			]
 		]
 		finish-job 'library-job output_file
 	]
