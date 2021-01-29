@@ -13,9 +13,7 @@ target-os: none
 cli_options: ""
 verbose: 2
 
-archive:
-show_help:
-do_clean:
+action:
 dry_run:
 clear_caches:
 debug_mode: false
@@ -221,9 +219,9 @@ compile-rules: [
 
 forall args [
 	switch first args [
-		"-a" [archive: true]
-		"-h" [show_help: true]
-		"-c" [do_clean: true]
+		"-a" [action: 'archive]
+		"-h" [action: 'help]
+		"-c" [action: 'clean]
 		"-d" [debug_mode: true]
 		"-e" [build_env: second ++ args]
 		"-j" [
@@ -247,7 +245,7 @@ forall args [
 ]
 
 ; Show help after parsing args to get any project_file.
-if show_help [
+if eq? action 'help [
 	context [
 		usage: {copr version 0.2.1
 
@@ -983,20 +981,6 @@ if path [change-dir path]
 csum: checksum join current-dir project_file
 cache-file: join cache-dir slice to-text csum 2,16
 
-if do_clean [
-	if exists? cache-file [delete cache-file]
-	do bind load project_file target-func
-	; delete target (obj_dir gen_dir)?
-	foreach [src out cmd] job-list [
-		either block? out [
-			forall out [try [delete first out]]
-		][
-			try [delete out]
-		]
-	]
-	quit
-]
-
 ;info-size: :second
 info-time: :third
 
@@ -1040,26 +1024,41 @@ either all [
 	]
 ]
 
-if archive [
-	tmp: new-block
-	foreach [src out cmd] job-list [
-		ifn word? src [
-			append tmp src
-			if dep: select file-inf src [
-				forall dep [
-					append tmp first dep
+switch action [
+	clean [
+		if exists? cache-file [delete cache-file]
+		; delete target (obj_dir gen_dir)?
+		foreach [src out cmd] job-list [
+			either block? out [
+				forall out [try [delete first out]]
+			][
+				try [delete out]
+			]
+		]
+		quit
+	]
+
+	archive [
+		tmp: new-block
+		foreach [src out cmd] job-list [
+			ifn word? src [
+				append tmp src
+				if dep: select file-inf src [
+					forall dep [
+						append tmp first dep
+					]
 				]
 			]
 		]
-	]
 
-	append-pair clear ~rbuf "tar czf project.tar.gz " project_file
-	foreach src intersect tmp tmp [
-		append-pair ~rbuf ' ' src
-	]
+		append-pair clear ~rbuf "tar czf project.tar.gz " project_file
+		foreach src intersect tmp tmp [
+			append-pair ~rbuf ' ' src
+		]
 
-	either dry_run [print ~rbuf] [~execute~ ~rbuf]
-	quit
+		either dry_run [print ~rbuf] [~execute~ ~rbuf]
+		quit
+	]
 ]
 
 vprint 3 [mold file-inf mold job-list]
