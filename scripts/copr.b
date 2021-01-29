@@ -45,6 +45,7 @@ benv: context [
 	link_c: "cc -o "
 	link_c++: "c++ -o "
 	link_lib: "ar rc "
+	cat_lib: "ld -Ur -o "
 	obj_opt: " -o "
 	obj_suffix: %.o
 	lib_prefix: %lib
@@ -338,6 +339,7 @@ if benv-target: select [
 		link_c: "x86_64-w64-mingw32-gcc -o "
 		link_c++: "x86_64-w64-mingw32-g++ -o "
 		link_lib: "x86_64-w64-mingw32-ar rc "
+		cat_lib: "x86_64-w64-mingw32-ld -Ur -o "
 		opengl-link: "-lopengl32"
 		sys_windows: " -mwindows"
 		qt_inc: %/usr/x86_64-w64-mingw32/sys-root/mingw/include/qt5
@@ -702,16 +704,15 @@ set 'exe func [basename spec] [
 set 'lib func [basename spec] [
 	outf: rejoin [benv/lib_prefix basename benv/lib_suffix]
 	compile-target basename outf spec [
-		; TODO: Support win32, etc.
 		either empty? link_libs [
 			push-command ["Archive " output_file] [
 				benv/link_lib output_file opt_link obj-args
 			]
 		][
 			; Concatenate other libraries.
+			; TODO: Support win32.
 			push-command none [
-				"ld -Ur" obj-args lib-args
-				" -o " ne-string obj_dir name %lib.o
+				benv/cat_lib ne-string obj_dir name %lib.o obj-args lib-args
 			]
 			push-command ["Archive " output_file] [
 				benv/link_lib output_file ' ' ne-string obj_dir name %lib.o
