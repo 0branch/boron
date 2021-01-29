@@ -145,13 +145,14 @@ int64_t ur_fileSize( const char* path )
 
 static double ft_to_seconds( const FILETIME* ft )
 {
-    double sec;
-    // FIXME
-    // Convert to unix time (since 1969)?
-    sec  = ((double) ft->dwHighDateTime) * 16777215.0;
-    sec += ((double) ft->dwLowDateTime) / 256.0;
-    //return sec;
-    return 0.0;
+    LARGE_INTEGER date;
+    uint64_t ms;
+
+    date.HighPart = ft->dwHighDateTime;
+    date.LowPart  = ft->dwLowDateTime;
+    // Convert to milliseconds since UNIX epoch.
+    ms = (date.QuadPart - 11644473600000LL * 10000) / 10000;
+    return ((double) ms) / 1000.0;
 }
 
 
