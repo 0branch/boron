@@ -58,32 +58,35 @@ This is a basic example of how to use the Boron interpreter.
   UBuffer) for a complex type.
   It will always be 16 bytes.
   Normally cells are contained in block UBuffers.
-*/
-/** \var UCell::id
+
+  \var UCell::id
   Basic type identification.
-*/
-/** \var UCell::datatype
+
+  \var UCell::datatype
   For datatype! type.
-*/
-/** \var UCell::word
+
+  \var UCell::word
   For word!, lit-word!, set-word!, get-word! types.
-*/
-/** \var UCell::number
-  For int!, decimal! types.
-*/
-/** \var UCell::coord
+
+  \var UCell::number
+  For int!, double! types.
+
+  \var UCell::coord
   For coord! type.
-*/
-/** \var UCell::vec3
+
+  \var UCell::vec3
   For vec3! type.
-*/
-/** \var UCell::series
+
+  \var UCell::series
   For binary!, bitset!, string!, file!, block!, paren!, path! types.
-*/
-/** \var UCell::context
+
+  \var UCell::context
   For context! type.
-*/
-/** \var UCell::error
+
+  \var UCell::port
+  For port! type.
+
+  \var UCell::error
   For error! type.
 */
 
@@ -94,7 +97,7 @@ This is a basic example of how to use the Boron interpreter.
   with ur_setId().
 */
 /** \var UCellId::type
-  UrlanDataType. */
+  ::UrlanDataType. */
 /** \var UCellId::flags
   Bit field for type-specific properties.
   The only flag defined for all datatypes is \c UR_FLAG_SOL.
@@ -104,43 +107,61 @@ This is a basic example of how to use the Boron interpreter.
 */
 
 
+/** \struct UCellDatatype
+  UCell structure for datatype! type.
+
+  \var UCellDatatype::n
+  The ::UrlanDataType.  It will be UrlanDataType::UT_TYPEMASK if multiple mask
+  bits are set.
+  This is normally accessed with the #ur_datatype() macro.
+
+  \var UCellDatatype::mask0
+  Low 32 bits of type mask.
+
+  \var UCellDatatype::mask1
+  Middle 32 bits of type mask.
+*/
+
+
 /** \struct UCellWord
   UCell structure for word types.
-*/
-/** \var UCellWord::type
-  UrlanDataType.
-*/
-/** \var UCellWord::flags
+
+  \var UCellWord::type
+  ::UrlanDataType.
+
+  \var UCellWord::flags
   Bit field for type-specific properties.
-*/
-/** \var UCellWord::binding
-  Specifies what UCellWord::ctx refers to.
-*/
-/** \var UCellWord::_pad0
+
+  \var UCellWord::binding
+  Specifies what ::UrlanWordBindings the UCellWord::ctx refers to.
+
+  \var UCellWord::_pad0
   Padding.
-*/
-/** \var UCellWord::ctx
+
+  \var UCellWord::ctx
   Normally the buffer id of a context.
-*/
-/** \var UCellWord::index
+
+  \var UCellWord::index
   Normally the word index into a context.
-*/
-/** \var UCellWord::atom
+
+  \var UCellWord::atom
   The name of the word.
 */
 
 
 /** \struct UCellNumber
   UCell structure for number types.
-*/
-/** \var UCellNumber::id
+
+  \var UCellNumber::id
   Type and flags.
-*/
-/** \var UCellNumber::i
-  Integer for logic!, char!, and int! types.
-*/
-/** \var UCellNumber::d
-  Double for decimal!, date!, and time! type.
+
+  \var UCellNumber::i64
+  Integer for char! and int! types.
+  This should be accessed with the #ur_char() or #ur_int() macros.
+
+ \var UCellNumber::d
+  Double for double!, date!, and time! type.
+  This should be accessed with the #ur_double() macro.
 */
 
 
@@ -162,6 +183,17 @@ This is a basic example of how to use the Boron interpreter.
 */
 
 
+/** \struct UCellVec3
+  UCell structure for vec3! type.
+
+  \var UCellVec3::id
+  The standard UCell header.
+
+  \var UCellVec3::xyz
+  The three float values.
+*/
+
+
 /** \struct UCellSeries
   UCell structure for series types.
 */
@@ -179,13 +211,27 @@ This is a basic example of how to use the Boron interpreter.
 */
 
 
+/** \struct UCellError
+  UCell structure for error! type.
+
+  \var UCellError::exType
+  The ::UrlanErrorType.
+
+  \var UCellError::messageStr
+  Index of message string! buffer.
+
+  \var UCellError::traceBlk
+  Index of block! buffer where error occurred.
+*/
+
+
 /** \struct UBuffer urlan.h
   \ingroup urlan_core
   The UBuffer struct holds information about a resource, usually a
   chuck of memory.
 */
 /** \var UBuffer::type
-  UrlanDataType identifier.
+  ::UrlanDataType identifier.
 */
 /** \var UBuffer::elemSize
   This typically holds the byte size of each element.

@@ -37,6 +37,9 @@
   Indentifers for the built-in datatypes.
   These values match the datatype name atom.
 */
+/** \var UrlanDataType::UT_TYPEMASK
+  Used in UCellDatatype to declare a multi-type datatype!.
+*/
 /** \enum UrlanWordBindings
   Values for UCellWord::binding and ur_bind().
 */

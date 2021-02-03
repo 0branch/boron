@@ -361,6 +361,9 @@ UDatatype dt_unset =
 //----------------------------------------------------------------------------
 // UT_DATATYPE
 
+/** \def ur_datatype
+  Access the ::UrlanDataType that a UCellDatatype represents.
+*/
 
 /**
   Test if cell is of a certain datatype.
