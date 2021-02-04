@@ -4544,7 +4544,7 @@ CFUNC(cfunc_sameQ)
         b
     return: True if two values are equivalent.
     group: data, math
-    see: eq?, ne?, lt?, gt?, same?
+    see: eq?, ne?, gt?, lt?, ge?, le?, same?
 */
 CFUNC(cfunc_equalQ)
 {
@@ -4560,7 +4560,7 @@ CFUNC(cfunc_equalQ)
         b
     return: True if two values are not equivalent.
     group: data, math
-    see: eq?, gt?, lt?
+    see: equal?, eq?, gt?, lt?, ge?, le?
 */
 CFUNC(cfunc_neQ)
 {
@@ -4576,7 +4576,7 @@ CFUNC(cfunc_neQ)
         b
     return: True if first value is greater than the second.
     group: math
-    see: eq?, lt?, ne?
+    see: lt?, eq?, ne?, ge?, le?
 */
 CFUNC(cfunc_gtQ)
 {
@@ -4592,12 +4592,44 @@ CFUNC(cfunc_gtQ)
         b
     return: True if first value is less than the second.
     group: math
-    see: eq?, gt?, ne?
+    see: gt?, eq?, ne?, ge?, le?
 */
 CFUNC(cfunc_ltQ)
 {
     ur_setId(res, UT_LOGIC);
     ur_logic(res) = (ur_compare( ut, a1, a2 ) < 0) ? 1 : 0;
+    return UR_OK;
+}
+
+
+/*-cf-
+    ge?
+        a
+        b
+    return: True if first value is greater than or equal to the second.
+    group: math
+    see: le?, eq?, ne?, gt?, lt?
+*/
+CFUNC(cfunc_geQ)
+{
+    ur_setId(res, UT_LOGIC);
+    ur_logic(res) = (ur_compare( ut, a1, a2 ) >= 0) ? 1 : 0;
+    return UR_OK;
+}
+
+
+/*-cf-
+    le?
+        a
+        b
+    return: True if first value is less than or equal to the second.
+    group: math
+    see: ge?, eq?, ne?, gt?, lt?
+*/
+CFUNC(cfunc_leQ)
+{
+    ur_setId(res, UT_LOGIC);
+    ur_logic(res) = (ur_compare( ut, a1, a2 ) <= 0) ? 1 : 0;
     return UR_OK;
 }
 

@@ -1,0 +1,12 @@
+---- numbers <
+-1 	 0 	 ( . . . T . T ) int! int!
+-1 	 0.0 	 ( . . . T . T ) int! double!
+-1.0 	 0.0 	 ( . . . T . T ) double! double!
+---- numbers =
+0 	 0 	 ( T T . . T T ) int! int!
+0 	 0.0 	 ( . T . . T T ) int! double!
+0.0 	 0.0 	 ( T T . . T T ) double! double!
+---- numbers >
+1 	 0 	 ( . . T . T . ) int! int!
+1 	 0.0 	 ( . . T . T . ) int! double!
+1.0 	 0.0 	 ( . . T . T . ) double! double!
