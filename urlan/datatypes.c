@@ -2603,8 +2603,9 @@ void bitset_pick( const UBuffer* buf, UIndex n, UCell* res )
 {
     if( n > -1 && n < (buf->used * 8) )
     {
-        ur_setId(res, UT_INT);
-        ur_int(res) = bitIsSet( buf->ptr.b, n ) ? 1 : 0;
+        ur_setId(res, UT_LOGIC);
+        if( bitIsSet( buf->ptr.b, n ) )
+            ur_logic(res) = 1;
     }
     else
         ur_setId(res, UT_NONE);
@@ -2616,9 +2617,24 @@ void bitset_poke( UBuffer* buf, UIndex n, const UCell* val )
     if( n > -1 && n < (buf->used * 8) )
     {
         if( ur_true(val) )
+        {
+            if( ur_is(val, UT_INT) )
+            {
+                if( ur_int(val) == 0 )
+                    goto clear;
+            }
+            else if( ur_is(val, UT_DOUBLE) )
+            {
+                if( ur_double(val) == 0.0 )
+                    goto clear;
+            }
             setBit( buf->ptr.b, n );
+        }
         else
+        {
+clear:
             clrBit( buf->ptr.b, n );
+        }
     }
 }
 

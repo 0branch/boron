@@ -15,6 +15,13 @@ prin '^/'
 print "---- Bitset poke"
 foreach [i v] [2 true 'A' 1 'b' false] [poke c i do v]
 probe c
+b: make bitset! 32
+poke b 12 2
+poke b 13 0.02
+probe b
+poke b 12 0
+poke b 13 0.0
+probe b
 
 
 print "---- Bitset operators"
