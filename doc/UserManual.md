@@ -141,8 +141,8 @@ Datatype!
 ---------
 
 A value which represents a type or set of types.  To declare a type use it's
-type word, which have names ending with an exclamation (!) character.
-To declare a set use a series of type words separated by slashes (/).
+type word, which have names ending with an exclamation (`!`) character.
+To declare a set use a series of type words separated by slashes (`/`).
 
 	none!
 	char!/int!/double!
@@ -151,7 +151,13 @@ To declare a set use a series of type words separated by slashes (/).
 None!
 -----
 
-A value used to denote nothing.
+None is a type used to denote nothing.  This is often a return value of
+functions which search a series but find no matches.
+
+	)> select [a b] 'c
+	== none
+
+Most conditional functions treat *none* as a false logic! value.
 
 
 Logic!
@@ -159,12 +165,17 @@ Logic!
 
 A boolean value of *true* or *false*.
 
+The words *yes* & *no* are defined as synonyms for *true* & *false*.
+
+	)> yes
+	== true
+
 
 Char!
 -----
 
 A Unicode character.  A char! can be specified with either a UTF-8 character
-between two single quotes, or an ASCII caret (^) sequence between two single
+between two single quotes, or an ASCII caret (`^`) sequence between two single
 quotes.
 
 The following caret sequences can be used:
@@ -188,7 +199,7 @@ Int!
 ----
 
 A 64-bit integer number.
-Integers can be specified in decimal, or if prefixed with '0x', as hexadecimal.
+Integers can be specified in decimal, or if prefixed with `0x`, as hexadecimal.
 
 Example integers:
 
@@ -224,7 +235,7 @@ A coord! can hold up to six 16-bit integers.
 Vec3!
 -----
 
-Vec3 stores 3 floating point values.
+Vec3 is a simple value that stores three floating point values.
 
 A Vec3 is specified as two or three decimal numbers separated by commas.
 If none of the numbers has a decimal point then the value will be a coord!.
@@ -251,7 +262,7 @@ Example words:
 Lit-word!
 ---------
 
-A literal word is a variant of a *word!* that begins with a single quote (')
+A literal word is a variant of a *word!* that begins with a single quote (`'`)
 character.
 
 It evaluates to a word! value rather than the value from any bound context.
@@ -263,7 +274,7 @@ It evaluates to a word! value rather than the value from any bound context.
 Set-word!
 ---------
 
-A set-word value is a variant of a *word!* that ends with a colon (:)
+A set-word value is a variant of a *word!* that ends with a colon (`:`)
 character.
 
 It is used to assign a value to a word.
@@ -277,7 +288,7 @@ It is used to assign a value to a word.
 Get-word!
 ---------
 
-A get-word value is a variant of a *word!* that begins with a colon (:)
+A get-word value is a variant of a *word!* that begins with a colon (`:`)
 character.
 
     :my-function
@@ -290,7 +301,7 @@ For many datatypes this will be the same as using the word itself, but for
 Option!
 -------
 
-An option is a variant of a *word!* that begins with a slash (/) character.
+An option is a variant of a *word!* that begins with a slash (`/`) character.
 
 	/outside
 
@@ -302,7 +313,7 @@ Binary!
 
 A binary value references a series of bytes.
 Binary data is specified with hexadecimal values following a hash and
-opening brace (#{) and is terminated with a closing brace (}).
+opening brace (`#{`) and is terminated with a closing brace (`}`).
 White space is allowed and ignored inside the braces.
 
 ~~~~
@@ -318,7 +329,7 @@ White space is allowed and ignored inside the braces.
 ~~~~
 
 Alternative encodings for base 2 and base 64 can be used by putting the
-base number before the initial hash (#) character.
+base number before the initial hash (`#`) character.
 
     )> print to-string 2#{01101000 01100101 01101100 01101100 01101111}
     hello
@@ -326,7 +337,7 @@ base number before the initial hash (#) character.
     )> print to-string 64#{aGVsbG8=}
     hello
 
-Partial base 64 triplets will automatically be padded with equal (=)
+Partial base 64 triplets will automatically be padded with equal (`=`)
 characters.
 
     )> print 64#{aGVsbG8}   ; "hello"
@@ -344,14 +355,30 @@ Use the *encode* function to change the encoding base.
 Bitset!
 -------
 
+Bitset is an array of bits padded out to a multiple of eight bits.
+
+The *pick* & *poke* functions can be used to get and set individual bits.
+Poking a value of none!, false logic!, 0, or 0.0 will clear a bit, while
+any other value will set it.
+
+	)> b: make bitset! 32
+	== make bitset! #{00000000}
+	)> poke b 12 true
+	== make bitset! #{00080000}
+
 The *charset* function is a shortcut for ``make bitset!``.
 
+	c: charset "ABC"
+	)> pick c 'A'
+	== true
+	)> pick c 'Z'
+	== false
 
 String!
 -------
 
-Strings are UTF-8 text enclosed with either double quotes (") or braces ({}).
-They can include the same caret character sequences as [char!](#char)
+Strings are UTF-8 text enclosed with either double quotes (`"`) or braces
+(`{}`).  They can include the same caret character sequences as [char!](#char)
 values.
 
 Double quoted strings cannot contain a new line character or double quote
@@ -390,7 +417,7 @@ File!
 -----
 
 A file value is a string which names a file or directory on the local
-filesystem.  They begin with a percent (%) character.  If any spaces are
+filesystem.  They begin with a percent (`%`) character.  If any spaces are
 present in the path then it must be enclosed in double quotes.
 
 File examples:
@@ -407,7 +434,7 @@ Vectors hold a series of numbers using less memory than a [block!](#block).
 All numbers in a vector are integers or floating point values of the same size.
 
 A 32-bit vector! is specified with numbers following a hash and opening square
-bracket (#[) and are terminated with a closing square bracket (]).
+bracket (`#[`) and are terminated with a closing square bracket (`]`).
 If the first number contains a decimal point, all numbers will be floating
 point, otherwise they will all be integers.
 
@@ -465,7 +492,7 @@ Path!
 -----
 
 A path is a word! followed by one or more word!/get-word!/int! values
-separated by slash (/) characters.
+separated by slash (`/`) characters.
 
 Example paths:
 
