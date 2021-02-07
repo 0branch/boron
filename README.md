@@ -17,7 +17,7 @@ How to compile
 ==============
 
 These commands can be used to build the shared library and interpreter program
-on Linux and Mac OS:
+on UNIX systems:
 
     ./configure
     make
@@ -26,10 +26,12 @@ To see the configure options run:
 
     ./configure -h
 
-To install on Linux and Mac OS use the INSTALL makefile.  If the DESTDIR is
-not provided then the files will be placed under `/usr/local`.
+Use the make `install` & `install-dev` targets to copy files into the local
+system directories.  If the DESTDIR is not provided then the files will be
+placed under `/usr/local`.
 
-    make -f INSTALL DESTDIR=/usr
+    sudo make install DESTDIR=/usr
+    sudo make install-dev DESTDIR=/usr
 
 
 Boron links
