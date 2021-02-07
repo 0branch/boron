@@ -3,7 +3,6 @@
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
   echo "Configuration Options:"
   echo "  -h, --help      Display this help and exit"
-  echo "  --cleanA        Remove boronA and build files"
   echo -e "\nRemove Standard Features:"
   echo "  --no-checksum   Remove the checksum function"
   echo "  --no-compress   Remove the compress function"
@@ -25,7 +24,6 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
 fi
 
 
-CLEAN_A=0
 CFG_ASSEM=0
 CFG_CHECKSUM=1
 CFG_COMPRESS=zlib
@@ -41,8 +39,6 @@ CFG_ATOM_NAMES=none
 
 while [ "$1" != "" ]; do
   case $1 in
-    --cleanA)
-      CLEAN_A=1 ;;
     --no-checksum)
       CFG_CHECKSUM=0 ;;
     --no-compress)
@@ -82,14 +78,24 @@ while [ "$1" != "" ]; do
 done
 
 
-echo "Generating project.config"
-rm -f project.config
+echo "Generating config.opt & project.config"
+rm -f config.opt project.config
 
 function m2-word {
 if [ $2 = 0 ]; then
   echo "$1: false" >> project.config
 else
   echo "$1: '$2" >> project.config
+  case $2 in
+    gnu)
+	  echo -n " -DCONFIG_READLINE" >> config.opt ;;
+    linenoise)
+	  echo -n " -DCONFIG_LINENOISE" >> config.opt ;;
+    zlib)
+	  echo -n " -DCONFIG_COMPRESS=1" >> config.opt ;;
+    bzip2)
+	  echo -n " -DCONFIG_COMPRESS=2" >> config.opt ;;
+  esac
 fi
 }
 function m2-logic {
@@ -97,17 +103,20 @@ if [ $2 = 0 ]; then
   echo "$1: false" >> project.config
 else
   echo "$1: true" >> project.config
+  echo -n " -DCONFIG_${1^^}" >> config.opt
 fi
 }
 function m2-int {
 if [ $2 != 'none' ]; then
   echo "$1: $2" >> project.config
+  echo -n " -DCONFIG_${1^^}=$2" >> config.opt
 fi
 }
 
 m2-logic "assemble" $CFG_ASSEM
 m2-logic "checksum" $CFG_CHECKSUM
 m2-word  "compress" $CFG_COMPRESS
+m2-logic "hashmap"  1
 m2-logic "execute"  $CFG_EXECUTE
 m2-logic "random"   $CFG_RANDOM
 m2-word  "readline" $CFG_READLINE
@@ -117,58 +126,3 @@ m2-logic "timecode" $CFG_TIMECODE
 m2-logic "thread"   $CFG_THREAD
 m2-int   "atom-limit" $CFG_ATOM_LIMIT
 m2-int   "atom-names" $CFG_ATOM_NAMES
-
-
-if command -v gcc >/dev/null; then
-  rm -f MakefileA configure.log
-
-  function emit {
-    echo -e $1 >> MakefileA
-  }
-
-  emit "\nCFLAGS=-Iinclude -Iurlan -Ieval -Isupport -std=gnu99 -pedantic -Wall -W -O3"
-  emit "LIBS=-lm"
-  emit "OBJS=env.o array.o binary.o block.o coord.o date.o path.o \\"
-  emit "	string.o context.o gc.o serialize.o tokenize.o \\"
-  emit "	vector.o parse_block.o parse_string.o \\"
-  emit "	support/str.o support/mem_util.o support/quickSortIndex.o \\"
-  emit "	support/fpconv.o \\"
-  emit "	unix/os.o eval/boron.o eval/main.o eval/port_file.o eval/wait.o"
-  emit "\nboronA: \$(OBJS)\n\tgcc \$^ -o \$@ \$(LIBS)"
-  emit "\n%.o: %.c\n\tgcc -c \$(CFLAGS) \$< -o \$@"
-  emit "\n%.o: urlan/%.c\n\tgcc -c \$(CFLAGS) \$< -o \$@"
-  emit "\n.PHONY: clean\nclean:\n\trm -f boronA \$(OBJS)"
-
-  if which gmake >/dev/null 2>&1 ; then
-    MAKE=gmake
-  else
-    MAKE=make
-  fi
-  
-  if [ $CLEAN_A = 1 ]; then
-    $MAKE -f MakefileA clean
-    rm -f MakefileA
-    exit 0
-  fi
-
-  echo "Generating boronA binary to run m2"
-  if ! $MAKE -f MakefileA >> configure.log 2>&1 ; then
-    cat configure.log
-    exit 1
-  fi
-else
-  echo "No compiler found; no Makefile generated."
-  exit 1
-fi
-
-
-echo "Building GNU Makefile with m2"
-case `uname -s` in
-  Darwin)
-    M2T=m2_macx.b ;;
-  SunOS)
-    M2T=m2_sun.b ;;
-  *)
-    M2T=m2_linux.b ;;
-esac
-./boronA -s scripts/m2/m2 -t scripts/m2/$M2T
