@@ -1,0 +1,11 @@
+Package: boron
+Version: 2.0.5-1
+Section: interpreters
+Priority: optional
+Architecture: amd64
+Depends: libc6 (>= 2.2.5), zlib1g
+Maintainer: Karl Robillard <wickedsmoke@users.sf.net>
+Description: Scripting language and C library useful for building DSLs
+ Boron is an interpreted, prototype-based, scripting language similar to Rebol.
+ The interpreter and datatype system is a C library useful for building
+ domain specific languages embedded in C/C++ applications.
