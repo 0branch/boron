@@ -4942,7 +4942,7 @@ done:
 }
 
 
-extern int64_t str_hexToInt64( const char*, const char*, const char** pos );
+extern int64_t str_hexToInt64(const uint8_t*,const uint8_t*,const uint8_t**);
 
 /*-cf-
     to-hex
@@ -4972,8 +4972,8 @@ CFUNC(cfunc_to_hex)
             if( ur_strIsUcs2( si.buf ) && ur_is(a1, UT_STRING) )
                 n = 0;  // TODO: Implement for UCS2.
             else
-                n = str_hexToInt64( si.buf->ptr.c + si.it,
-                                    si.buf->ptr.c + si.end, 0 );
+                n = str_hexToInt64( si.buf->ptr.b + si.it,
+                                    si.buf->ptr.b + si.end, 0 );
             ur_setCellI64( res, n );
         }
             break;

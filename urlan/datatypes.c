@@ -825,8 +825,8 @@ UDatatype dt_char =
 // UT_INT
 
 
-extern int64_t str_toInt64( const char*, const char*, const char** pos );
-extern int64_t str_hexToInt64( const char*, const char*, const char** pos );
+extern int64_t str_toInt64( const uint8_t*, const uint8_t*, const uint8_t** );
+extern int64_t str_hexToInt64(const uint8_t*,const uint8_t*,const uint8_t**);
 
 #define MAKE_NO_UCS2(tn) \
     ur_error(ut,UR_ERR_INTERNAL,"make %s does not handle UCS2 strings",tn)
@@ -862,8 +862,8 @@ int int_make( UThread* ut, const UCell* from, UCell* res )
             }
             else
             {
-                const char* cp  = si.buf->ptr.c + si.it;
-                const char* end = si.buf->ptr.c + si.end;
+                const uint8_t* cp  = si.buf->ptr.b + si.it;
+                const uint8_t* end = si.buf->ptr.b + si.end;
                 if( (si.end - si.it) > 2 && (cp[0] == '0') && (cp[1] == 'x') )
                 {
                     ur_int(res) = str_hexToInt64( cp + 2, end, 0 );
@@ -1015,7 +1015,7 @@ UDatatype dt_int =
 // UT_DOUBLE
 
 
-extern double str_toDouble( const char*, const char*, const char** pos );
+extern double str_toDouble( const uint8_t*, const uint8_t*, const uint8_t** );
 
 int decimal_make( UThread* ut, const UCell* from, UCell* res )
 {
@@ -1044,8 +1044,8 @@ int decimal_make( UThread* ut, const UCell* from, UCell* res )
             if( ur_strIsUcs2(si.buf) )
                 return MAKE_NO_UCS2( "double!" );
             else
-                ur_double(res) = str_toDouble( si.buf->ptr.c + si.it,
-                                                si.buf->ptr.c + si.end, 0 );
+                ur_double(res) = str_toDouble( si.buf->ptr.b + si.it,
+                                               si.buf->ptr.b + si.end, 0 );
         }
             break;
         default:
@@ -1220,7 +1220,7 @@ UDatatype dt_double =
 // UT_TIME
 
 
-double str_toTime( const char* start, const char* end, const char** pos );
+double str_toTime( const uint8_t*, const uint8_t*, const uint8_t** );
 
 int time_make( UThread* ut, const UCell* from, UCell* res )
 {
@@ -1246,7 +1246,7 @@ int time_make( UThread* ut, const UCell* from, UCell* res )
             }
             else
             {
-                const char* cp  = si.buf->ptr.c;
+                const uint8_t* cp  = si.buf->ptr.b;
                 ur_setId(res, UT_TIME);
                 ur_double(res) = str_toTime( cp + si.it, cp + si.end, 0 );
             }
@@ -1357,7 +1357,7 @@ UDatatype dt_time =
 
 
 extern void date_toString( UThread*, const UCell*, UBuffer*, int );
-extern double ur_stringToDate( const char*, const char*, const char** );
+extern double ur_stringToDate(const uint8_t*,const uint8_t*,const uint8_t**);
 
 
 int date_make( UThread* ut, const UCell* from, UCell* res )
@@ -1379,9 +1379,9 @@ int date_make( UThread* ut, const UCell* from, UCell* res )
             }
             else
             {
-                const char* cp  = si.buf->ptr.c;
+                const uint8_t* cp  = si.buf->ptr.b;
                 ur_setId(res, UT_DATE);
-                ur_double(res) = ur_stringToDate( cp + si.it, cp + si.end, 0 );
+                ur_double(res) = ur_stringToDate(cp + si.it, cp + si.end, 0);
             }
         }
             break;

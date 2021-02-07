@@ -27,7 +27,8 @@
 #include "os.h"
 
 
-extern double str_toDouble( const char* it, const char* end, const char** pos );
+extern double str_toDouble( const uint8_t* it, const uint8_t* end,
+                            const uint8_t** pos );
 
 
 static char* append02d( char* cp, int n )
@@ -144,7 +145,7 @@ void date_toString( UThread* ut, const UCell* cell, UBuffer* str, int depth )
 }
 
 
-static int twoInt( const char* cp )
+static int twoInt( const uint8_t* cp )
 {
     int a, b;
     a = cp[0] - '0';
@@ -160,13 +161,14 @@ static int twoInt( const char* cp )
 /*
   Read ISO 8601 date and time notation (extended format only).
 */
-double ur_stringToDate( const char* start, const char* end, const char** pos )
+double ur_stringToDate( const uint8_t* start, const uint8_t* end,
+                        const uint8_t** pos )
 {
     // yyyy-mm-ddThh:mm:ss.fff[+/-hh:mm]
     // _123456789_123456789_123456789
 
     struct tm tmp;
-    const char* it;
+    const uint8_t* it;
     double sec = 0.0;
     int utc = 0;
     int offset;

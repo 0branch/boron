@@ -29,7 +29,7 @@
 #define inline  __inline
 #endif
 
-extern double ur_stringToDate( const char*, const char*, const char** );
+extern double ur_stringToDate(const uint8_t*,const uint8_t*,const uint8_t**);
 extern int vector_append( UThread*, UBuffer*, const UCell* );
 
 #define isDigit(v)     (('0' <= v) && (v <= '9'))
@@ -71,11 +71,12 @@ int64_t str_toInt64( const uint8_t* start, const uint8_t* end,
 }
 
 
-int64_t str_hexToInt64( const char* start, const char* end, const char** pos )
+int64_t str_hexToInt64( const uint8_t* start, const uint8_t* end,
+                        const uint8_t** pos )
 {
     int cn;
     int64_t n = 0;
-    const char* cp = start;
+    const uint8_t* cp = start;
 
     if( cp != end )
     {
@@ -738,7 +739,7 @@ proc:
                 while( (ch = CS_NEXT) > 0 && IS_HEX(ch) )
                     ;
                 cell = ur_blkAppendNew( BLOCK, UT_INT );
-                ur_int(cell) = str_hexToInt64( CCP token, CCP TOK_END, NULL );
+                ur_int(cell) = str_hexToInt64( token, TOK_END, NULL );
                 ur_setFlags( cell, UR_FLAG_INT_HEX );
                 goto set_sol;
             }
@@ -777,10 +778,10 @@ num_dot:
             }
             else if( ch == '-' )
             {
-                const char* pos;
+                const uint8_t* pos;
                 cell = ur_blkAppendNew( blk, UT_DATE );
-                ur_double(cell) = ur_stringToDate( CCP token, CCP end, &pos );
-                it = (const uint8_t*) pos;
+                ur_double(cell) = ur_stringToDate( token, end, &pos );
+                it = pos;
                 if( it == token )
                 {
                     syntaxErrorT( "Invalid date" );
