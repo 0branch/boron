@@ -1,7 +1,8 @@
 Summary: Scripting language and C library useful for building DSLs
 Name: boron
 Version: 2.0.4
-Release: 1%{?dist}
+#Release: 1%{?dist}
+Release: 1
 License: LGPLv3+
 URL: http://urlan.sf.net/boron
 Group: Development/Languages
@@ -36,19 +37,7 @@ export LD_LIBRARY_PATH=$(pwd)
 make -C test
 
 %install
-rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT%{_bindir}
-mkdir -p $RPM_BUILD_ROOT%{_includedir}/boron
-mkdir -p $RPM_BUILD_ROOT%{_libdir}
-install -s -m 755 boron $RPM_BUILD_ROOT%{_bindir}
-install -m 644 doc/boron.troff $RPM_BUILD_ROOT%{_mandir}/man1/boron.1
-sed -e 's~"urlan.h"~<boron/urlan.h>~' include/boron.h >boron.x
-install -m 644 -T boron.x           $RPM_BUILD_ROOT%{_includedir}/boron/boron.h
-install -m 644 include/urlan.h        $RPM_BUILD_ROOT%{_includedir}/boron
-install -m 644 include/urlan_atoms.h  $RPM_BUILD_ROOT%{_includedir}/boron
-install -m 755 -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}
-ln -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron.so
-ln -s libboron.so.%{version} $RPM_BUILD_ROOT%{_libdir}/libboron.so.2
+make DESTDIR="$RPM_BUILD_ROOT/usr" install install-dev
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -69,6 +58,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/boron/boron.h
 %{_includedir}/boron/urlan.h
 %{_includedir}/boron/urlan_atoms.h
+%{_datadir}/vim/vimfiles/syntax/boron.vim
 
 %changelog
 * Sun Dec 27 2020 Karl Robillard <wickedsmoke@users.sf.net> 2.0.4-1

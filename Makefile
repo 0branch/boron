@@ -147,7 +147,7 @@ endif
 endif
 
 install-dev:
-	mkdir -p $(INC_DIR) $(LIB_DIR) $(VIM_DIR)
+	mkdir -p $(INC_DIR) $(LIB_DIR)
 	sed -e 's~"urlan.h"~<boron/urlan.h>~' include/boron.h >boron.tmp
 	install -m 644 boron.tmp $(INC_DIR)/boron.h
 	rm boron.tmp
@@ -158,6 +158,7 @@ ifdef STATIC_LIB
 	install -m 644 $(BORON_LIB) $(LIB_DIR)
 endif
 ifneq ($(OS), Darwin)
+	mkdir -p $(VIM_DIR)
 	install -m 644 doc/boron.vim $(VIM_DIR)
 ifndef STATIC_LIB
 	ln -s $(BORON_LIB) $(LIB_DIR)/libboron.so
