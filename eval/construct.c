@@ -18,6 +18,9 @@
 */
 
 
+#define setBit(mem,n)   (mem[(n)>>3] |= 1<<((n)&7))
+
+
 static void ur_binAppendInt( UBuffer* bin, uint32_t n,
                              UAtom size, int bigEndian )
 {
@@ -178,7 +181,6 @@ static int sc_appendEval( UThread* ut, UBuffer* str, const UCell* val )
 static int string_construct( UThread* ut, UBuffer* str,
                              const UCell* inputC, const UCell* blkC )
 {
-#define sc_setBit(mem,n)    (mem[(n)>>3] |= 1<<((n)&7))
 #define SC_BIT_COUNT    256
     USeriesIter in;
     UBlockIt bi;
@@ -216,7 +218,7 @@ static int string_construct( UThread* ut, UBuffer* str,
         }
 
         if( ch >= 0 && ch < SC_BIT_COUNT )
-            sc_setBit( cset.ptr.b, ch );
+            setBit( cset.ptr.b, ch );
     }
 
     // Append to str with replacements.
@@ -273,16 +275,84 @@ match:
 }
 
 
+UStatus bitset_construct( UThread* ut, const UCell* strC, UCell* res )
+{
+    uint8_t* bits;
+    int c, prev;
+    int state;
+    int cmax = 0;
+    USeriesIter si;
+    UIndex start;
+
+    ur_seriesSlice( ut, &si, strC );
+    start = si.it;
+    ur_foreach( si )
+    {
+        c = ur_strChar( si.buf, si.it ) + 1;
+        if( cmax < c )
+            cmax = c;
+    }
+    if( cmax && cmax < 256 )
+        cmax = 256;
+
+    bits = ur_makeBitsetCell( ut, cmax, res )->ptr.b;
+    if( bits )
+    {
+        state = 0;
+        si.it = start;
+        ur_foreach( si )
+        {
+            c = ur_strChar( si.buf, si.it );
+            switch( state )
+            {
+                case 0:             // Initialize prev.
+                    prev = c;
+                    state = 1;
+                    break;
+                case 1:             // Prev is used.
+                    if( c == '-' )
+                    {
+                        if( prev != '-' )
+                            state = 2;
+                    }
+                    else
+                    {
+                        setBit( bits, prev );
+                        prev = c;
+                    }
+                    break;
+                case 2:             // Range
+                    if( prev > c )
+                    {
+                        cmax = prev;
+                        prev = c;
+                        c = cmax;
+                    }
+                    for( ; prev <= c; ++prev )
+                        setBit( bits, prev );
+                    state = 0;
+                    break;
+            }
+        }
+        if( state == 1 )
+            setBit( bits, prev );
+    }
+    return UR_OK;
+}
+
+
+extern int bitset_make( UThread* ut, const UCell* from, UCell* res );
+
 /*-cf-
     construct
         object  datatype!/binary!/string!
-        plan    block!
+        plan    string!/block!
     return: New value.
     group: data
 
     Make or append values with a detailed specification.
 
-    The string! spec. is simply pairs of search & replace values applied
+    The string! plan is simply pairs of search & replace values applied
     to a copy of an existing string.  Both the search pattern and replacement
     value types must be char! or string!.
 
@@ -295,36 +365,60 @@ match:
 
     It is much more efficient to replace text using construct than calling the
     replace function multiple times.  In the future more rules may be added.
+
+    For bitset! the plan is a string in which dash characters denote a range
+    of bits to set. Use two consecutive dashes to include the dash character
+    itself.  For example, a bitset of hexidecimal characters would be:
+
+        construct bitset! "a-fA-F0-9"
 */
 CFUNC(cfunc_construct)
 {
-    if( ! ur_is(a2, UT_BLOCK) )
-        return errorType( "construct expected block! plan" );
+    const UCell* plan = a1+1;
+    const UBuffer* in;
+    int dt;
 
     switch( ur_type(a1) )
     {
         case UT_DATATYPE:
-            if( ur_datatype(a1) == UT_BINARY )
+            dt = ur_datatype(a1);
+            if( dt == UT_BINARY )
             {
                 ur_makeBinaryCell( ut, 0, res );
                 goto con_binary;
+            }
+            else if( dt == UT_BITSET )
+            {
+                if( ur_is(plan, UT_STRING) )
+                    return bitset_construct( ut, plan, res );
+                if( ur_is(plan, UT_CHAR) )
+                    return bitset_make( ut, plan, res );
+                goto bad_plan;
             }
             break;
 
         case UT_BINARY:
             *res = *a1;
 con_binary:
-            return binary_construct( ut, a2, res );
+            if( ! ur_is(plan, UT_BLOCK) )
+                goto bad_plan1;
+            return binary_construct( ut, plan, res );
 
         case UT_STRING:
-        {
-            const UBuffer* in = ur_bufferSer(a1);
+            if( ! ur_is(plan, UT_BLOCK) )
+                goto bad_plan1;
+            in = ur_bufferSer(a1);
             return string_construct( ut,
                     ur_makeStringCell( ut, in->form, in->used, res ),  // gc!
-                    a1, a2 );
-        }
+                    a1, plan );
     }
-    return errorType( "construct expected binary!/string!" );
+    return boron_badArg( ut, ur_type(a1), 0 );
+
+bad_plan1:
+    dt = ur_type(a1);
+bad_plan:
+    return ur_error( ut, UR_ERR_TYPE, "Invalid plan type for construct %s",
+                     ur_atomCStr(ut,dt) );
 }
 
 

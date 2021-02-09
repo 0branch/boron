@@ -582,6 +582,8 @@ void     ur_binSlice( UThread*, UBinaryIter*, const UCell* cell );
 UStatus  ur_binSliceM( UThread*, UBinaryIterM*, const UCell* cell );
 void     ur_binToStr( UBuffer*, int encoding );
 
+UBuffer* ur_makeBitsetCell( UThread*, int bitCount, UCell* res );
+
 UIndex   ur_makeString( UThread*, int enc, int size );
 UBuffer* ur_makeStringCell( UThread*, int enc, int size, UCell* cell );
 UIndex   ur_makeStringLatin1( UThread*, const uint8_t* it, const uint8_t* end );

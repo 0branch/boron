@@ -191,4 +191,5 @@ EXPORTS
    ur_now                    @189
    checksum_crc32            @190
    ur_parseBlockI            @191
-;   ur_stringToTimeCode       @192
+   ur_makeBitsetCell         @192
+;   ur_stringToTimeCode       @193

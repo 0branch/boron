@@ -41,3 +41,10 @@ probe same? c c
 probe same? c d
 probe eq?   c d
 probe eq?   c a
+
+
+print "---- Charset range"
+probe n: make bitset! s: "_0-9A-F"
+probe a: make bitset! "_0123456789ABCDEF"
+probe b: charset s
+print [eq? n b eq? a b]

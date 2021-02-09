@@ -8,7 +8,7 @@ eq?: :equal?
 tail?: :empty?
 close: :free
 context: func [b block!] [make context! b]
-charset: func [s char!/string!] [make bitset! s]
+charset: func [s char!/string!] [construct bitset! s]
 error: func [s string! /no-trace] [throw make error! s]
 
 join: func [a b] [

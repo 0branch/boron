@@ -366,13 +366,17 @@ any other value will set it.
 	)> poke b 12 true
 	== make bitset! #{00080000}
 
-The *charset* function is a shortcut for ``make bitset!``.
+The *construct* and *charset* functions can also be used to create a bitset!.
+Unlike *make*, these functions will interpret a dash (`-`) between characters
+in a string! as a range.
 
-	c: charset "ABC"
-	)> pick c 'A'
+	c: charset "0-9A-F"
+    == make bitset! #{000000000000FF037E0000...}
+	)> pick c 'B'
 	== true
-	)> pick c 'Z'
+	)> pick c 'G'
 	== false
+
 
 String!
 -------
