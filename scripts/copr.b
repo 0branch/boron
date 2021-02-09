@@ -387,9 +387,8 @@ context [
 	use-include: none
 	inc-stack: []
 
-	space: charset { ^-}
-	set 'define-symbol charset
-		{_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz}
+	space: charset " ^-"
+	set 'define-symbol charset "_0-9A-Za-z"
 
 	if-case: func [enable /extern use-include] [
 		if last inc-stack [use-include: enable]

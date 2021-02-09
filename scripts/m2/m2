@@ -792,8 +792,8 @@ find_include_file: func [
 ]
 
 
-space: charset { ^-}
-define-symbol: charset {_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz}
+space: charset " ^-"
+define-symbol: charset "_0-9A-Za-z"
 
 add_def: func [str] [
 	parse str [some[
