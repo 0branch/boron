@@ -8,16 +8,21 @@ Overview
 ========
 
 Copr is the **Co**mpile **Pr**ogram tool (pronounced as copper).
-It's a [Boron] script that provides a light-weight alternative to make
-(or cmake, xmake, etc.) for C/C++ projects.
+It's a [Boron] script that provides a simple alternative to make (or cmake,
+xmake, etc.) for C/C++ projects that need to be built on various operating
+systems.
 
 Copr reads a project file which declares what programs and libraries to build.
 From this a list of dependencies and commands to run is generated and cached.
+For an executable built from a single file it can look this this:
 
-Unlike more complicated build systems it does not search the build
-environment trying to find compilers and/or libraries.  These are kept under
-strict control of the user and configured via the project and target
-definition files.
+    exe %hello [
+        sources [%main.c]
+    ]
+
+Unlike more complicated build systems it does not search the build environment
+trying to find compilers and/or libraries.  These are kept under strict
+control of the user and configured via the project and target definition files.
 
 
 Installation
@@ -27,9 +32,6 @@ The script can be downloaded directly to your `~/bin` with these commands:
 
     curl -sL -o ~/bin/copr "https://sf.net/p/urlan/boron/code/ci/master/tree/scripts/copr.b?format=raw"
     chmod +x ~/bin/copr
-
-If you download via another method make sure to rename or link the script
-without the `.b` filename extension.
 
 
 Options
@@ -112,15 +114,28 @@ Project File
 ============
 
 The project file is a Boron script which invokes functions provided by Copr.
+The primary functions declare what sort of targets to build.
 
-For a simple, single file, hello world program it can look like this:
+The following example builds a library named "moduleX" from two source files
+and a program named "my_program" which uses it.
 
-    exe %hello [
-        sources [%main.c]
+    default [
+        include_from %moduleX
     ]
 
-This declares that an executable program named "hello" that is compiled from
-the main.c source file will be built.
+    lib %moduleX [
+        sources_from %moduleX [
+            %source1.c
+            %source2.c
+        ]
+    ]
+
+    exe %my_program [
+        libs_from %. %moduleX
+        sources [
+            %main.c
+        ]
+    ]
 
 ## options
 Project specific build options can be defined in the options block using
@@ -200,11 +215,11 @@ This will link the target with the OpenGL library.
 ## qt
 This will link the target with the specified Qt 5 libraries.
 
-	gui widgets network concurrent opengl printsupport svg sql xml
+    gui widgets network concurrent opengl printsupport svg sql xml
 
 A basic QtWidget application need only include this command:
 
-	qt [widgets]
+    qt [widgets]
 
 
 Project Cache
