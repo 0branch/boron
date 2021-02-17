@@ -28,10 +28,11 @@ either spec-file [
     do spec-file
 ][
     old: 2,0,4
-    new: 2,0,5
+    new: 2,0,6
     files: [
-        %INSTALL                ["VER=$v"]
-        %boron.spec             ["Version: $v"]
+        %Makefile               ["VER=$v"]
+        %dist/boron.spec        ["Version: $v"]
+        %dist/control           ["Version: $v"]
         %project.b              ["%boron $c"]
         %eval/boot.b            ["version: $c"]
         %doc/UserManual.md      ["Version $v, "]

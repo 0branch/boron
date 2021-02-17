@@ -1,6 +1,7 @@
-old: 2,0,4
-new: 2,0,5
+old: 2,0,6
+new: 2,0,7
 files: [
+    %Makefile               ["VER=$v"]
     %project.b              ["%boron $c"]
     %eval/boot.b            ["version: $c"]
     %include/boron.h [
