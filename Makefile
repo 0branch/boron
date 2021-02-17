@@ -1,6 +1,6 @@
 # Boron Makefile for UNIX systems.
 
-VER=2.0.5
+VER=2.0.6
 
 DESTDIR ?= /usr/local
 BIN_DIR=$(DESTDIR)/bin

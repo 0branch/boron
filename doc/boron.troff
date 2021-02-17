@@ -1,5 +1,5 @@
 .\" Manpage for boron.
-.TH BORON 1 "25 Nov 2020" "Version 2.0.4" "boron 2.0.4"
+.TH BORON 1 "25 Nov 2020" "Version 2.0.6" "boron 2.0.6"
 .SH NAME
 boron \- The Boron language interpreter
 .SH SYNOPSIS
