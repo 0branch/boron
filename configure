@@ -103,13 +103,13 @@ if [ $2 = 0 ]; then
   echo "$1: false" >> project.config
 else
   echo "$1: true" >> project.config
-  echo -n " -DCONFIG_${1^^}" >> config.opt
+  echo -n " -DCONFIG_$(tr '[:lower:]' '[:upper:]' <<< $1)" >> config.opt
 fi
 }
 function m2-int {
 if [ $2 != 'none' ]; then
   echo "$1: $2" >> project.config
-  echo -n " -DCONFIG_${1^^}=$2" >> config.opt
+  echo -n " -DCONFIG_$(tr '[:lower:]' '[:upper:]' <<< $1)=$2" >> config.opt
 fi
 }
 
