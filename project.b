@@ -35,7 +35,6 @@ default [
         cflags {-pedantic}
     ]
     win32 [
-        if msvc [include_from %win32]
         if thread [cflags {-D_WIN32_WINNT=0x0600}]
     ]
 ]
