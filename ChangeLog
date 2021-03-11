@@ -1,6 +1,17 @@
 			Boron Change Log
 
 
+V2.0.8 - 25 Apr 2022
+
+  * Parse 'into accepts any block type.
+  * Add appair function.
+  * Add boron_random() & boron_randomSeed() for access to UThread RNG.
+  * Checksum returns int! values with HEX flag set.
+  * Construct binary! handles coord! values.
+  * Execute treats \" as a literal double quote on Unix.
+  * Fix a couple bugs.
+
+
 V2.0.6 - 17 Feb 2021
 
   * Add continue, ge?, and le? functions.
