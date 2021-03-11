@@ -229,6 +229,24 @@ int ur_readDir( UThread* ut, const char* filename, UCell* res )
 
 
 #ifdef CONFIG_EXECUTE
+// Remove backslashes from last string in argv.
+static void compactLitQuotes( UBuffer* argv, const char* argEnd )
+{
+    char* cp = ur_ptr(char*,argv)[ argv->used - 1 ];
+    char* dest = cp;
+    for( ; cp != argEnd; ++cp )
+    {
+        if( *cp == '\\' && cp[1] == '"' )
+            continue;
+        if( dest != cp )
+            *dest++ = *cp;
+        else
+            ++dest;
+    }
+    *dest = '\0';
+}
+
+
 static void appendArg( UBuffer* argv, char* cp )
 {
     ur_arrReserve( argv, argv->used + 1 );
@@ -239,12 +257,15 @@ static void appendArg( UBuffer* argv, char* cp )
 
 static void argumentList( char* cp, UBuffer* argv )
 {
+    const char* start = cp;
     int prevWhite = 1;
     int quotes = 0;
+    int litQuote = 0;
+    int c;
 
-    while( *cp != '\0' )
+    while( (c = *cp) != '\0' )
     {
-        if( *cp == ' ' || *cp == '\t' || *cp == '\n' )
+        if( c == ' ' || c == '\t' || c == '\n' )
         {
             if( ! quotes )
             {
@@ -252,19 +273,36 @@ static void argumentList( char* cp, UBuffer* argv )
                 prevWhite = 1;
             }
         }
-        else if( *cp == '"' )
+        else if( c == '"' )
         {
-            if( quotes )
-                *cp = '\0';
-            quotes ^= 1;
+            // Treat a backslash followed by double quote as a literal double
+            // quote similar to CreateProcess() on Windows.
+            if( cp != start && cp[-1] == '\\' )
+            {
+                litQuote = 1;
+            }
+            else
+            {
+                if( quotes )
+                    *cp = '\0';
+                quotes ^= 1;
+            }
         }
         else if( prevWhite )
         {
             prevWhite = 0;
+            if( litQuote )
+            {
+                litQuote = 0;
+                compactLitQuotes( argv, cp );
+            }
             appendArg( argv, cp );
         }
         ++cp;
     }
+
+    if( litQuote )
+        compactLitQuotes( argv, cp );
     appendArg( argv, 0 );
 }
 
