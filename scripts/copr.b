@@ -1,10 +1,11 @@
 #!/usr/bin/boron -sp
 /*
-	Copr - Compile Program v0.2.1
+	Copr - Compile Program v0.2.2
 	Copyright 2021 Karl Robillard
 	Documentation is at http://urlan.sourceforge.net/copr.html
 */
 
+debug_mode: false
 bsd: linux: macx: mingw: sun: unix: win32: none
 
 ~copr~: context [
@@ -15,8 +16,7 @@ verbose: 2
 
 action:
 dry_run:
-clear_caches:
-debug_mode: false
+clear_caches: false
 build_env:
 jobs: none
 ;sub-projects: []
@@ -223,7 +223,7 @@ forall args [
 		"-a" [action: 'archive]
 		"-h" [action: 'help]
 		"-c" [action: 'clean]
-		"-d" [debug_mode: true]
+		"-d" [debug_mode: true append cli_options "debug_mode: true^/"]
 		"-e" [build_env: second ++ args]
 		"-j" [
 			jobs: to-int second ++ args
@@ -248,7 +248,7 @@ forall args [
 ; Show help after parsing args to get any project_file.
 if eq? action 'help [
 	context [
-		usage: {copr version 0.2.1
+		usage: {copr version 0.2.2
 
 Copr Options:
   -a              Archive source files.
@@ -264,9 +264,10 @@ Copr Options:
   <project>       Specify project file         (default is project.b)
   <opt>:<value>   Set project option
 
-Project Options:}
+Project Options:
+  debug_mode:     Build in debug mode.}
 
-		either all [
+		if all [
 			exists? project_file
 			opt: select load project_file 'options
 		][
@@ -280,8 +281,6 @@ Project Options:}
 				)
 				| skip
 			]]
-		][
-			append usage "^/  none"
 		]
 		prin terminate usage '^/'
 	]
@@ -663,7 +662,7 @@ set 'options func [spec block!] [
 	do-any %project.config
 
 	; Validate command line options.
-	w1: words-of context spec
+	w1: append words-of context spec 'debug_mode
 	w2: collect set-word! to-block cli_options
 	ifn empty? w2: difference w2 w1 [
 		error join "Invalid project options: " mold w2

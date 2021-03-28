@@ -1,6 +1,6 @@
 ---
 title:  Copr
-date:   Version 0.2.0, 2021-01-19
+date:   Version 0.2.2, 2021-03-28
 ---
 
 
@@ -57,7 +57,7 @@ options.
       <opt>:<value>   Set project option
 
     Project Options:
-      none
+      debug_mode:     Build in debug mode.
 
 When run without options it will build the files specified by the `project.b`
 file in the current directory.
@@ -73,9 +73,11 @@ Help simply prints the usage.
 Remove previously built files and the project cache.
 
 ## Debug
-This changes the compiler and linker flags to enable debugging.
-If `-d` is not used then the compiler options will be set for an optimized
-release build.
+The `-d` option changes the compiler and linker flags to enable debugging.
+The default flags are set for an optimized release build.
+
+The default settings can also be changed by using `debug_mode: true` in a
+project.config file.
 
 ## Build Environment
 A file can be specified to override the [target system] settings.
@@ -148,6 +150,9 @@ For example:
     ]
 
 Only a single options command can be used in any project file.
+
+There is one predefined project option called `debug_mode` which if set true
+will configure the build in the same was as the [debug] command line option.
 
 The defined options can be set on the Copr command line using the colon
 argument syntax.
