@@ -1,6 +1,6 @@
 #!/usr/bin/boron -sp
 /*
-	Copr - Compile Program v0.2.2
+	Copr - Compile Program v0.2.3
 	Copyright 2021 Karl Robillard
 	Documentation is at http://urlan.sourceforge.net/copr.html
 */
@@ -607,7 +607,7 @@ compile-data: context [
 
 		do bind [
 			name: tname
-			output_file: tfile
+			output_file: either output_dir [join output_dir tfile] [tfile]
 
 			stringify include_paths inc-args " -I"
 			stringify link_paths    lib-args benv/libpath_opt
@@ -1181,7 +1181,7 @@ switch verbose [
 		cmd-done: 0
 		report: [
 			if summary [
-				print format [-2 "% " 74] [
+				print format [-2 "% " 4] [
 					div mul 100 cmd-done cmd-count
 					summary
 				]

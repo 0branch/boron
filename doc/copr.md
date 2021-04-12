@@ -1,6 +1,6 @@
 ---
 title:  Copr
-date:   Version 0.2.2, 2021-03-28
+date:   Version 0.2.3, 2021-04-12
 ---
 
 
@@ -195,6 +195,9 @@ Specify C++ compiler options.
 
 ## include_from
 Specify header include directories.
+
+## into
+Place the built target into a specific directory.
 
 ## libs
 Specify libraries to be linked.
