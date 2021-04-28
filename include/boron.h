@@ -23,8 +23,8 @@
 #include "urlan.h"
 
 
-#define BORON_VERSION_STR  "2.0.6"
-#define BORON_VERSION      0x020006
+#define BORON_VERSION_STR  "2.0.7"
+#define BORON_VERSION      0x020007
 
 
 enum BoronDataType
