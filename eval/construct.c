@@ -113,6 +113,8 @@ static int binary_construct( UThread* ut, const UCell* blkC, const UCell* binC )
                         goto con_bin;
                     else if( ur_is(cell, UT_BLOCK) )
                         goto con_blk;
+                    else if( ur_is(cell, UT_COORD) )
+                        goto con_coord;
                     else
                         return errorType( "construct binary! expected int" );
             }
@@ -144,6 +146,17 @@ con_blk:
                 if( ur_is(b2.it, UT_INT) )
                     ur_binAppendInt( bin, ur_int(b2.it), size, bigEndian );
             }
+            }
+        }
+        else if( ur_is(bi.it, UT_COORD) )
+        {
+            cell = bi.it;
+con_coord:
+            {
+            int len = cell->coord.len;
+            int i;
+            for( i = 0; i < len; ++i )
+                ur_binAppendInt( bin, cell->coord.n[i], size, bigEndian );
             }
         }
 #if 0
