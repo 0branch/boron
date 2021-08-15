@@ -1,6 +1,6 @@
 #!/usr/bin/boron -sp
 /*
-	Copr - Compile Program v0.2.3
+	Copr - Compile Program v0.3.0
 	Copyright 2021 Karl Robillard
 	Documentation is at http://urlan.sourceforge.net/copr.html
 */
@@ -221,10 +221,11 @@ compile-rules: [
 forall args [
 	switch first args [
 		"-a" [action: 'archive]
-		"-h" [action: 'help]
 		"-c" [action: 'clean]
 		"-d" [debug_mode: true append cli_options "debug_mode: true^/"]
 		"-e" [build_env: second ++ args]
+		"-h" [action: 'help]
+		"-i" [action: 'inspect]
 		"-j" [
 			jobs: to-int second ++ args
 			if lt? jobs 2 [jobs: none]
@@ -248,21 +249,22 @@ forall args [
 ; Show help after parsing args to get any project_file.
 if eq? action 'help [
 	context [
-		usage: {copr version 0.2.2
+		usage: {copr version 0.3.0
 
 Copr Options:
   -a              Archive source files.
   -c              Clean up (remove) previously built files & project cache.
   -d              Build in debug mode.         (default is release)
   -e <env_file>   Override build environment.
-  -h              Print this help and quit
+  -h              Print this help and quit.
+  -i              Inspect project cache.
   -j <count>      Use specified number of job threads.  (1-6, default is 1)
   -r              Do a dry run and only print commands.
   -t <os>         Set target operating system. (default is auto-detected)
   -v <level>      Set verbosity level.         (0-4, default is 2)
   --clear         Remove caches of all projects.
-  <project>       Specify project file         (default is project.b)
-  <opt>:<value>   Set project option
+  <project>       Specify project file.        (default is project.b)
+  <opt>:<value>   Set project option.
 
 Project Options:
   debug_mode:     Build in debug mode.}
@@ -360,7 +362,7 @@ if benv-target: select [
 		libpath_opt: " /libpath:"
 		shlib_suffix: %.dll
 		debug:		"/MDd -Zi -DDEBUG"
-		debug-link: "/DEBUG"
+		debug-link: " /DEBUG"
 		release:	"/MD -O2 -DNDEBUG"
 		opengl-link: "-lopengl32"
 		sys_console: " /subsystem:console"
@@ -977,8 +979,23 @@ compile-rules: context bind bind compile-rules benv compile-data
 set [path project_file] split-path project_file
 if path [change-dir path]
 
-csum: checksum join current-dir project_file
-cache-file: join cache-dir slice to-text csum 2,16
+pfile-path: join current-dir project_file
+cache-file: rejoin [
+	cache-dir
+	slice to-text checksum pfile-path 2,16
+	'-'
+	skip to-text to-hex checksum/crc32 to-string pfile-path 2
+]
+
+if eq? action 'inspect [
+	either exists? cache-file [
+		print ["Inspecting cache" cache-file]
+		probe load cache-file
+	][
+		print [cache-file "does not exist!"]
+	]
+	quit
+]
 
 ;info-size: :second
 info-time: :third

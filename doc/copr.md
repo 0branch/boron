@@ -1,6 +1,6 @@
 ---
 title:  Copr
-date:   Version 0.2.3, 2021-04-12
+date:   Version 0.3.0, 2021-08-28
 ---
 
 
@@ -40,21 +40,22 @@ Options
 Running Copr with the `-h` option will show the usage and other available
 options.
 
-    copr version 0.2.0
+    copr version 0.3.0
 
     Copr Options:
       -a              Archive source files.
       -c              Clean up (remove) previously built files & project cache.
       -d              Build in debug mode.         (default is release)
       -e <env_file>   Override build environment.
-      -h              Print this help and quit
+      -h              Print this help and quit.
+      -i              Inspect project cache.
       -j <count>      Use specified number of job threads.  (1-6, default is 1)
       -r              Do a dry run and only print commands.
       -t <os>         Set target operating system. (default is auto-detected)
       -v <level>      Set verbosity level.         (0-4, default is 2)
       --clear         Remove caches of all projects.
-      <project>       Specify project file         (default is project.b)
-      <opt>:<value>   Set project option
+      <project>       Specify project file.        (default is project.b)
+      <opt>:<value>   Set project option.
 
     Project Options:
       debug_mode:     Build in debug mode.
@@ -65,9 +66,6 @@ file in the current directory.
 ## Archive
 Create a compressed archive of the source files using `tar`.
 This be used with the [dry run] option `-r`.
-
-## Help
-Help simply prints the usage.
 
 ## Clean
 Remove previously built files and the project cache.
@@ -81,6 +79,12 @@ project.config file.
 
 ## Build Environment
 A file can be specified to override the [target system] settings.
+
+## Help
+Help simply prints the usage.
+
+## Inspect
+Print the contents of the project cache.
 
 ## Jobs
 Use `-j` to run commands using multiple threads.
