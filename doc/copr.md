@@ -65,7 +65,7 @@ file in the current directory.
 
 ## Archive
 Create a compressed archive of the source files using `tar`.
-This be used with the [dry run] option `-r`.
+The [dry run] option `-r` can be used with this.
 
 ## Clean
 Remove previously built files and the project cache.
@@ -156,7 +156,7 @@ For example:
 Only a single options command can be used in any project file.
 
 There is one predefined project option called `debug_mode` which if set true
-will configure the build in the same was as the [debug] command line option.
+will configure the build in the same way as the [debug] command line option.
 
 The defined options can be set on the Copr command line using the colon
 argument syntax.

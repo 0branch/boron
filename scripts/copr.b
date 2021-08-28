@@ -1,12 +1,13 @@
 #!/usr/bin/boron -sp
 /*
-	Copr - Compile Program v0.3.0
+	Copr - Compile Program v0.3.1
 	Copyright 2021 Karl Robillard
 	Documentation is at http://urlan.sourceforge.net/copr.html
 */
 
 debug_mode: false
-bsd: linux: macx: mingw: sun: unix: win32: none
+bsd: linux: macx: sun: unix: win32: none
+msvc: false
 
 ~copr~: context [
 project_file: %project.b
@@ -51,6 +52,7 @@ benv: context [
 	lib_prefix: %lib
 	lib_suffix: %.a
 	libpath_opt: " -L"
+	shlib_opt: "-shared"
 	shlib_suffix: %.so
 	debug: "-g -DDEBUG"
 	debug-link: ""
@@ -249,7 +251,7 @@ forall args [
 ; Show help after parsing args to get any project_file.
 if eq? action 'help [
 	context [
-		usage: {copr version 0.3.0
+		usage: {copr version 0.3.1
 
 Copr Options:
   -a              Archive source files.
@@ -322,11 +324,18 @@ ifn target-os [
 		windows [target-os: 'win32]
 	]
 ]
-set in binding? 'unix target-os :active-env
-if find [bsd linux sun] target-os [unix: :active-env]
+
+either eq? 'mingw target-os [
+	; mingw is a special case of win32.
+	set 'win32 :active-env
+][
+	set in binding? 'unix target-os :active-env
+	if find [bsd linux sun] target-os [unix: :active-env]
+]
 
 if benv-target: select [
 	macx [
+		shlib_opt: "-dynamiclib"
 		shlib_suffix: %.dylib
 		opengl-link:  "-framework OpenGL"
 		qt_c++: none
@@ -341,6 +350,7 @@ if benv-target: select [
 		link_c++: "x86_64-w64-mingw32-g++ -o "
 		link_lib: "x86_64-w64-mingw32-ar rc "
 		cat_lib: "x86_64-w64-mingw32-ld -Ur -o "
+		shlib_suffix: %.dll
 		opengl-link: "-lopengl32"
 		sys_windows: " -mwindows"
 		qt_inc: %/usr/x86_64-w64-mingw32/sys-root/mingw/include/qt5
@@ -349,6 +359,7 @@ if benv-target: select [
 		qrc: "/usr/x86_64-w64-mingw32/bin/qt5/rcc"
 	]
 	win32 [
+		set 'msvc true
 		asm: "ml64.exe"
 		cc:  "cl.exe /c /nologo -W3 -D_CRT_SECURE_NO_WARNINGS"
 		c++: join cc " /EHsc"
@@ -360,6 +371,7 @@ if benv-target: select [
 		lib_prefix: ""
 		lib_suffix: %.lib
 		libpath_opt: " /libpath:"
+		shlib_opt: "/DLL"
 		shlib_suffix: %.dll
 		debug:		"/MDd -Zi -DDEBUG"
 		debug-link: " /DEBUG"
@@ -613,7 +625,7 @@ compile-data: context [
 
 			stringify include_paths inc-args " -I"
 			stringify link_paths    lib-args benv/libpath_opt
-			either :win32 [
+			either msvc [
 				stringify/suffix link_libs lib-args ".lib"
 			][
 				stringify link_libs lib-args " -l"
@@ -689,7 +701,7 @@ exe-link: bind [
 
 ; Build commands for an executable binary.
 set 'exe func [basename spec] [
-	either any [:win32 :mingw] [
+	either :win32 [
 		lcmd: copy/deep exe-link
 		append third lcmd [
 			either cfg_console benv/sys_console benv/sys_windows
@@ -757,20 +769,15 @@ set 'shlib func [basename spec] [
 
 	compile-target basename outf
 		append copy spec bind [
+			lflags benv/shlib_opt
 			unix [
 				cflags "-fPIC"
-				lflags "-shared"
 				if version [
 					lflags join "-Wl,-soname," lib_m
 				]
 			]
 			macx [
-				lflags "-dynamiclib"
 				lflags join "-install_name @rpath/" output_file
-			]
-			win32 [
-				;cflags "-MT"
-				lflags "/DLL"
 			]
 		] target-func
 		link-cmd
