@@ -109,6 +109,7 @@ static void file_crc32( FILE* fp, UBuffer* buf, UCell* res )
     }
 
     ur_setId(res, UT_INT);
+    ur_setFlags(res, UR_FLAG_INT_HEX);
     ur_int(res) = crc;
 }
 
@@ -175,6 +176,7 @@ CFUNC(cfunc_checksum)
             else
                 ur_int(res) = checksum_crc16( it, end - it );
             ur_setId(res, UT_INT);
+            ur_setFlags(res, UR_FLAG_INT_HEX);
         }
         else
         {
