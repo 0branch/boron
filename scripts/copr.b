@@ -1,6 +1,6 @@
 #!/usr/bin/boron -sp
 /*
-	Copr - Compile Program v0.3.1
+	Copr - Compile Program v0.3.2
 	Copyright 2021 Karl Robillard
 	Documentation is at http://urlan.sourceforge.net/copr.html
 */
@@ -251,7 +251,7 @@ forall args [
 ; Show help after parsing args to get any project_file.
 if eq? action 'help [
 	context [
-		usage: {copr version 0.3.1
+		usage: {copr version 0.3.2
 
 Copr Options:
   -a              Archive source files.
@@ -694,7 +694,7 @@ exe-link: bind [
 		either has-c++ link_c++ link_c
 		output_file
 		either debug_mode debug-link ""
-		opt_link obj-args lib-args
+		obj-args opt_link lib-args
 	]
 	finish-job 'exe-job output_file
 ] benv
@@ -718,7 +718,7 @@ set 'lib func [basename spec] [
 	compile-target basename outf spec [
 		either empty? link_libs [
 			push-command ["Archive " output_file] [
-				benv/link_lib output_file opt_link obj-args
+				benv/link_lib output_file obj-args opt_link
 			]
 		][
 			; Concatenate other libraries.
