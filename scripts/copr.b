@@ -303,7 +303,7 @@ cache-dir: rejoin any [
 if clear_caches [
 	if exists? cache-dir [
 		foreach f read cache-dir [
-			if eq? 16 size? f [
+			if eq? 25 size? f [
 				delete join cache-dir f
 			]
 		]
