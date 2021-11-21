@@ -147,6 +147,8 @@ char*    boron_cstr( UThread*, const UCell* strC, UBuffer* bin );
 char*    boron_cpath( UThread*, const UCell* strC, UBuffer* bin );
 UBuffer* boron_tempBinary( const UThread* );
 UStatus  boron_badArg( UThread*, UIndex atom, int argN );
+void     boron_randomSeed( UThread*, uint32_t );
+uint32_t boron_random( UThread* );
 
 #ifdef __cplusplus
 }

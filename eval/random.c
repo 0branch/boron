@@ -36,6 +36,29 @@ static unsigned long _clockSeed()
 }
 
 
+/**
+    Seed the thread RNG.
+
+    \ingroup boron
+*/
+void boron_randomSeed( UThread* ut, uint32_t seed )
+{
+    well512_init( &BT->rand, seed );
+}
+
+
+/**
+    Get the next number from the thread RNG.
+
+    \return Value from 0 to 0xffffffff.
+    \ingroup boron
+*/
+uint32_t boron_random( UThread* ut )
+{
+    return genrand_int32();
+}
+
+
 /*-cf-
     random
         data    logic!/int!/double!/coord!/vec3! or series.

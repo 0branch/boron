@@ -192,4 +192,6 @@ EXPORTS
    checksum_crc32            @190
    ur_parseBlockI            @191
    ur_makeBitsetCell         @192
-;   ur_stringToTimeCode       @193
+   boron_randomSeed          @193
+   boron_random              @194
+;   ur_stringToTimeCode       @195
