@@ -97,6 +97,7 @@ $(ODIR)/os.o: unix/os.c
 	cc -c $(CFLAGS) $(CONFIG) $< -o $@
 
 $(EXE_OBJS): | $(ODIR)
+$(LIB_OBJS): | $(ODIR)
 $(ODIR):
 	mkdir -p $@
 
