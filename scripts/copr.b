@@ -1,6 +1,6 @@
 #!/usr/bin/boron -sp
 /*
-	Copr - Compile Program v0.3.2
+	Copr - Compile Program v0.3.3
 	Copyright 2021 Karl Robillard
 	Documentation is at http://urlan.sourceforge.net/copr.html
 */
@@ -77,6 +77,7 @@ compile-rules: [
 		%.s     rule-asm
 		%.asm   rule-asm
 		%.qrc   rule-qrc
+		%.rc    rule-rc
 	]
 
 	src-base:
@@ -216,8 +217,36 @@ compile-rules: [
 		]
 		rule-c++
 	]
+	rule-rc: [
+		"Windows resource" [
+			obj_dir src-base %-rc res_suffix
+		][
+			if ne? obj_suffix res_suffix [
+				append-pair obj-args ' ' out-file
+			]
 
-	rule-blocks: reduce [rule-asm rule-c rule-c++ rule-moc rule-qrc]
+			dep: make block! 4
+			parse read/text src-file [some[
+				thru "ICON" thru '"' tok: to '"' :tok (
+					tok: to-file tok
+					either tmp: find_include_file tok include_paths [
+						append dep tmp
+						cache-info tmp none
+					][
+						print ["Warning: ICON" tok "not found!"]
+					]
+				)
+			]]
+			cache-info src-file dep
+		][
+			win_rc out-file
+			ne-string select custom_flags src-file
+			' ' src-file
+		]
+		none
+	]
+
+	rule-blocks: reduce [rule-asm rule-c rule-c++ rule-moc rule-qrc rule-rc]
 ]
 
 forall args [
@@ -251,7 +280,7 @@ forall args [
 ; Show help after parsing args to get any project_file.
 if eq? action 'help [
 	context [
-		usage: {copr version 0.3.2
+		usage: {copr version 0.3.3
 
 Copr Options:
   -a              Archive source files.
@@ -357,6 +386,8 @@ if benv-target: select [
 		qt_c++: none
 		moc: "/usr/x86_64-w64-mingw32/bin/qt5/moc"
 		qrc: "/usr/x86_64-w64-mingw32/bin/qt5/rcc"
+		res_suffix: obj_suffix
+		win_rc: "x86_64-w64-mingw32-windres -o "
 	]
 	win32 [
 		set 'msvc true
@@ -383,6 +414,8 @@ if benv-target: select [
 		qt_c++: none
 		moc: "$(QTDIR)\bin\moc.exe"
 		qrc: "$(QTDIR)\bin\rcc.exe"
+		res_suffix: %.res
+		win_rc: "rc.exe /fo "
 	]
 ] target-os [
 	do bind benv-target benv
@@ -655,7 +688,13 @@ compile-data: context [
 
 	set 'gen func [output dep commands /local it] [
 		reset-data
-		cache-info dep none
+		either block? dep [
+			foreach it dep [cache-info it none]
+			dep: first dep
+		][
+			cache-info dep none
+		]
+
 		foreach it split trim commands '^/' [
 			push-command ["Build " output] [trim it]
 		]
