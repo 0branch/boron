@@ -651,6 +651,8 @@ UAtom* ur_internAtoms( UThread* ut, const char* words, UAtom* atoms )
     while( *cp )
     {
         cp = str_skipWhite( cp );
+        if( ! *cp )
+            break;
         end = str_toWhite( cp );
         *atoms++ = _internAtom( 0, table, names, (uint8_t*)cp, (uint8_t*)end );
         cp = end;
