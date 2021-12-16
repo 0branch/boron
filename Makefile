@@ -21,7 +21,7 @@ AR_LIB = libtool -static -o
 else
 CFLAGS += -std=gnu99 -fPIC
 AR_LIB = ar rc
-ifneq (,$(wildcard /usr/lib64/.))
+ifneq (,$(wildcard /usr/lib64/libc.so))
 LIB_DIR=$(DESTDIR)/lib64
 else ifneq (,$(wildcard /usr/lib/x86_64-linux-gnu/.))
 LIB_DIR=$(DESTDIR)/lib/x86_64-linux-gnu
