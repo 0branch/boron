@@ -1,6 +1,6 @@
 #!/usr/bin/boron -sp
 /*
-	Copr - Compile Program v0.3.3
+	Copr - Compile Program v0.3.4
 	Copyright 2021 Karl Robillard
 	Documentation is at http://urlan.sourceforge.net/copr.html
 */
@@ -203,9 +203,11 @@ compile-rules: [
 			gen_dir src-base %.cpp
 		][
 			dep: make block! 16
+			icon-path: first split-path src-file
 			parse read/text src-file [some[
 				thru "<file" thru '>' tok: to "</file>" :tok (
-					append dep tok: to-file tok
+					tok: either icon-path [join icon-path tok] [to-file tok]
+					append dep tok
 					cache-info tok none
 				)
 			]]
@@ -1078,7 +1080,12 @@ either all [
 
 	; NOTE: The project_file is bound to target-func before evaluation so
 	; that the words can be overridden inside the project itself.
-	do bind load project_file target-func
+	~proj~: bind load project_file target-func
+	ifn find ~proj~ 'options [
+		do-any %project.config
+		do cli_options
+	]
+	do ~proj~
 
 	cache-modified: true
 	ifn dry_run [
