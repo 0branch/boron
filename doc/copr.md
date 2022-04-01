@@ -1,6 +1,6 @@
 ---
 title:  Copr
-date:   Version 0.3.0, 2021-08-28
+date:   Version 0.3.5, 2022-04-01
 ---
 
 
@@ -65,6 +65,10 @@ file in the current directory.
 
 ## Archive
 Create a compressed archive of the source files using `tar`.
+The files needed to build all libraries and executables in the project are
+automatically added to the archive.  To include other files use the [dist]
+function.
+
 The [dry run] option `-r` can be used with this.
 
 ## Clean
@@ -167,6 +171,10 @@ Command line options will override any set in the project.config.
 
 ## default
 The default function defines a common set of instructions for all targets.
+
+## dist
+The dist function (short for distribute) takes a list of files that will be
+added to the archive.
 
 ## exe
 To build binary executables use the *exe* target.

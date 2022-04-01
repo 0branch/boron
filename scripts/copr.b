@@ -1,7 +1,7 @@
 #!/usr/bin/boron -sp
 /*
-	Copr - Compile Program v0.3.4
-	Copyright 2021 Karl Robillard
+	Copr - Compile Program v0.3.5
+	Copyright 2021,2022 Karl Robillard
 	Documentation is at http://urlan.sourceforge.net/copr.html
 */
 
@@ -18,6 +18,7 @@ verbose: 2
 action:
 dry_run:
 clear_caches: false
+archive_files:
 build_env:
 jobs: none
 ;sub-projects: []
@@ -41,7 +42,7 @@ file-id-map: make hash-map! 64	; Maps filename to file-inf slices.
 
 benv: context [
 	asm: "as"
-	cc:  "cc -c -pipe -Wall -W -Wdeclaration-after-statement"
+	cc:  "cc -c -pipe -Wall -W"
 	c++: "c++ -c -pipe -Wall -W"
 	link_c: "cc -o "
 	link_c++: "c++ -o "
@@ -282,7 +283,7 @@ forall args [
 ; Show help after parsing args to get any project_file.
 if eq? action 'help [
 	context [
-		usage: {copr version 0.3.3
+		usage: {copr version 0.3.5
 
 Copr Options:
   -a              Archive source files.
@@ -375,7 +376,7 @@ if benv-target: select [
 	]
 	mingw [
 		asm: "x86_64-w64-mingw32-as"
-		cc:  "x86_64-w64-mingw32-gcc -c -pipe -Wall -W -Wdeclaration-after-statement"
+		cc:  "x86_64-w64-mingw32-gcc -c -pipe -Wall -W"
 		c++: "x86_64-w64-mingw32-g++ -c -pipe -Wall -W"
 		link_c: "x86_64-w64-mingw32-gcc -o "
 		link_c++: "x86_64-w64-mingw32-g++ -o "
@@ -949,6 +950,8 @@ target-func: context bind [
 	debug:		none	;does [debug_mode: true]
 	release:	none	;does [debug_mode: false]
 
+	dist: func [files block!] [+blk1 archive_files files]
+
 	include-define: func [str string!] [+blk defines str]
 
 	include_from: func [list string!/file!/block!] [
@@ -1119,6 +1122,7 @@ switch action [
 				]
 			]
 		]
+		if archive_files [append tmp archive_files]
 
 		append-pair clear ~rbuf "tar czf project.tar.gz " project_file
 		foreach src intersect tmp tmp [
