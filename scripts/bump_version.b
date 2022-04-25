@@ -27,8 +27,8 @@ forall args [
 either spec-file [
     do spec-file
 ][
-    old: 2,0,4
-    new: 2,0,6
+    old: 2,0,6
+    new: 2,0,8
     files: [
         %Makefile               ["VER=$v"]
         %dist/boron.spec        ["Version: $v"]
