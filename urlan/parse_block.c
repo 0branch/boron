@@ -221,7 +221,7 @@ match:
                             BLK_RULE_ERROR( "parse into expected block" );
                         }
                         tval = iblk->ptr.cell + pos;
-                        if( ! ur_is(tval, UT_BLOCK) )
+                        if( ! ur_isBlockType(ur_type(tval)) )
                             goto failed;
                         if( ur_isShared( tval->series.buf ) )
                             goto failed;
