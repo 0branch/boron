@@ -2096,7 +2096,7 @@ CFUNC(cfunc_skip)
             count   int!
     return: Modified series or bound word!.
     group: series
-    see: remove, terminate
+    see: remove, terminate, appair
 
     Add data to end of series.
 
@@ -2181,6 +2181,41 @@ CFUNC(cfunc_append)
         }
 #endif
         return boron_badArg( ut, type, 1 );
+    }
+    return boron_badArg( ut, type, 0 );
+}
+
+
+/*-cf-
+    appair
+        series      Series.
+        value1      First value to append.
+        value2      Second value to append.
+    return: Modified series.
+    group: series
+    see: append, remove, terminate
+
+    Add a pair of values to the end of series.
+*/
+CFUNC(cfunc_appair)
+{
+    UBuffer* buf;
+    const USeriesType* dt;
+    int type = ur_type(a1);
+
+    if( ur_isSeriesType( type ) )
+    {
+        if( ! (buf = ur_bufferSerM(a1)) )
+            return UR_THROW;
+
+        dt = SERIES_DT( type );
+        if( ! dt->append( ut, buf, a2 ) )
+            return UR_THROW;
+        if( ! dt->append( ut, buf, a3 ) )
+            return UR_THROW;
+
+        *res = *a1;
+        return UR_OK;
     }
     return boron_badArg( ut, type, 0 );
 }

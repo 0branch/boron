@@ -68,7 +68,7 @@ benv: context [
 	qrc: "rcc-qt5"
 ]
 
-append-pair: func [series a b] [append append series a b]
+append-pair: :appair
 
 compile-rules: [
 	ext-map: [

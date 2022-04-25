@@ -132,7 +132,7 @@ syn keyword     boronRepeat			forall foreach loop while
 syn keyword     boronStatement  make do does func ++ -- reduce parse
 syn keyword     boronStatement  append change clear copy find first free head
 syn keyword     boronStatement  insert join last next prev pick poke remove
-syn keyword     boronStatement  second select skip sort tail third trim
+syn keyword     boronStatement  second select skip sort tail third trim appair
 
 " Context
 syn keyword     boronStatement  binding? bind unbind infuse set get in
