@@ -308,9 +308,11 @@ UStatus bitset_construct( UThread* ut, const UCell* strC, UCell* res )
     if( cmax && cmax < 256 )
         cmax = 256;
 
-    bits = ur_makeBitsetCell( ut, cmax, res )->ptr.b;
+    bits = ur_makeBitsetCell( ut, cmax, res )->ptr.b;   // gc!
     if( bits )
     {
+        si.buf = ur_bufferSer( strC );  // Re-aquire buf.
+
         state = 0;
         si.it = start;
         ur_foreach( si )
