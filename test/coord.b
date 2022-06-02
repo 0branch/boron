@@ -27,3 +27,5 @@ x: 0,1,2,3,4
 probe slice x 2
 probe slice x -2
 probe slice x 2,2
+probe slice 10,11 4     ; increase length
+probe slice 10,11,2 1,4
