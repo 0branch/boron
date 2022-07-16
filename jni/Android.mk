@@ -22,7 +22,6 @@ LOCAL_SRC_FILES := urlan/hashmap.c \
     urlan/serialize.c \
     urlan/tokenize.c \
     urlan/vector.c \
-    urlan/parse_binary.c \
     urlan/parse_block.c \
     urlan/parse_string.c \
     support/str.c \
